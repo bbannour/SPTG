@@ -1,0 +1,308 @@
+<?xml version='1.0' ?>
+<!--
+    Copyright (c) 2016 CEA LIST.
+   
+    All rights reserved. This program and the accompanying materials
+    are made available under the terms of the Eclipse Public License v1.0
+    which accompanies this distribution, and is available at
+    http://www.eclipse.org/legal/epl-v10.html
+   
+    Contributors:
+     Arnault Lapitre (CEA LIST) arnault.lapitre@cea.fr
+      - Initial API and Implementation
+ -->
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<book>
+	<title>INSTALL_tmp</title>
+	<chapter id="efm-symbex-build-and-installation-instructions">
+		<title>EFM-SYMBEX : Build and Installation Instructions</title>
+		<section id="overview">
+			<title>Overview</title>
+			<para>In order to build EFM-SYMBEX, you'll need :
+</para>
+			<itemizedlist>
+				<listitem>
+					<para>
+						<ulink url="https://cmake.org/download/">CMake</ulink>, 2.8 or higher
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						<ulink url="http://www.boost.org/users/download/">Boost</ulink>, 1.53 or higher
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						<ulink url="https://gmplib.org/">GMP</ulink>, 2.5.1.3
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						<ulink url="http://www.antlr2.org">ANTLR2</ulink>, C bindings library, 2.7.7
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						<ulink url="http://www.antlr3.org">ANTLR3</ulink>, C bindings library, 3.4
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						<ulink url="http://cvc4.cs.nyu.edu">CVC4</ulink>, 1.3.1 or higher
+					</para>
+				</listitem>
+				<listitem>
+					<para>
+						<ulink url="https://github.com/davewathaverford/the-omega-project">Omega</ulink>
+					</para>
+				</listitem>
+			</itemizedlist>
+			<para>EFM-SYMBEX build is driven by CMake and tested with the following generators : </para>
+			<itemizedlist>
+				<listitem>
+					<para>Unix Makefiles (native compilers)</para>
+				</listitem>
+			</itemizedlist>
+		</section>
+		<section id="prerequisites-installation">
+			<title>Prerequisites installation</title>
+			<section id="binaries-almost-installation-on-linux">
+				<title>Binaries (almost) installation on Linux</title>
+				<para>Following instructions are given for debian-like distributions. You should adapt them to the package manager used by your distribution.
+</para>
+				<section id="cmake">
+					<title>CMake</title>
+					<para>
+
+						<code>sudo apt-get install cmake</code>
+
+
+
+						<code>sudo apt-get install cmake-gui</code>
+
+					</para>
+				</section>
+				<section id="boost">
+					<title>Boost</title>
+					<para>
+
+						<code>sudo apt-get install boost-1.53</code>
+
+					</para>
+				</section>
+				<section id="gmp">
+					<title>GMP</title>
+					<para>
+
+						<code>sudo apt-get install libgmp-dev</code>
+
+					</para>
+				</section>
+				<section id="antlr2">
+					<title>ANTLR2</title>
+					<para>
+
+						<code>sudo apt-get install libantlr-dev</code>
+
+					</para>
+				</section>
+				<section id="antlr3">
+					<title>ANTLR3</title>
+					<para>As no ANTLR 3.4 package seems available, it is necessary to compile a source distribution : 
+						Download 
+						<ulink url="http://www.antlr3.org/download/C/libantlr3c-3.4.tar.gz">libantlr3c-3.4.tar.gz</ulink> then :
+
+
+
+						<code>tar zxvf libantlr3c-3.4.tar.gz</code>
+
+
+
+						<code>./configure --enable-static=true --enable-shared=false</code>, add 
+						<code>--enable-64bit</code> according to your system.
+
+
+
+						<code>make</code>
+
+
+
+						<code>make check</code>
+
+
+
+						<code>sudo make install</code>
+
+					</para>
+					<para>Headers and library should be automatically installed in /usr/local. Use 
+						<code>.\configure --prefix=&lt;yourpath&gt;</code> to install in another location. In this case, you'll need to set 
+						<code>ANTLR3_ROOT</code> variable to this location for CMake to know about it.
+
+					</para>
+				</section>
+				<section id="cvc4">
+					<title>CVC4</title>
+					<para>Add the following lines in 
+						<code>/etc/apt/sources.list</code> :
+
+
+
+						<code>deb http://cvc4.cs.nyu.edu/debian/ stable/</code>
+
+
+						<code>deb http://cvc4.cs.nyu.edu/debian unstable/</code>
+
+
+
+						<code>deb_src http://cvc4.cs.nyu.edu/debian unstable/</code>
+
+						Then do :
+
+
+
+						<code>sudo apt-get update</code>
+
+
+
+						<code>sudo apt-get install cvc4 libcvc4-dev</code>
+
+					</para>
+				</section>
+				<section id="omega">
+					<title>Omega</title>
+					<para>No package being available for Omega, it is necessary to compile a source distribution.
+
+						Clone the source repository :
+
+
+
+						<code>git clone https://github.com/davewathaverford/the-omega-project.git</code>
+
+						Then do : 
+
+
+						<code>make depends</code>
+
+
+
+						<code>make libomega.a</code>
+
+
+
+						<code>sudo make install</code>
+					</para>
+					<para>Headers and library should be automatically installed in /usr/local. Use .\configure --prefix=/usr/local to install in another location. In this case, you'll need to set 
+						<code>OMEGA_ROOT</code> variable to this location for CMake to know about it. 
+					</para>
+				</section>
+			</section>
+			<section id="sources-installation-on-linux">
+				<title>Sources installation on Linux</title>
+				<para>
+					<emphasis role="bold">TO BE DONE</emphasis>
+				</para>
+			</section>
+			<section id="sources-installation-on-windows-mingw-msys2">
+				<title>Sources installation on Windows/MinGW/MSYS2</title>
+				<para>
+					<emphasis role="bold">WARNING : Currently under test</emphasis>
+				</para>
+				<section id="cmake2">
+					<title>CMake</title>
+					<para>Use the Windows installer found 
+						<ulink url="https://cmake.org/download/">here</ulink>
+					</para>
+				</section>
+				<section id="msys2">
+					<title>MSYS2</title>
+					<para>Follow the instructions of INSTALL_MSYS.md.</para>
+				</section>
+				<section id="cvc42">
+					<title>CVC4</title>
+					<para>Download the sources archive 
+						<ulink url="http://cvc4.cs.nyu.edu/builds/src/cvc4-1.4.tar.gz">cvc4-1.4.tar.gz</ulink>
+					</para>
+					<para>
+						<emphasis role="bold">TO BE CONTINUED</emphasis>
+					</para>
+				</section>
+			</section>
+		</section>
+		<section id="standard-build">
+			<title>Standard Build</title>
+			<para>Whatever the platform, launch CMake (or CMake-gui), set the sources directory and the desired build directory.
+				Choose a valid generator, select your compilers (native compilers are recommended), configure and generate.
+				If you have installed prerequisites in non-standard locations, you'll have to set <PREREQUISITE>_ROOT variabl(s)e in the CMake cache editor.
+</para>
+			<para>Then build the project using the built-in commands of the generator :
+</para>
+			<itemizedlist>
+				<listitem>
+					<para>With "Unix Makefiles", simply do 
+						<code>make</code> in the build directory.
+					</para>
+				</listitem>
+			</itemizedlist>
+			<para>A the end of the process, the symbex executable is built and can be checked using
+
+				<code>symbex -test</code>.
+			</para>
+		</section>
+		<section id="build-customization-for-developers">
+			<title>Build Customization (for developers)</title>
+			<para>To customize the build, you'll have to modify CMake Files. All CMake files are CMakeLists.txt or *.cmake.
+				Each project target (main executable and internal libraries) is associated with a CMakeLists.txt in which every thing specific to this target are defined. All things relative to the project as a whole (prerequisites, cmake detection module, ...) are stored stored in the src/cmake directory.</para>
+			<section id="set-compilation-options">
+				<title>Set compilation options</title>
+				<para>Options which hold for all target and whatever the platform are set in 
+					<code>DefineGeneric.cmake</code>
+					Options which hold for all target and are platform-specific are set in 
+					<code>&lt;Platform&gt;Specific.cmake</code>.
+					Options which hold for one target and whatever the platform are set in the 
+					<code>CMakeLists.txt</code> of this target.
+				</para>
+			</section>
+			<section id="modify-link-command-line">
+				<title>Modify link command line</title>
+				<para>Main target link is defined in 
+					<code>LinkMainTarget.cmake</code>
+				</para>
+			</section>
+			<section id="change-prerequisites-look-up-add-a-nex-prerequisite">
+				<title>Change prerequisites look-up / Add a nex prerequisite</title>
+				<para>Prerequisites are defined and searched for in 
+					<code>LookForMandatoryPrerequisites.cmake</code>. Here you add a new prerequisite or can change the way an existing prerequisite is search for.
+				</para>
+			</section>
+			<section id="change-project-structure-without-adding-a-new-target">
+				<title>Change project structure without adding a new target</title>
+				<para>Simply add a new subdirectory(ies) into existing target(s) source hierarchy.</para>
+			</section>
+			<section id="add-a-new-target">
+				<title>Add a new target</title>
+				<para>To add a new target <newtarget>, you must :
+</para>
+				<orderedlist>
+					<listitem>
+						<para>Create the <newtarget> source hierarchy in src/</para>
+					</listitem>
+					<listitem>
+						<para>Add a CMakeLists.txt into <newtarget> (it is easy to adapt a CMakeLists.txt from other targets) </para>
+					</listitem>
+					<listitem>
+						<para>Add a new line 
+							<code>add_subdirectory (&lt;newtarget&gt;)</code> in 
+							<code>DefineProjectStructure.cmake</code>
+							3.
+						</para>
+					</listitem>
+					<listitem>
+						<para>Complete 
+							<code>LinkMainTarget.cmake</code> by adding <newtarget> to the link line.
+						</para>
+					</listitem>
+				</orderedlist>
+			</section>
+		</section>
+	</chapter>
+</book>
