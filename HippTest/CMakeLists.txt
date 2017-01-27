@@ -21,10 +21,10 @@ include (DetectSystem)
 include (DetectToolChain)
 
 # Searching for configuration management tools 
-#include (LookForSCM)
+include (LookForSCM)
 
 # Sources revision
-#include (DetectRevision)
+include (DetectRevision)
 
 # Generic options that should propagate to all subtargets
 # (hence they must be loaded before the project structure is defined)
@@ -35,7 +35,7 @@ include (GenericOptions)
 include (SelectSpecificOptions)
 
 # Searching for mandatory prerequisites
-#include (LookForMandatoryPrereq) 
+include (LookForMandatoryPrereq) 
 
 
 

@@ -15,29 +15,29 @@ message (STATUS "****** Looking for mandatory prerequisites ******")
 #
 # Variable BOOST_ROOT is used as a search hint by find_package
 #
-message (STATUS "**** Looking for BOOST ****")
+#message (STATUS "**** Looking for BOOST ****")
 # BOOST_COMPONENTS should contains the required boost components  
-set (Boost_USE_STATIC_LIBS ON) # Force to lookg for static libraries
-find_package (Boost 1.40 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
-if (NOT (Boost_FOUND)) 
-    message (FATAL_ERROR "Boost not found : please install Boost >= 1.53 manually")
-else ()
-    message (STATUS "Boost : " ${Boost_LIBRARIES} "-" ${Boost_INCLUDE_DIRS} "-" ${Boost_LIBRARY_DIRS})
-endif()
-message (STATUS "****                   ****")
+#set (Boost_USE_STATIC_LIBS ON) # Force to lookg for static libraries
+#find_package (Boost 1.40 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+#if (NOT (Boost_FOUND)) 
+#    message (FATAL_ERROR "Boost not found : please install Boost >= 1.53 manually")
+#else ()
+#    message (STATUS "Boost : " ${Boost_LIBRARIES} "-" ${Boost_INCLUDE_DIRS} "-" ${Boost_LIBRARY_DIRS})
+#endif()
+#message (STATUS "****                   ****")
 
 # --------------------------- Looking for GPM ---------------------------------
 # 
 # The GMP_ROOT variable is used as a search hint
 # 
-message (STATUS "****  Looking for GMP  ****")
-find_package(GMP 6.1.0 REQUIRED)
-if (NOT (GMP_FOUND))
-    message (FATAL_ERROR "GMP not found : please install GMP  >= 6.1.0 manually")
-else ()
-    message (STATUS "GMP : " ${lib_gmp_c} "-" ${lib_gmp_cxx} "-" ${gmp_includedir} "-" ${gmpxx_includedir})
-endif()
-message (STATUS "****                   ****")
+#message (STATUS "****  Looking for GMP  ****")
+#find_package(GMP 4.1.0 REQUIRED)
+#if (NOT (GMP_FOUND))
+#    message (FATAL_ERROR "GMP not found : please install GMP  >= 6.1.0 manually")
+#else ()
+#    message (STATUS "GMP : " ${lib_gmp_c} "-" ${lib_gmp_cxx} "-" ${gmp_includedir} "-" ${gmpxx_includedir})
+#endif()
+#message (STATUS "****                   ****")
 
 # --------------------------- Looking for CVC4 --------------------------------
 #

@@ -1,8 +1,12 @@
 echo cmake -G \"Unix Makefiles\" ./build
 
+rm -rfd build
+
 mkdir build ; cd build
 
 cmake -G "Unix Makefiles" ../
 
-make -j28
+make
+
+#ctest -W -s 
 
