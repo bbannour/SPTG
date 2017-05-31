@@ -1,0 +1,28 @@
+
+#[[
+add_library (base       STATIC IMPORTED)
+add_library (builder    STATIC IMPORTED)
+add_library (collection STATIC IMPORTED)
+add_library (common     STATIC IMPORTED)
+add_library (computer   STATIC IMPORTED)
+add_library (fam        STATIC IMPORTED)
+add_library (fml        STATIC IMPORTED)
+add_library (parser     STATIC IMPORTED)
+add_library (printer    STATIC IMPORTED)
+add_library (sew        STATIC IMPORTED)
+add_library (solver     STATIC IMPORTED)
+add_library (util       STATIC IMPORTED)
+
+set_property (TARGET base       PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/base/libbase.a)
+set_property (TARGET builder    PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/builder/libbuilder.a)
+set_property (TARGET collection PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/collection/libcollection.a)
+set_property (TARGET common     PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/common/libcommon.a)
+set_property (TARGET computer   PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/computer/libcomputer.a)
+set_property (TARGET fam        PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/fam/libfam.a)
+set_property (TARGET fml        PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/fml/libfml.a)
+set_property (TARGET parser     PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/parser/libparser.a)
+set_property (TARGET printer    PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/printer/libprinter.a)
+set_property (TARGET sew        PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/sew/libsew.a)
+set_property (TARGET solver     PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/solver/libsolver.a)
+set_property (TARGET util       PROPERTY IMPORTED_LOCATION ${SYMBEX_BINARY_DIR}/util/libutil.a)
+#]]

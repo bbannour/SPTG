@@ -1,0 +1,114 @@
+# =============================================================================
+#               CMake module building CVC4 from sources
+# =============================================================================
+#
+# Note : ANTLR3 is downloaded and built during the CVC4 build
+# Note : Some source files are patched  (see PATCH_COMMAND)
+#
+# =============================================================================
+
+include (ExternalProject)
+
+# url and env vars for packaged version source
+set (CVC414_DIR      cvc4-1.4)
+set (CVC414_ARC      ${CVC414_DIR}.tar.gz)
+#set (CVC414_URL      http://cvc4.cs.nyu.edu/builds/src/${CVC414_ARC})
+set (CVC414_URL      http://cvc4.cs.stanford.edu/builds/src/${CVC414_ARC})
+
+#set (CMAKE_SOURCE_PATCH_DIR     ${CMAKE_SOURCE_DIR}/cmake/cvc4-1.4-patch)
+
+
+# url and env vars for git repository source
+set(CVC4_GIT_REPOSITORY_URL   https://github.com/CVC4/CVC4.git)
+
+set (CMAKE_SOURCE_PATCH_DIR     ${CMAKE_SOURCE_DIR}/cmake/cvc4-master-patch)
+
+
+set (CVC4_CONFIGURE                   configure)
+# set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --disable-silent-rules) uncomment to force CVC4 makefile to display compilation/link commands
+set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --with-gmp)
+set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static-boost --with-boost=${Boost_INCLUDE_DIRS} --with-boost-libdir=${Boost_LIBRARIES_DIRS})
+
+# DEBUG
+#set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static-boost --with-boost=/home/ss219326/usr --with-boost-libdir=/home/ss219326/usr/lib) # MARCHE !
+#set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static-boost --with-boost=/home/ss219326/Boost --with-boost-libdir=/home/ss219326/Boost/lib) # MARCHE  !
+#set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static-boost --with-boost=/home/ss219326/Boost/include --with-boost-libdir=/home/ss219326/Boost/lib) # MARCHE  !
+#set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static-boost --with-boost=/home/ss219326/mingw64 --with-boost-libdir=/home/ss219326/mingw64/lib) # MARCHE  !
+#set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static-boost --with-boost=/opt/mingw64 --with-boost-libdir=/opt/mingw64/lib) # MARCHE  !
+#set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static-boost --with-boost=/mingw642 --with-boost-libdir=/mingw642/lib) # MARCHE !!
+#set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static-boost --with-boost=/mingw64 --with-boost-libdir=/mingw64/lib) # MARCHE PAS !!
+#set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static-boost --with-boost=/mingw64/include --with-boost-libdir=/mingw64/lib) # MARCHE PAS
+# END DEBUG
+
+if (NOT (DEFINED CVC4_INSTALL_DIR))
+    set (CVC4_INSTALL_DIR         ${CMAKE_BINARY_DIR}/contrib)
+    
+    set (CVC4_INSTALL_INCLUDE_DIR ${CVC4_INSTALL_DIR}/include)
+    set (CVC4_INSTALL_LIB_DIR     ${CVC4_INSTALL_DIR}/lib)
+    
+    set (ANTLR3_INSTALL_INCLUDE_DIR ${CVC4_INSTALL_INCLUDE_DIR}/antlr3c)
+    set (ANTLR3_INSTALL_LIB_DIR     ${CVC4_INSTALL_LIB_DIR})
+endif()
+
+set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --with-antlr-dir=${CMAKE_BINARY_DIR}/cvc4/src/cvc4/antlr-3.4 ANTLR=${CMAKE_BINARY_DIR}/cvc4/src/cvc4/antlr-3.4/bin/antlr3)
+set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --enable-static=true --enable-shared=false --enable-static-binary --enable-optimized)
+set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --prefix=${CVC4_INSTALL_DIR})
+# Fine tunning of installation directories
+#set (CVC4_CONFIGURE ${CVC4_CONFIGURE} --libdir=${CVC4_INSTALL_LIB_DIR} --includedir=${CVC4_INSTALL_INCLUDE_DIR})
+
+# Environment variable needed by CVC4
+set (ENV{CPPFLAGS} "-I${Boost_INCLUDE_DIRS} -I${GMP_INCLUDE_DIR} -I${GMPXX_INCLUDE_DIR}") 
+#set (ENV{LDFLAGS}  "${LIBGMP} ${LIBGMPXX} ${Boost_LIBRARIES}")
+set (ENV{LIBS}     -lgmp) # Needed to build the CVC4 executable (and thus achieved the build process successfully)
+
+message (CPPFLAGS $ENV{CPPFLAGS})
+
+externalproject_add (cvc4
+
+    # Download or git-clone step and init
+    DOWNLOAD_DIR     ${CMAKE_BINARY_DIR}
+    #URL              ${CVC414_URL}
+    GIT_REPOSITORY   ${CVC4_GIT_REPOSITORY_URL}
+    PREFIX           cvc4
+
+    # Patch step
+    PATCH_COMMAND     ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_PATCH_DIR}/util/integer_gmp_imp.h       ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/src/util
+          COMMAND     ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_PATCH_DIR}/util/rational_gmp_imp.h      ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/src/util
+   #      COMMAND     ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_PATCH_DIR}/options/options_template.cpp ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/src/options
+
+    # Configure step
+    SOURCE_DIR        ${CMAKE_BINARY_DIR}/cvc4/src/cvc4
+    
+	# Git command
+    CONFIGURE_COMMAND cd ${CMAKE_BINARY_DIR}/cvc4/src/cvc4 && ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/autogen.sh
+              COMMAND ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/contrib/get-antlr-3.4
+
+	# Download command
+    #CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/contrib/get-antlr-3.4
+    #          COMMAND echo "show_cvc4_configure"
+              COMMAND echo ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/${CVC4_CONFIGURE}
+              COMMAND ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/${CVC4_CONFIGURE}
+
+    # Build step
+    BUILD_COMMAND     make -j28
+
+    # Install command
+    INSTALL_COMMAND   make install
+            #COMMAND   install -m 644 ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/antlr-3.4/lib/libantlr3c.a ${ANTLR3_INSTALL_LIB_DIR}
+            #COMMAND   install -m 644 -t ${ANTLR3_INSTALL_INCLUDE_DIR} ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/antlr-3.4/include/*
+            COMMAND    ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/antlr-3.4/lib/libantlr3c.a ${ANTLR3_INSTALL_LIB_DIR}
+            COMMAND    ${CMAKE_COMMAND} -E copy_directory ${CMAKE_BINARY_DIR}/cvc4/src/cvc4/antlr-3.4/include ${ANTLR3_INSTALL_INCLUDE_DIR}
+    )
+    
+# Back to previous state 
+set (ENV{CPPFLAGS} "") 
+#set (ENV{LDFLAGS}  "")
+set (ENV{LIBS}     "")
+
+# These variables can be used by the client code of this module (ex: FindModule)
+set (CVC4_INCLUDE_DIR   ${CVC4_INSTALL_INCLUDE_DIR})
+set (CVC4_LIBRARIES     libcvc4.a)
+
+set (ANTLR3_INCLUDE_DIR ${CVC4_INSTALL_INCLUDE_DIR}/include})  # TODO : Check if this works !
+set (ANTLR3_LIBRARIES   libantlr3c.a)                          # TODO : Check if this works !
+
