@@ -27,6 +27,19 @@
 namespace sep
 {
 
+/**
+ * GETTER
+ * Unique Null Reference
+ */
+ExecutableForm & ExecutableForm::nullref()
+{
+	static ExecutableForm _NULL_(ExecutableSystem::nullref(), 0);
+	_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+	_NULL_.setSpecifier( Specifier::OBJECT_NULL_SPECIFIER );
+
+	return( _NULL_ );
+}
+
 
 /**
  * SETTER
@@ -52,6 +65,50 @@ void ExecutableForm::updateFullyQualifiedNameID(
 	}
 
 	setNameID( NamedElement::extractNameID( aFullyQualifiedNameID ) );
+}
+
+
+/**
+ * SETTER
+ * mTimeVariable
+ * mDeltaTimeVariable
+ */
+void ExecutableForm::setDeltaTimeVariable()
+{
+	if( getSpecifier().hasFeatureTimed() )
+	{
+		const PropertyPart & aPropertyPart = getAstMachine().getPropertyPart();
+
+		if( aPropertyPart.hasTimeVariable() )
+		{
+			const BF & timeVariable =
+					getVariables().getByAstElement(
+							*(aPropertyPart.getTimeVariable()) );
+
+			AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( timeVariable )
+					<< "Time Variable Symbol in "
+					<< str_header( aPropertyPart.getContainerMachine() )
+					<< " !!!"
+					<< SEND_EXIT;
+
+			setTimeVariable(timeVariable);
+
+		}
+		if( aPropertyPart.hasDeltaTimeVariable() )
+		{
+			const BF & deltaTimeVariable =
+					getVariables().getByAstElement(
+							*(aPropertyPart.getDeltaTimeVariable()) );
+
+			AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( deltaTimeVariable )
+					<< "Delta Time Variable Symbol in "
+					<< str_header( aPropertyPart.getContainerMachine() )
+					<< " !!!"
+					<< SEND_EXIT;
+
+			setDeltaTimeVariable(deltaTimeVariable);
+		}
+	}
 }
 
 
@@ -172,7 +229,7 @@ const BF & ExecutableForm::getSymbol(
 	IF_MUST_BE_CONNECTOR_SYMBOL
 	{
 		const Symbol & foundSymbol =
-				mTableOfConnect.getByFQNameID( aFullyQualifiedNameID );
+				mTableOfConnector.getByFQNameID( aFullyQualifiedNameID );
 		if( foundSymbol.valid() )
 		{
 			return( foundSymbol );
@@ -290,7 +347,7 @@ const BF & ExecutableForm::getSymbolByQualifiedNameID(
 	IF_MUST_BE_CONNECTOR_SYMBOL
 	{
 		const Symbol & foundSymbol =
-				mTableOfConnect.getByQualifiedNameID(aQualifiedNameID);
+				mTableOfConnector.getByQualifiedNameID(aQualifiedNameID);
 		if( foundSymbol.valid() )
 		{
 			return( foundSymbol );
@@ -397,7 +454,7 @@ const BF & ExecutableForm::getSymbolByNameID(const std::string & aNameID,
 
 	IF_MUST_BE_CONNECTOR_SYMBOL
 	{
-		const Symbol & foundSymbol = mTableOfConnect.getByNameID(aNameID);
+		const Symbol & foundSymbol = mTableOfConnector.getByNameID(aNameID);
 		if( foundSymbol.valid() )
 		{
 			return( foundSymbol );
@@ -458,7 +515,7 @@ const BF & ExecutableForm::getSymbolByNameID(const std::string & aNameID,
 
 
 const BF & ExecutableForm::getSymbolByAstElement(
-		const ObjectElement * astElement,
+		const ObjectElement & astElement,
 		avm_type_specifier_kind_t typeFamily) const
 {
 	IF_MUST_BE_GENERIC_PORT_SYMBOL
@@ -499,7 +556,7 @@ const BF & ExecutableForm::getSymbolByAstElement(
 
 	IF_MUST_BE_CONNECTOR_SYMBOL
 	{
-		const Symbol & foundSymbol = mTableOfConnect.getByAstElement(astElement);
+		const Symbol & foundSymbol = mTableOfConnector.getByAstElement(astElement);
 		if( foundSymbol.valid() )
 		{
 			return( foundSymbol );
@@ -563,9 +620,9 @@ const BF & ExecutableForm::getSymbolByAstElement(
  * GETTER - SETTER
  * Machine Count
  */
-avm_size_t ExecutableForm::getrecMachineCount() const
+std::size_t ExecutableForm::getrecMachineCount() const
 {
-	avm_size_t count = 0;
+	std::size_t count = 0;
 
 	if( hasInstanceStatic() )
 	{
@@ -577,7 +634,7 @@ avm_size_t ExecutableForm::getrecMachineCount() const
 
 			if( (*itMachine).hasExecutable() )
 			{
-				count += (*itMachine).getExecutable()->getrecMachineCount();
+				count += (*itMachine).getExecutable().getrecMachineCount();
 			}
 		}
 	}
@@ -597,7 +654,7 @@ const ExecutableForm * ExecutableForm::LCA(
 	containerListOfThis.push_back(this);
 
 	ExecutableForm * containerOfThis = this->getExecutableContainer();
-	for ( ; containerOfThis != NULL ;
+	for ( ; containerOfThis != nullptr ;
 			containerOfThis = containerOfThis->getExecutableContainer() )
 	{
 		containerListOfThis.push_back(containerOfThis);
@@ -607,7 +664,7 @@ const ExecutableForm * ExecutableForm::LCA(
 	containerListOfOtherExecutable.push_back(anExecutable);
 
 	ExecutableForm * containerOfOtherForm = anExecutable->getExecutableContainer();
-	for ( ; containerOfOtherForm != NULL ;
+	for ( ; containerOfOtherForm != nullptr ;
 		containerOfOtherForm = containerOfOtherForm->getExecutableContainer() )
 	{
 		containerListOfOtherExecutable.push_back(containerOfOtherForm);
@@ -633,7 +690,7 @@ const ExecutableForm * ExecutableForm::LCA(
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
@@ -653,14 +710,14 @@ void ExecutableForm::incrPossibleStaticInstanciationCount(avm_offset_t offset)
 		TableOfSymbol::const_iterator endInstabce = instance_static_end();
 		for( ; itInstabce != endInstabce ; ++itInstabce )
 		{
-			(*itInstabce).getExecutable()->
+			const_cast< ExecutableForm & >( (*itInstabce).getExecutable() ).
 					incrPossibleStaticInstanciationCount(offset);
 		}
 	}
 }
 
 
-void ExecutableForm::incrPossibleDynamicInstanciationCount(avm_size_t offset)
+void ExecutableForm::incrPossibleDynamicInstanciationCount(std::size_t offset)
 {
 	mPossibleDynamicInstanciationCount += offset;
 
@@ -670,14 +727,14 @@ void ExecutableForm::incrPossibleDynamicInstanciationCount(avm_size_t offset)
 		TableOfSymbol::const_iterator endInstabce = instance_static_end();
 		for( ; itInstabce != endInstabce ; ++itInstabce )
 		{
-			(*itInstabce).getExecutable()->
+			const_cast< ExecutableForm & >( (*itInstabce).getExecutable() ).
 					incrPossibleDynamicInstanciationCount(offset);
 		}
 	}
 }
 
 
-bool ExecutableForm::hasSingleRuntimeInstance()
+bool ExecutableForm::hasSingleRuntimeInstance() const
 {
 //	AVM_OS_COUT << strModifier() << "executable< mok:"
 //			<< getSpecifier().str()
@@ -686,7 +743,7 @@ bool ExecutableForm::hasSingleRuntimeInstance()
 //			<< " , dynamic:" << mPossibleDynamicInstanciationCount << ")"
 //			<< " , instance:(init:" << mInitialInstanceCount
 //			<< " , max:" << ( (mMaximalInstanceCount == AVM_NUMERIC_MAX_SIZE_T) ?
-//					-1 : static_cast< avm_int64_t >(mMaximalInstanceCount) )
+//					-1 : static_cast< std::int64_t >(mMaximalInstanceCount) )
 //			<< ") > " << getFullyQualifiedNameID() << std::endl;
 
 	if( (mPossibleStaticInstanciationCount > 1) ||
@@ -699,10 +756,11 @@ bool ExecutableForm::hasSingleRuntimeInstance()
 	{
 		ExecutableForm * containerExec = getExecutableContainer();
 
-		if( (containerExec != NULL) &&
+		if( (containerExec != nullptr) &&
 			(not containerExec->hasSingleRuntimeInstance()) )
 		{
-			mPossibleDynamicInstanciationCount = 1;
+			const_cast< ExecutableForm * >(
+					this )->mPossibleDynamicInstanciationCount = 1;
 
 			return( false );
 		}
@@ -713,9 +771,7 @@ bool ExecutableForm::hasSingleRuntimeInstance()
 
 
 /**
- * GETTER - SETTER
- * mMutableScheduleFlag
- * MOC Attribute for mutable Schedule
+ * TESTER
  */
 
 bool ExecutableForm::isInlinableSchedule() const
@@ -729,7 +785,7 @@ bool ExecutableForm::isInlinableSchedule() const
 	TableOfSymbol::const_iterator endModel = instance_model_end();
 	for( ; itModel != endModel ; ++itModel )
 	{
-		if( not (*itModel).getExecutable()->hasSingleRuntimeInstance() )
+		if( not (*itModel).getExecutable().hasSingleRuntimeInstance() )
 		{
 			return( false );
 		}
@@ -744,7 +800,7 @@ bool ExecutableForm::isInlinableSchedule() const
  * GETTER
  * on activity by opcode
  */
-AvmProgram & ExecutableForm::getOnActivityRoutine(AVM_OPCODE opCode)
+const AvmProgram & ExecutableForm::getOnActivityRoutine(AVM_OPCODE opCode) const
 {
 	switch( opCode )
 	{
@@ -950,151 +1006,194 @@ const BFCode & ExecutableForm::getOnActivity(AVM_OPCODE opCode) const
 
 
 /**
+ * GETTER - SETTER
+ * IOpcodeFamily
+ */
+void ExecutableForm::updateOpcodeFamily()
+{
+	for( auto & itTransition : getTransition() )
+	{
+		addStatementFamily(
+				itTransition.to< AvmTransition >().getStatementFamily() );
+	}
+
+	for( auto & itStatic : getInstanceStatic() )
+	{
+		if( (! itStatic.getExecutable().hasStatementFamily())
+			&& (! itStatic.isThis()) )
+		{
+			itStatic.getExecutable().updateOpcodeFamily();
+		}
+		addStatementFamily( itStatic.getExecutable().getStatementFamily() );
+	}
+
+	for( auto & itDynamic : getInstanceDynamic() )
+	{
+		if( (! itDynamic.getExecutable().hasStatementFamily())
+			&& (! itDynamic.isThis()) )
+		{
+			itDynamic.getExecutable().updateOpcodeFamily();
+		}
+		addStatementFamily( itDynamic.getExecutable().getStatementFamily() );
+	}
+}
+
+
+/**
  * Serialization
  */
-void ExecutableForm::header(OutStream & os) const
+void ExecutableForm::header(OutStream & out) const
 {
-	os << getModifier().toString()
-			<< getSpecifier().toString( Specifier::ENABLE_FEATURE_DESIGN_FIELD )
-			<< "executable< moc: "
-			<< getSpecifier().str( Specifier::DISABLE_FEATURE_DESIGN_FIELD )
-			<< " , id:" << getOffset();
+	out << getModifier().toString()
+		<< getSpecifier().toString( Specifier::ENABLE_FEATURE_DESIGN_FIELD )
+		<< "executable< moc: "
+		<< getSpecifier().str( Specifier::DISABLE_FEATURE_DESIGN_FIELD )
+		<< " , id:" << getOffset();
 
 	InstanceSpecifierPart::strMultiplicity(
-			os, mPossibleStaticInstanciationCount,
+			out, mPossibleStaticInstanciationCount,
 			mPossibleDynamicInstanciationCount,
 			mMaximalInstanceCount, ", instanciation: [ ", " ]");
 
 //AVM_IF_DEBUG_ENABLED_AND(
-//		getSpecifier().isFamilyComponentComposite()
+//		getSpecifier().isFamilyCompositeComponent()
 //		&& ( (mPossibleStaticInstanciationCount != 1)
 //			|| (mPossibleDynamicInstanciationCount > 0) ) )
-//	os << " , pic:(static:" << mPossibleStaticInstanciationCount
-//			<< " , dynamic:" << mPossibleDynamicInstanciationCount << ")";
+//	out << " , pic:(static:" << mPossibleStaticInstanciationCount
+//		<< " , dynamic:" << mPossibleDynamicInstanciationCount << ")";
 //AVM_ENDIF_DEBUG_ENABLED
 //
 //AVM_IF_DEBUG_ENABLED_AND(
-//		getSpecifier().isFamilyComponentComposite()
+//		getSpecifier().isFamilyCompositeComponent()
 //		&& ( (mInitialInstanceCount != 1)
 //			|| (mMaximalInstanceCount != AVM_NUMERIC_MAX_SIZE_T) ) )
-//	os << " , instance:(init:" << mInitialInstanceCount << " , max:"
-//			<< ( (mMaximalInstanceCount == AVM_NUMERIC_MAX_SIZE_T) ?
-//					-1 : static_cast< avm_int64_t >(mMaximalInstanceCount) )
-//			<< " )";
+//	out << " , instance:(init:" << mInitialInstanceCount << " , max:"
+//		<< ( (mMaximalInstanceCount == AVM_NUMERIC_MAX_SIZE_T) ?
+//				-1 : static_cast< std::int64_t >(mMaximalInstanceCount) )
+//		<< " )";
 //AVM_ENDIF_DEBUG_ENABLED
 
-	os << " > ";
+	out << " > ";
 };
 
 
-void ExecutableForm::strHeader(OutStream & os) const
+void ExecutableForm::strHeader(OutStream & out) const
 {
-	header( os );
+	header( out );
 
 AVM_IF_DEBUG_FLAG_AND( COMPILING , hasAstElement() )
-	os << "&" << getAstFullyQualifiedNameID() << " ";
+	out << "&" << getAstFullyQualifiedNameID() << " ";
 AVM_ENDIF_DEBUG_FLAG_AND( COMPILING )
 
-	os << getFullyQualifiedNameID();
+	out << getFullyQualifiedNameID();
 }
 
 
-void ExecutableForm::toStream(OutStream & os,
+void ExecutableForm::toStream(OutStream & out,
 		const TableOfRouter & aTableOfRouter, const std::string & sectionName)
 {
 	if( aTableOfRouter.nonempty() )
 	{
-		os << TAB << sectionName << EOL_INCR_INDENT;
+		out << TAB << sectionName << EOL_INCR_INDENT;
 
-		TableOfRouter::const_iterator itRouter = aTableOfRouter.begin();
-		TableOfRouter::const_iterator endRouter = aTableOfRouter.end();
-
-		for( ; itRouter != endRouter ; ++itRouter )
+		for( const auto & itRouter : aTableOfRouter )
 		{
-			if( (*itRouter).valid() )
+			if( itRouter.valid() )
 			{
-				(*itRouter).toStream(os);
+				itRouter.toStream(out);
 			}
 			else
 			{
-				os << TAB << "routeur<null>";
+				out << TAB << "routeur<null>";
 			}
 
-			os << EOL_FLUSH;
+			out << EOL_FLUSH;
 		}
 
 		if( aTableOfRouter.last().invalid() )
 		{
-			os << EOL;
+			out << EOL;
 		}
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 }
 
 
-void ExecutableForm::toStream(OutStream & os) const
+void ExecutableForm::toStream(OutStream & out) const
 {
-	if(  os.preferablyFQN() )
+	if(  out.preferablyFQN() )
 	{
-		os << TAB << getFullyQualifiedNameID();
+		out << TAB << getFullyQualifiedNameID();
 
-		AVM_DEBUG_REF_COUNTER(os);
+		AVM_DEBUG_REF_COUNTER(out);
 
 		return;
 	}
 
-	header( os << TAB );
+	header( out << TAB );
 
 AVM_IF_DEBUG_FLAG_AND( COMPILING , hasAstElement() )
-	os << "&" << getAstFullyQualifiedNameID() << " ";
+	out << "&" << getAstFullyQualifiedNameID() << " ";
 AVM_ENDIF_DEBUG_FLAG_AND( COMPILING )
 
-	os << getFullyQualifiedNameID() << " {" << EOL;
+	out << getFullyQualifiedNameID() << " {" << EOL;
 
 //AVM_IF_DEBUG_ENABLED_AND(
-//		getSpecifier().isFamilyComponentComposite()
+//		getSpecifier().isFamilyCompositeComponent()
 //		&& ( (mPossibleStaticInstanciationCount != 1)
 //			|| (mPossibleDynamicInstanciationCount > 0) ) )
-//	os << TAB2 << "//possible_instanciation_count = (static:"
-//			<< mPossibleStaticInstanciationCount << " , dynamic:"
-//			<< mPossibleDynamicInstanciationCount << ");" << EOL;
+//	out << TAB2 << "//possible_instanciation_count = (static:"
+//		<< mPossibleStaticInstanciationCount << " , dynamic:"
+//		<< mPossibleDynamicInstanciationCount << ");" << EOL;
 //AVM_ENDIF_DEBUG_ENABLED
 
 
 AVM_IF_DEBUG_FLAG( COMPILING )
 	if( hasContainer() )
 	{
-		os << TAB2 << "//container = "
-				<< str_header( getContainer()->as< ExecutableForm >() )
-				<< ";" << EOL;
+		out << TAB2 << "//container = "
+			<< str_header( getContainer()->as_ptr< ExecutableForm >() )
+			<< ";" << EOL;
 	}
 
 	if( hasPrototypeInstance() )
 	{
-		os << TAB2 << "//prototype = "
-				<< str_header( getPrototypeInstance() )
-				<< ";" << EOL;
+		out << TAB2 << "//prototype = "
+			<< str_header( getPrototypeInstance() )
+			<< ";" << EOL;
 	}
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 	// MOC Attribute
 	if( isInputEnabledCommunication() )
 	{
-		os << TAB2 << "input_enabled = true;" << EOL << std::flush;
+		out << TAB2 << "input_enabled = true;" << EOL << std::flush;
+	}
+
+	if( isWeakLifeline() )
+	{
+		out << TAB2 << "weak#lifeline = true;" << EOL << std::flush;
 	}
 
 
-	// Any program data
-	toStreamData(os);
+	// All program variables
+	toStreamVariables(out);
+
+	if( hasTimeVariable() )
+	{
+		out << TAB << "time:" << EOL
+			<< TAB2 << str_header( getTimeVariable() ) << EOL
+			<< TAB2 << str_header( getDeltaTimeVariable() ) << EOL;
+	}
 
 	if( hasAlias() )
 	{
-		( hasDataAlias() ? os : os << TAB << "alias:" ) << EOL_INCR_INDENT;
+		( hasVariableAlias() ? out : out << TAB << "alias:" ) << EOL_INCR_INDENT;
 
-		getAlias().toStream(os);
+		getAlias().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 
@@ -1103,120 +1202,121 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 		if( (mMessageSignalCount == 0) ||
 			(mMessageSignalCount == getPort().size()) )
 		{
-			os << TAB << "port:" << EOL;
+			out << TAB << "port:" << EOL;
 		}
 		else
 		{
-			os << TAB << "port< ms: " << mMessageSignalCount << " >:" << EOL;
+			out << TAB << "port< ms: " << mMessageSignalCount << " >:" << EOL;
 		}
 
-		os << incr_stream( getPort() );
+		out << incr_stream( getPort() );
 	}
 
 
 	if( hasBuffer() )
 	{
-		os << TAB << "buffer:" << EOL_INCR_INDENT;
+		out << TAB << "buffer:" << EOL_INCR_INDENT;
 
-		getBuffer().toStream(os);
+		getBuffer().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 	if( hasChannel() )
 	{
-		os << TAB << "channel:" << EOL_INCR_INDENT;
+		out << TAB << "channel:" << EOL_INCR_INDENT;
 
-		getChannel().toStream(os);
+		getChannel().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
-	if( hasConnect() )
+	if( hasConnector() )
 	{
-		os << TAB << "connection:" << "/* < " << getFullyQualifiedNameID() << " > */"
+		out << TAB << "connector:" << "/* < " << getFullyQualifiedNameID()
+				<< " > */"
 				<< EOL_INCR_INDENT;
 
-		getConnect().toStream(os);
+		getConnector().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 	if( hasRdvCommunication() )
 	{
-		os << EOL_TAB2 << "rdv_communication = true;" << EOL << EOL;
+		out << EOL_TAB2 << "rdv_communication = true;" << EOL << EOL;
 	}
 
 	// Table of Router for Instance
-	toStream(os, mTableOfRouter4Instance, "router:");
+	toStream(out, mTableOfRouter4Instance, "router:");
 
 	// Table of Router for Model
-	toStream(os, mTableOfRouter4Model, "router#model:");
+	toStream(out, mTableOfRouter4Model, "router#model:");
 
 
 	if( hasExecutable() )
 	{
-		os << TAB << "procedure:" << EOL_INCR_INDENT;
+		out << TAB << "procedure:" << EOL_INCR_INDENT;
 
-		getExecutables().toStream(os);
+		getExecutables().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 
 	if( hasInstanceModel() )
 	{
-		os << TAB << "model:" << EOL_INCR_INDENT;
+		out << TAB << "model:" << EOL_INCR_INDENT;
 
-		getInstanceModel().toStream(os);
+		getInstanceModel().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 	if( hasInstanceStatic() )
 	{
-		os << TAB << "instance:" << EOL_INCR_INDENT;
+		out << TAB << "instance:" << EOL_INCR_INDENT;
 
-		getInstanceStatic().toStream(os);
+		getInstanceStatic().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 	if( hasInstanceDynamic() )
 	{
-		os << TAB << "instance#dynamic:" << EOL_INCR_INDENT;
+		out << TAB << "instance#dynamic:" << EOL_INCR_INDENT;
 
-		getInstanceDynamic().toStream(os);
+		getInstanceDynamic().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 
 	if( hasTransition() )
 	{
-		os << TAB << "transition:" << EOL_INCR_INDENT;
+		out << TAB << "transition:" << EOL_INCR_INDENT;
 
-		getTransition().toStream(os);
+		getTransition().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 	if( hasProgram() )
 	{
-		os << TAB << "program:" << EOL_INCR_INDENT;
+		out << TAB << "program:" << EOL_INCR_INDENT;
 
-		getProgram().toStream(os);
+		getProgram().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 	if( mTableOfAnonymousInnerRoutine.nonempty() )
 	{
-		os << TAB << "routine< anonymous#inner >:" << EOL_INCR_INDENT;
+		out << TAB << "routine< anonymous#inner >:" << EOL_INCR_INDENT;
 
-		mTableOfAnonymousInnerRoutine.fqnStream(os);
+		mTableOfAnonymousInnerRoutine.fqnStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 
@@ -1230,28 +1330,28 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 AVM_IF_DEBUG_FLAG2( COMPILING , DATA )
 	if( hasTransition() || hasProgram() )
 	{
-		TableOfInstanceOfData::const_raw_iterator itData;
-		TableOfInstanceOfData::const_raw_iterator endData;
+		TableOfInstanceOfData::const_raw_iterator itVar;
+		TableOfInstanceOfData::const_raw_iterator endVar;
 
 		if( getRequiredData().nonempty() )
 		{
-			os << TAB << "data#required:" << EOL;
-			itData = getRequiredData().begin();
-			endData = getRequiredData().end();
-			for( ; itData != endData ; ++itData )
+			out << TAB << "data#required:" << EOL;
+			itVar = getRequiredData().begin();
+			endVar = getRequiredData().end();
+			for( ; itVar != endVar ; ++itVar )
 			{
-				os << TAB2 << itData->getFullyQualifiedNameID() << ";" << EOL;
+				out << TAB2 << itVar->getFullyQualifiedNameID() << ";" << EOL;
 			}
 		}
 
 		if( getUselessData().nonempty() )
 		{
-			os << TAB << "data#useless:" << EOL;
-			itData = getUselessData().begin();
-			endData = getUselessData().end();
-			for( ; itData != endData ; ++itData )
+			out << TAB << "data#useless:" << EOL;
+			itVar = getUselessData().begin();
+			endVar = getUselessData().end();
+			for( ; itVar != endVar ; ++itVar )
 			{
-				os << TAB2 << itData->getFullyQualifiedNameID() << ";" << EOL;
+				out << TAB2 << itVar->getFullyQualifiedNameID() << ";" << EOL;
 			}
 		}
 	}
@@ -1260,7 +1360,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , DATA )
 
 	if( hasVariableDependency() )
 	{
-		os << TAB << "dependency#variable = "
+		out << TAB << "dependency#variable = "
 				<< STATIC_ANALYSIS::to_string( getVariableDependent() ) << EOL;
 	}
 
@@ -1268,12 +1368,12 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , DATA )
 	if( (not isReachableStateFlag)
 		&& (not getSpecifier().isPseudostateInitialOrStateStart()) )
 	{
-		os << TAB2 << "reachable#machine = false;" << EOL;
+		out << TAB2 << "reachable#machine = false;" << EOL;
 	}
 
 	if( hasBackwardReachableMachine() )
 	{
-		os << TAB << "reachable#backward#machine:" << EOL;
+		out << TAB << "reachable#backward#machine:" << EOL;
 
 		ListOfInstanceOfMachine::const_iterator itMachine =
 				getBackwardReachableMachine().begin();
@@ -1281,15 +1381,15 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , DATA )
 				getBackwardReachableMachine().end();
 		for( ; itMachine != endMachine ; ++itMachine )
 		{
-			os << TAB2 << str_header( *itMachine ) << ";" << EOL;
+			out << TAB2 << str_header( *itMachine ) << ";" << EOL;
 		}
 	}
 
 	if( hasBackwardReachableTransition() )
 	{
-		os << TAB << "reachable#backward#transition:" << EOL;
+		out << TAB << "reachable#backward#transition:" << EOL;
 
-		OutStream osHierarchy( os );
+		OutStream osHierarchy( out );
 		osHierarchy.INDENT.CHAR = " ";
 
 		ListOfAvmTransition::const_iterator itProg =
@@ -1298,16 +1398,16 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , DATA )
 				getBackwardReachableTransition().end();
 		for( ; itProg != endProg ; ++itProg )
 		{
-			os << TAB2 << str_header( *itProg ) << ";" << EOL;
+			out << TAB2 << str_header( *itProg ) << ";" << EOL;
 		}
 	}
 
 
 	if( hasForwardReachableMachine() )
 	{
-		os << TAB << "reachable#forward#machine:" << EOL;
+		out << TAB << "reachable#forward#machine:" << EOL;
 
-		OutStream osHierarchy( os );
+		OutStream osHierarchy( out );
 		osHierarchy.INDENT.CHAR = " ";
 
 		ListOfInstanceOfMachine::const_iterator itMachine =
@@ -1316,15 +1416,15 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , DATA )
 				getForwardReachableMachine().end();
 		for( ; itMachine != endMachine ; ++itMachine )
 		{
-			os << TAB2 << str_header( *itMachine ) << ";" << EOL;
+			out << TAB2 << str_header( *itMachine ) << ";" << EOL;
 		}
 	}
 
 	if( hasForwardReachableTransition() )
 	{
-		os << TAB << "reachable#forward#transition:" << EOL;
+		out << TAB << "reachable#forward#transition:" << EOL;
 
-		OutStream osHierarchy( os );
+		OutStream osHierarchy( out );
 		osHierarchy.INDENT.CHAR = " ";
 
 		ListOfAvmTransition::const_iterator itProg =
@@ -1333,168 +1433,176 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , DATA )
 				getForwardReachableTransition().end();
 		for( ; itProg != endProg ; ++itProg )
 		{
-			os << TAB2 << str_header( *itProg ) << ";" << EOL;
+			out << TAB2 << str_header( *itProg ) << ";" << EOL;
 		}
 	}
 
 
-	os << TAB << "moe:" << EOL;
+	out << TAB << "moe:" << EOL;
 
 	if( hasOnCreate() )
 	{
-		os << TAB2 << "@create{" << INCR2_INDENT;
-		getOnCreate()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@create{" << INCR2_INDENT;
+		getOnCreate()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnInit() )
 	{
-		os << TAB2 << "@init{" << INCR2_INDENT;
-		getOnInit()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@init{" << INCR2_INDENT;
+		getOnInit()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnReturn() )
 	{
-		os << TAB2 << "@return{" << INCR2_INDENT;
-		getOnReturn()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@return{" << INCR2_INDENT;
+		getOnReturn()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnFinal() )
 	{
-		os << TAB2 << "@final{" << INCR2_INDENT;
-		getOnFinal()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@final{" << INCR2_INDENT;
+		getOnFinal()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 
 	if( hasOnStart() )
 	{
-		os << TAB2 << "@start{" << INCR2_INDENT;
-		getOnStart()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@start{" << INCR2_INDENT;
+		getOnStart()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnStop() )
 	{
-		os << TAB2 << "@stop{" << INCR2_INDENT;
-		getOnStop()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@stop{" << INCR2_INDENT;
+		getOnStop()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 
 	if( hasOnIEnable() )
 	{
-		os << TAB2 << "@ienable{" << INCR2_INDENT;
-		getOnIEnable()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@ienable{" << INCR2_INDENT;
+		getOnIEnable()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnEnable() )
 	{
-		os << TAB2 << "@enable{" << INCR2_INDENT;
-		getOnEnable()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@enable{" << INCR2_INDENT;
+		getOnEnable()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 
 	if( hasOnIDisable() )
 	{
-		os << TAB2 << "@idisable{" << INCR2_INDENT;
-		getOnIDisable()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@idisable{" << INCR2_INDENT;
+		getOnIDisable()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnDisable() )
 	{
-		os << TAB2 << "@disable{" << INCR2_INDENT;
-		getOnDisable()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@disable{" << INCR2_INDENT;
+		getOnDisable()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 
 	if( hasOnIAbort() )
 	{
-		os << TAB2 << "@iabort{" << INCR2_INDENT;
-		getOnIAbort()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@iabort{" << INCR2_INDENT;
+		getOnIAbort()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnAbort() )
 	{
-		os << TAB2 << "@abort{" << INCR2_INDENT;
-		getOnAbort()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@abort{" << INCR2_INDENT;
+		getOnAbort()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 
 	if( hasOnIRun() )
 	{
-		os << TAB2 << "@irun{" << INCR2_INDENT;
-		getOnIRun()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@irun{" << INCR2_INDENT;
+		getOnIRun()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnRun() )
 	{
-		os << TAB2 << "@run{" << INCR2_INDENT;
-		getOnRun()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@run{" << INCR2_INDENT;
+		getOnRun()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 
 	if( hasOnRtc() )
 	{
-		os << TAB2 << "@rtc{" << INCR2_INDENT;
-		getOnRtc()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@rtc{" << INCR2_INDENT;
+		getOnRtc()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 
 	if( hasOnSchedule() )
 	{
-		os << TAB2 << "@schedule" << (isMutableSchedule() ? "" : "<final>")
+		out << TAB2 << "@"
+				<< ( getSpecifier().hasFeatureUserDefinedSchedule()? "x" : "" )
+				<< "schedule"
+				<< (isMutableSchedule() ? "" : "< final >")
 				<< "{" << INCR2_INDENT;
-		getOnSchedule()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		getOnSchedule()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 	else if( isMutableSchedule() )
 	{
-		os << TAB2 << "@schedule#mutable{ }" << EOL;
+		out << TAB2 << "@schedule#mutable{ }" << EOL;
 	}
 
 
 	if( hasOnConcurrency() )
 	{
-		os << TAB2 << "@concurrency{";
-		if( getOnConcurrency()->empty() )
+		out << TAB2 << "@concurrency{";
+		if( getOnConcurrency()->noOperand() )
 		{
-			os << " " << getOnConcurrencyOperator()->strOp() << " ";
+			out << " " << getOnConcurrencyOperator()->strOp() << " ";
 		}
 		else
 		{
-			getOnConcurrency()->toStreamRoutine( os << INCR2_INDENT )
+			getOnConcurrency()->toStreamRoutine( out << INCR2_INDENT )
 					<< DECR2_INDENT_TAB2;
 		}
-		os << "}" << EOL;
+		out << "}" << EOL;
 	}
 
 
 	if( hasOnSynchronize() )
 	{
-		os << TAB2 << "@synchronize{" << INCR2_INDENT;
-		getOnSynchronize()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@synchronize{" << INCR2_INDENT;
+		getOnSynchronize()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 
-	// static class of Port/Message/Signal in communicated transition
-	os << INCR_INDENT;
-	toStreamStaticCom(os);
-	os << DECR_INDENT;
+	if( hasStatementFamily() )
+	{
+		out << TAB2 << "opcode#family = " << strStatementFamily() << ";" << EOL;
+	}
 
-	os << TAB << "}" << EOL << std::flush;
+	// static class of Port/Message/Signal in communicated transition
+	out << INCR_INDENT;
+	toStreamStaticCom(out);
+	out << DECR_INDENT;
+
+	out << TAB << "}" << EOL << std::flush;
 }
 
 

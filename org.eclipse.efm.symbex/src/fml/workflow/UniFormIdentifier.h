@@ -14,10 +14,10 @@
 #define UFI_H_
 
 #include <common/NamedElement.h>
-
 #include <fml/common/TraceableElement.h>
 
-#include <common/AvmPointer.h>
+#include <fml/common/ObjectElement.h>
+
 #include <base/ClassKindInfo.h>
 #include <common/BF.h>
 
@@ -31,7 +31,7 @@ namespace sep
 class Element;
 
 
-typedef avm_uint8_t         avm_ufi_scheme_t;
+typedef std::uint8_t         avm_ufi_scheme_t;
 
 enum {
 	UFI_SCHEME_UNDEFINED  = 0x00,
@@ -41,7 +41,7 @@ enum {
 	UFI_SCHEME_PORT       = 0x04,
 	UFI_SCHEME_BUFFER     = 0x08,
 	UFI_SCHEME_VARIABLE   = 0x10,
-//	UFI_SCHEME_CONNECTOR  = 0x20,
+//	UFI_SCHEME_CONNECTOR = 0x20,
 
 	UFI_SCHEME_INVOKABLE  = 0x20,
 
@@ -305,7 +305,7 @@ public:
 	/**
 	 * ListOfField
 	 */
-	inline avm_size_t size() const
+	inline virtual std::size_t size() const override
 	{
 		return( ListOfField::size() );
 	}
@@ -578,13 +578,16 @@ public:
 
 	bool isEQ(const UniFormIdentifier & other) const;
 
+	// Due to [-Woverloaded-virtual=]
+	using Element::isEQ;
+
 
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & out) const;
+	void toStream(OutStream & out) const override;
 
-	std::string str() const;
+	virtual std::string str() const override;
 
 
 	void toStreamLocator(OutStream & out) const;

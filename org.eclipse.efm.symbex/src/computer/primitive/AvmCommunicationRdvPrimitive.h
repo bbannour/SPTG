@@ -29,7 +29,7 @@ namespace sep
 {
 
 class ExecutionEnvironment;
-class InstanceOfConnect;
+class InstanceOfConnector;
 class OutStream;
 
 
@@ -40,18 +40,25 @@ class RdvConfigurationData :
 
 public:
 	/**
+	 * TYPEDEF
+	 */
+	typedef Vector< ListOfExecutionData >  VectorOfListOfExecutionData;
+
+
+
+	/**
 	 * ATTRIBUTES
 	 */
 	ExecutionEnvironment & ENV;
 
-	avm_size_t mMachineCount;
+	std::size_t mMachineCount;
 
-	VectorOfListOfAPExecutionData IN_ED_RDV;
-	VectorOfListOfAPExecutionData OUT_ED_RDV;
+	VectorOfListOfExecutionData IN_ED_RDV;
+	VectorOfListOfExecutionData OUT_ED_RDV;
 
-	VectorOfListOfAPExecutionData ED_MULTIRDV;
+	VectorOfListOfExecutionData ED_MULTIRDV;
 
-	VectorOfListOfAPExecutionData RDVS;
+	VectorOfListOfExecutionData RDVS;
 	bool hasPerformedRdvFlag;
 
 	Bitset mUsedMachineFlag;
@@ -63,15 +70,15 @@ public:
 	Bitset mAwaitingInputMultiRdvFlag;
 	Bitset mAwaitingOutputMultiRdvFlag;
 
-	InstanceOfConnect * mConnector;
-	VectorOfAPExecutionData mAwaitingMultiRdvEDS;
+	const InstanceOfConnector * mConnector;
+	VectorOfExecutionData mAwaitingMultiRdvEDS;
 
 	bool hasPossibleInternalRdvFlag;
 	bool hasPossibleInternalMultiRdvFlag;
 
 
 public:
-	RdvConfigurationData(ExecutionEnvironment & aENV, avm_size_t machineCount)
+	RdvConfigurationData(ExecutionEnvironment & aENV, std::size_t machineCount)
 	: AvmObject(),
 	ENV( aENV ),
 	mMachineCount( machineCount ),
@@ -93,7 +100,7 @@ public:
 	mAwaitingInputMultiRdvFlag( mMachineCount , false ),
 	mAwaitingOutputMultiRdvFlag( mMachineCount , false ),
 
-	mConnector( NULL ),
+	mConnector( nullptr ),
 	mAwaitingMultiRdvEDS( mMachineCount ),
 
 	hasPossibleInternalRdvFlag( false ),
@@ -125,7 +132,7 @@ public:
 	mAwaitingInputMultiRdvFlag( mMachineCount , false ),
 	mAwaitingOutputMultiRdvFlag( mMachineCount , false ),
 
-	mConnector( NULL ),
+	mConnector( nullptr ),
 	mAwaitingMultiRdvEDS( mMachineCount ),
 
 	hasPossibleInternalRdvFlag( false ),
@@ -227,7 +234,7 @@ public:
 
 	RdvConfigurationData * fusion(RdvConfigurationData * aRdvConf);
 
-	void resize(avm_size_t newSize);
+	void resize(std::size_t newSize);
 
 
 	inline bool isComplete()
@@ -240,21 +247,21 @@ public:
 	inline void updatePossibleInternalRdvFlag()
 	{
 		hasPossibleInternalRdvFlag =
-				( mAwaitingInputRdvFlag.any() && mAwaitingOutputRdvFlag.any() );
+				( mAwaitingOutputRdvFlag.any()
+				&& mAwaitingInputRdvFlag.any() );
 	}
 
 	inline void updatePossibleInternalMultiRdvFlag()
 	{
 		hasPossibleInternalMultiRdvFlag =
-				( mAwaitingInputMultiRdvFlag.any()
-						|| mAwaitingOutputMultiRdvFlag.any() );
+				( mAwaitingOutputMultiRdvFlag.any()
+				&& mAwaitingInputMultiRdvFlag.any() );
 	}
 
 
 	inline bool hasPossibleExternalRdv(RdvConfigurationData * aRdvConf)
 	{
-		return( (hasPerformedRdvFlag
-					|| aRdvConf->hasPerformedRdvFlag)
+		return( (hasPerformedRdvFlag || aRdvConf->hasPerformedRdvFlag)
 				&& (mUsedMachineFlag & aRdvConf->mUsedMachineFlag).none()
 				&& ( (mAwaitingInputRdvFlag.any()
 						&& aRdvConf->mAwaitingOutputRdvFlag.any())
@@ -266,7 +273,11 @@ public:
 	inline bool hasPossibleExternalMultiRdv(RdvConfigurationData * aRdvConf)
 	{
 		return( (hasPerformedRdvFlag || aRdvConf->hasPerformedRdvFlag) &&
-				(mUsedMachineFlag & aRdvConf->mUsedMachineFlag).none() );
+				(mUsedMachineFlag & aRdvConf->mUsedMachineFlag).none()
+				&& ( (mAwaitingInputMultiRdvFlag.any()
+						&& aRdvConf->mAwaitingOutputMultiRdvFlag.any())
+					|| (aRdvConf->mAwaitingInputMultiRdvFlag.any()
+						&& mAwaitingOutputMultiRdvFlag.any()) ));
 	}
 
 
@@ -276,7 +287,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 	// SERIALIZATION
 	////////////////////////////////////////////////////////////////////////////
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 };
 
@@ -312,10 +323,10 @@ protected:
 	ListOfRdvConfigurationData CURRENT_RDV_CONF;
 	ListOfRdvConfigurationData NEXT_RDV_CONF;
 
-	ListOfAPExecutionData RDV;
+	ListOfExecutionData RDV;
 
-	avm_uint64_t mEffectiveRdvCount;
-	avm_uint64_t mEffectiveMultiRdvCount;
+	std::uint64_t mEffectiveRdvCount;
+	std::uint64_t mEffectiveMultiRdvCount;
 
 
 public:
@@ -366,7 +377,7 @@ public:
 	 * the RESUME RDV instruction
 	 */
 
-	bool haveRDV(APExecutionData & outED, APExecutionData & inED);
+	bool haveRDV(ExecutionData & outED, ExecutionData & inED);
 
 	inline void updatePossibleInternalRdvFlags(RdvConfigurationData * aRdvConf)
 	{
@@ -380,7 +391,7 @@ public:
 		}
 	}
 
-	bool resume_rdv(ListOfAPExecutionData & aRDV);
+	bool resume_rdv(ListOfExecutionData & aRDV);
 
 	bool computeAllRdv();
 
@@ -399,8 +410,8 @@ public:
 
 
 	bool compute_rdv(RdvConfigurationData * aRdvConf,
-			avm_offset_t outOffset, APExecutionData & outED,
-			avm_offset_t inOffset, APExecutionData & inED);
+			avm_offset_t outOffset, ExecutionData & outED,
+			avm_offset_t inOffset, ExecutionData & inED);
 
 	bool compute_multirdv(ListOfRdvConfigurationData & multiRdvConf);
 	bool compute_multirdv(RdvConfigurationData * aRdvConf);
@@ -421,8 +432,8 @@ public:
 	/**
 	 * GLOBALS
 	 */
-	static avm_size_t GLOBAL_EFFECTIVE_RDV_COUNT;
-	static avm_size_t GLOBAL_EFFECTIVE_MULTI_RDV_COUNT;
+	static std::size_t GLOBAL_EFFECTIVE_RDV_COUNT;
+	static std::size_t GLOBAL_EFFECTIVE_MULTI_RDV_COUNT;
 
 	static void reportGlobalStatistics(OutStream & os);
 

@@ -15,7 +15,7 @@
 
 #include "BuiltinArray.h"
 
-#include <computer/instruction/AvmInstruction.h>
+#include <fml/executable/AvmInstruction.h>
 
 #include <fml/builtin/Boolean.h>
 #include <fml/expression/ExpressionConstructor.h>
@@ -37,7 +37,7 @@ namespace sep
 ArrayBF::ArrayBF(const ArrayBF & anArray)
 : _BuiltinArray_< BF >( anArray ),
 mElementTypeId( anArray.mElementTypeId ),
-mInstruction( (anArray.mInstruction == NULL) ? NULL
+mInstruction( (anArray.mInstruction == nullptr) ? nullptr
 		: new AvmInstruction( *(anArray.mInstruction) ) )
 {
 	//!!! NOTHING
@@ -49,7 +49,7 @@ mInstruction( (anArray.mInstruction == NULL) ? NULL
  */
 bool ArrayBF::contains(const BF & arg) const
 {
-	for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+	for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 	{
 		if( mTable[offset] == arg )
 		{
@@ -65,7 +65,7 @@ bool ArrayBF::startsWith(const ArrayBF & other) const
 {
 	if( mSize > other.mSize )
 	{
-		for( avm_size_t offset = 0 ; offset < other.mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < other.mSize ; ++offset )
 		{
 			if( mTable[offset] != other.mTable[offset] )
 			{
@@ -84,8 +84,8 @@ bool ArrayBF::endsWith(const ArrayBF & other) const
 {
 	if( mSize > other.mSize )
 	{
-		avm_size_t pos = mSize - other.mSize;
-		for( avm_size_t offset = 0 ; pos < mSize ; ++pos , ++offset )
+		std::size_t pos = mSize - other.mSize;
+		for( std::size_t offset = 0 ; pos < mSize ; ++pos , ++offset )
 		{
 			if( mTable[pos] != other.mTable[offset] )
 			{
@@ -111,7 +111,7 @@ bool ArrayBF::isTEQ(const ArrayBF & other) const
 	}
 	else if( mSize == other.mSize )
 	{
-		for( avm_size_t offset = 0 ; offset < other.mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < other.mSize ; ++offset )
 		{
 			if( not mTable[offset].isTEQ( other.mTable[offset] ) )
 			{
@@ -138,7 +138,7 @@ int ArrayBF::compare(const ArrayBF & other) const
 	{
 		int  cmpResult = 0;
 
-		for( avm_size_t offset = 0 ;
+		for( std::size_t offset = 0 ;
 			(offset < mSize) && (offset < other.mSize) ; ++offset )
 		{
 			cmpResult = mTable[offset].compare( other.mTable[offset] );
@@ -157,7 +157,7 @@ bool ArrayBF::isEQ(const ArrayBF & other) const
 {
 	if( mSize == other.mSize )
 	{
-		for( avm_size_t offset = 0 ; offset < other.mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < other.mSize ; ++offset )
 		{
 			if( not mTable[offset].isEQ( other.mTable[offset] ) )
 			{
@@ -178,7 +178,7 @@ bool ArrayBF::isSEQ(const ArrayBF & other) const
 {
 	if( mSize == other.mSize )
 	{
-		for( avm_size_t offset = 0 ; offset < other.mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < other.mSize ; ++offset )
 		{
 			if( not mTable[offset].strEQ( other.mTable[offset] ) )
 			{
@@ -201,72 +201,73 @@ ArrayBF::ArrayBF(const BFVector & anArray)
 : _BuiltinArray_< BF >( CLASS_KIND_T( ArrayBF ),
 		TypeManager::ARRAY_ANY, anArray),
 mElementTypeId( ClassKindInfoInitializer::TYPE_UNDEFINED_ID ),
-mInstruction( NULL )
+mInstruction( nullptr )
 {
 	//!!! NOTHING
 }
 
-ArrayBF::ArrayBF(BaseTypeSpecifier * aTypeSpecifier, const BF & defaultValue)
+ArrayBF::ArrayBF(
+		const BaseTypeSpecifier & aTypeSpecifier, const BF & defaultValue)
 : _BuiltinArray_< BF >( CLASS_KIND_T( ArrayBF ),
-		aTypeSpecifier, aTypeSpecifier->size()),
+		aTypeSpecifier, aTypeSpecifier.size()),
 mElementTypeId( ClassKindInfoInitializer::TYPE_UNDEFINED_ID ),
-mInstruction( NULL )
+mInstruction( nullptr )
 {
 	setAll( defaultValue );
 }
 
 
 
-ArrayInteger::ArrayInteger(avm_size_t aSize)
+ArrayInteger::ArrayInteger(std::size_t aSize)
 : _BuiltinArray_< avm_integer_t >( CLASS_KIND_T( ArrayInteger ),
 		TypeManager::ARRAY_INTEGER, aSize)
 {
 	//!!! NOTHING
 }
 
-ArrayRational::ArrayRational(avm_size_t aSize)
+ArrayRational::ArrayRational(std::size_t aSize)
 : _BuiltinArray_< PairInteger >( CLASS_KIND_T( ArrayRational ),
 		TypeManager::ARRAY_RATIONAL, aSize)
 {
 	//!!! NOTHING
 }
 
-ArrayFloat::ArrayFloat(avm_size_t aSize)
+ArrayFloat::ArrayFloat(std::size_t aSize)
 : _BuiltinArray_< double >( CLASS_KIND_T( ArrayFloat ),
 		TypeManager::ARRAY_FLOAT, aSize)
 {
 	//!!! NOTHING
 }
 
-ArrayBoolean::ArrayBoolean(avm_size_t aSize)
+ArrayBoolean::ArrayBoolean(std::size_t aSize)
 : _BuiltinArray_< bool >( CLASS_KIND_T( ArrayBoolean ),
 		TypeManager::ARRAY_BOOLEAN, aSize)
 {
 	//!!! NOTHING
 }
 
-ArrayCharacter::ArrayCharacter(avm_size_t aSize)
+ArrayCharacter::ArrayCharacter(std::size_t aSize)
 : _BuiltinArray_< char >( CLASS_KIND_T( ArrayCharacter ),
 		TypeManager::ARRAY_CHARACTER, aSize)
 {
 	//!!! NOTHING
 }
 
-ArrayString::ArrayString(avm_size_t aSize)
+ArrayString::ArrayString(std::size_t aSize)
 : _BuiltinArray_< std::string >( CLASS_KIND_T( ArrayString ),
 		TypeManager::ARRAY_STRING, aSize)
 {
 	//!!! NOTHING
 }
 
-ArrayIdentifier::ArrayIdentifier(avm_size_t aSize)
+ArrayIdentifier::ArrayIdentifier(std::size_t aSize)
 : _BuiltinArray_< std::string >( CLASS_KIND_T( ArrayIdentifier ),
 		TypeManager::ARRAY_IDENTIFIER, aSize)
 {
 	//!!! NOTHING
 }
 
-ArrayQualifiedIdentifier::ArrayQualifiedIdentifier(avm_size_t aSize)
+ArrayQualifiedIdentifier::ArrayQualifiedIdentifier(std::size_t aSize)
 : _BuiltinArray_< std::string >( CLASS_KIND_T( ArrayQualifiedIdentifier ),
 		TypeManager::ARRAY_QUALIFIED_IDENTIFIER, aSize)
 {
@@ -417,7 +418,7 @@ BF BuiltinArray::create(const BFVector & array)
 			case FORM_ARRAY_BOOLEAN_KIND:
 			{
 				ArrayBoolean * builtinArray = new ArrayBoolean( array.size() );
-				avm_size_t idx = 0;
+				std::size_t idx = 0;
 				for( it = array.begin() ; it != itEnd ; ++it, ++idx )
 				{
 					builtinArray->set(idx, (*it).toBoolean());
@@ -428,7 +429,7 @@ BF BuiltinArray::create(const BFVector & array)
 			case FORM_ARRAY_CHARACTER_KIND:
 			{
 				ArrayCharacter * builtinArray = new ArrayCharacter( array.size() );
-				avm_size_t idx = 0;
+				std::size_t idx = 0;
 				for( it = array.begin() ; it != itEnd ; ++it, ++idx )
 				{
 					builtinArray->set(idx, (*it).toBoolean());
@@ -439,7 +440,7 @@ BF BuiltinArray::create(const BFVector & array)
 			case FORM_ARRAY_INTEGER_KIND:
 			{
 				ArrayInteger * builtinArray = new ArrayInteger( array.size() );
-				avm_size_t idx = 0;
+				std::size_t idx = 0;
 				for( it = array.begin() ; it != itEnd ; ++it, ++idx )
 				{
 					builtinArray->set(idx, (*it).toInteger());
@@ -450,7 +451,7 @@ BF BuiltinArray::create(const BFVector & array)
 			case FORM_ARRAY_RATIONAL_KIND:
 			{
 				ArrayRational * builtinArray = new ArrayRational( array.size() );
-				avm_size_t idx = 0;
+				std::size_t idx = 0;
 				for( it = array.begin() ; it != itEnd ; ++it, ++idx )
 				{
 					builtinArray->set(idx,
@@ -462,7 +463,7 @@ BF BuiltinArray::create(const BFVector & array)
 			case FORM_ARRAY_FLOAT_KIND:
 			{
 				ArrayFloat * builtinArray = new ArrayFloat( array.size() );
-				avm_size_t idx = 0;
+				std::size_t idx = 0;
 				for( it = array.begin() ; it != itEnd ; ++it, ++idx )
 				{
 					builtinArray->set(idx, (*it).toFloat());
@@ -473,7 +474,7 @@ BF BuiltinArray::create(const BFVector & array)
 			case FORM_ARRAY_STRING_KIND:
 			{
 				ArrayString * builtinArray = new ArrayString( array.size() );
-				avm_size_t idx = 0;
+				std::size_t idx = 0;
 				for( it = array.begin() ; it != itEnd ; ++it, ++idx )
 				{
 					builtinArray->set(idx, (*it).toBuiltinString());
@@ -484,7 +485,7 @@ BF BuiltinArray::create(const BFVector & array)
 			case FORM_ARRAY_IDENTIFIER_KIND:
 			{
 				ArrayIdentifier * builtinArray = new ArrayIdentifier( array.size() );
-				avm_size_t idx = 0;
+				std::size_t idx = 0;
 				for( it = array.begin() ; it != itEnd ; ++it, ++idx )
 				{
 					builtinArray->set(idx, (*it).toIdentifier());
@@ -496,7 +497,7 @@ BF BuiltinArray::create(const BFVector & array)
 			{
 				ArrayQualifiedIdentifier * builtinArray =
 						new ArrayQualifiedIdentifier( array.size() );
-				avm_size_t idx = 0;
+				std::size_t idx = 0;
 				for( it = array.begin() ; it != itEnd ; ++it, ++idx )
 				{
 					builtinArray->set(idx, (*it).toUfi());
@@ -522,12 +523,12 @@ BF BuiltinArray::create(const BFVector & array)
 // CAST
 ////////////////////////////////////////////////////////////////////////////////
 
-ArrayBF * ArrayInteger::getArrayBF()
+ArrayBF * ArrayInteger::getArrayBF() const
 {
 	ArrayBF * bfArray = new ArrayBF( CLASS_KIND_T( Integer ),
 			TypeManager::ARRAY_INTEGER, size() );
 
-	for( avm_size_t idx = 0 ; idx < size() ; ++idx )
+	for( std::size_t idx = 0 ; idx < size() ; ++idx )
 	{
 		bfArray->set(idx, ExpressionConstructor::newInteger(get(idx)));
 	}
@@ -537,12 +538,12 @@ ArrayBF * ArrayInteger::getArrayBF()
 
 
 
-ArrayBF * ArrayRational::getArrayBF()
+ArrayBF * ArrayRational::getArrayBF() const
 {
 	ArrayBF * bfArray = new ArrayBF( CLASS_KIND_T( Rational ),
 			TypeManager::ARRAY_RATIONAL, size() );
 
-	for( avm_size_t idx = 0 ; idx < size() ; ++idx )
+	for( std::size_t idx = 0 ; idx < size() ; ++idx )
 	{
 		bfArray->set(idx, ExpressionConstructor::newRational(
 				get(idx).first(), get(idx).second()));
@@ -551,12 +552,12 @@ ArrayBF * ArrayRational::getArrayBF()
 	return( bfArray );
 }
 
-ArrayBF * ArrayFloat::getArrayBF()
+ArrayBF * ArrayFloat::getArrayBF() const
 {
 	ArrayBF * bfArray = new ArrayBF( CLASS_KIND_T( Float ),
 			TypeManager::ARRAY_FLOAT, size() );
 
-	for( avm_size_t idx = 0 ; idx < size() ; ++idx )
+	for( std::size_t idx = 0 ; idx < size() ; ++idx )
 	{
 		bfArray->set(idx, ExpressionConstructor::newFloat(get(idx)));
 	}
@@ -565,12 +566,12 @@ ArrayBF * ArrayFloat::getArrayBF()
 }
 
 
-ArrayBF * ArrayCharacter::getArrayBF()
+ArrayBF * ArrayCharacter::getArrayBF() const
 {
 	ArrayBF * bfArray = new ArrayBF( CLASS_KIND_T( Character ),
 			TypeManager::ARRAY_CHARACTER, size() );
 
-	for( avm_size_t idx = 0 ; idx < size() ; ++idx )
+	for( std::size_t idx = 0 ; idx < size() ; ++idx )
 	{
 		bfArray->set(idx, ExpressionConstructor::newChar(get(idx)));
 	}
@@ -580,12 +581,12 @@ ArrayBF * ArrayCharacter::getArrayBF()
 
 
 
-ArrayBF * ArrayBoolean::getArrayBF()
+ArrayBF * ArrayBoolean::getArrayBF() const
 {
 	ArrayBF * bfArray = new ArrayBF( CLASS_KIND_T( Boolean ),
 			TypeManager::ARRAY_BOOLEAN, size() );
 
-	for( avm_size_t idx = 0 ; idx < size() ; ++idx )
+	for( std::size_t idx = 0 ; idx < size() ; ++idx )
 	{
 		bfArray->set(idx, ExpressionConstructor::newBoolean(get(idx)));
 	}
@@ -595,12 +596,12 @@ ArrayBF * ArrayBoolean::getArrayBF()
 
 
 
-ArrayBF * ArrayString::getArrayBF()
+ArrayBF * ArrayString::getArrayBF() const
 {
 	ArrayBF * bfArray = new ArrayBF( CLASS_KIND_T( String ),
 			TypeManager::ARRAY_STRING, size() );
 
-	for( avm_size_t idx = 0 ; idx < size() ; ++idx )
+	for( std::size_t idx = 0 ; idx < size() ; ++idx )
 	{
 		bfArray->set(idx, BF(new String(get(idx))));
 	}
@@ -610,12 +611,12 @@ ArrayBF * ArrayString::getArrayBF()
 
 
 
-ArrayBF * ArrayIdentifier::getArrayBF()
+ArrayBF * ArrayIdentifier::getArrayBF() const
 {
 	ArrayBF * bfArray = new ArrayBF( CLASS_KIND_T( Identifier ),
 			TypeManager::ARRAY_IDENTIFIER, size() );
 
-	for( avm_size_t idx = 0 ; idx < size() ; ++idx )
+	for( std::size_t idx = 0 ; idx < size() ; ++idx )
 	{
 		bfArray->set(idx, BF(new Identifier(get(idx))));
 	}
@@ -624,12 +625,12 @@ ArrayBF * ArrayIdentifier::getArrayBF()
 }
 
 
-ArrayBF * ArrayQualifiedIdentifier::getArrayBF()
+ArrayBF * ArrayQualifiedIdentifier::getArrayBF() const
 {
 	ArrayBF * bfArray = new ArrayBF( CLASS_KIND_T( QualifiedIdentifier ),
 			TypeManager::ARRAY_QUALIFIED_IDENTIFIER, size() );
 
-	for( avm_size_t idx = 0 ; idx < size() ; ++idx )
+	for( std::size_t idx = 0 ; idx < size() ; ++idx )
 	{
 		bfArray->set(idx, BF(new QualifiedIdentifier(get(idx))));
 	}
@@ -642,14 +643,14 @@ ArrayBF * ArrayQualifiedIdentifier::getArrayBF()
 // COPY
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArrayBF::copy(BuiltinArray * intputArray, avm_size_t count)
+void ArrayBF::copy(BuiltinArray * intputArray, std::size_t count)
 {
 	switch( intputArray->classKind() )
 	{
 		case FORM_ARRAY_BOOLEAN_KIND:
 		{
-			ArrayBoolean * builtinArray = intputArray->to< ArrayBoolean >();
-			for( avm_size_t idx = 0 ; idx < count ; ++idx )
+			ArrayBoolean * builtinArray = intputArray->to_ptr< ArrayBoolean >();
+			for( std::size_t idx = 0 ; idx < count ; ++idx )
 			{
 				set(idx, ExpressionConstructor::newBoolean(builtinArray->get(idx)));
 			}
@@ -657,8 +658,8 @@ void ArrayBF::copy(BuiltinArray * intputArray, avm_size_t count)
 		}
 		case FORM_ARRAY_CHARACTER_KIND:
 		{
-			ArrayCharacter * builtinArray = intputArray->to< ArrayCharacter >();
-			for( avm_size_t idx = 0 ; idx < count ; ++idx )
+			ArrayCharacter * builtinArray = intputArray->to_ptr< ArrayCharacter >();
+			for( std::size_t idx = 0 ; idx < count ; ++idx )
 			{
 				set(idx, ExpressionConstructor::newChar(builtinArray->get(idx)));
 			}
@@ -666,8 +667,8 @@ void ArrayBF::copy(BuiltinArray * intputArray, avm_size_t count)
 		}
 		case FORM_ARRAY_INTEGER_KIND:
 		{
-			ArrayInteger * builtinArray = intputArray->to< ArrayInteger >();
-			for( avm_size_t idx = 0 ; idx < count ; ++idx )
+			ArrayInteger * builtinArray = intputArray->to_ptr< ArrayInteger >();
+			for( std::size_t idx = 0 ; idx < count ; ++idx )
 			{
 				set(idx, ExpressionConstructor::newInteger(builtinArray->get(idx)));
 			}
@@ -675,8 +676,8 @@ void ArrayBF::copy(BuiltinArray * intputArray, avm_size_t count)
 		}
 		case FORM_ARRAY_RATIONAL_KIND:
 		{
-			ArrayRational * builtinArray = intputArray->to< ArrayRational >();
-			for( avm_size_t idx = 0 ; idx < count ; ++idx )
+			ArrayRational * builtinArray = intputArray->to_ptr< ArrayRational >();
+			for( std::size_t idx = 0 ; idx < count ; ++idx )
 			{
 				set(idx, ExpressionConstructor::newRational(
 								builtinArray->get(idx).first(),
@@ -686,8 +687,8 @@ void ArrayBF::copy(BuiltinArray * intputArray, avm_size_t count)
 		}
 		case FORM_ARRAY_FLOAT_KIND:
 		{
-			ArrayFloat * builtinArray = intputArray->to< ArrayFloat >();
-			for( avm_size_t idx = 0 ; idx < count ; ++idx )
+			ArrayFloat * builtinArray = intputArray->to_ptr< ArrayFloat >();
+			for( std::size_t idx = 0 ; idx < count ; ++idx )
 			{
 				set(idx, ExpressionConstructor::newFloat(builtinArray->get(idx)));
 			}
@@ -695,8 +696,8 @@ void ArrayBF::copy(BuiltinArray * intputArray, avm_size_t count)
 		}
 		case FORM_ARRAY_STRING_KIND:
 		{
-			ArrayString * builtinArray = intputArray->to< ArrayString >();
-			for( avm_size_t idx = 0 ; idx < count ; ++idx )
+			ArrayString * builtinArray = intputArray->to_ptr< ArrayString >();
+			for( std::size_t idx = 0 ; idx < count ; ++idx )
 			{
 				set(idx, ExpressionConstructor::newString(builtinArray->get(idx)));
 			}
@@ -704,8 +705,8 @@ void ArrayBF::copy(BuiltinArray * intputArray, avm_size_t count)
 		}
 		case FORM_ARRAY_IDENTIFIER_KIND:
 		{
-			ArrayIdentifier * builtinArray = intputArray->to< ArrayIdentifier >();
-			for( avm_size_t idx = 0 ; idx < count ; ++idx )
+			ArrayIdentifier * builtinArray = intputArray->to_ptr< ArrayIdentifier >();
+			for( std::size_t idx = 0 ; idx < count ; ++idx )
 			{
 				set(idx, ExpressionConstructor::newIdentifier(builtinArray->get(idx)));
 			}
@@ -714,8 +715,8 @@ void ArrayBF::copy(BuiltinArray * intputArray, avm_size_t count)
 		case FORM_ARRAY_QUALIFIED_IDENTIFIER_KIND:
 		{
 			ArrayQualifiedIdentifier * builtinArray =
-					intputArray->to< ArrayQualifiedIdentifier >();
-			for( avm_size_t idx = 0 ; idx < count ; ++idx )
+					intputArray->to_ptr< ArrayQualifiedIdentifier >();
+			for( std::size_t idx = 0 ; idx < count ; ++idx )
 			{
 				set(idx, ExpressionConstructor::
 						newQualifiedIdentifier(builtinArray->get(idx)));
@@ -725,13 +726,13 @@ void ArrayBF::copy(BuiltinArray * intputArray, avm_size_t count)
 
 		case FORM_ARRAY_BF_KIND:
 		{
-			ArrayBF * builtinArray = intputArray->to< ArrayBF >();
-			for( avm_size_t idx = 0 ; idx < count ; ++idx )
+			ArrayBF * builtinArray = intputArray->to_ptr< ArrayBF >();
+			for( std::size_t idx = 0 ; idx < count ; ++idx )
 			{
 				if( builtinArray->get(idx).is_strictly< BuiltinArray >() )
 				{
 					set(idx, BF(builtinArray->get(idx).
-							to_ptr< BuiltinArray >()->getArrayBF()));
+							to< BuiltinArray >().getArrayBF()));
 				}
 				else
 				{
@@ -791,20 +792,20 @@ AVM_ENDIF_DEBUG_FLAG_AND( BYTECODE )
 
 	if( mTypeSpecifier->hasTypeStructureOrChoiceOrUnion() )
 	{
-		BaseSymbolTypeSpecifier * strucT =
+		const BaseSymbolTypeSpecifier & strucT =
 				mTypeSpecifier->as< BaseSymbolTypeSpecifier >();
 
 AVM_IF_DEBUG_FLAG( DATA )
-	os << "<" << strucT->strT() << ">";
+	os << "<" << strucT.strT() << ">";
 AVM_ENDIF_DEBUG_FLAG( DATA )
 
 		os << "{ ";
 		if( mSize > 0 )
 		{
-			os << strucT->getSymbolData(0).strValue( mTable[0] );
-			for( avm_size_t idx = 1 ; idx < mSize ; ++idx )
+			os << strucT.getSymbolData(0).strValue( mTable[0] );
+			for( std::size_t idx = 1 ; idx < mSize ; ++idx )
 			{
-				os << " , " << strucT->getSymbolData(idx).strValue( mTable[idx] );
+				os << " , " << strucT.getSymbolData(idx).strValue( mTable[idx] );
 			}
 		}
 		os << " }";
@@ -819,7 +820,7 @@ AVM_ENDIF_DEBUG_FLAG( DATA )
 		if( mSize > 0 )
 		{
 			os << mTable[0].str();
-			for( avm_size_t idx = 1 ; idx < mSize ; ++idx )
+			for( std::size_t idx = 1 ; idx < mSize ; ++idx )
 			{
 				os << " , " << mTable[idx].str();
 			}

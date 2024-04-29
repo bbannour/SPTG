@@ -104,9 +104,9 @@ public:
 	// DEFAULT NEW INTEGER VALUE
 	////////////////////////////////////////////////////////////////////////////
 
-	inline static BF newInteger(Integer * aValue)
+	inline static BF newInteger(Integer & aValue)
 	{
-		return( BF( aValue ) );
+		return( BF( & aValue ) );
 	}
 
 	inline static BF newInteger(avm_integer_t aValue)
@@ -136,6 +136,12 @@ public:
 
 			default: return( BF( new Integer(aValue) ) );
 		}
+	}
+
+	inline static BF newUInteger(
+			avm_uinteger_t aValue, avm_uinteger_t anExponent)
+	{
+		return( BF( new Integer(aValue, anExponent) ) );
 	}
 
 	inline static BF newInteger(const std::string & aValue)
@@ -173,9 +179,9 @@ public:
 	// DEFAULT NEW RATIONAL VALUE
 	////////////////////////////////////////////////////////////////////////////
 
-	inline static BF newRational(Rational * aValue)
+	inline static BF newRational(Rational & aValue)
 	{
-		return( BF( aValue ) );
+		return( BF( & aValue ) );
 	}
 
 	inline static BF newRational(avm_integer_t aNumer)
@@ -307,9 +313,9 @@ public:
 	// DEFAULT NEW FLOAT VALUE
 	////////////////////////////////////////////////////////////////////////////
 
-	inline static BF newFloat(Float * aValue)
+	inline static BF newFloat(Float & aValue)
 	{
-		return( BF( aValue ) );
+		return( BF( & aValue ) );
 	}
 
 	inline static BF newFloat(avm_integer_t aValue)
@@ -432,13 +438,13 @@ public:
 
 	// new instance of Element Access FQN-ID :> machine<fqn>.element<name-id>
 	static BF newQualifiedIdentifier(
-			Machine * machine, const std::string & aNameID);
+			const Machine & machine, const std::string & aNameID);
 
-	static BF newQualifiedIdentifier(Machine * machine,
-			const ObjectElement * objElement);
+	static BF newQualifiedIdentifier(
+			const Machine & machine, const ObjectElement & objElement);
 
 	static BF newQualifiedPositionalIdentifier(
-			Machine * machine, avm_offset_t aPositionOffset );
+			const Machine & machine, avm_offset_t aPositionOffset );
 
 
 	inline static BF newMachineVarUFI(
@@ -518,7 +524,7 @@ public:
 
 	inline static BF newExprBoolean(const char * aValue)
 	{
-		return( (aValue != NULL)
+		return( (aValue != nullptr)
 				? ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
 						newBoolean( std::string(aValue) )
 				: ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
@@ -534,7 +540,7 @@ public:
 
 	inline static BF newExprInteger(const char * aValue)
 	{
-		return( (aValue != NULL)
+		return( (aValue != nullptr)
 				? ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
 						newInteger( std::string(aValue) )
 				: ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
@@ -550,7 +556,7 @@ public:
 
 	inline static BF newExprRational(const char * aValue)
 	{
-		return( (aValue != NULL)
+		return( (aValue != nullptr)
 				? ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
 						newRational( std::string(aValue) )
 				: ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
@@ -566,7 +572,7 @@ public:
 
 	inline static BF newExprFloat(const char * aValue)
 	{
-		return( (aValue != NULL)
+		return( (aValue != nullptr)
 				? ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
 						newFloat( std::string(aValue) )
 				: ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
@@ -582,7 +588,7 @@ public:
 
 	inline static BF newExprNumber(const char * aValue)
 	{
-		return( (aValue != NULL)
+		return( (aValue != nullptr)
 				? ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
 						newExprNumber( std::string(aValue) )
 				: ExpressionConstructorImpl< DEFAULT_EXPRESSION_IMPL >::
@@ -593,7 +599,7 @@ public:
 	static BF newExprMachine(const Configuration & aConfiguration,
 			const std::string & aValue);
 
-	static BF newExprRuntine(const Configuration & aConfiguration,
+	static BF newExprRuntime(const Configuration & aConfiguration,
 			const std::string & aValue);
 
 
@@ -615,21 +621,35 @@ public:
 
 
 	////////////////////////////////////////////////////////////////////////////
-	// QUANTIFIER EXPRESSION
+	// EXISTS QUANTIFIER EXPRESSION
 	////////////////////////////////////////////////////////////////////////////
 
-	static BF existExpr(const BF & boundVar, const BF & formula)
+	static BF existsExpr(const BF & boundVar, const BF & formula)
 	{
 		return( ExpressionConstructorImpl<
-				DEFAULT_EXPRESSION_IMPL >::existExpr( boundVar, formula ) );
+				DEFAULT_EXPRESSION_IMPL >::existsExpr( boundVar, formula ) );
 	}
 
-	static BF existExpr(const AvmCode::this_container_type & listOfArg)
+	static BF existsExpr(
+			const AvmCode::OperandCollectionT & boundVars, const BF & formula )
+	{
+		AvmCode::OperandCollectionT operands(boundVars);
+		operands.append(formula);
+
+		return( ExpressionConstructorImpl<
+				DEFAULT_EXPRESSION_IMPL >::existsExpr( operands ) );
+	}
+
+	static BF existsExpr(const AvmCode::OperandCollectionT & operands)
 	{
 		return( ExpressionConstructorImpl<
-				DEFAULT_EXPRESSION_IMPL >::existExpr( listOfArg ) );
+				DEFAULT_EXPRESSION_IMPL >::existsExpr( operands ) );
 	}
 
+
+	////////////////////////////////////////////////////////////////////////////
+	// FORALL QUANTIFIER EXPRESSION
+	////////////////////////////////////////////////////////////////////////////
 
 	static BF forallExpr(const BF & boundVar, const BF & formula)
 	{
@@ -637,10 +657,20 @@ public:
 				DEFAULT_EXPRESSION_IMPL >::forallExpr( boundVar, formula ) );
 	}
 
-	static BF forallExpr(const AvmCode::this_container_type & listOfArg)
+	static BF forallExpr(
+			const AvmCode::OperandCollectionT & boundVars, const BF & formula )
+	{
+		AvmCode::OperandCollectionT operands(boundVars);
+		operands.append(formula);
+
+		return( ExpressionConstructorImpl<
+				DEFAULT_EXPRESSION_IMPL >::forallExpr( operands ) );
+	}
+
+	static BF forallExpr(const AvmCode::OperandCollectionT & operands)
 	{
 		return( ExpressionConstructorImpl<
-				DEFAULT_EXPRESSION_IMPL >::forallExpr( listOfArg ) );
+				DEFAULT_EXPRESSION_IMPL >::forallExpr( operands ) );
 	}
 
 
@@ -654,10 +684,10 @@ public:
 				DEFAULT_EXPRESSION_IMPL >::andExpr( arg0, arg1 ) );
 	}
 
-	inline static BF andExpr(const AvmCode::this_container_type & listOfArg)
+	inline static BF andExpr(const AvmCode::OperandCollectionT & operands)
 	{
 		return( ExpressionConstructorImpl<
-				DEFAULT_EXPRESSION_IMPL >::andExpr( listOfArg ) );
+				DEFAULT_EXPRESSION_IMPL >::andExpr( operands ) );
 	}
 
 	////////////////////////////////////////////////////////////////////////////
@@ -670,10 +700,20 @@ public:
 				DEFAULT_EXPRESSION_IMPL >::orExpr( arg0, arg1 ) );
 	}
 
-	inline static BF orExpr(const AvmCode::this_container_type & listOfArg)
+	inline static BF orExpr(const AvmCode::OperandCollectionT & operands)
 	{
 		return( ExpressionConstructorImpl<
-				DEFAULT_EXPRESSION_IMPL >::orExpr( listOfArg ) );
+				DEFAULT_EXPRESSION_IMPL >::orExpr( operands ) );
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+	// IMPLIES EXPRESSION
+	////////////////////////////////////////////////////////////////////////////
+
+	inline static BF impliesExpr(const BF & arg0, const BF & arg1)
+	{
+		return( ExpressionConstructorImpl<
+				DEFAULT_EXPRESSION_IMPL >::impliesExpr( arg0, arg1 ) );
 	}
 
 	////////////////////////////////////////////////////////////////////////////
@@ -684,22 +724,60 @@ public:
 	{
 		if( arg.isEqualTrue() )
 		{
-			return( ExpressionConstant::BOOLEAN_FALSE );
-
-//			return( ExpressionConstructorImpl<
-//					DEFAULT_EXPRESSION_IMPL >::newExpr( false ) );
+			return( ExpressionConstructorImpl<
+					DEFAULT_EXPRESSION_IMPL >::newExpr( false ) );
 		}
 		else if( arg.isEqualFalse() )
 		{
-			return( ExpressionConstant::BOOLEAN_TRUE );
-
-//			return( ExpressionConstructorImpl<
-//					DEFAULT_EXPRESSION_IMPL >::newExpr( true ) );
+			return( ExpressionConstructorImpl<
+					DEFAULT_EXPRESSION_IMPL >::newExpr( true ) );
 		}
 		else
 		{
 			return( ExpressionConstructorImpl<
 					DEFAULT_EXPRESSION_IMPL >::notExpr( arg ) );
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+	// BITWISE EXPRESSION
+	////////////////////////////////////////////////////////////////////////////
+
+	inline static BF bandExpr(const BF & arg0, const BF & arg1)
+	{
+		return( ExpressionConstructorImpl<
+				DEFAULT_EXPRESSION_IMPL >::bandExpr( arg0, arg1 ) );
+	}
+
+	inline static BF borExpr(const BF & arg0, const BF & arg1)
+	{
+		return( ExpressionConstructorImpl<
+				DEFAULT_EXPRESSION_IMPL >::borExpr( arg0, arg1 ) );
+	}
+
+	inline static BF bxorExpr(const BF & arg0, const BF & arg1)
+	{
+		return( ExpressionConstructorImpl<
+				DEFAULT_EXPRESSION_IMPL >::bxorExpr( arg0, arg1 ) );
+	}
+
+
+	inline static BF bnotExpr(const BF & arg)
+	{
+		if( arg.isEqualTrue() )
+		{
+			return( ExpressionConstructorImpl<
+					DEFAULT_EXPRESSION_IMPL >::newExpr( false ) );
+		}
+		else if( arg.isEqualFalse() )
+		{
+			return( ExpressionConstructorImpl<
+					DEFAULT_EXPRESSION_IMPL >::newExpr( true ) );
+		}
+		else
+		{
+			return( ExpressionConstructorImpl<
+					DEFAULT_EXPRESSION_IMPL >::bnotExpr( arg ) );
 		}
 	}
 
@@ -778,10 +856,10 @@ public:
 				DEFAULT_EXPRESSION_IMPL >::addExpr( arg0, arg1 ) );
 	}
 
-	inline static BF addExpr(const AvmCode::this_container_type & listOfArg)
+	inline static BF addExpr(const AvmCode::OperandCollectionT & operands)
 	{
 		return( ExpressionConstructorImpl<
-				DEFAULT_EXPRESSION_IMPL >::addExpr( listOfArg ) );
+				DEFAULT_EXPRESSION_IMPL >::addExpr( operands ) );
 	}
 
 
@@ -806,6 +884,12 @@ public:
 				DEFAULT_EXPRESSION_IMPL >::minusExpr( arg0, arg1 ) );
 	}
 
+	inline static BF minusExpr(const AvmCode::OperandCollectionT & operands)
+	{
+		return( ExpressionConstructorImpl<
+				DEFAULT_EXPRESSION_IMPL >::minusExpr( operands ) );
+	}
+
 
 	////////////////////////////////////////////////////////////////////////////
 	// MULT EXPRESSION
@@ -817,10 +901,10 @@ public:
 				DEFAULT_EXPRESSION_IMPL >::multExpr( arg0, arg1 ) );
 	}
 
-	inline static BF multExpr(const AvmCode::this_container_type & listOfArg)
+	inline static BF multExpr(const AvmCode::OperandCollectionT & operands)
 	{
 		return( ExpressionConstructorImpl<
-				DEFAULT_EXPRESSION_IMPL >::multExpr( listOfArg ) );
+				DEFAULT_EXPRESSION_IMPL >::multExpr( operands ) );
 	}
 
 
@@ -844,17 +928,32 @@ public:
 				DEFAULT_EXPRESSION_IMPL >::divExpr( arg0, arg1 ) );
 	}
 
+	inline static BF modExpr(const BF & arg0, const BF & arg1)
+	{
+		return( ExpressionConstructorImpl<
+				DEFAULT_EXPRESSION_IMPL >::modExpr( arg0, arg1 ) );
+	}
+
 
 	////////////////////////////////////////////////////////////////////////////
-	// FOR ALL EXPRESSION IMPLEMENTATION
+	// OTHER EXPRESSION IMPLEMENTATION
 	////////////////////////////////////////////////////////////////////////////
 
-	static BF newExpr(Operator * anOperator, const BF & arg);
+	static BF newExpr(const Operator * anOperator, const BF & arg);
 
-	static BF newExpr(Operator * anOperator, const BF & arg1, const BF & arg2);
+	static BF newExpr(const Operator * anOperator,
+			const BF & arg1, const BF & arg2);
 
-	static BF newExpr(Operator * anOperator,
-			const AvmCode::this_container_type & listOfArg);
+	static BF newExpr(const Operator * anOperator,
+			const AvmCode::OperandCollectionT & operands);
+
+	////////////////////////////////////////////////////////////////////////////
+	// ASSIGN_OP EXPRESSION IMPLEMENTATION
+	////////////////////////////////////////////////////////////////////////////
+
+	static BF assignOpExpr(
+			const Operator * anOperator, const BF & arg1, const BF & arg2);
+
 
 };
 

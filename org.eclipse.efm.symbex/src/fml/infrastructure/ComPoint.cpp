@@ -29,23 +29,24 @@ void ComPoint::toStream(OutStream & out) const
 {
 	if( mMachinePortQualifiedNameID.valid() )
 	{
-		if( mMachine != NULL )
+		if( mMachine != nullptr )
 		{
-			out << mMachine->getFullyQualifiedNameID() << "->";
+//			out << mMachine->getFullyQualifiedNameID() << "->";
+			out << mMachine->getNameID() << "->";
 		}
 
 		toStreamProtocolCast( out << mMachinePortQualifiedNameID.str() );
 	}
-	else if( mPort != NULL )
+	else if( mPort != nullptr )
 	{
-		if( (mMachine != NULL) && (mPort->getContainer() != mMachine) )
+		if( (mMachine != nullptr) )
 		{
-			out << mMachine->getFullyQualifiedNameID()
+			out << mMachine->getNameID()//getFullyQualifiedNameID()
 				<< "->" << mPort->getNameID();
 		}
 		else
 		{
-			out << mPort->getFullyQualifiedNameID();
+			out << mPort->getNameID();//getFullyQualifiedNameID();
 		}
 
 		toStreamProtocolCast( out );

@@ -107,7 +107,7 @@ bool AvmPrimitive_Lookup_Int::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC VALUE
 	else if( inputValue.is< InstanceOfData >() )
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupInt", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -115,7 +115,7 @@ bool AvmPrimitive_Lookup_Int::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC EXPRESSION
 	else
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupInt", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -195,7 +195,7 @@ bool AvmPrimitive_Lookup_IntExt::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC VALUE
 	else if( inputValue.is< InstanceOfData >() )
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupIntExt", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -203,7 +203,7 @@ bool AvmPrimitive_Lookup_IntExt::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC EXPRESSION
 	else
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupIntExt", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -275,7 +275,7 @@ bool AvmPrimitive_Lookup_Nearest::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC VALUE
 	else if( inputValue.is< InstanceOfData >() )
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupNearest", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -283,7 +283,7 @@ bool AvmPrimitive_Lookup_Nearest::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC EXPRESSION
 	else
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupNearest", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -347,7 +347,7 @@ bool AvmPrimitive_Lookup_Below::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC VALUE
 	else if( inputValue.is< InstanceOfData >() )
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupBelow", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -355,7 +355,7 @@ bool AvmPrimitive_Lookup_Below::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC EXPRESSION
 	else
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupBelow", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -420,7 +420,7 @@ bool AvmPrimitive_Lookup_Above::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC VALUE
 	else if( inputValue.is< InstanceOfData >() )
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupAbove", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -428,7 +428,7 @@ bool AvmPrimitive_Lookup_Above::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC EXPRESSION
 	else
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID,
+		ENV.outVAL = ENV.create(ENV.outED.getRID(),
 				"lookupAbove", TypeManager::FLOAT,
 				ExpressionConstructor::newCode(ENV.inCODE->getOperator(),
 						inputValue, inputTable, outputTable));
@@ -505,45 +505,45 @@ double AvmPrimitive_Lookup2D_IntExt::lookup2D(
 
 		intermediateResult1 = linearInterpolation1D(anInput1,
 				anInputTable1->get(il1),anInputTable1->get(il2),
-				anOutputTable->at(il1).to_ptr< ArrayFloat >()->get(ic1),
-				anOutputTable->at(il1).to_ptr< ArrayFloat >()->get(ic2));
+				anOutputTable->at(il1).to< ArrayFloat >().get(ic1),
+				anOutputTable->at(il1).to< ArrayFloat >().get(ic2));
 
 		intermediateResult2 = linearInterpolation1D(anInput1,
 				anInputTable1->get(il1),anInputTable1->get(il2),
-				anOutputTable->at(il2).to_ptr< ArrayFloat >()->get(ic1),
-				anOutputTable->at(il2).to_ptr< ArrayFloat >()->get(ic2));
+				anOutputTable->at(il2).to< ArrayFloat >().get(ic1),
+				anOutputTable->at(il2).to< ArrayFloat >().get(ic2));
 	}
 	else if( anInput1 == anInputTable1->get(index) )
 	{
 		intermediateResult1 =
-				anOutputTable->at(index).to_ptr< ArrayFloat >()->get(ic1);
+				anOutputTable->at(index).to< ArrayFloat >().get(ic1);
 
 		intermediateResult2 =
-				anOutputTable->at(index).to_ptr< ArrayFloat >()->get(ic2);
+				anOutputTable->at(index).to< ArrayFloat >().get(ic2);
 	}
 	else if( index == 0 )
 	{
 		intermediateResult1 = linearInterpolation1D(anInput1,
 				anInputTable1->get(0),anInputTable1->get(1),
-				anOutputTable->at(0).to_ptr< ArrayFloat >()->get(ic1),
-				anOutputTable->at(1).to_ptr< ArrayFloat >()->get(ic1));
+				anOutputTable->at(0).to< ArrayFloat >().get(ic1),
+				anOutputTable->at(1).to< ArrayFloat >().get(ic1));
 
 		intermediateResult2 = linearInterpolation1D(anInput1,
 				anInputTable1->get(0),anInputTable1->get(1),
-				anOutputTable->at(0).to_ptr< ArrayFloat >()->get(ic2),
-				anOutputTable->at(1).to_ptr< ArrayFloat >()->get(ic2));
+				anOutputTable->at(0).to< ArrayFloat >().get(ic2),
+				anOutputTable->at(1).to< ArrayFloat >().get(ic2));
 	}
 	else
 	{
 		intermediateResult1 = linearInterpolation1D(anInput1,
 				anInputTable1->get(index-1),anInputTable1->get(index),
-				anOutputTable->at(index-1).to_ptr< ArrayFloat >()->get(ic1),
-				anOutputTable->at(index).to_ptr< ArrayFloat >()->get(ic1));
+				anOutputTable->at(index-1).to< ArrayFloat >().get(ic1),
+				anOutputTable->at(index).to< ArrayFloat >().get(ic1));
 
 		intermediateResult2 = linearInterpolation1D(anInput1,
 				anInputTable1->get(index-1),anInputTable1->get(index),
-				anOutputTable->at(index-1).to_ptr< ArrayFloat >()->get(ic2),
-				anOutputTable->at(index).to_ptr< ArrayFloat >()->get(ic2));
+				anOutputTable->at(index-1).to< ArrayFloat >().get(ic2),
+				anOutputTable->at(index).to< ArrayFloat >().get(ic2));
 	}
 
 	if ( ic1 == ic2 )
@@ -582,7 +582,7 @@ bool AvmPrimitive_Lookup2D_IntExt::seval(EvaluationEnvironment & ENV)
 	else if( inputValue1.is< InstanceOfData >() ||
 			inputValue2.is< InstanceOfData >() )
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID, "lookup2DIntExt",
+		ENV.outVAL = ENV.create(ENV.outED.getRID(), "lookup2DIntExt",
 				TypeManager::FLOAT, ExpressionConstructor::newCode(
 						ENV.inCODE->getOperator(), inputValue1, inputValue2,
 						inputTable1, inputTable2, outputTable ) );
@@ -591,7 +591,7 @@ bool AvmPrimitive_Lookup2D_IntExt::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC EXPRESSION
 	else
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID, "lookup2DIntExt",
+		ENV.outVAL = ENV.create(ENV.outED.getRID(), "lookup2DIntExt",
 				TypeManager::FLOAT, ExpressionConstructor::newCode(
 						ENV.inCODE->getOperator(), inputValue1, inputValue2,
 						inputTable1, inputTable2, outputTable ) );
@@ -618,7 +618,7 @@ bool AvmPrimitive_Lookup2D_IntExt::seval(EvaluationEnvironment & ENV)
 	// CASE of SYMBOLIC EXPRESSION
 	else
 	{
-		ENV.outVAL = ENV.create(ENV.outED->mRID, "lookup2DIntExt",
+		ENV.outVAL = ENV.create(ENV.outED.getRID(), "lookup2DIntExt",
 				TypeManager::FLOAT, ExpressionConstructor::newCode(
 						ENV.inCODE->getOperator(), inputValue1, inputValue2,
 						inputTable1, inputTable2, outputTable ) );

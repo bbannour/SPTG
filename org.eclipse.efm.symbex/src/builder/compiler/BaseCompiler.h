@@ -100,7 +100,7 @@ public:
 	 * GETTER
 	 * mConfiguration
 	 */
-	inline Configuration & getConfiguration()
+	inline Configuration & getConfiguration() const
 	{
 		return( mConfiguration );
 	}
@@ -110,7 +110,7 @@ public:
 	 * GETTER
 	 * theSymbolTable
 	 */
-	inline SymbolTable & getSymbolTable()
+	inline SymbolTable & getSymbolTable() const
 	{
 		return( mCompilerTable.getSymbolTable() );
 	}
@@ -119,7 +119,7 @@ public:
 	 * GETTER
 	 * theErrorCount
 	 */
-	inline avm_size_t getErrorCount()
+	inline std::size_t getErrorCount() const
 	{
 		return( mCompilerTable.getErrorCount() );
 	}
@@ -134,7 +134,7 @@ public:
 		return( mCompilerTable.hasZeroError() );
 	}
 
-	inline avm_size_t incrErrorCount()
+	inline std::size_t incrErrorCount()
 	{
 		return( mCompilerTable.incrErrorCount() );
 	}
@@ -144,7 +144,7 @@ public:
 	 * GETTER
 	 * theWarningCount
 	 */
-	inline avm_size_t getWarningCount()
+	inline std::size_t getWarningCount() const
 	{
 		return( mCompilerTable.getWarningCount() );
 	}
@@ -159,7 +159,7 @@ public:
 		return( mCompilerTable.hasZeroWarning() );
 	}
 
-	inline avm_size_t incrWarningCount()
+	inline std::size_t incrWarningCount()
 	{
 		return( mCompilerTable.incrWarningCount() );
 	}
@@ -204,35 +204,35 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 
 	void precompileTypeSpecifier(
-			AvmProgram * aContainer, const BF & aDataType);
+			AvmProgram & aContainer, const BF & aDataType) const;
 
 
 	TypeSpecifier compileTypeSpecifier(
-			AvmProgram * aContainer, const std::string & aTypeID);
+			AvmProgram & aContainer, const std::string & aTypeID) const;
 
 	TypeSpecifier compileTypeSpecifier(
-			AvmProgram * aContainer, const BF & bfType);
+			AvmProgram & aContainer, const BF & bfType) const;
 
 	TypeSpecifier compileStructureSpecifier(
-			AvmProgram * aContainer, DataType * aStructureT);
+			AvmProgram & aContainer, const DataType & aStructureT) const;
 
 	TypeSpecifier compileChoiceSpecifier(
-			AvmProgram * aContainer, DataType * aChoiceT);
+			AvmProgram & aContainer, const DataType & aChoiceT) const;
 
 	TypeSpecifier compileUnionSpecifier(
-			AvmProgram * aContainer, DataType * anUnionT);
+			AvmProgram & aContainer, const DataType & anUnionT) const;
 
 	TypeSpecifier compileContainerSpecifier(
-			AvmProgram * aContainer, DataType * aCollectionT);
+			AvmProgram & aContainer, const DataType & aCollectionT) const;
 
 	TypeSpecifier compileIntervalSpecifier(
-			AvmProgram * aContainer, DataType * anIntervalT);
+			AvmProgram & aContainer, const DataType & anIntervalT) const;
 
 	TypeSpecifier compileEnumerationSpecifier(
-			AvmProgram * aContainer, DataType * anEnumT);
+			AvmProgram & aContainer, const DataType & anEnumT) const;
 
 	TypeSpecifier compileTypeAliasSpecifier(
-			AvmProgram * aContainer, DataType * aDataType);
+			AvmProgram & aContainer, const DataType & aDataType) const;
 
 
 

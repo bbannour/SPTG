@@ -121,43 +121,43 @@ public:
 	 * CONSTRUCTOR
 	 * Builtin
 	 */
-//	// avm_int8_t
-//	Numeric(avm_int8_t aNumber)
+//	// std::int8_t
+//	Numeric(std::int8_t aNumber)
 //	: base_this_type( new Integer( aNumber ) )
 //	{
 //		//!! NOTHING
 //	}
 //
-//	// avm_uint8_t
-//	Numeric(avm_uint8_t aNumber)
+//	// std::uint8_t
+//	Numeric(std::uint8_t aNumber)
 //	: base_this_type( new Integer( aNumber ) )
 //	{
 //		//!! NOTHING
 //	}
 //
-//	// avm_int16_t
-//	Numeric(avm_int16_t aNumber)
+//	// std::int16_t
+//	Numeric(std::int16_t aNumber)
 //	: base_this_type( new Integer( aNumber ) )
 //	{
 //		//!! NOTHING
 //	}
 //
-//	// avm_uint16_t
-//	Numeric(avm_uint16_t aNumber)
+//	// std::uint16_t
+//	Numeric(std::uint16_t aNumber)
 //	: base_this_type( new Integer( aNumber ) )
 //	{
 //		//!! NOTHING
 //	}
 //
-//	// avm_int32_t
-//	Numeric(avm_int32_t aNumber)
+//	// std::int32_t
+//	Numeric(std::int32_t aNumber)
 //	: base_this_type( new Integer( aNumber ) )
 //	{
 //		//!! NOTHING
 //	}
 //
-//	// avm_uint32_t
-//	Numeric(avm_uint32_t aNumber)
+//	// std::uint32_t
+//	Numeric(std::uint32_t aNumber)
 //	: base_this_type( new Integer( aNumber ) )
 //	{
 //		//!! NOTHING
@@ -195,7 +195,7 @@ public:
 
 #endif /* _AVM_NEED_INT64_T_OVERLOADS_ */
 
-	// avm_integer_t  i.e.  avm_int64_t
+	// avm_integer_t  i.e.  std::int64_t
 	Numeric(avm_integer_t aNumber)
 	: base_this_type( new Integer( aNumber ) )
 	{
@@ -216,28 +216,28 @@ public:
 		//!! NOTHING
 	}
 
-	// avm_integer_t / avm_integer_t  i.e.  avm_int64_t / avm_int64_t
+	// avm_integer_t / avm_integer_t  i.e.  std::int64_t / std::int64_t
 	Numeric(avm_integer_t aNumerator, avm_integer_t aDenominator)
 	: base_this_type( new Rational(aNumerator, aDenominator) )
 	{
 		//!! NOTHING
 	}
 
-	// avm_uinteger_t / avm_integer_t  i.e.  avm_uint64_t / avm_int64_t
+	// avm_uinteger_t / avm_integer_t  i.e.  std::uint64_t / std::int64_t
 	Numeric(avm_uinteger_t aNumerator, avm_integer_t aDenominator)
 	: base_this_type( new Rational(aNumerator, aDenominator) )
 	{
 		//!! NOTHING
 	}
 
-	// avm_integer_t / avm_uinteger_t  i.e.  avm_int64_t / avm_uint64_t
+	// avm_integer_t / avm_uinteger_t  i.e.  std::int64_t / std::uint64_t
 	Numeric(avm_integer_t aNumerator, avm_uinteger_t aDenominator)
 	: base_this_type( new Rational(aNumerator, aDenominator) )
 	{
 		//!! NOTHING
 	}
 
-	// std::string / avm_integer_t  i.e.  std::string / avm_int64_t
+	// std::string / avm_integer_t  i.e.  std::string / std::int64_t
 	Numeric(const std::string & aNumerator, avm_integer_t aDenominator)
 	: base_this_type( new Rational(aNumerator, aDenominator) )
 	{
@@ -371,13 +371,13 @@ public:
 	template<class T >
 	inline bool is() const
 	{
-		return( (mPTR != NULL) && mPTR->is< T >() );
+		return( (mPTR != nullptr) && mPTR->is< T >() );
 	}
 
 	template< class T >
-	inline const T & to_ref() const
+	inline const T & to() const
 	{
-		return( mPTR->to_ref< T >() );
+		return( mPTR->to< T >() );
 	}
 
 
@@ -420,38 +420,38 @@ public:
 		return( this->operator=( Numeric( aNumber ) ) );
 	}
 
-//	// avm_int8_t
-//	inline Numeric & operator=(avm_int8_t aNumber)
+//	// std::int8_t
+//	inline Numeric & operator=(std::int8_t aNumber)
 //	{
 //		return( this->operator=( Numeric( aNumber ) ) );
 //	}
 //
-//	// avm_uint8_t
-//	inline Numeric & operator=(avm_uint8_t aNumber)
+//	// std::uint8_t
+//	inline Numeric & operator=(std::uint8_t aNumber)
 //	{
 //		return( this->operator=( Numeric( aNumber ) ) );
 //	}
 //
-//	// avm_int16_t
-//	inline Numeric & operator=(avm_int16_t aNumber)
+//	// std::int16_t
+//	inline Numeric & operator=(std::int16_t aNumber)
 //	{
 //		return( this->operator=( Numeric( aNumber ) ) );
 //	}
 //
-//	// avm_uint16_t
-//	inline Numeric & operator=(avm_uint16_t aNumber)
+//	// std::uint16_t
+//	inline Numeric & operator=(std::uint16_t aNumber)
 //	{
 //		return( this->operator=( Numeric( aNumber ) ) );
 //	}
 //
-//	// avm_int32_t
-//	inline Numeric & operator=(avm_int32_t aNumber)
+//	// std::int32_t
+//	inline Numeric & operator=(std::int32_t aNumber)
 //	{
 //		return( this->operator=( Numeric( aNumber ) ) );
 //	}
 //
-//	// avm_uint32_t
-//	inline Numeric & operator=(avm_uint32_t aNumber)
+//	// std::uint32_t
+//	inline Numeric & operator=(std::uint32_t aNumber)
 //	{
 //		return( this->operator=( Numeric( aNumber ) ) );
 //	}
@@ -573,7 +573,7 @@ public:
 		return( mPTR->isInt32() );
 	}
 
-	inline avm_int32_t toInt32() const
+	inline std::int32_t toInt32() const
 	{
 		return( mPTR->toInt32() );
 	}
@@ -584,7 +584,7 @@ public:
 		return( mPTR->isInt64() );
 	}
 
-	inline avm_int64_t toInt64() const
+	inline std::int64_t toInt64() const
 	{
 		return( mPTR->toInt64() );
 	}
@@ -699,7 +699,7 @@ public:
 
 	inline bool isEQ(const BF & anExpression) const
 	{
-		return( this->operator==( anExpression.as_ref< Number >() ) );
+		return( this->operator==( anExpression.as< Number >() ) );
 	}
 
 
@@ -715,7 +715,7 @@ public:
 
 	inline bool isNEQ(const BF & anExpression) const
 	{
-		return( this->operator!=( anExpression.as_ref< Number >() ) );
+		return( this->operator!=( anExpression.as< Number >() ) );
 	}
 
 
@@ -731,7 +731,7 @@ public:
 
 	inline bool strEQ(const BF & anExpression) const
 	{
-		return( this->operator==( anExpression.as_ref< Number >() ) );
+		return( this->operator==( anExpression.as< Number >() ) );
 	}
 
 
@@ -747,7 +747,7 @@ public:
 
 	inline bool strNEQ(const BF & anExpression) const
 	{
-		return( this->operator!=( anExpression.as_ref< Number >() ) );
+		return( this->operator!=( anExpression.as< Number >() ) );
 	}
 
 
@@ -759,11 +759,11 @@ public:
 	switch( numeric.classKind() ) \
 	{ \
 		case FORM_BUILTIN_INTEGER_KIND:  \
-			return( op(number, numeric.to_ref< Integer  >()) ); \
+			return( op(number, numeric.to< Integer  >()) ); \
 		case FORM_BUILTIN_RATIONAL_KIND: \
-			return( op(number, numeric.to_ref< Rational >()) ); \
+			return( op(number, numeric.to< Rational >()) ); \
 		case FORM_BUILTIN_FLOAT_KIND:    \
-			return( op(number, numeric.to_ref< Float    >()) ); \
+			return( op(number, numeric.to< Float    >()) ); \
 		default: \
 		{ \
 			AVM_OS_FATAL_ERROR_EXIT << "Unexpected a <Numeric> type info << " \
@@ -776,11 +776,11 @@ public:
 	switch( N1.classKind() ) \
 	{ \
 		case FORM_BUILTIN_INTEGER_KIND:  \
-			BOOL_OPERATION_AUX(op, N1.to_ref< Integer  >(), N2) \
+			BOOL_OPERATION_AUX(op, N1.to< Integer  >(), N2) \
 		case FORM_BUILTIN_RATIONAL_KIND: \
-			BOOL_OPERATION_AUX(op, N1.to_ref< Rational >(), N2) \
+			BOOL_OPERATION_AUX(op, N1.to< Rational >(), N2) \
 		case FORM_BUILTIN_FLOAT_KIND:    \
-			BOOL_OPERATION_AUX(op, N1.to_ref< Float    >(), N2) \
+			BOOL_OPERATION_AUX(op, N1.to< Float    >(), N2) \
 		default: \
 		{ \
 			AVM_OS_FATAL_ERROR_EXIT << "Unexpected a <Numeric> type info << " \
@@ -821,7 +821,7 @@ public:
 		}
 
 		BOOL_OPERATION( sep::numeric::compare ,
-				(*this) , anExpression.as_ref< Number >() )
+				(*this) , anExpression.as< Number >() )
 	}
 
 
@@ -856,7 +856,7 @@ public:
 		}
 
 		BOOL_OPERATION( sep::numeric::operator== ,
-				(*this) , anExpression.as_ref< Number >() )
+				(*this) , anExpression.as< Number >() )
 	}
 
 
@@ -891,7 +891,7 @@ public:
 		}
 
 		BOOL_OPERATION( sep::numeric::operator!= ,
-				(*this) , anExpression.as_ref< Number >() )
+				(*this) , anExpression.as< Number >() )
 	}
 
 
@@ -926,7 +926,7 @@ public:
 		}
 
 		BOOL_OPERATION( sep::numeric::operator< ,
-				(*this) , anExpression.as_ref< Number >() )
+				(*this) , anExpression.as< Number >() )
 	}
 
 	/**
@@ -960,7 +960,7 @@ public:
 		}
 
 		BOOL_OPERATION( sep::numeric::operator<= ,
-				(*this) , anExpression.as_ref< Number >() )
+				(*this) , anExpression.as< Number >() )
 	}
 
 
@@ -995,7 +995,7 @@ public:
 		}
 
 		BOOL_OPERATION( sep::numeric::operator> ,
-				(*this) , anExpression.as_ref< Number >() )
+				(*this) , anExpression.as< Number >() )
 	}
 
 
@@ -1030,7 +1030,7 @@ public:
 		}
 
 		BOOL_OPERATION( sep::numeric::operator>= ,
-				(*this) , anExpression.as_ref< Number >() )
+				(*this) , anExpression.as< Number >() )
 	}
 
 
@@ -1042,11 +1042,11 @@ public:
 	switch( numeric.classKind() )  \
 	{ \
 		case FORM_BUILTIN_INTEGER_KIND:  \
-			return( Numeric( op(number, numeric.to_ref< Integer  >()) ) ); \
+			return( Numeric( op(number, numeric.to< Integer  >()) ) ); \
 		case FORM_BUILTIN_RATIONAL_KIND: \
-			return( Numeric( op(number, numeric.to_ref< Rational >()) ) ); \
+			return( Numeric( op(number, numeric.to< Rational >()) ) ); \
 		case FORM_BUILTIN_FLOAT_KIND:    \
-			return( Numeric( op(number, numeric.to_ref< Float    >()) ) ); \
+			return( Numeric( op(number, numeric.to< Float    >()) ) ); \
 		default: \
 		{ \
 			AVM_OS_FATAL_ERROR_EXIT << "Unexpected a <Numeric> type info << " \
@@ -1059,11 +1059,11 @@ public:
 	switch( N1.classKind() )  \
 	{ \
 		case FORM_BUILTIN_INTEGER_KIND:  \
-			ARITHMETIC_OPERATION_AUX(op, N1.to_ref< Integer  >(), N2) \
+			ARITHMETIC_OPERATION_AUX(op, N1.to< Integer  >(), N2) \
 		case FORM_BUILTIN_RATIONAL_KIND: \
-			ARITHMETIC_OPERATION_AUX(op, N1.to_ref< Rational >(), N2) \
+			ARITHMETIC_OPERATION_AUX(op, N1.to< Rational >(), N2) \
 		case FORM_BUILTIN_FLOAT_KIND:    \
-			ARITHMETIC_OPERATION_AUX(op, N1.to_ref< Float    >(), N2) \
+			ARITHMETIC_OPERATION_AUX(op, N1.to< Float    >(), N2) \
 		default: \
 		{ \
 			AVM_OS_FATAL_ERROR_EXIT << "Unexpected a <Numeric> type info << " \
@@ -1076,11 +1076,11 @@ public:
 	switch( N.classKind() )  \
 	{ \
 		case FORM_BUILTIN_INTEGER_KIND:  \
-			return( Numeric( op(N.to_ref< Integer  >()) ) ); \
+			return( Numeric( op(N.to< Integer  >()) ) ); \
 		case FORM_BUILTIN_RATIONAL_KIND: \
-			return( Numeric( op(N.to_ref< Rational >()) ) ); \
+			return( Numeric( op(N.to< Rational >()) ) ); \
 		case FORM_BUILTIN_FLOAT_KIND:    \
-			return( Numeric( op(N.to_ref< Float    >()) ) ); \
+			return( Numeric( op(N.to< Float    >()) ) ); \
 		default: \
 		{ \
 			AVM_OS_FATAL_ERROR_EXIT << "Unexpected a <Numeric> type info << " \
@@ -1093,11 +1093,11 @@ public:
 	switch( numeric.classKind() )  \
 	{ \
 		case FORM_BUILTIN_INTEGER_KIND:  \
-			return( Numeric( op(numeric.to_ref< Integer  >(), number) ) ); \
+			return( Numeric( op(numeric.to< Integer  >(), number) ) ); \
 		case FORM_BUILTIN_RATIONAL_KIND: \
-			return( Numeric( op(numeric.to_ref< Rational >(), number) ) ); \
+			return( Numeric( op(numeric.to< Rational >(), number) ) ); \
 		case FORM_BUILTIN_FLOAT_KIND:    \
-			return( Numeric( op(numeric.to_ref< Float    >(), number) ) ); \
+			return( Numeric( op(numeric.to< Float    >(), number) ) ); \
 		default: \
 		{ \
 			AVM_OS_FATAL_ERROR_EXIT << "Unexpected a <Numeric> type info << " \
@@ -1132,7 +1132,7 @@ public:
 
 	inline Numeric operator+(const BF & anExpression) const
 	{
-		return( this->operator+( anExpression.as_ref< Number >() ) );
+		return( this->operator+( anExpression.as< Number >() ) );
 	}
 
 	// operator+=
@@ -1222,7 +1222,7 @@ public:
 
 	inline Numeric operator-(const BF & anExpression) const
 	{
-		return( this->operator-( anExpression.as_ref< Number >() ) );
+		return( this->operator-( anExpression.as< Number >() ) );
 	}
 
 	// operator-=
@@ -1266,7 +1266,7 @@ public:
 
 	inline Numeric operator*(const BF & anExpression) const
 	{
-		return( this->operator*( anExpression.as_ref< Number >() ) );
+		return( this->operator*( anExpression.as< Number >() ) );
 	}
 
 	// operator*=
@@ -1295,8 +1295,78 @@ public:
 			return( *this );
 		}
 
-		ARITHMETIC_OPERATION( sep::numeric::operator/ , (*this) , aNumeric )
+//		ARITHMETIC_OPERATION( sep::numeric::operator/ , (*this) , aNumeric )
+		switch( (*this).classKind() )
+		{
+			case FORM_BUILTIN_INTEGER_KIND:
+				switch( aNumeric.classKind() )
+				{
+					case FORM_BUILTIN_INTEGER_KIND:
+					{
+						Rational result = sep::numeric::operator/((*this).to< Integer  >(), aNumeric.to< Integer  >());
+
+						return( (result.toDenominator() == 1) ? Numeric( result.getNumerator() ) : Numeric( result ) );
+					}
+					case FORM_BUILTIN_RATIONAL_KIND:
+					{
+						Rational result = sep::numeric::operator/((*this).to< Integer  >(), aNumeric.to< Rational >());
+
+						return( (result.toDenominator() == 1) ? Numeric( result.getNumerator() ) : Numeric( result ) );
+					}
+					case FORM_BUILTIN_FLOAT_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Integer  >(), aNumeric.to< Float    >()) ) );
+					default:
+					{
+						osAssert( AVM_EXIT_FATAL_ERROR_CODE, "FATAL_ERROR", "C:_myWorks_gitintraorg.eclipse.efm-symbexorg.eclipse.efm.symbexsrcfmlnumericNumeric.h", 1308 ) << "Unexpected a <Numeric> type info << "
+								<< aNumeric.classKindInfo() << " >> !!!" << SEND_EXIT;
+						return( Numeric(0) );
+					}
+				}
+			case FORM_BUILTIN_RATIONAL_KIND:
+				switch( aNumeric.classKind() )
+				{
+					case FORM_BUILTIN_INTEGER_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Rational >(), aNumeric.to< Integer  >()) ) );
+					case FORM_BUILTIN_RATIONAL_KIND:
+					{
+						Rational result = sep::numeric::operator/((*this).to< Rational  >(), aNumeric.to< Rational >());
+
+						return( (result.toDenominator() == 1) ? Numeric( result.getNumerator() ) : Numeric( result ) );
+					}
+					case FORM_BUILTIN_FLOAT_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Rational >(), aNumeric.to< Float    >()) ) );
+					default:
+					{
+						osAssert( AVM_EXIT_FATAL_ERROR_CODE, "FATAL_ERROR", "C:_myWorks_gitintraorg.eclipse.efm-symbexorg.eclipse.efm.symbexsrcfmlnumericNumeric.h", 1308 ) << "Unexpected a <Numeric> type info << "
+								<< aNumeric.classKindInfo() << " >> !!!" << SEND_EXIT;
+						return( Numeric(0) );
+					}
+				}
+			case FORM_BUILTIN_FLOAT_KIND:
+				switch( aNumeric.classKind() )
+				{
+					case FORM_BUILTIN_INTEGER_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Float    >(), aNumeric.to< Integer  >()) ) );
+					case FORM_BUILTIN_RATIONAL_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Float    >(), aNumeric.to< Rational >()) ) );
+					case FORM_BUILTIN_FLOAT_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Float    >(), aNumeric.to< Float    >()) ) );
+					default:
+					{
+						osAssert( AVM_EXIT_FATAL_ERROR_CODE, "FATAL_ERROR", "C:_myWorks_gitintraorg.eclipse.efm-symbexorg.eclipse.efm.symbexsrcfmlnumericNumeric.h", 1308 ) << "Unexpected a <Numeric> type info << "
+								<< aNumeric.classKindInfo() << " >> !!!" << SEND_EXIT;
+						return( Numeric(0) );
+					}
+				}
+			default:
+			{
+				osAssert( AVM_EXIT_FATAL_ERROR_CODE, "FATAL_ERROR", "C:_myWorks_gitintraorg.eclipse.efm-symbexorg.eclipse.efm.symbexsrcfmlnumericNumeric.h", 1308 ) << "Unexpected a <Numeric> type info << "
+						<< (*this).classKindInfo() << " >> !!!" << SEND_EXIT;
+				return( Numeric(0) );
+			}
+		}
 	}
+
 
 	inline Numeric operator/(const Number & aNumber) const
 	{
@@ -1305,12 +1375,81 @@ public:
 			return( *this );
 		}
 
-		ARITHMETIC_OPERATION( sep::numeric::operator/ , (*this) , aNumber )
+//		ARITHMETIC_OPERATION( sep::numeric::operator/ , (*this) , aNumber )
+		switch( (*this).classKind() )
+		{
+			case FORM_BUILTIN_INTEGER_KIND:
+				switch( aNumber.classKind() )
+				{
+					case FORM_BUILTIN_INTEGER_KIND:
+					{
+						Rational result = sep::numeric::operator/((*this).to< Integer  >(), aNumber.to< Integer  >());
+
+						return( (result.toDenominator() == 1) ? Numeric( result.getNumerator() ) : Numeric( result ) );
+					}
+					case FORM_BUILTIN_RATIONAL_KIND:
+					{
+						Rational result = sep::numeric::operator/((*this).to< Integer  >(), aNumber.to< Rational >());
+
+						return( (result.toDenominator() == 1) ? Numeric( result.getNumerator() ) : Numeric( result ) );
+					}
+					case FORM_BUILTIN_FLOAT_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Integer  >(), aNumber.to< Float    >()) ) );
+					default:
+					{
+						osAssert( AVM_EXIT_FATAL_ERROR_CODE, "FATAL_ERROR", "C:_myWorks_gitintraorg.eclipse.efm-symbexorg.eclipse.efm.symbexsrcfmlnumericNumeric.h", 1308 ) << "Unexpected a <Numeric> type info << "
+								<< aNumber.classKindInfo() << " >> !!!" << SEND_EXIT;
+						return( Numeric(0) );
+					}
+				}
+			case FORM_BUILTIN_RATIONAL_KIND:
+				switch( aNumber.classKind() )
+				{
+					case FORM_BUILTIN_INTEGER_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Rational >(), aNumber.to< Integer  >()) ) );
+					case FORM_BUILTIN_RATIONAL_KIND:
+					{
+						Rational result = sep::numeric::operator/((*this).to< Rational  >(), aNumber.to< Rational >());
+
+						return( (result.toDenominator() == 1) ? Numeric( result.getNumerator() ) : Numeric( result ) );
+					}
+					case FORM_BUILTIN_FLOAT_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Rational >(), aNumber.to< Float    >()) ) );
+					default:
+					{
+						osAssert( AVM_EXIT_FATAL_ERROR_CODE, "FATAL_ERROR", "C:_myWorks_gitintraorg.eclipse.efm-symbexorg.eclipse.efm.symbexsrcfmlnumericNumeric.h", 1308 ) << "Unexpected a <Numeric> type info << "
+								<< aNumber.classKindInfo() << " >> !!!" << SEND_EXIT;
+						return( Numeric(0) );
+					}
+				}
+			case FORM_BUILTIN_FLOAT_KIND:
+				switch( aNumber.classKind() )
+				{
+					case FORM_BUILTIN_INTEGER_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Float    >(), aNumber.to< Integer  >()) ) );
+					case FORM_BUILTIN_RATIONAL_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Float    >(), aNumber.to< Rational >()) ) );
+					case FORM_BUILTIN_FLOAT_KIND:
+						return( Numeric( sep::numeric::operator/((*this).to< Float    >(), aNumber.to< Float    >()) ) );
+					default:
+					{
+						osAssert( AVM_EXIT_FATAL_ERROR_CODE, "FATAL_ERROR", "C:_myWorks_gitintraorg.eclipse.efm-symbexorg.eclipse.efm.symbexsrcfmlnumericNumeric.h", 1308 ) << "Unexpected a <Numeric> type info << "
+								<< aNumber.classKindInfo() << " >> !!!" << SEND_EXIT;
+						return( Numeric(0) );
+					}
+				}
+			default:
+			{
+				osAssert( AVM_EXIT_FATAL_ERROR_CODE, "FATAL_ERROR", "C:_myWorks_gitintraorg.eclipse.efm-symbexorg.eclipse.efm.symbexsrcfmlnumericNumeric.h", 1308 ) << "Unexpected a <Numeric> type info << "
+						<< (*this).classKindInfo() << " >> !!!" << SEND_EXIT;
+				return( Numeric(0) );
+			}
+		}
 	}
 
 	inline Numeric operator/(const BF & anExpression) const
 	{
-		return( this->operator/( anExpression.as_ref< Number >() ) );
+		return( this->operator/( anExpression.as< Number >() ) );
 	}
 
 	// operator/=
@@ -1326,6 +1465,16 @@ public:
 		this->operator=( this->operator/( anExpression ) );
 
 		return( *this );
+	}
+
+
+	/**
+	 * operator/
+	 */
+	inline Numeric operator%(const Numeric & aNumeric) const
+	{
+		return( Numeric( sep::numeric::operator%(
+				(*this).to< Integer  >(), aNumeric.to< Integer >()) ) );
 	}
 
 
@@ -1406,6 +1555,11 @@ public:
 	inline Numeric div(const Numeric & arg)
 	{
 		return( this->operator/( arg ) );
+	}
+
+	inline Numeric mod(const Numeric & arg)
+	{
+		return( this->operator%( arg ) );
 	}
 
 	inline Numeric inv()

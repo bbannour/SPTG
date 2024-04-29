@@ -77,24 +77,24 @@ bool WPropertyImpl::hasArrayValue() const
 }
 
 
-std::string WPropertyImpl::toStringValue(BuiltinArray * anArray, avm_size_t offset) const
+std::string WPropertyImpl::toStringValue(BuiltinArray * anArray, std::size_t offset) const
 {
 	if( anArray->is< ArrayString >() )
 	{
-		return( anArray->to< ArrayString >()->get(offset) );
+		return( anArray->to_ptr< ArrayString >()->get(offset) );
 
 		//!! No because of default quote char like: "string"
-//		return( anArray->to< ArrayString >()->str(offset) );
+//		return( anArray->to_ptr< ArrayString >()->str(offset) );
 	}
 
 	else if( anArray->is< ArrayBF >() )
 	{
-		return( toStringValue( anArray->to< ArrayBF >()->at(offset) ) );
+		return( toStringValue( anArray->to_ptr< ArrayBF >()->at(offset) ) );
 	}
 
 	else if( getValue().is< BuiltinArray >() )
 	{
-		return( anArray->to< BuiltinArray >()->str(offset) );
+		return( anArray->to_ptr< BuiltinArray >()->str(offset) );
 	}
 
 	else

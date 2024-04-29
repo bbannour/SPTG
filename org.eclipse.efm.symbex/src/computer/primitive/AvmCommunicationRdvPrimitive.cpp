@@ -19,8 +19,8 @@
 #include <computer/ExecutionEnvironment.h>
 
 #include <computer/primitive/AvmSynchronizationFactory.h>
+#include <fml/executable/InstanceOfConnector.h>
 
-#include <fml/executable/InstanceOfConnect.h>
 #include <fml/executable/InstanceOfMachine.h>
 #include <fml/executable/InstanceOfPort.h>
 #include <fml/executable/RoutingData.h>
@@ -42,64 +42,26 @@ namespace sep
 {
 
 
-static void print_trace(const APExecutionData & anED, OutStream & os)
+static void print_trace(const ListOfExecutionData & listofWaitingRDV,
+		OutStream & out)
 {
-	if( anED.invalid() )
+	for( const auto & itED : listofWaitingRDV )
 	{
-		return;
-	}
+		itED.printExecSyncPointTrace( out );
 
-	os << TAB << "ED@" << anED.raw_address();
-
-	if( anED->mEXEC_SYNC_POINT != NULL )
-	{
-		os << " RD_" << anED->mEXEC_SYNC_POINT->mRoutingData.raw_address()
-			<< " C_" << avm_address_t(
-					anED->mEXEC_SYNC_POINT->mRoutingData.getConnect())
-			<< "< mid:" << anED->mEXEC_SYNC_POINT->mRoutingData.getMID()
-			<< " > " << anED->mEXEC_SYNC_POINT->mRoutingData
-					.getMachine()->getFullyQualifiedNameID()
-			<< ( (anED->mEXEC_SYNC_POINT->isInput())? " <== " : " ==> " )
-			<< anED->mEXEC_SYNC_POINT->mRoutingData
-					.getPort()->getFullyQualifiedNameID()
-
-			<< " " << anED->getRunnableElementTrace().str();
-	}
-	else
-	{
-		os << " " << anED->getIOElementTrace().str();
-	}
-
-	os << EOL_FLUSH;
-}
-
-
-static void print_trace(const ListOfAPExecutionData & listofWaitingRDV,
-		OutStream & os)
-{
-	ListOfAPExecutionData::const_iterator itED = listofWaitingRDV.begin();
-	ListOfAPExecutionData::const_iterator endED = listofWaitingRDV.end();
-
-	for( ; itED != endED ; ++itED )
-	{
-		print_trace((*itED), os);
-
-//		(*itED)->mEXEC_SYNC_POINT->toStream(AVM_OS_TRACE, TAB + "\t", "\t", "\n");
+//		itED.getExecSyncPoint()->toStream(out, TAB + "\t", "\t", "\n");
 	}
 }
 
 
-static void print_trace(const VectorOfAPExecutionData & tableofWaitingRDV,
-		OutStream & os)
+static void print_trace(const VectorOfExecutionData & tableofWaitingRDV,
+		OutStream & out)
 {
-	VectorOfAPExecutionData::const_iterator itED = tableofWaitingRDV.begin();
-	VectorOfAPExecutionData::const_iterator endED = tableofWaitingRDV.end();
-
-	for( ; itED != endED ; ++itED )
+	for( const auto & itED : tableofWaitingRDV )
 	{
-		print_trace((*itED), os);
+		itED.printExecSyncPointTrace( out );
 
-//		(*itED)->mEXEC_SYNC_POINT->toStream(AVM_OS_TRACE, TAB + "\t", "\t", "\n");
+//		itED.getExecSyncPoint()->toStream(out, TAB + "\t", "\t", "\n");
 	}
 }
 
@@ -113,7 +75,7 @@ RdvConfigurationData * RdvConfigurationData::fusion(RdvConfigurationData * aRdvC
 {
 	RdvConfigurationData * aFusionRdvConf = new RdvConfigurationData(*this, aRdvConf);
 
-	for( avm_size_t idx = 0 ; idx < mMachineCount ; ++idx )
+	for( std::size_t idx = 0 ; idx < mMachineCount ; ++idx )
 	{
 		IN_ED_RDV[ idx ].append( aRdvConf->IN_ED_RDV[ idx ] );
 		OUT_ED_RDV[ idx ].append( aRdvConf->OUT_ED_RDV[ idx ] );
@@ -138,7 +100,7 @@ RdvConfigurationData * RdvConfigurationData::fusion(RdvConfigurationData * aRdvC
 // RESIZE
 ////////////////////////////////////////////////////////////////////////////////
 
-void RdvConfigurationData::resize(avm_size_t newSize)
+void RdvConfigurationData::resize(std::size_t newSize)
 {
 	AVM_OS_ASSERT_FATAL_ERROR_EXIT( newSize <= mMachineCount )
 			<< "Unexpected machine count for RDV Configuration Data !!!"
@@ -169,22 +131,22 @@ void RdvConfigurationData::resize(avm_size_t newSize)
 
 bool RdvConfigurationData::isMultiRdvComplete()
 {
-	avm_size_t inCount = 0;
-	avm_size_t outCount = 0;
+	std::size_t inCount = 0;
+	std::size_t outCount = 0;
 
-	APExecutionData anED;
+	ExecutionData anED;
 
-	for( avm_size_t idx = 0 ; idx < mMachineCount; ++idx )
+	for( std::size_t idx = 0 ; idx < mMachineCount; ++idx )
 	{
 		if( mAwaitingMultiRdvEDS[ idx ].valid() )
 		{
 			anED = mAwaitingMultiRdvEDS[ idx ];
 
-			if( anED->mEXEC_SYNC_POINT->isOutput() )
+			if( anED.getExecSyncPoint()->isOutput() )
 			{
 				++outCount;
 			}
-			else //if( anED->mEXEC_SYNC_POINT->isInput() )
+			else //if( anED.getExecSyncPoint()->isInput() )
 			{
 				++inCount;
 			}
@@ -192,10 +154,10 @@ bool RdvConfigurationData::isMultiRdvComplete()
 	}
 
 
-	ComRouteData & outputComRoute = anED->mEXEC_SYNC_POINT->
-			mRoutingData.getConnect()->getOutputComRouteData();
+	const InstanceOfConnector & aConnector =
+			anED.getExecSyncPoint()->mRoutingData.getConnector();
 
-	switch( outputComRoute.getCast() )
+	switch( aConnector.getOutputProtocolCast() )
 	{
 		case ComProtocol::PROTOCOL_UNICAST_KIND:
 		{
@@ -209,7 +171,7 @@ bool RdvConfigurationData::isMultiRdvComplete()
 
 		case ComProtocol::PROTOCOL_MULTICAST_KIND:
 		{
-			if( outCount != outputComRoute.getMachinePorts().size() )
+			if( outCount != aConnector.sizeOutputMachinePort() )
 			{
 				return( false );
 			}
@@ -229,10 +191,7 @@ bool RdvConfigurationData::isMultiRdvComplete()
 		}
 	}
 
-	ComRouteData & inputComRoute = anED->mEXEC_SYNC_POINT->
-			mRoutingData.getConnect()->getInputComRouteData();
-
-	switch( inputComRoute.getCast() )
+	switch( aConnector.getInputProtocolCast() )
 	{
 		case ComProtocol::PROTOCOL_UNICAST_KIND:
 		{
@@ -245,7 +204,7 @@ bool RdvConfigurationData::isMultiRdvComplete()
 
 		case ComProtocol::PROTOCOL_MULTICAST_KIND:
 		{
-			if( inCount != inputComRoute.getMachinePorts().size() )
+			if( inCount != aConnector.sizeInputMachinePort() )
 			{
 				return( false );
 			}
@@ -266,12 +225,10 @@ bool RdvConfigurationData::isMultiRdvComplete()
 	}
 
 //	return( (outCount == 1) && (inCount > 0) &&
-//			anED->mEXEC_SYNC_POINT->mRoutingData.getConnect()->
-//				getInputComRouteData().getMachinePorts().size() == (1 + inCount) );
+//			aConnector.sizeOutputMachinePort() == (1 + inCount) );
 
-//	return( (anED->mEXEC_SYNC_POINT->mRoutingData.getConnect()->getOutputPort().size()
-//			+ anED->mEXEC_SYNC_POINT->mRoutingData.getConnect()->
-//				getInputComRouteData().getMachinePorts().size()) == count );
+//	return( (aConnector.sizeOutputMachinePort()
+//			+ aConnector.sizeInputMachinePort()) == count );
 
 	return( true );
 }
@@ -293,11 +250,11 @@ void RdvConfigurationData::toStream(OutStream & os) const
 	os << "AwaitingInputMulti :> " << mAwaitingInputMultiRdvFlag << std::endl;
 	os << "AwaitingOutpuMulti :> " << mAwaitingOutputMultiRdvFlag << std::endl;
 
-	os << "Permformed RDV?    :> " << hasPerformedRdvFlag << std::endl;
-	os << "Internal RDV?      :> " << hasPossibleInternalRdvFlag << std::endl;
-	os << "Internal MULTI?    :> " << hasPossibleInternalMultiRdvFlag << std::endl;
+	os << "Performed RDV ?    :> " << hasPerformedRdvFlag << std::endl;
+	os << "Internal RDV ?     :> " << hasPossibleInternalRdvFlag << std::endl;
+	os << "Internal MULTI ?   :> " << hasPossibleInternalMultiRdvFlag << std::endl;
 
-	for( avm_size_t idx = 0 ; idx < mMachineCount ; ++idx )
+	for( std::size_t idx = 0 ; idx < mMachineCount ; ++idx )
 	{
 		if( IN_ED_RDV[ idx ].nonempty() || OUT_ED_RDV[ idx ].nonempty() ||
 				ED_MULTIRDV[ idx ].nonempty() || RDVS[ idx ].nonempty() )
@@ -358,9 +315,9 @@ void RdvConfigurationData::toStream(OutStream & os) const
 ///// GLOBAL EFFECTIVE RDV COUNT
 ////////////////////////////////////////////////////////////////////////////////
 
-avm_size_t AvmCommunicationRdvPrimitive::GLOBAL_EFFECTIVE_RDV_COUNT = 0;
+std::size_t AvmCommunicationRdvPrimitive::GLOBAL_EFFECTIVE_RDV_COUNT = 0;
 
-avm_size_t AvmCommunicationRdvPrimitive::GLOBAL_EFFECTIVE_MULTI_RDV_COUNT = 0;
+std::size_t AvmCommunicationRdvPrimitive::GLOBAL_EFFECTIVE_MULTI_RDV_COUNT = 0;
 
 
 void AvmCommunicationRdvPrimitive::reportGlobalStatistics(OutStream & os)
@@ -398,33 +355,33 @@ bool AvmCommunicationRdvPrimitive::computeRdv(
  * the RESUME RDV instruction
  */
 
-bool AvmCommunicationRdvPrimitive::haveRDV(APExecutionData & outED,
-		APExecutionData & inED)
+bool AvmCommunicationRdvPrimitive::haveRDV(ExecutionData & outED,
+		ExecutionData & inED)
 {
-	if( inED->mEXEC_SYNC_POINT->mRoutingData.getConnect() ==
-			outED->mEXEC_SYNC_POINT->mRoutingData.getConnect() )
+	if( inED.getExecSyncPoint()->mRoutingData.getConnector().isTEQ(
+			outED.getExecSyncPoint()->mRoutingData.getConnector() ) )
 	{
-		return( inED->mEXEC_SYNC_POINT->mMessage.needSender(
-				outED->mEXEC_SYNC_POINT->mMessage.getSenderRID()) );
+		return( inED.getExecSyncPoint()->mMessage.needSender(
+				outED.getExecSyncPoint()->mMessage.getSenderRID()) );
 	}
 
 	return( false );
 }
 
 static bool isAddRvdConf(RdvConfigurationData * aRdvConf,
-		avm_size_t idx, APExecutionData & anED)
+		std::size_t idx, ExecutionData & anED)
 {
-	if( aRdvConf->mConnector
-		== anED->mEXEC_SYNC_POINT->mRoutingData.getConnect() )
+	if( anED.getExecSyncPoint()->mRoutingData.getConnector().isTEQ(
+			aRdvConf->mConnector ) )
 	{
 		bool returnFlag = true;
 
-		switch( anED->mEXEC_SYNC_POINT->mAwaitingPointNature )
+		switch( anED.getExecSyncPoint()->mAwaitingPointNature )
 		{
 			case AWAITING_POINT_OUTPUT_NATURE:
 			{
-				switch( anED->mEXEC_SYNC_POINT->mRoutingData.
-						getConnect()->getOutputComRouteData().getCast() )
+				switch( anED.getExecSyncPoint()->mRoutingData.
+						getConnector().getOutputProtocolCast() )
 				{
 					case ComProtocol::PROTOCOL_UNICAST_KIND:
 					{
@@ -450,8 +407,8 @@ static bool isAddRvdConf(RdvConfigurationData * aRdvConf,
 			}
 			case AWAITING_POINT_INPUT_NATURE:
 			{
-				switch( anED->mEXEC_SYNC_POINT->mRoutingData.
-						getConnect()->getInputComRouteData().getCast() )
+				switch( anED.getExecSyncPoint()->mRoutingData.
+						getConnector().getInputProtocolCast() )
 				{
 					case ComProtocol::PROTOCOL_UNICAST_KIND:
 					{
@@ -492,16 +449,16 @@ static bool isAddRvdConf(RdvConfigurationData * aRdvConf,
 static void addRvdConf(bool isInitial,
 		ListOfRdvConfigurationData & multiRdvConf,
 		RdvConfigurationData * refRdvConf,
-		avm_size_t idx, ListOfAPExecutionData & theED)
+		std::size_t idx, ListOfExecutionData & theED)
 {
-	ListOfAPExecutionData::iterator itED;
-	ListOfAPExecutionData::iterator endED = theED.end();
+	ListOfExecutionData::iterator itED;
+	ListOfExecutionData::iterator endED = theED.end();
 
-	avm_size_t edx;
-	avm_size_t edCount = theED.size();
+	std::size_t edx;
+	std::size_t edCount = theED.size();
 	Bitset isnotFound(edCount, true);
 
-	RdvConfigurationData * aRdvConf = NULL;
+	RdvConfigurationData * aRdvConf = nullptr;
 
 	ListOfRdvConfigurationData::iterator itConf = multiRdvConf.begin();
 	ListOfRdvConfigurationData::iterator endConf = multiRdvConf.end();
@@ -530,10 +487,10 @@ static void addRvdConf(bool isInitial,
 				aRdvConf->mAwaitingMultiRdvFlag[ idx ] = true;
 
 				aRdvConf->mAwaitingInputMultiRdvFlag [ idx ] =
-						(*itED)->mEXEC_SYNC_POINT->isInput();
+						(*itED).getExecSyncPoint()->isInput();
 
 				aRdvConf->mAwaitingOutputMultiRdvFlag[ idx ] =
-						(*itED)->mEXEC_SYNC_POINT->isOutput();
+						(*itED).getExecSyncPoint()->isOutput();
 				aRdvConf->mUsedMachineFlag[ idx ] = true;
 
 //				AVM_OS_TRACE << REPEAT("++++++++++", 10) << std::endl;
@@ -541,8 +498,8 @@ static void addRvdConf(bool isInitial,
 			}
 			else if( isnotFound[edx] )
 			{
-				isnotFound[edx] = ((*itConf)->mConnector !=
-					(*itED)->mEXEC_SYNC_POINT->mRoutingData.getConnect());
+				isnotFound[edx] = (*itED).getExecSyncPoint()->mRoutingData.
+						getConnector().isNTEQ( (*itConf)->mConnector );
 			}
 		}
 	}
@@ -559,20 +516,20 @@ static void addRvdConf(bool isInitial,
 				if( isInitial )
 				{
 					aRdvConf = new RdvConfigurationData(refRdvConf);
-					aRdvConf->mConnector =
-						(*itED)->mEXEC_SYNC_POINT->mRoutingData.getConnect();
+					aRdvConf->mConnector = &( (*itED).getExecSyncPoint()
+							->mRoutingData.getConnector() );
 				}
 				else
 				{
 					aRdvConf = new RdvConfigurationData(*refRdvConf);
 
 //					if( aRdvConf->mConnector !=
-//						(*itED)->mEXEC_SYNC_POINT->mRoutingData.getConnect() )
+//						(*itED).getExecSyncPoint()->mRoutingData.getConnector() )
 //					{
 //						aRdvConf->mAwaitingMultiRdvFlag.reset();
-//						for( avm_size_t i = 0 ; i < aRdvConf->mMachineCount; ++i )
+//						for( std::size_t i = 0 ; i < aRdvConf->mMachineCount; ++i )
 //						{
-//							aRdvConf->mAwaitingMultiRdvEDS[ i ] = NULL;
+//							aRdvConf->mAwaitingMultiRdvEDS[ i ] = nullptr;
 //						}
 //					}
 					aRdvConf->IN_ED_RDV[ idx ].clear();
@@ -586,10 +543,10 @@ static void addRvdConf(bool isInitial,
 				aRdvConf->mAwaitingMultiRdvFlag[ idx ] = true;
 
 				aRdvConf->mAwaitingInputMultiRdvFlag [ idx ] =
-						(*itED)->mEXEC_SYNC_POINT->isInput();
+						(*itED).getExecSyncPoint()->isInput();
 
 				aRdvConf->mAwaitingOutputMultiRdvFlag[ idx ] =
-						(*itED)->mEXEC_SYNC_POINT->isOutput();
+						(*itED).getExecSyncPoint()->isOutput();
 
 				aRdvConf->mUsedMachineFlag[ idx ] = true;
 
@@ -601,7 +558,7 @@ static void addRvdConf(bool isInitial,
 }
 
 
-bool AvmCommunicationRdvPrimitive::resume_rdv(ListOfAPExecutionData & aRDV)
+bool AvmCommunicationRdvPrimitive::resume_rdv(ListOfExecutionData & aRDV)
 {
 	// TRACE
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
@@ -712,13 +669,13 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 bool AvmCommunicationRdvPrimitive::completeAllRdv()
 {
 	ListOfRdvConfigurationData::iterator itRdvConf;
-	ListOfRdvConfigurationData::iterator endItRdvConf = CURRENT_RDV_CONF.end();
+	ListOfRdvConfigurationData::iterator endItCurrentRdvConf = CURRENT_RDV_CONF.end();
 
 	ListOfRdvConfigurationData::iterator itRdvConf2;
-	ListOfRdvConfigurationData::iterator endItRdvConf2 = PREVIOUS_RDV_CONF.end();
+	ListOfRdvConfigurationData::iterator endItPreviousRdvConf2 = PREVIOUS_RDV_CONF.end();
 
 	itRdvConf = CURRENT_RDV_CONF.begin();
-	for( ; itRdvConf != endItRdvConf ; ++ itRdvConf )
+	for( ; itRdvConf != endItCurrentRdvConf ; ++ itRdvConf )
 	{
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << std::endl
@@ -794,7 +751,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 		// CHECK for RDV between CURRENT CONF
 		itRdvConf2 = CURRENT_RDV_CONF.begin();
-		for( ; itRdvConf2 != endItRdvConf ; ++ itRdvConf2 )
+		for( ; itRdvConf2 != endItCurrentRdvConf ; ++ itRdvConf2 )
 		{
 			if( itRdvConf != itRdvConf2 )
 			{
@@ -820,7 +777,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 		// CHECK for RDV with PREVIOUS CONF
 		itRdvConf2 = PREVIOUS_RDV_CONF.begin();
-		for( ; itRdvConf2 != endItRdvConf2 ; ++ itRdvConf2 )
+		for( ; itRdvConf2 != endItPreviousRdvConf2 ; ++ itRdvConf2 )
 		{
 			if( itRdvConf != itRdvConf2 )
 			{
@@ -852,15 +809,15 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 bool AvmCommunicationRdvPrimitive::checkInternalRdv(
 		bool isInitial, RdvConfigurationData * aRdvConf)
 {
-	ListOfAPExecutionData::iterator itOutED;
-	ListOfAPExecutionData::iterator endOutED;
+	ListOfExecutionData::iterator itOutED;
+	ListOfExecutionData::iterator endOutED;
 
-	ListOfAPExecutionData::iterator itInED;
-	ListOfAPExecutionData::iterator endInED;
+	ListOfExecutionData::iterator itInED;
+	ListOfExecutionData::iterator endInED;
 
-	RdvConfigurationData * newRdvConf = NULL;
+	RdvConfigurationData * newRdvConf = nullptr;
 
-	for( avm_size_t outIdx = 0 ; outIdx < aRdvConf->mMachineCount; ++outIdx )
+	for( std::size_t outIdx = 0 ; outIdx < aRdvConf->mMachineCount; ++outIdx )
 	{
 		if( aRdvConf->OUT_ED_RDV[ outIdx ].empty() )
 		{
@@ -871,7 +828,7 @@ bool AvmCommunicationRdvPrimitive::checkInternalRdv(
 		endOutED = aRdvConf->OUT_ED_RDV[ outIdx ].end();
 		for( ; itOutED != endOutED ; ++itOutED )
 		{
-			for( avm_size_t inIdx = 0 ; inIdx < aRdvConf->mMachineCount ; ++inIdx )
+			for( std::size_t inIdx = 0 ; inIdx < aRdvConf->mMachineCount ; ++inIdx )
 			{
 				if( (inIdx == outIdx) || aRdvConf->IN_ED_RDV[ inIdx ].empty() )
 				{
@@ -916,7 +873,7 @@ bool AvmCommunicationRdvPrimitive::checkInternalRdv(
 						{
 							// TODO ERREUR
 							delete( newRdvConf );
-							newRdvConf = NULL;
+							newRdvConf = nullptr;
 						}
 					}
 				}
@@ -939,7 +896,7 @@ AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
-	for( avm_size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
+	for( std::size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
 	{
 		addRvdConf(isInitial, multiRdvConf,
 				aRdvConf, idx, aRdvConf->ED_MULTIRDV[idx]);
@@ -965,16 +922,16 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 bool AvmCommunicationRdvPrimitive::checkWithInitialRdv(
 		RdvConfigurationData * aRdvConf)
 {
-	ListOfAPExecutionData::iterator itInED;
-	ListOfAPExecutionData::iterator endInED;
+	ListOfExecutionData::iterator itInED;
+	ListOfExecutionData::iterator endInED;
 
-	ListOfAPExecutionData::iterator itOutED;
-	ListOfAPExecutionData::iterator endOutED;
+	ListOfExecutionData::iterator itOutED;
+	ListOfExecutionData::iterator endOutED;
 
-	RdvConfigurationData * newRdvConf = NULL;
+	RdvConfigurationData * newRdvConf = nullptr;
 
-	avm_size_t outIdx = 0;
-	avm_size_t inIdx = 0;
+	std::size_t outIdx = 0;
+	std::size_t inIdx = 0;
 
 	////////////////////////////////////////////////////////////////////////////
 	// COMPLETE OUTPUT WITH INITIAL INPUT
@@ -1028,7 +985,7 @@ bool AvmCommunicationRdvPrimitive::checkWithInitialRdv(
 							{
 								// TODO ERREUR
 								delete( newRdvConf );
-								newRdvConf = NULL;
+								newRdvConf = nullptr;
 							}
 						}
 					}
@@ -1105,7 +1062,7 @@ bool AvmCommunicationRdvPrimitive::checkWithInitialMultiRdv(
 //	((*itRdvConf)->mAwaitingMultiRdvFlag ^ mBaseRdvConf.mAwaitingOutputRdvFlag).any() ||
 //	((*itRdvConf)->mAwaitingMultiRdvFlag ^ mBaseRdvConf.mAwaitingInputRdvFlag).any()
 
-	for( avm_size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
+	for( std::size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
 	{
 		if( not aRdvConf->mAwaitingMultiRdvFlag[ idx ] )
 		{
@@ -1127,16 +1084,16 @@ bool AvmCommunicationRdvPrimitive::checkWithInitialMultiRdv(
 bool AvmCommunicationRdvPrimitive::checkWithExternalRdv(
 		RdvConfigurationData * aRdvConf, RdvConfigurationData * otherRdvConf)
 {
-	ListOfAPExecutionData::iterator itInED;
-	ListOfAPExecutionData::iterator endInED;
+	ListOfExecutionData::iterator itInED;
+	ListOfExecutionData::iterator endInED;
 
-	ListOfAPExecutionData::iterator itOutED;
-	ListOfAPExecutionData::iterator endOutED;
+	ListOfExecutionData::iterator itOutED;
+	ListOfExecutionData::iterator endOutED;
 
-	RdvConfigurationData * newRdvConf = NULL;
+	RdvConfigurationData * newRdvConf = nullptr;
 
-	avm_size_t outIdx = 0;
-	avm_size_t inIdx = 0;
+	std::size_t outIdx = 0;
+	std::size_t inIdx = 0;
 
 	////////////////////////////////////////////////////////////////////////////
 	// COMPLETE OUTPUT WITH OTHER INCOMPLETE RDV_CONF INPUT
@@ -1189,7 +1146,7 @@ bool AvmCommunicationRdvPrimitive::checkWithExternalRdv(
 							{
 								// TODO ERREUR
 								delete( newRdvConf );
-								newRdvConf = NULL;
+								newRdvConf = nullptr;
 							}
 						}
 					}
@@ -1216,7 +1173,7 @@ bool AvmCommunicationRdvPrimitive::checkWithExternalRdv(
 			endOutED = otherRdvConf->OUT_ED_RDV[ outIdx ].end();
 			for( ; itOutED != endOutED ; ++itOutED )
 			{
-				if( not (*itOutED)->mEXEC_SYNC_POINT->mRoutingData.isProtocolRDV() )
+				if( not (*itOutED).getExecSyncPoint()->mRoutingData.isProtocolRDV() )
 				{
 					continue;
 				}
@@ -1267,20 +1224,20 @@ bool AvmCommunicationRdvPrimitive::checkWithExternalMultiRdv(
 		RdvConfigurationData * aRdvConf,
 		RdvConfigurationData * otherRdvConf)
 {
-	VectorOfAPExecutionData::iterator itED;
-	VectorOfAPExecutionData::iterator endED;
+	VectorOfExecutionData::iterator itED;
+	VectorOfExecutionData::iterator endED;
 
-	ListOfAPExecutionData::iterator endioED;
+	ListOfExecutionData::iterator endioED;
 
 	ListOfRdvConfigurationData multiRdvConf;
 
-	for( avm_size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
+	for( std::size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
 	{
 		if( not otherRdvConf->mAwaitingMultiRdvFlag[ idx ] )
 		{
 			if( aRdvConf->mAwaitingMultiRdvFlag.any() )
 			{
-				ListOfAPExecutionData listED;
+				ListOfExecutionData listED;
 
 				itED = aRdvConf->mAwaitingMultiRdvEDS.begin();
 				endED = aRdvConf->mAwaitingMultiRdvEDS.end();
@@ -1290,7 +1247,6 @@ bool AvmCommunicationRdvPrimitive::checkWithExternalMultiRdv(
 					{
 						listED.append( *itED );
 					}
-
 				}
 				addRvdConf(false, multiRdvConf, otherRdvConf, idx, listED);
 
@@ -1319,13 +1275,13 @@ bool AvmCommunicationRdvPrimitive::resume_rdv(ExecutionEnvironment & ENV,
 		return( false );
 	}
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	while( ENV.outEDS.nonempty() )
 	{
 		ENV.outEDS.pop_last_to( tmpED );
 
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_OK:
 			case AEES_STMNT_NOTHING:
@@ -1339,7 +1295,7 @@ bool AvmCommunicationRdvPrimitive::resume_rdv(ExecutionEnvironment & ENV,
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				return( false );
@@ -1351,7 +1307,7 @@ bool AvmCommunicationRdvPrimitive::resume_rdv(ExecutionEnvironment & ENV,
 	{
 		ENV.exitEDS.pop_last_to( tmpED );
 
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_EXIT:
 			case AEES_STMNT_EXIT_ALL:
@@ -1366,7 +1322,7 @@ bool AvmCommunicationRdvPrimitive::resume_rdv(ExecutionEnvironment & ENV,
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as exitEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				return( false );
@@ -1378,16 +1334,16 @@ bool AvmCommunicationRdvPrimitive::resume_rdv(ExecutionEnvironment & ENV,
 	{
 		ENV.syncEDS.pop_last_to( tmpED );
 
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_WAITING_INCOM_RDV:
 			{
-				if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolRDV() )
+				if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolRDV() )
 				{
 					aRdvConf->IN_ED_RDV[ offset ].append( tmpED );
 					aRdvConf->mAwaitingOutputRdvFlag[ offset ] = true;
 				}
-				else if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolMULTI_RDV() )
+				else if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolMULTI_RDV() )
 				{
 					aRdvConf->ED_MULTIRDV[ offset ].append( tmpED );
 					aRdvConf->mAwaitingOutputMultiRdvFlag[ offset ] = true;
@@ -1397,12 +1353,12 @@ bool AvmCommunicationRdvPrimitive::resume_rdv(ExecutionEnvironment & ENV,
 
 			case AEES_WAITING_OUTCOM_RDV:
 			{
-				if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolRDV() )
+				if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolRDV() )
 				{
 					aRdvConf->OUT_ED_RDV[ offset ].append( tmpED );
 					aRdvConf->mAwaitingInputRdvFlag[ offset ] = true;
 				}
-				else if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolMULTI_RDV() )
+				else if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolMULTI_RDV() )
 				{
 					aRdvConf->ED_MULTIRDV[ offset ].append( tmpED );
 					aRdvConf->mAwaitingInputMultiRdvFlag[ offset ] = true;
@@ -1421,7 +1377,7 @@ bool AvmCommunicationRdvPrimitive::resume_rdv(ExecutionEnvironment & ENV,
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as syncEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				return( false );
@@ -1437,8 +1393,8 @@ bool AvmCommunicationRdvPrimitive::resume_rdv(ExecutionEnvironment & ENV,
 
 
 bool AvmCommunicationRdvPrimitive::compute_rdv(RdvConfigurationData * aRdvConf,
-		avm_offset_t outOffset, APExecutionData & outED,
-		avm_offset_t inOffset, APExecutionData & inED)
+		avm_offset_t outOffset, ExecutionData & outED,
+		avm_offset_t inOffset, ExecutionData & inED)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << std::endl << "Checking RDV :>"
@@ -1448,8 +1404,8 @@ AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 			<< InstanceCounter< RdvConfigurationData >::INSTANCE_ALIVE
 			<< std::endl;
 	aRdvConf->toStream( AVM_OS_TRACE );
-	print_trace(outED, AVM_OS_TRACE);
-	print_trace(inED, AVM_OS_TRACE);
+	outED.printExecSyncPointTrace( AVM_OS_TRACE );
+	inED.printExecSyncPointTrace( AVM_OS_TRACE );
 	AVM_OS_TRACE << REPEAT("__________", 10) << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
@@ -1459,22 +1415,22 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	ExecutionEnvironment inENV(aRdvConf->ENV, inED);
 
 	BFCode aTraceInput(OperatorManager::OPERATOR_INPUT_RDV,
-			inED->mEXEC_SYNC_POINT->mMessage.bfPort());
+			inED.getExecSyncPoint()->mMessage.bfPort());
 
 	BFCode aTraceOutput(OperatorManager::OPERATOR_OUTPUT_RDV,
-			outED->mEXEC_SYNC_POINT->mMessage.bfPort());
+			outED.getExecSyncPoint()->mMessage.bfPort());
 
 	Message::const_iterator itVar =
-			inED->mEXEC_SYNC_POINT->mMessage.beginParameters();
+			inED.getExecSyncPoint()->mMessage.beginParameters();
 	Message::const_iterator endVar =
-			inED->mEXEC_SYNC_POINT->mMessage.endParameters();
+			inED.getExecSyncPoint()->mMessage.endParameters();
 	Message::const_iterator itValue =
-			outED->mEXEC_SYNC_POINT->mMessage.beginParameters();
+			outED.getExecSyncPoint()->mMessage.beginParameters();
 
 	for( ; itVar != endVar ; ++itVar , ++itValue )
 	{
 		inENV.inED.mwsetAEES( AEES_OK );
-		if( not inENV.setRvalue((*itVar).to_ptr< InstanceOfData >(), (*itValue)) )
+		if( not inENV.setRvalue((*itVar).to< InstanceOfData >(), (*itValue)) )
 		{
 			return( false );
 		}
@@ -1484,8 +1440,9 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	}
 
 	ExecutionDataFactory::appendIOElementTrace(inENV.inED,
-			BF( new ExecutionConfiguration(inENV.inED->mRID,
-					aTraceInput, outED->mEXEC_SYNC_POINT->mMessage) ) );
+			BF( new ExecutionConfiguration(inENV.inED.getRID(),
+					aTraceInput, outED.getExecSyncPoint()->mMessage,
+					outED.getTimeValue(outED.getRID()) ) ) );
 
 
 	if( not resume_rdv(inENV, aRdvConf, inOffset) )
@@ -1499,8 +1456,9 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	ExecutionEnvironment outENV(aRdvConf->ENV, outED);
 
 	ExecutionDataFactory::appendIOElementTrace(outENV.inED,
-			BF( new ExecutionConfiguration(outENV.inED->mRID,
-					aTraceOutput, outED->mEXEC_SYNC_POINT->mMessage) ) );
+			BF( new ExecutionConfiguration(outENV.inED.getRID(),
+					aTraceOutput, outED.getExecSyncPoint()->mMessage,
+					outED.getTimeValue(outED.getRID()) ) ) );
 
 	if( not resume_rdv(outENV, aRdvConf, outOffset) )
 	{
@@ -1522,7 +1480,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 bool AvmCommunicationRdvPrimitive::compute_multirdv(
 		ListOfRdvConfigurationData & multiRdvConf)
 {
-	RdvConfigurationData * aRdvConf = NULL;
+	RdvConfigurationData * aRdvConf = nullptr;
 
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	AVM_OS_INFO << "compute_multirdv:b> "
@@ -1541,7 +1499,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 			if( not compute_multirdv(aRdvConf) )
 			{
 				delete( aRdvConf );
-				aRdvConf = NULL;
+				aRdvConf = nullptr;
 
 				continue;
 				// TODO ERREUR
@@ -1586,13 +1544,13 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	////////////////////////////////////////////////////////////////////////////
 	// OUTPUT RDV
 	////////////////////////////////////////////////////////////////////////////
-	for( avm_size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
+	for( std::size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
 	{
 		if( aRdvConf->mAwaitingMultiRdvEDS[ idx ].invalid() )
 		{
 			continue;
 		}
-		if( aRdvConf->mAwaitingMultiRdvEDS[ idx ]->mEXEC_SYNC_POINT->isInput() )
+		if( aRdvConf->mAwaitingMultiRdvEDS[ idx ].getExecSyncPoint()->isInput() )
 		{
 			continue;
 		}
@@ -1603,7 +1561,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 				aRdvConf->ENV, aRdvConf->mAwaitingMultiRdvEDS[ idx ]);
 		aRdvConf->mAwaitingMultiRdvEDS[ idx ].destroy();
 
-		anOutputMsg = outENV.inED->mEXEC_SYNC_POINT->mMessage;
+		anOutputMsg = outENV.inED.getExecSyncPoint()->mMessage;
 
 		aTraceIO = StatementConstructor::newCode(
 				OperatorManager::OPERATOR_OUTPUT_RDV, anOutputMsg.bfPort());
@@ -1612,7 +1570,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 		ExecutionDataFactory::appendIOElementTrace(outENV.inED,
 				BF( new ExecutionConfiguration(
-						outENV.inED->mRID, aTraceIO, anOutputMsg) ) );
+						outENV.inED.getRID(), aTraceIO, anOutputMsg,
+						outENV.inED.getTimeValue(outENV.inED.getRID()) ) ) );
 
 		if( not resume_rdv(outENV, aRdvConf, idx) )
 		{
@@ -1630,13 +1589,13 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	// INPUT RDV
 	////////////////////////////////////////////////////////////////////////////
 
-	for( avm_size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
+	for( std::size_t idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
 	{
 		if( aRdvConf->mAwaitingMultiRdvEDS[ idx ].invalid() )
 		{
 			continue;
 		}
-		if( aRdvConf->mAwaitingMultiRdvEDS[ idx ]->mEXEC_SYNC_POINT->isOutput() )
+		if( aRdvConf->mAwaitingMultiRdvEDS[ idx ].getExecSyncPoint()->isOutput() )
 		{
 			continue;
 		}
@@ -1648,7 +1607,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 				aRdvConf->ENV, aRdvConf->mAwaitingMultiRdvEDS[ idx ]);
 		aRdvConf->mAwaitingMultiRdvEDS[ idx ].destroy();
 
-		anInputMsg = inENV.inED->mEXEC_SYNC_POINT->mMessage;
+		anInputMsg = inENV.inED.getExecSyncPoint()->mMessage;
 
 		aTraceIO = StatementConstructor::newCode(
 				OperatorManager::OPERATOR_INPUT_RDV, anInputMsg.bfPort());
@@ -1664,7 +1623,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 				inENV.inED.mwsetAEES( AEES_OK );
 				if( not inENV.setRvalue(
-						(*itVar).to_ptr< InstanceOfData >(), (*itValue)) )
+						(*itVar).to< InstanceOfData >(), (*itValue)) )
 				{
 					return( false );
 				}
@@ -1673,7 +1632,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 		ExecutionDataFactory::appendIOElementTrace(inENV.inED,
 				BF( new ExecutionConfiguration(
-						inENV.inED->mRID, aTraceIO, anInputMsg) ) );
+						inENV.inED.getRID(), aTraceIO, anInputMsg,
+						inENV.inED.getTimeValue(inENV.inED.getRID()) ) ) );
 
 		if( not resume_rdv(inENV, aRdvConf, idx) )
 		{
@@ -1703,7 +1663,7 @@ void AvmCommunicationRdvPrimitive::complete_rdv(
 		}
 
 		delete( aRdvConf );
-		aRdvConf = NULL;
+		aRdvConf = nullptr;
 	}
 	else
 	{
@@ -1715,16 +1675,16 @@ void AvmCommunicationRdvPrimitive::complete_rdv(
 bool AvmCommunicationRdvPrimitive::completed_rdv(
 		RdvConfigurationData * aRdvConf, bool isMulti)
 {
-	ListOfAPExecutionData tmpListOfED;
-	APExecutionData tmpED;
+	ListOfExecutionData tmpListOfED;
+	ExecutionData tmpED;
 
-	ListOfAPExecutionData::iterator itED;
-	ListOfAPExecutionData::iterator endItED;
+	ListOfExecutionData::iterator itED;
+	ListOfExecutionData::iterator endItED;
 
-	ListOfAPExecutionData fusionListOfED;
-	APExecutionData anED;
+	ListOfExecutionData fusionListOfED;
+	ExecutionData anED;
 
-	avm_size_t idx = 0;
+	std::size_t idx = 0;
 
 	for( idx = 0 ; idx < aRdvConf->mMachineCount; ++idx )
 	{
@@ -1780,10 +1740,9 @@ bool  AvmCommunicationRdvPrimitive::resume_rdv(ExecutionEnvironment & tmpENV)
 {
 	tmpENV.inED.mwsetAEES( AEES_STEP_RESUME );
 
-	sep::destroy( tmpENV.inED->mEXEC_SYNC_POINT );
-	tmpENV.inED->mEXEC_SYNC_POINT = NULL;
+	tmpENV.inED.destroyExecSyncPoint();
 
-	tmpENV.inED->mSTATEMENT_QUEUE.pushCache();
+	tmpENV.inED.pushExecutionLocationhCache();
 
 	if( tmpENV.decode_resume() )
 	{

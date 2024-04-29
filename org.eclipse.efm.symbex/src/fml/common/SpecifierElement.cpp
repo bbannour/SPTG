@@ -25,6 +25,8 @@ namespace sep
 /**
  * STATIC EXECUTABLE SPECIFIER
  */
+Specifier Specifier::OBJECT_NULL_SPECIFIER( NULL_TRUE_FLAG );
+
 Specifier Specifier::EXECUTABLE_UNDEFINED_SPECIFIER;
 
 Specifier Specifier::COMPONENT_PACKAGE_SPECIFIER(
@@ -35,6 +37,7 @@ Specifier Specifier::COMPONENT_SYSTEM_SPECIFIER(
 
 Specifier Specifier::COMPONENT_EXECUTABLE_SPECIFIER(
 		Specifier::COMPONENT_EXECUTABLE_KIND );
+
 
 Specifier Specifier::COMPONENT_PROCEDURE_SPECIFIER(
 		Specifier::COMPONENT_PROCEDURE_KIND );
@@ -50,6 +53,63 @@ Specifier Specifier::EXECUTABLE_PROCEDURE_MODEL_SPECIFIER(
 Specifier Specifier::EXECUTABLE_PROCEDURE_INSTANCE_STATIC_SPECIFIER(
 		Specifier::COMPONENT_PROCEDURE_KIND,
 		Specifier::DESIGN_INSTANCE_STATIC_KIND );
+
+
+/**
+ * PROTOTYPE MACHINE FACADE SPECIFIER
+ */
+Specifier Specifier::EXECUTABLE_STATEMACHINE_SPECIFIER(
+		Specifier::COMPONENT_STATEMACHINE_KIND,
+		Specifier::MOC_STATE_TRANSITION_SYSTEM_KIND,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
+
+
+Specifier Specifier::EXECUTABLE_STATE_AND_SPECIFIER(
+		Specifier::COMPONENT_STATE_KIND,
+		Specifier::MOC_COMPOSITE_STRUCTURE_KIND,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
+
+Specifier Specifier::EXECUTABLE_STATE_OR_SPECIFIER(
+		Specifier::COMPONENT_STATE_KIND,
+		Specifier::MOC_STATE_TRANSITION_SYSTEM_KIND,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
+
+
+Specifier Specifier::EXECUTABLE_STATE_SPECIFIER(
+		Specifier::COMPONENT_STATE_KIND,
+		Specifier::STATE_SIMPLE_MOC,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
+
+Specifier Specifier::EXECUTABLE_STATE_START_SPECIFIER(
+		Specifier::COMPONENT_STATE_KIND,
+		Specifier::STATE_START_MOC,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
+
+Specifier Specifier::EXECUTABLE_STATE_FINAL_SPECIFIER(
+		Specifier::COMPONENT_STATE_KIND,
+		Specifier::STATE_FINAL_MOC,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
+
+
+Specifier Specifier::EXECUTABLE_PSEUDOSTATE_INITIAL_SPECIFIER(
+		Specifier::COMPONENT_PSEUDOSTATE_KIND,
+		Specifier::PSEUDOSTATE_INITIAL_MOC,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
+
+Specifier Specifier::EXECUTABLE_PSEUDOSTATE_JUNCTION_SPECIFIER(
+		Specifier::COMPONENT_PSEUDOSTATE_KIND,
+		Specifier::PSEUDOSTATE_JUNCTION_MOC,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
+
+Specifier Specifier::EXECUTABLE_PSEUDOSTATE_CHOICE_SPECIFIER(
+		Specifier::COMPONENT_PSEUDOSTATE_KIND,
+		Specifier::PSEUDOSTATE_CHOICE_MOC,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
+
+Specifier Specifier::EXECUTABLE_PSEUDOSTATE_TERMINAL_SPECIFIER(
+		Specifier::COMPONENT_PSEUDOSTATE_KIND,
+		Specifier::PSEUDOSTATE_TERMINAL_MOC,
+		Specifier::DESIGN_PROTOTYPE_STATIC_KIND );
 
 
 /**
@@ -119,7 +179,7 @@ Specifier & Specifier::set(const std::string strSpecifier)
 
 	IF_HAS( "executable"     ) { setComponentExecutable();   }
 	IF_HAS( "machine"        ) { setComponentExecutable();   }
-	IF_HAS( "statemachine"   ) { setComponentStatemachine(); }
+	IF_HAS( "interaction"    ) { setComponentInteraction();  }
 	IF_HAS( "system"         ) { setComponentSystem();       }
 	IF_HAS( "procedure"      ) { setComponentProcedure();    }
 
@@ -133,6 +193,20 @@ Specifier & Specifier::set(const std::string strSpecifier)
 
 	IF_HAS( "composite"      ) { setMocComposite();             }
 	IF_HAS( "and"            ) { setMocCompositeStructure();    }
+
+	IF_HAS( "alt"            ) { setInteractionAlternative();    }
+	IF_HAS( "opt"            ) { setInteractionOption();         }
+	IF_HAS( "loop"           ) { setInteractionLoop();           }
+	IF_HAS( "break"          ) { setInteractionBreak();          }
+	IF_HAS( "par"            ) { setInteractionParallel();       }
+	IF_HAS( "strict"         ) { setInteractionStrictSequence(); }
+	IF_HAS( "weak"           ) { setInteractionWeakSequence();   }
+	IF_HAS( "seq"            ) { setInteractionWeakSequence();   }
+	IF_HAS( "critical"       ) { setInteractionCritical();       }
+	IF_HAS( "ignore"         ) { setInteractionIgnore();         }
+	IF_HAS( "consider"       ) { setInteractionConsider();       }
+	IF_HAS( "assert"         ) { setInteractionAssert();         }
+	IF_HAS( "neg"            ) { setInteractionNegative();       }
 
 	IF_HAS( "or"             ) { setMocStateTransitionSystem(); }
 	IF_HAS( "STS"            ) { setMocStateTransitionSystem(); }
@@ -173,17 +247,34 @@ Specifier & Specifier::setMoc(const std::string strSpecifier)
 {
 #define IF_HAS( spec )  if( strSpecifier.find(spec) != std::string::npos )
 
-	IF_HAS( "composite"      ) { setMocComposite();             }
-	IF_HAS( "and"            ) { setMocCompositeStructure();    }
+	IF_HAS( "composite"      ) { setMocComposite();              }
 
-	IF_HAS( "or"             ) { setMocStateTransitionSystem(); }
-	IF_HAS( "sts"            ) { setMocStateTransitionSystem(); }
-	IF_HAS( "STS"            ) { setMocStateTransitionSystem(); }
-	IF_HAS( "stf"            ) { setMocStateTransitionFlow();   }
-	IF_HAS( "STF"            ) { setMocStateTransitionFlow();   }
+	IF_HAS( "interaction"    ) { setMocCompositeInteraction();   }
 
-	IF_HAS( "flow"           ) { setCompositeMocDataFlow();     }
-	IF_HAS( "DF"             ) { setCompositeMocDataFlow();     }
+	IF_HAS( "alt"            ) { setInteractionAlternative();    }
+	IF_HAS( "opt"            ) { setInteractionOption();         }
+	IF_HAS( "loop"           ) { setInteractionLoop();           }
+	IF_HAS( "break"          ) { setInteractionBreak();          }
+	IF_HAS( "par"            ) { setInteractionParallel();       }
+	IF_HAS( "strict"         ) { setInteractionStrictSequence(); }
+	IF_HAS( "weak"           ) { setInteractionWeakSequence();   }
+	IF_HAS( "seq"            ) { setInteractionWeakSequence();   }
+	IF_HAS( "critical"       ) { setInteractionCritical();       }
+	IF_HAS( "ignore"         ) { setInteractionIgnore();         }
+	IF_HAS( "consider"       ) { setInteractionConsider();       }
+	IF_HAS( "assert"         ) { setInteractionAssert();         }
+	IF_HAS( "neg"            ) { setInteractionNegative();       }
+
+	IF_HAS( "and"            ) { setMocCompositeStructure();     }
+
+	IF_HAS( "or"             ) { setMocStateTransitionSystem();  }
+	IF_HAS( "sts"            ) { setMocStateTransitionSystem();  }
+	IF_HAS( "STS"            ) { setMocStateTransitionSystem();  }
+	IF_HAS( "stf"            ) { setMocStateTransitionFlow();    }
+	IF_HAS( "STF"            ) { setMocStateTransitionFlow();    }
+
+	IF_HAS( "flow"           ) { setCompositeMocDataFlow();      }
+	IF_HAS( "DF"             ) { setCompositeMocDataFlow();      }
 
 	IF_HAS( "simple"         ) { setStateMocSIMPLE();  }
 	IF_HAS( "start"          ) { setStateMocSTART();   }
@@ -275,6 +366,9 @@ std::string Specifier::keywordComponent(bit_field_t componentKind)
 		case COMPONENT_ROUTINE_KIND:
 			return( "routine" );
 
+		case COMPONENT_INTERACTION_KIND:
+			return( "interaction" );
+
 		case COMPONENT_STATEMACHINE_KIND:
 			return( "statemachine" );
 
@@ -311,6 +405,9 @@ std::string Specifier::strComponent(
 
 		case COMPONENT_ROUTINE_KIND:
 			return( "routine" + separator );
+
+		case COMPONENT_INTERACTION_KIND:
+			return( "interaction" + separator );
 
 		case COMPONENT_STATEMACHINE_KIND:
 			return( "statemachine" + separator );
@@ -353,6 +450,11 @@ std::string Specifier::xstrComponent(
 			oss << "routine" << separator;
 		}
 
+		if( (componentKind & COMPONENT_INTERACTION_KIND) != 0 )
+		{
+			oss << "interaction" << separator;
+		}
+
 		if( (componentKind & COMPONENT_STATEMACHINE_KIND) != 0 )
 		{
 			oss << "statemachine" << separator;
@@ -388,14 +490,17 @@ std::string Specifier::strModelOfComputation(
 		case MOC_COMPOSITE_STRUCTURE_KIND:
 			return( "and" + separator );
 
-		case MOC_STATE_TRANSITION_STRUCTURE_KIND:
-			return( "or" + separator );
+		case MOC_COMPOSITE_INTERACTION__KIND:
+			return( "interaction" + separator );
 
 		case MOC_STATE_TRANSITION_SYSTEM_KIND:
-			return( "#STS" + separator );
+			return( "or" + separator );
 
 		case MOC_STATE_TRANSITION_FLOW_KIND:
 			return( "#STF" + separator );
+
+		case MOC_STATE_TRANSITION_STRUCTURE_KIND:
+			return( "#STS" + separator );
 
 		case MOC_DATA_FLOW_KIND:
 			return( "#DF" + separator );
@@ -436,6 +541,123 @@ std::string Specifier::strGroup(
 		default:
 			return( "<group:unknown>" + separator );
 	}
+}
+
+
+/**
+ * STATE MOC to STRING
+ */
+std::string Specifier::strInteractionMoc(
+		bit_field_t interactionMoc, const std::string & separator)
+{
+	switch( interactionMoc )
+	{
+		case INTERACTION_UNDEFINED_MOC:
+			return( "" );
+//			return( "<interaction:undef>" + separator );
+
+		case INTERACTION_ALTERNATIVE_MOC:
+			return( "alt" + separator );
+
+		case INTERACTION_OPTION_MOC:
+			return( "option" + separator );
+
+		case INTERACTION_LOOP_MOC:
+			return( "loop" + separator );
+
+		case INTERACTION_BREAK_MOC:
+			return( "break" + separator );
+
+		case INTERACTION_PARALLEL_MOC:
+			return( "par" + separator );
+
+		case INTERACTION_STRICT_SEQUENCE_MOC:
+			return( "strict" + separator );
+
+		case INTERACTION_WEAK_SEQUENCE_MOC:
+			return( "seq" + separator );
+
+		case INTERACTION_CRITICAL_MOC:
+			return( "critical" + separator );
+
+		case INTERACTION_IGNORE_MOC:
+			return( "ignore" + separator );
+
+		case INTERACTION_CONSIDER_MOC:
+			return( "consider" + separator );
+
+		case INTERACTION_ASSERT_MOC:
+			return( "assert" + separator );
+
+		case INTERACTION_NEGATIVE_MOC:
+			return( "neg" + separator );
+
+		default:
+			return( xstrInteractionMoc(interactionMoc, separator) );
+	}
+}
+
+
+std::string Specifier::xstrInteractionMoc(
+		bit_field_t interactionMoc, const std::string & separator)
+{
+	if( interactionMoc != INTERACTION_UNDEFINED_MOC)
+	{
+		std::ostringstream oss;
+
+		if( (interactionMoc & INTERACTION_ALTERNATIVE_MOC) != 0 )
+		{
+			oss << "alt" << separator;
+		}
+		if( (interactionMoc & INTERACTION_OPTION_MOC) != 0 )
+		{
+			oss << "option" << separator;
+		}
+		if( (interactionMoc & INTERACTION_LOOP_MOC) != 0 )
+		{
+			oss << "loop" << separator;
+		}
+		if( (interactionMoc & INTERACTION_BREAK_MOC) != 0 )
+		{
+			oss << "break" << separator;
+		}
+		if( (interactionMoc & INTERACTION_PARALLEL_MOC) != 0 )
+		{
+			oss << "par" << separator;
+		}
+		if( (interactionMoc & INTERACTION_STRICT_SEQUENCE_MOC) != 0 )
+		{
+			oss << "strict" << separator;
+		}
+		if( (interactionMoc & INTERACTION_WEAK_SEQUENCE_MOC) != 0 )
+		{
+			oss << "seq" << separator;
+		}
+		if( (interactionMoc & INTERACTION_CRITICAL_MOC) != 0 )
+		{
+			oss << "critical" << separator;
+		}
+		if( (interactionMoc & INTERACTION_IGNORE_MOC) != 0 )
+		{
+			oss << "ignore" << separator;
+		}
+		if( (interactionMoc & INTERACTION_CONSIDER_MOC) != 0 )
+		{
+			oss << "consider" << separator;
+		}
+		if( (interactionMoc & INTERACTION_ASSERT_MOC) != 0 )
+		{
+			oss << "assert" << separator;
+		}
+		if( (interactionMoc & INTERACTION_NEGATIVE_MOC) != 0 )
+		{
+			oss << "neg" << separator;
+		}
+
+		return( oss.str() );
+	}
+
+	return "<interaction:undef>";
 }
 
 
@@ -620,17 +842,36 @@ std::string Specifier::strFeature(
 	{
 		std::ostringstream oss;
 
-		if( (featureKind & FEATURE_TIMED_KIND) != 0 )
+		if( (featureKind & FEATURE_TIMED_KIND) == FEATURE_TIMED_KIND )
 		{
 			oss << "timed" << separator;
 		}
+		else if( (featureKind & FEATURE_TIMED_KIND) == FEATURE_DISCRETE_TIMED_KIND )
+		{
+			oss << "timed#discrete" << separator;
+		}
+		else if( (featureKind & FEATURE_TIMED_KIND) == FEATURE_DENSE_TIMED_KIND )
+		{
+			oss << "timed#dense" << separator;
+		}
+		else if( (featureKind & FEATURE_TIMED_KIND) == FEATURE_CONTINUOUS_TIMED_KIND )
+		{
+			oss << "timed#continuous" << separator;
+		}
+
 		if( (featureKind & FEATURE_INPUT_ENABLED_KIND) != 0 )
 		{
 			oss << "input_enabled" << separator;
 		}
+
 		if( (featureKind & FEATURE_LIFELINE_KIND) != 0 )
 		{
 			oss << "lifeline" << separator;
+		}
+
+		if( (featureKind & FEATURE_USER_DEFINED_SCHEDULE_KIND) != 0 )
+		{
+			oss << "#user#schedule" << separator;
 		}
 
 		return( oss.str() );
@@ -706,7 +947,7 @@ std::string Specifier::strDesign(
 //			return( "#static #prototype" + separator );
 			return( "#prototype" + separator );
 		case DESIGN_PROTOTYPE_DYNAMIC_KIND:
-			return( "#dynamic #prototype" + separator );
+			return( "#dynamic#prototype" + separator );
 
 		default:
 			return( xstrDesign(designKind, separator) );
@@ -738,6 +979,7 @@ std::string Specifier::xstrDesign(
 		{
 			oss << "#dynamic" << separator;
 		}
+
 		if( (designKind & DESIGN_RUNTIME_KIND) != 0 )
 		{
 			oss << "#runtime" << separator;
@@ -760,6 +1002,11 @@ std::string Specifier::toString(bit_field_t enabledFields,
 		const std::string & separator) const
 {
 	std::ostringstream oss;
+
+	if( isNullref() )
+	{
+		oss << "#null<Specifier>" << separator;
+	}
 
 	if( (enabledFields & FIELD_FEATURE_POSITION) != 0 )
 	{

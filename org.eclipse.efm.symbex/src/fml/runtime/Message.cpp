@@ -44,7 +44,7 @@ bool Message::equals(const Message & aMessage) const
 		return( false );
 	}
 	else if( (this->getMID() == aMessage.getMID())
-			&& (getPort() == aMessage.getPort())
+			&& getPort().isTEQ( aMessage.getPort() )
 			&& (getSenderRID() == aMessage.getSenderRID())
 			&& (getReceiverRID() == aMessage.getReceiverRID()) )
 	{
@@ -77,16 +77,17 @@ std::string MessageElement::str() const
 {
 	StringOutStream oss;
 
-	oss << "message< mid:" << mMID << ", ";
+	oss << "message< mid:" << getMID() << ", ";
 	if( mPort.is< InstanceOfPort >() )
 	{
-		InstanceOfPort * aPort = mPort.to_ptr< InstanceOfPort >();
-		oss << aPort->strComPointNature() << ": "
-			<< aPort->getFullyQualifiedNameID();
+		const InstanceOfPort & aPort = mPort.to< InstanceOfPort >();
+
+		oss << aPort.strComPointNature() << ": "
+			<< aPort.getFullyQualifiedNameID();
 	}
 	else
 	{
-		oss << "port: null<port>";
+		oss << "port: $null<port>";
 	}
 
 	if( mSenderRID.valid() )
@@ -110,8 +111,7 @@ std::string MessageElement::str() const
 
 		for( ++it ; it != endIt ; ++it )
 		{
-			oss << " , ";
-			it->toStream(oss);
+			oss << " , " << it->str();
 		}
 		oss << END_INDENT;
 	}
@@ -122,79 +122,151 @@ std::string MessageElement::str() const
 }
 
 
-void MessageElement::toStream(OutStream & os) const
+void MessageElement::toStream(OutStream & out) const
 {
-	if( os.preferablySTR() )
+	if( out.preferablySTR() )
 	{
-		os << TAB << str() << EOL_FLUSH;
+		out << TAB << str() << EOL_FLUSH;
 		return;
 	}
 
-	os << TAB << "message< mid#" << mMID << " > ";
+	out << TAB << "message< mid#" << getMID() << " > ";
 	if( mSenderRID.valid() )
 	{
-		os << mSenderRID.strUniqId()<< "->";
+		out << mSenderRID.strUniqId()<< "->";
 	}
-	os << (mPort.is< InstanceOfPort >()
-			? mPort.to_ptr< InstanceOfPort >()->getFullyQualifiedNameID()
-			: "null<port>");
+	out << (mPort.is< InstanceOfPort >()
+			? mPort.to< InstanceOfPort >().getFullyQualifiedNameID()
+			: "$null<port>");
 
 	if( mParameters.nonempty() )
 	{
-		os << " {";
+		out << " {";
 
-		AVM_DEBUG_REF_COUNTER(os);
-		os << EOL;
+		AVM_DEBUG_REF_COUNTER(out);
+		out << EOL;
 
 		if( mReceiverRID.valid() )
 		{
-			os << TAB2 << "receiver = "
+			out << TAB2 << "receiver = "
 					<< mReceiverRID.strUniqId() << ";" << EOL;
 		}
 
 
 AVM_IF_DEBUG_LEVEL_GT_MEDIUM
-		os << TAB << "param" << EOL_INCR_INDENT;
+		out << TAB << "@param:" << EOL_INCR_INDENT;
 
 		Message::const_iterator it = mParameters.begin();
 		Message::const_iterator endIt = mParameters.end();
 		for( ; it != endIt ; ++it )
 		{
-			it->toStream(os);
+			it->toStream(out);
 		}
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 
 AVM_ELSE
 
-		os << TAB2 << "param = [" << AVM_STR_INDENT;
+		out << TAB2 << "param = [" << AVM_STR_INDENT;
 
 		Message::const_iterator it = mParameters.begin();
 		Message::const_iterator endIt = mParameters.end();
-		for( ; it != endIt ; ++it )
+
+		it->toStream(out);
+		for( ++it ; it != endIt ; ++it )
 		{
-			os << " ,";
-			it->toStream(os);
+			out << " ,";
+			it->toStream(out);
 		}
-		os << END_INDENT << " ];" << EOL;
+		out << END_INDENT << " ];" << EOL;
 AVM_ENDIF_DEBUG_LEVEL_GT_MEDIUM
 
-		os << TAB << "}" << EOL_FLUSH;
+		out << TAB << "}" << EOL_FLUSH;
 	}
 	else
 	{
-		os << ";";
-		AVM_DEBUG_REF_COUNTER(os);
-		os << EOL_FLUSH;
+		out << ";";
+		AVM_DEBUG_REF_COUNTER(out);
+		out << EOL_FLUSH;
 	}
 }
 
-void Message::toFscn(OutStream & os) const
+
+void MessageElement::toStreamValue(OutStream & out) const
+{
+	out << TAB;
+	if( mPort.is< InstanceOfPort >() )
+	{
+		const InstanceOfPort & aPort = mPort.to< InstanceOfPort >();
+
+		out << aPort.getNameID();
+
+		if( mParameters.nonempty() )
+		{
+			out << AVM_STR_INDENT << "( ";
+
+			Message::const_iterator itParam = mParameters.begin();
+			Message::const_iterator endParam = mParameters.end();
+
+			std::size_t offset = 1;
+			std::size_t endOffset = aPort.getParameterCount();
+
+			aPort.getParameterType(0).formatStream(out, *itParam);
+
+			for( ++itParam ; (offset < endOffset) && (itParam != endParam) ;
+					++itParam , ++offset )
+			{
+				out << " , ";
+				aPort.getParameterType(offset).formatStream(out, *itParam);
+			}
+
+			for( ; itParam != endParam ; ++itParam )
+			{
+				out << " , " << itParam->str();
+			}
+
+
+			out << " )" << END_INDENT;
+		}
+	}
+	else
+	{
+		out << TAB << "mid:" << getMID();
+
+		if( mParameters.nonempty() )
+		{
+			out << AVM_STR_INDENT << "( ";
+
+			Message::const_iterator itParam = mParameters.begin();
+			Message::const_iterator endParam = mParameters.end();
+
+			out << itParam->str();
+
+			for( ++itParam ; itParam != endParam ; ++itParam )
+			{
+				out << " , " << itParam->str();
+			}
+
+			out << " )" << END_INDENT;
+		}
+
+	}
+
+	if( mReceiverRID.valid() )
+	{
+		out << " --> " << mReceiverRID.strUniqId();
+	}
+
+	out << EOL_FLUSH;
+}
+
+
+void Message::toFscn(OutStream & out) const
 {
 	RuntimeID aRID = getSenderRID();
 
 	for( ; aRID.hasPRID() ; aRID = aRID.getPRID() )
 	{
-		if( aRID.getExecutable()->hasPort() )
+		if( aRID.refExecutable().hasPort() )
 		{
 			break;
 		}
@@ -202,49 +274,49 @@ void Message::toFscn(OutStream & os) const
 
 	if( hasPort() )
 	{
-		int pointpos = getPort()->getFullyQualifiedNameID().rfind('.',
-				getPort()->getFullyQualifiedNameID().size());
-//		os << TAB2 << ":pid#" << rid.getRid() << ":"
-//				<< getPort()->getFullyQualifiedNameID().substr(
+		int dotPosition = getPort().getFullyQualifiedNameID().rfind('.',
+				getPort().getFullyQualifiedNameID().size());
+//		out << TAB2 << ":" << rid.strPid() << ":"
+//			<< getPort().getFullyQualifiedNameID().substr(
 //					rid->getInstance()->getFullyQualifiedNameID().size() + 1);
-		os << TAB2 << ":pid#" << aRID.getRid() << ":"
-				<< getPort()->getFullyQualifiedNameID().substr(pointpos + 1);
+		out << TAB2 << ":" << aRID.strPid() << ":"
+			<< getPort().getFullyQualifiedNameID().substr(dotPosition + 1);
 	}
 	else
 	{
-		os << TAB2 << ":pid#" << aRID.getRid() << ":_";
+		out << TAB2 << ":" << aRID.strPid() << ":_";
 	}
 
 	if( hasParameter() )
 	{
-		os << "(" << AVM_NO_INDENT;
+		out << "(" << AVM_NO_INDENT;
 
 		Message::const_iterator it = beginParameters();
 		Message::const_iterator endIt = endParameters();
 
-		it->toStream(os);
+		it->toStream(out);
 
 		for( ++it ; it != endIt ; ++it )
 		{
-			os << " , ";
-			it->toStream(os);
+			out << " , ";
+			it->toStream(out);
 		}
 
-		os << ")";
+		out << ")";
 
 AVM_IF_DEBUG_ENABLED_AND( base_this_type::mPTR->mReceiverRID.valid() )
-	os << " /* --> " << base_this_type::mPTR->mReceiverRID.strUniqId() << "*/";
+	out << " /* --> " << base_this_type::mPTR->mReceiverRID.strUniqId() << "*/";
 AVM_ENDIF_DEBUG_ENABLED_AND
 
-		os << ";" << END_INDENT_EOL;
+		out << ";" << END_INDENT_EOL;
 	}
 	else
 	{
 AVM_IF_DEBUG_ENABLED_AND( base_this_type::mPTR->mReceiverRID.valid() )
-	os << " /* --> " << base_this_type::mPTR->mReceiverRID.strUniqId() << "*/";
+	out << " /* --> " << base_this_type::mPTR->mReceiverRID.strUniqId() << "*/";
 AVM_ENDIF_DEBUG_ENABLED_AND
 
-		os << ";" << EOL_FLUSH;
+		out << ";" << EOL_FLUSH;
 	}
 }
 

@@ -37,7 +37,7 @@ namespace sep
  * Pre-Compiling type specifier
  */
 void BaseCompiler::precompileTypeSpecifier(
-		AvmProgram * aContainer, const BF & bfType)
+		AvmProgram & aContainer, const BF & bfType) const
 {
 	TypeSpecifier aTypeSpecifier;
 
@@ -47,36 +47,36 @@ void BaseCompiler::precompileTypeSpecifier(
 
 	if( bfType.is< DataType >() )
 	{
-		DataType * aDataType = bfType.to_ptr< DataType >();
+		const DataType & aDataType = bfType.to< DataType >();
 
-		if( aDataType->hasTypeContainer() )
+		if( aDataType.hasTypeContainer() )
 		{
 			aTypeSpecifier = compileContainerSpecifier(aContainer, aDataType);
 		}
-		else if( aDataType->isTypedInterval() )
+		else if( aDataType.isTypedInterval() )
 		{
 			aTypeSpecifier = compileIntervalSpecifier(aContainer, aDataType);
 		}
-		else if( aDataType->isTypedEnum() )
+		else if( aDataType.isTypedEnum() )
 		{
 			aTypeSpecifier = compileEnumerationSpecifier(aContainer, aDataType);
 		}
-		else if( aDataType->isTypedStructure() )
+		else if( aDataType.isTypedStructure() )
 		{
 			aTypeSpecifier = compileStructureSpecifier(aContainer, aDataType);
 		}
 
-		else if( aDataType->isTypedChoice() )
+		else if( aDataType.isTypedChoice() )
 		{
 			aTypeSpecifier = compileChoiceSpecifier(aContainer, aDataType);
 		}
 
-		else if( aDataType->isTypedUnion() )
+		else if( aDataType.isTypedUnion() )
 		{
 			aTypeSpecifier = compileUnionSpecifier(aContainer, aDataType);
 		}
 
-		else if( aDataType->isTypedAlias() )
+		else if( aDataType.isDataTypeAlias() )
 		{
 			aTypeSpecifier = compileTypeAliasSpecifier(aContainer, aDataType);
 		}
@@ -103,7 +103,7 @@ void BaseCompiler::precompileTypeSpecifier(
 
 	if( aTypeSpecifier.valid() )
 	{
-		aContainer->appendTypeSpecifier( aTypeSpecifier );
+		aContainer.appendTypeSpecifier( aTypeSpecifier );
 	}
 }
 
@@ -113,7 +113,7 @@ void BaseCompiler::precompileTypeSpecifier(
  * Compiling type specifier
  */
 TypeSpecifier BaseCompiler::compileTypeSpecifier(
-		AvmProgram * aContainer, const std::string & aTypeID)
+		AvmProgram & aContainer, const std::string & aTypeID) const
 {
 	const TypeSpecifier & aType = TypeManager::getPrimitiveType( aTypeID );
 
@@ -135,7 +135,7 @@ TypeSpecifier BaseCompiler::compileTypeSpecifier(
 		}
 		else
 		{
-			aContainer->getAstElement()->errorLocation(AVM_OS_WARN)
+			aContainer.safeAstElement().errorLocation(AVM_OS_WARN)
 					<< "Error while compiling type specifier << "
 					<< aTypeID << " >>" << std::endl << std::endl;
 
@@ -146,7 +146,7 @@ TypeSpecifier BaseCompiler::compileTypeSpecifier(
 
 
 TypeSpecifier BaseCompiler::compileTypeSpecifier(
-		AvmProgram * aContainer, const BF & bfType)
+		AvmProgram & aContainer, const BF & bfType) const
 {
 	if( bfType.invalid() )
 	{
@@ -173,8 +173,8 @@ TypeSpecifier BaseCompiler::compileTypeSpecifier(
 		else
 		{
 //			incrErrorCount();
-			AVM_OS_WARN << bfType.to_ptr< UniFormIdentifier >()
-					->errorLocation(aContainer->getAstElement())
+			AVM_OS_WARN << bfType.to< UniFormIdentifier >()
+					.errorLocation(aContainer.safeAstElement())
 					<< "Unfound data type form << " << bfType.str()
 					<< " >>" << std::endl << std::endl;
 
@@ -208,7 +208,7 @@ TypeSpecifier BaseCompiler::compileTypeSpecifier(
 
 		TypeSpecifier bfTS =  SymbolTable::searchTypeSpecifier(
 				getConfiguration().getExecutableSystem(),
-				compilENV.mCTX, bfType.to_ptr< ObjectElement >() );
+				compilENV.mCTX, bfType.to< ObjectElement >() );
 
 		if( bfTS.valid() )
 		{
@@ -217,36 +217,36 @@ TypeSpecifier BaseCompiler::compileTypeSpecifier(
 
 		else  if( bfType.is< DataType >() )
 		{
-			DataType * aDataType = bfType.to_ptr< DataType >();
+			const DataType & aDataType = bfType.to< DataType >();
 
-			if( aDataType->hasTypeContainer() )
+			if( aDataType.hasTypeContainer() )
 			{
 				bfTS = compileContainerSpecifier(aContainer, aDataType);
 			}
-			else if( aDataType->isTypedInterval() )
+			else if( aDataType.isTypedInterval() )
 			{
 				bfTS = compileIntervalSpecifier(aContainer, aDataType);
 			}
-			else if( aDataType->isTypedEnum() )
+			else if( aDataType.isTypedEnum() )
 			{
 				bfTS = compileEnumerationSpecifier(aContainer, aDataType);
 			}
-			else if( aDataType->isTypedStructure() )
+			else if( aDataType.isTypedStructure() )
 			{
 				bfTS = compileStructureSpecifier(aContainer, aDataType);
 			}
 
-			else if( aDataType->isTypedChoice() )
+			else if( aDataType.isTypedChoice() )
 			{
 				bfTS = compileChoiceSpecifier(aContainer, aDataType);
 			}
 
-			else if( aDataType->isTypedUnion() )
+			else if( aDataType.isTypedUnion() )
 			{
 				bfTS = compileUnionSpecifier(aContainer, aDataType);
 			}
 
-			else// if( aDataType->isTypedAlias() )
+			else// if( aDataType.isDataTypeAlias() )
 			{
 				bfTS = compileTypeAliasSpecifier(aContainer, aDataType);
 			}
@@ -257,16 +257,16 @@ TypeSpecifier BaseCompiler::compileTypeSpecifier(
 			if( bfTS.hasTypeEnumOrComposite() &&
 					SymbolTable::searchTypeSpecifier(
 							getConfiguration().getExecutableSystem(),
-							compilENV.mCTX, bfTS.getAstElement()).invalid() )
+							compilENV.mCTX, bfTS.safeAstElement()).invalid() )
 			{
-				aContainer->appendTypeSpecifier( bfTS );
+				aContainer.appendTypeSpecifier( bfTS );
 			}
 
 			return( bfTS );
 		}
 		else
 		{
-			aContainer->getAstElement()->errorLocation(AVM_OS_WARN)
+			aContainer.safeAstElement().errorLocation(AVM_OS_WARN)
 					<< "Error while compiling type specifier << "
 					<< bfType.str() << " >>" << std::endl << std::endl;
 
@@ -288,7 +288,7 @@ TypeSpecifier BaseCompiler::compileTypeSpecifier(
 
 
 TypeSpecifier BaseCompiler::compileStructureSpecifier(
-		AvmProgram * aContainer, DataType * aStructureT)
+		AvmProgram & aContainer, const DataType & aStructureT) const
 {
 	ClassTypeSpecifier * theClassType;
 	TypeSpecifier bfTS( theClassType = TypeManager::newClass(aStructureT) );
@@ -296,21 +296,21 @@ TypeSpecifier BaseCompiler::compileStructureSpecifier(
 	BF aValue;
 	TypeSpecifier aTypeSpecifier;
 
-	TableOfVariable::const_raw_iterator it =
-			aStructureT->getPropertyPart()->getVariables().begin();
-	TableOfVariable::const_raw_iterator endIt =
-			aStructureT->getPropertyPart()->getVariables().end();
-	for( ; it != endIt ; ++it )
+	TableOfVariable::const_ref_iterator itVariable =
+			aStructureT.getPropertyPart()->getVariables().begin();
+	TableOfVariable::const_ref_iterator endVariable =
+			aStructureT.getPropertyPart()->getVariables().end();
+	for( ; itVariable != endVariable ; ++itVariable )
 	{
-		aTypeSpecifier = compileTypeSpecifier(aContainer, (it)->getType());
+		aTypeSpecifier = compileTypeSpecifier(aContainer, (itVariable)->getType());
 
 		InstanceOfData * anInstanceAttribute = new InstanceOfData(
-				IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE,
-				NULL, (it), aTypeSpecifier,
-				theClassType->getSymbolData().size(), (it)->getModifier() );
-		anInstanceAttribute->setNameID( (it)->getNameID() );
+				IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE,
+				nullptr, (itVariable), aTypeSpecifier,
+				theClassType->getSymbolData().size(), (itVariable)->getModifier() );
+		anInstanceAttribute->setNameID( (itVariable)->getNameID() );
 
-		aValue = (it)->getValue();
+		aValue = (itVariable)->getValue();
 		if( aValue.valid() )
 		{
 			switch( aValue.classKind() )
@@ -325,8 +325,6 @@ TypeSpecifier BaseCompiler::compileStructureSpecifier(
 				case FORM_BUILTIN_STRING_KIND:
 				case FORM_BUILTIN_IDENTIFIER_KIND:
 				case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
-				//@deprecated
-				//case FORM_EXPRESSION_GINAC_KIND:
 				{
 					anInstanceAttribute->setValue( aValue );
 
@@ -370,7 +368,7 @@ TypeSpecifier BaseCompiler::compileStructureSpecifier(
 
 
 TypeSpecifier BaseCompiler::compileChoiceSpecifier(
-		AvmProgram * aContainer, DataType * aChoiceT)
+		AvmProgram & aContainer, const DataType & aChoiceT) const
 {
 	ChoiceTypeSpecifier * theChoiceType;
 	TypeSpecifier bfTS( theChoiceType = TypeManager::newChoice(aChoiceT) );
@@ -378,21 +376,21 @@ TypeSpecifier BaseCompiler::compileChoiceSpecifier(
 	BF aValue;
 	TypeSpecifier aTypeSpecifier;
 
-	TableOfVariable::const_raw_iterator it =
-			aChoiceT->getPropertyPart()->getVariables().begin();
-	TableOfVariable::const_raw_iterator endIt =
-			aChoiceT->getPropertyPart()->getVariables().end();
-	for( ; it != endIt ; ++it )
+	TableOfVariable::const_ref_iterator itVariable =
+			aChoiceT.getPropertyPart()->getVariables().begin();
+	TableOfVariable::const_ref_iterator endVariable =
+			aChoiceT.getPropertyPart()->getVariables().end();
+	for( ; itVariable != endVariable ; ++itVariable )
 	{
-		aTypeSpecifier = compileTypeSpecifier(aContainer, (it)->getType());
+		aTypeSpecifier = compileTypeSpecifier(aContainer, (itVariable)->getType());
 
 		InstanceOfData * anInstanceAttribute = new InstanceOfData(
-				IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE,
-				NULL, (it), aTypeSpecifier,
-				theChoiceType->getSymbolData().size(), (it)->getModifier() );
-		anInstanceAttribute->setNameID( (it)->getNameID() );
+				IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE,
+				nullptr, (itVariable), aTypeSpecifier,
+				theChoiceType->getSymbolData().size(), (itVariable)->getModifier() );
+		anInstanceAttribute->setNameID( (itVariable)->getNameID() );
 
-		aValue = (it)->getValue();
+		aValue = (itVariable)->getValue();
 		if( aValue.valid() )
 		{
 			switch( aValue.classKind() )
@@ -407,8 +405,6 @@ TypeSpecifier BaseCompiler::compileChoiceSpecifier(
 				case FORM_BUILTIN_STRING_KIND:
 				case FORM_BUILTIN_IDENTIFIER_KIND:
 				case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
-				//@deprecated
-				//case FORM_EXPRESSION_GINAC_KIND:
 				{
 					anInstanceAttribute->setValue( aValue );
 
@@ -452,7 +448,7 @@ TypeSpecifier BaseCompiler::compileChoiceSpecifier(
 
 
 TypeSpecifier BaseCompiler::compileUnionSpecifier(
-		AvmProgram * aContainer, DataType * anUnionT)
+		AvmProgram & aContainer, const DataType & anUnionT) const
 {
 	UnionTypeSpecifier * theUnionType;
 	TypeSpecifier bfTS( theUnionType = TypeManager::newUnion(anUnionT) );
@@ -460,20 +456,20 @@ TypeSpecifier BaseCompiler::compileUnionSpecifier(
 	BF aValue;
 	TypeSpecifier aTypeSpecifier;
 
-	TableOfVariable::const_raw_iterator it =
-			anUnionT->getPropertyPart()->getVariables().begin();
-	TableOfVariable::const_raw_iterator endIt =
-			anUnionT->getPropertyPart()->getVariables().end();
-	for( ; it != endIt ; ++it )
+	TableOfVariable::const_ref_iterator itVariable =
+			anUnionT.getPropertyPart()->getVariables().begin();
+	TableOfVariable::const_ref_iterator endVariable =
+			anUnionT.getPropertyPart()->getVariables().end();
+	for( ; itVariable != endVariable ; ++itVariable )
 	{
-		aTypeSpecifier = compileTypeSpecifier(aContainer, (it)->getType());
+		aTypeSpecifier = compileTypeSpecifier(aContainer, (itVariable)->getType());
 
 		InstanceOfData * anInstanceAttribute = new InstanceOfData(
-				IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE,
-				NULL, (it), aTypeSpecifier, 0, (it)->getModifier());
-		anInstanceAttribute->setNameID( (it)->getNameID() );
+				IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE,
+				nullptr, (itVariable), aTypeSpecifier, 0, (itVariable)->getModifier());
+		anInstanceAttribute->setNameID( (itVariable)->getNameID() );
 
-		aValue = (it)->getValue();
+		aValue = (itVariable)->getValue();
 		if( aValue.valid() )
 		{
 			switch( aValue.classKind() )
@@ -488,8 +484,6 @@ TypeSpecifier BaseCompiler::compileUnionSpecifier(
 				case FORM_BUILTIN_STRING_KIND:
 				case FORM_BUILTIN_IDENTIFIER_KIND:
 				case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
-				//@deprecated
-				//case FORM_EXPRESSION_GINAC_KIND:
 				{
 					anInstanceAttribute->setValue( aValue );
 
@@ -533,10 +527,10 @@ TypeSpecifier BaseCompiler::compileUnionSpecifier(
 
 
 TypeSpecifier BaseCompiler::compileContainerSpecifier(
-		AvmProgram * aContainer, DataType * aCollectionT)
+		AvmProgram & aContainer, const DataType & aCollectionT) const
 {
 	TypeSpecifier theContainerType = compileTypeSpecifier(
-			aContainer, aCollectionT->getContentsTypeSpecifier());
+			aContainer, aCollectionT.getContentsTypeSpecifier());
 
 	if( theContainerType.invalid() )
 	{
@@ -546,14 +540,14 @@ TypeSpecifier BaseCompiler::compileContainerSpecifier(
 		++AVM_ERROR_COUNT;
 
 		AVM_OS_ERROR_ALERT << "BaseCompiler::compileCollectionSpecifier : << "
-				<< aCollectionT->strT() << " >> !!!"
+				<< aCollectionT.strT() << " >> !!!"
 				<< SEND_ALERT;
 	}
 
 
-	int theSize = aCollectionT->size();
+	long theSize = aCollectionT.getMaximumSize();
 
-	if( (aCollectionT->getContainerSpecifierKind() == TYPE_ARRAY_SPECIFIER)
+	if( (aCollectionT.getContainerSpecifierKind() == TYPE_ARRAY_SPECIFIER)
 		&& (theSize < 1) )
 	{
 		theSize = 1;
@@ -562,23 +556,23 @@ TypeSpecifier BaseCompiler::compileContainerSpecifier(
 		++AVM_ERROR_COUNT;
 
 		AVM_OS_ERROR_ALERT << "BaseCompiler::compileCollectionSpecifier : << "
-				<< aCollectionT->strT() << " >> !!!"
+				<< aCollectionT.strT() << " >> !!!"
 				<< SEND_ALERT;
 	}
 
 	TypeSpecifier bfTS( TypeManager::newCollection(aCollectionT,
-			aCollectionT->getContainerSpecifierKind(), theContainerType,
-			(theSize < 0)? AVM_NUMERIC_MAX_INTEGER : theSize ) );
+			aCollectionT.getContainerSpecifierKind(), theContainerType,
+			(theSize < 0)? AVM_NUMERIC_MAX_SIZE_T : theSize ) );
 
 	return( bfTS );
 }
 
 
 TypeSpecifier BaseCompiler::compileIntervalSpecifier(
-		AvmProgram * aContainer, DataType * anIntervalT)
+		AvmProgram & aContainer, const DataType & anIntervalT) const
 {
 	TypeSpecifier theBaseType = compileTypeSpecifier(
-			aContainer, anIntervalT->getIntervalTypeSpecifier());
+			aContainer, anIntervalT.getIntervalTypeSpecifier());
 
 	if( theBaseType.invalid() )
 	{
@@ -588,69 +582,100 @@ TypeSpecifier BaseCompiler::compileIntervalSpecifier(
 		++AVM_ERROR_COUNT;
 
 		AVM_OS_ERROR_ALERT << "BaseCompiler::compileIntervalSpecifier : << "
-				<< anIntervalT->strT() << " >> !!!"
+				<< anIntervalT.strT() << " >> !!!"
 				<< SEND_ALERT;
 	}
 
 	BF aMin = mAvmcodeCompiler.decode_compileExpression(
-			aContainer, anIntervalT->getIntervalInfimum());
+			aContainer, anIntervalT.getIntervalInfimum());
 
 	BF aMax = mAvmcodeCompiler.decode_compileExpression(
-			aContainer, anIntervalT->getIntervalSupremum());
+			aContainer, anIntervalT.getIntervalSupremum());
 
 	TypeSpecifier bfTS( TypeManager::newInterval(anIntervalT,
-			theBaseType, anIntervalT->getIntervalKind(), aMin, aMax) );
+			theBaseType, anIntervalT.getIntervalKind(), aMin, aMax) );
 
 	return( bfTS );
 }
 
 
 TypeSpecifier BaseCompiler::compileEnumerationSpecifier(
-		AvmProgram * aContainer, DataType * anEnumT)
+		AvmProgram & aContainer, const DataType & anEnumT) const
 {
 	EnumTypeSpecifier * theEnumType;
-	TypeSpecifier bfTS( theEnumType = TypeManager::newEnum(anEnumT));
+	TypeSpecifier bfTS( theEnumType = TypeManager::newEnum(anEnumT) );
 
-	BF aValue;
-
-	TableOfVariable::const_raw_iterator it =
-			anEnumT->getPropertyPart()->getVariables().begin();
-	TableOfVariable::const_raw_iterator endIt =
-			anEnumT->getPropertyPart()->getVariables().end();
-	for( ; it != endIt ; ++it )
+	if( anEnumT.hasSuperTypeSpecifier() )
 	{
-		InstanceOfData * anInstanceSymbol = new InstanceOfData(
-				IPointerDataNature::POINTER_ENUM_SYMBOL_NATURE,
-				aContainer, (it), bfTS, (it)->getFullyQualifiedNameID(),
-				theEnumType->getSymbolData().size(),
-				Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
-		anInstanceSymbol->updateFullyQualifiedNameID();
+		const TypeSpecifier & aType = SymbolTable::searchTypeSpecifier(
+				getConfiguration().getExecutableSystem(), (& aContainer),
+				anEnumT.getTypeSpecifier().to< DataType >());
 
-		aValue = (it)->getValue();
-		if( aValue.valid() )
+		theEnumType->setSuperTypeSpecifier( aType );
+
+		const EnumTypeSpecifier & superEnumTS = aType.enumT();
+
+		TableOfVariable::const_ref_iterator itVariable =
+				anEnumT.getPropertyPart()->getVariables().begin();
+		TableOfVariable::const_ref_iterator endVariable =
+				anEnumT.getPropertyPart()->getVariables().end();
+		for( ; itVariable != endVariable ; ++itVariable )
 		{
-			if( aValue.isBuiltinValue() )
+			const Symbol & foundEnumSymbol =
+					superEnumTS.getDataByAstElement(itVariable);
+			if( foundEnumSymbol.valid() )
 			{
-				anInstanceSymbol->setValue( aValue );
+				theEnumType->appendSymbolData( foundEnumSymbol );
 			}
 			else
 			{
-				AVM_OS_FATAL_ERROR_EXIT
-						<< "Unexpected ENUM value for "
-							"compileEnumerationSpecifier :>\n"
-						<< aValue.toString( AVM_TAB1_INDENT )
-						<< SEND_EXIT;
 
-//				anInstanceSymbol->setValue( mAvmcodeCompiler.
-//						decode_compileExpression(aContainer, aValue) );
 			}
 		}
-		else
-		{
-			anInstanceSymbol->setValue( theEnumType->newfreshSymbolValue() );
-		}
+	}
+	else
+	{
+		BF aValue;
 
-		theEnumType->saveSymbolData(anInstanceSymbol);
+		TableOfVariable::const_ref_iterator itVariable =
+				anEnumT.getPropertyPart()->getVariables().begin();
+		TableOfVariable::const_ref_iterator endVariable =
+				anEnumT.getPropertyPart()->getVariables().end();
+		for( ; itVariable != endVariable ; ++itVariable )
+		{
+			InstanceOfData * anInstanceSymbol = new InstanceOfData(
+					IPointerVariableNature::POINTER_ENUM_SYMBOL_NATURE,
+					(& aContainer), (itVariable), bfTS, (itVariable)->getFullyQualifiedNameID(),
+					theEnumType->getSymbolData().size(),
+					Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
+			anInstanceSymbol->updateFullyQualifiedNameID();
+
+			aValue = (itVariable)->getValue();
+			if( aValue.valid() )
+			{
+				if( aValue.isBuiltinValue() )
+				{
+					anInstanceSymbol->setValue( aValue );
+				}
+				else
+				{
+					AVM_OS_FATAL_ERROR_EXIT
+							<< "Unexpected ENUM value for "
+								"compileEnumerationSpecifier :>\n"
+							<< aValue.toString( AVM_TAB1_INDENT )
+							<< SEND_EXIT;
+
+	//				anInstanceSymbol->setValue( mAvmcodeCompiler.
+	//						decode_compileExpression(aContainer, aValue) );
+				}
+			}
+			else
+			{
+				anInstanceSymbol->setValue( theEnumType->newfreshSymbolValue() );
+			}
+
+			theEnumType->saveSymbolData(anInstanceSymbol);
+		}
 	}
 
 	theEnumType->updateSize();
@@ -661,10 +686,10 @@ TypeSpecifier BaseCompiler::compileEnumerationSpecifier(
 
 
 TypeSpecifier BaseCompiler::compileTypeAliasSpecifier(
-		AvmProgram * aContainer, DataType * aDataType)
+		AvmProgram & aContainer, const DataType & aDataType) const
 {
 	TypeSpecifier theTypeSpecifier = compileTypeSpecifier(
-			aContainer, aDataType->getTypeSpecifier());
+			aContainer, aDataType.getTypeSpecifier());
 
 	if( theTypeSpecifier.invalid() )
 	{
@@ -674,20 +699,18 @@ TypeSpecifier BaseCompiler::compileTypeAliasSpecifier(
 		++AVM_ERROR_COUNT;
 
 		AVM_OS_ERROR_ALERT << "BaseCompiler::compileTypeAliasSpecifier : << "
-				<< aDataType->toString() << " >> !!!"
+				<< aDataType.toString() << " >> !!!"
 				<< SEND_ALERT;
 	}
 
-	TypeSpecifier bfTS(
-			TypeManager::newTypeAlias(aDataType, theTypeSpecifier) );
+	TypeSpecifier bfTS(	TypeManager::newTypeAlias(aDataType, theTypeSpecifier) );
 
-	if( aDataType->hasConstraintRoutine() &&
-		aDataType->getConstraintRoutine()->doSomething() )
+	if( aDataType.hasConstraintRoutine() &&
+		aDataType.getConstraintRoutine().doSomething() )
 	{
 		bfTS.saveConstraint(
-				mAvmcodeCompiler.compileRoutine(
-						this, aContainer, theTypeSpecifier,
-						aDataType->getConstraintRoutine() ) );
+				mAvmcodeCompiler.compileRoutine( (*this), aContainer,
+						theTypeSpecifier,aDataType.getConstraintRoutine() ) );
 	}
 
 	return( bfTS );

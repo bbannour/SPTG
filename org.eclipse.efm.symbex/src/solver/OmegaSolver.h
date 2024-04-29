@@ -46,9 +46,8 @@
 namespace sep
 {
 
-class APExecutionData;
-class ExecutionData;
 class ExecutionContext;
+class ExecutionData;
 
 class WObject;
 
@@ -69,15 +68,13 @@ public:
 
 	static std::string DESCRIPTION;
 
-	static avm_uint64_t SOLVER_SESSION_ID;
+	static std::uint64_t SOLVER_SESSION_ID;
 
 
 protected:
 	/**
 	 * ATTRIBUTES
 	 */
-	bool isConfigureFlag;
-
 	VectorOfInstanceOfData mTableOfVariableInstance;
 	std::vector< omega::Variable_ID > mTableOfVariableID;
 
@@ -99,9 +96,8 @@ public:
 	 */
 	OmegaSolver()
 	: SatSolver(),
-	isConfigureFlag( false ),
-	registerExistQuantifier( NULL ),
-	mCacheForNewEC( NULL ),
+	registerExistQuantifier( nullptr ),
+	mCacheForNewEC( nullptr ),
 	mCacheForNewRelation( Relation::Null() )
 	{
 		//!! NOTHING
@@ -122,9 +118,14 @@ public:
 	/**
 	 * CONFIGURE
 	 */
+	inline static bool configure(const WObject * wfFilterObject)
+	{
+		return( true );
+	}
+
 	virtual bool configure(
-			Configuration & aConfiguration, WObject * wfFilterObject,
-			ListOfPairMachineData & listOfSelectedVariable);
+			Configuration & aConfiguration, const WObject * wfFilterObject,
+			ListOfPairMachineData & listOfSelectedVariable) override;
 
 	/**
 	 * RESET VARIABLE or PARAMETER
@@ -136,7 +137,7 @@ public:
 	 * SET VARIABLE or PARAMETER
 	 */
 	virtual void setSelectedVariable(const ExecutionData & apED,
-			ListOfPairMachineData & listOfSelectedVariable);
+			ListOfPairMachineData & listOfSelectedVariable) override;
 
 	void setSelectedVariable(const ExecutionData & apED);
 	void setSelectedVariable(const ExecutionData & apED,
@@ -148,21 +149,24 @@ public:
 	 * PROVER
 	 */
 	virtual bool isSubSet(
-			const ExecutionContext & newEC, const ExecutionContext & oldEC);
+			const ExecutionContext & newEC,
+			const ExecutionContext & oldEC) override;
 
 	virtual bool isEqualSet(
+			const ExecutionContext & newEC,
+			const ExecutionContext & oldEC) override;
+
+	bool isEmptyIntersection(
 			const ExecutionContext & newEC, const ExecutionContext & oldEC);
 
-	virtual bool isEmptyIntersection(
-			const ExecutionContext & newEC, const ExecutionContext & oldEC);
-
-	virtual SolverDef::SATISFIABILITY_RING isSatisfiable(const BF & aCondition);
+	virtual SolverDef::SATISFIABILITY_RING isSatisfiable(
+			const BF & aCondition) override;
 
 	/**
 	 * SOLVER
 	 */
 	virtual bool solveImpl(const BF & aCondition,
-			BFVector & dataVector, BFVector & valuesVector);
+			BFVector & dataVector, BFVector & valuesVector) override;
 
 
 	/**

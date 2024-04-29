@@ -38,7 +38,7 @@ protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	bool mIntegerEnumerationFlag;
+	bool mIntervalEnumerationFlag;
 
 	BF mInfimum;
 	BF mSupremum;
@@ -49,10 +49,10 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	EnumTypeSpecifier(DataType * aCompiledType)
+	EnumTypeSpecifier(const DataType & astType)
 	: BaseSymbolTypeSpecifier(CLASS_KIND_T( EnumTypeSpecifier ),
-			TYPE_ENUM_SPECIFIER, aCompiledType, 1, 1, 0),
-	mIntegerEnumerationFlag( false ),
+			TYPE_ENUM_SPECIFIER, astType, 1, 1, 0),
+			mIntervalEnumerationFlag( false ),
 	mInfimum( ),
 	mSupremum( )
 	{
@@ -122,7 +122,7 @@ public:
 	 * GETTER - SETTER
 	 * mSymbolData
 	 */
-	bool hasSymbolData(InstanceOfData * aSymbolData) const;
+	bool hasSymbolData(const InstanceOfData & aSymbolData) const;
 
 	bool hasSymbolData(const BF & aSymbol) const;
 
@@ -132,11 +132,11 @@ public:
 	const Symbol & getSymbolDataByValue(const BF & aValue) const;
 
 
-	avm_size_t getRandomSymbolOffset();
+	std::size_t getRandomSymbolOffset() const;
 
-	const Symbol & getRandomSymbolData();
+	const Symbol & getRandomSymbolData() const;
 
-	const BF & getRandomSymbolValue();
+	const BF & getRandomSymbolValue() const;
 
 
 
@@ -144,14 +144,14 @@ public:
 	 * GETTER
 	 * newfresh Enum Value
 	 */
-	BF newfreshSymbolValue();
+	BF newfreshSymbolValue() const;
 
 
 	/**
 	 * SETTER
 	 * mBitSize
 	 */
-	inline virtual void updateSize()
+	inline virtual void updateSize() override
 	{
 		setBitSize( mSymbolData.size() );
 	}
@@ -163,24 +163,28 @@ public:
 	 */
 	BF minConstraint(const BF & aParam) const;
 	BF maxConstraint(const BF & aParam) const;
-	BF genConstraint(const BF & aParam) const;
+
+	virtual bool couldGenerateConstraint() const override;
+
+	virtual BF genConstraint(const BF & aParam) const override;
 
 
 	/**
 	 * Format a value w.r.t. its type
 	 */
-	inline virtual void formatStream(OutStream & out, const BF & bfValue) const
+	inline virtual void formatStream(
+			OutStream & out, const BF & bfValue) const override
 	{
 		if( bfValue.is< InstanceOfData >() &&
-			(bfValue.to_ptr< InstanceOfData >()->getTypeSpecifier() == this) )
+			(bfValue.to< InstanceOfData >().getTypeSpecifier().isTEQ(this)) )
 		{
 AVM_IF_DEBUG_FLAG( DATA )
 
-			out << bfValue.to_ptr< InstanceOfData >()->getFullyQualifiedNameID();
+			out << bfValue.to< InstanceOfData >().getFullyQualifiedNameID();
 
 AVM_DEBUG_ELSE
 
-			out << bfValue.to_ptr< InstanceOfData >()->getNameID();
+			out << bfValue.to< InstanceOfData >().getNameID();
 
 AVM_ENDIF_DEBUG_FLAG( DATA )
 		}
@@ -201,11 +205,14 @@ AVM_ENDIF_DEBUG_FLAG( DATA )
 		}
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using BaseSymbolTypeSpecifier::formatStream;
+
 
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & out) const;
+	void toStream(OutStream & out) const override;
 
 };
 

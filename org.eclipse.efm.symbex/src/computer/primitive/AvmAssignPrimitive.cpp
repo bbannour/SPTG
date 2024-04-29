@@ -20,6 +20,7 @@
 #include <computer/ExecutionEnvironment.h>
 
 #include <fml/expression/AvmCode.h>
+#include <fml/expression/ExpressionConstant.h>
 #include <fml/expression/ExpressionConstructor.h>
 #include <fml/expression/ExpressionSimplifier.h>
 
@@ -46,14 +47,14 @@ bool AvmPrimitive_Assignment::run(ExecutionEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:>> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:>> " << ENV.mARG->at(1).str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(1)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(1)) )
 	{
 		ENV.appendOutput( ENV.mARG->outED );
 
@@ -70,14 +71,14 @@ bool AvmPrimitive_Assignment::seval(EvaluationEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:> " << ENV.mARG->at(1).str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(1)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(1)) )
 	{
 		ENV.outED = ENV.mARG->outED;
 		ENV.outVAL = ENV.mARG->at(1);
@@ -100,14 +101,14 @@ bool AvmPrimitive_AssignmentAfter::run(ExecutionEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:>> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:>> " << ENV.mARG->at(1).str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(1)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(1)) )
 	{
 		ENV.appendOutput( ENV.mARG->outED );
 
@@ -123,7 +124,7 @@ bool AvmPrimitive_AssignmentAfter::seval(EvaluationEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:> " << ENV.mARG->at(2).str()
 			<< std::endl;
@@ -132,7 +133,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	ENV.outVAL = ENV.mARG->at(1);
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(2)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(2)) )
 	{
 		ENV.outED = ENV.mARG->outED;
 
@@ -155,14 +156,14 @@ bool AvmPrimitive_AssignmentOpAfter::run(ExecutionEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:>> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:>> " << ENV.mARG->at(1).str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(1)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(1)) )
 	{
 //
 		return( true );
@@ -177,7 +178,7 @@ bool AvmPrimitive_AssignmentOpAfter::seval(EvaluationEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:> " << ENV.mARG->at(2).str()
 			<< std::endl;
@@ -186,7 +187,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	ENV.outVAL = ENV.mARG->at(1);
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(2)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(2)) )
 	{
 		ENV.outED = ENV.mARG->outED;
 
@@ -207,14 +208,14 @@ bool AvmPrimitive_AssignmentRef::run(ExecutionEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:>> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:lvalue>> " << ENV.mARG->at(1).str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(1)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(1)) )
 	{
 		ENV.appendOutput( ENV.mARG->outED );
 
@@ -229,14 +230,14 @@ bool AvmPrimitive_AssignmentRef::seval(EvaluationEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:lvalue>> " << ENV.mARG->at(1).str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(1)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(1)) )
 	{
 		ENV.outED = ENV.mARG->outED;
 		ENV.outVAL = ENV.mARG->at(1);
@@ -258,14 +259,14 @@ bool AvmPrimitive_AssignmentMacro::run(ExecutionEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:>> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue>> " << ENV.mARG->at(1).str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(1)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(1)) )
 	{
 		ENV.appendOutput( ENV.mARG->outED );
 
@@ -280,14 +281,14 @@ bool AvmPrimitive_AssignmentMacro::seval(EvaluationEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue>> " << ENV.mARG->at(1).str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), ENV.mARG->at(1)) )
+			ENV.mARG->at(0).to< InstanceOfData >(), ENV.mARG->at(1)) )
 	{
 		ENV.outED = ENV.mARG->outED;
 		ENV.outVAL = ENV.mARG->at(1);
@@ -309,22 +310,22 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 bool AvmPrimitive_AssignNewFresh::run(ExecutionEnvironment & ENV)
 {
 	BFList paramList;
-	BF aNewSymbolicConstant = ENV.createNewFreshParam(ENV.mARG->outED->mRID,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), paramList );
+	BF aNewSymbolicConstant = ENV.createNewFreshParam(ENV.mARG->outED.getRID(),
+			ENV.mARG->at(0).to< InstanceOfData >(), paramList );
 
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:>> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:>> " << aNewSymbolicConstant.str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), aNewSymbolicConstant) )
+			ENV.mARG->at(0).to< InstanceOfData >(), aNewSymbolicConstant) )
 	{
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
-				BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+				BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 						StatementConstructor::newCode(
 								OperatorManager::OPERATOR_ASSIGN_NEWFRESH,
 								ENV.mARG->at(0), aNewSymbolicConstant))));
@@ -343,24 +344,24 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 bool AvmPrimitive_AssignNewFresh::seval(EvaluationEnvironment & ENV)
 {
 	BFList paramList;
-	BF aNewSymbolicConstant = ENV.createNewFreshParam(ENV.mARG->outED->mRID,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), paramList );
+	BF aNewSymbolicConstant = ENV.createNewFreshParam(ENV.mARG->outED.getRID(),
+			ENV.mARG->at(0).to< InstanceOfData >(), paramList );
 
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:>> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:>> " << aNewSymbolicConstant.str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), aNewSymbolicConstant) )
+			ENV.mARG->at(0).to< InstanceOfData >(), aNewSymbolicConstant) )
 	{
 		ENV.outVAL = aNewSymbolicConstant;
 
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
-				BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+				BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 						StatementConstructor::newCode(
 								OperatorManager::OPERATOR_ASSIGN_NEWFRESH,
 								ENV.mARG->at(0), aNewSymbolicConstant))));
@@ -383,22 +384,29 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 bool AvmPrimitive_AssignReset::run(ExecutionEnvironment & ENV)
 {
 	BFList paramList;
-	BF aNewSymbolicConstant = ENV.createNewFreshParam(ENV.mARG->outED->mRID,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), paramList );
+//	BF aNewSymbolicConstant = ExpressionConstant::INTEGER_ZERO;
+
+	const BaseTypeSpecifier & typeSpecifier =
+			ENV.mARG->at(0).to< InstanceOfData >().getTypeSpecifier();
+
+	BF aNewSymbolicConstant = typeSpecifier.hasDefaultValue()
+			? typeSpecifier.getDefaultValue()
+			: ENV.createNewFreshParam(ENV.mARG->outED.getRID(),
+			ENV.mARG->at(0).to< InstanceOfData >(), paramList );
 
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:>> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl
 			<< "rvalue:>> " << aNewSymbolicConstant.str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), aNewSymbolicConstant) )
+			ENV.mARG->at(0).to< InstanceOfData >(), aNewSymbolicConstant) )
 	{
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
-				BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+				BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 						StatementConstructor::newCode(
 								OperatorManager::OPERATOR_ASSIGN_RESET,
 								ENV.mARG->at(0), aNewSymbolicConstant))));
@@ -417,23 +425,23 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 bool AvmPrimitive_AssignReset::seval(EvaluationEnvironment & ENV)
 {
 	BFList paramList;
-	BF aNewSymbolicConstant = ENV.createNewFreshParam(ENV.mARG->outED->mRID,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), paramList );
+	BF aNewSymbolicConstant = ENV.createNewFreshParam(ENV.mARG->outED.getRID(),
+			ENV.mARG->at(0).to< InstanceOfData >(), paramList );
 
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:>> "
-			<< str_header( ENV.mARG->at(0).to_ptr< InstanceOfData >() )
+			<< str_header( ENV.mARG->at(0).to< InstanceOfData >() )
 			<< std::endl<< "rvalue:>> " << aNewSymbolicConstant.str()
 			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 	if( ENV.setRvalue(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfData >(), aNewSymbolicConstant) )
+			ENV.mARG->at(0).to< InstanceOfData >(), aNewSymbolicConstant) )
 	{
 		ENV.outVAL = aNewSymbolicConstant;
 
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
-				BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+				BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 						StatementConstructor::newCode(
 								OperatorManager::OPERATOR_ASSIGN_RESET,
 								ENV.mARG->at(0), aNewSymbolicConstant))));

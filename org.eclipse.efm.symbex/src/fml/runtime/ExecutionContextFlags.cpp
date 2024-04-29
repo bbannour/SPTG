@@ -50,6 +50,11 @@ std::string ExecutionContextFlags::strReachedLimit(
 		{
 			oss << "NODE-COUNT-";
 		}
+		if( (reachedLimit & REACHED_SYMBEX_EVAL_LIMIT) != 0 )
+		{
+			oss << "SYMBEX-EVAL-";
+		}
+
 		if( (reachedLimit & REACHED_SYMBEX_STEP_LIMIT) != 0 )
 		{
 			oss << "SYMBEX-STEP-";
@@ -76,8 +81,8 @@ std::string ExecutionContextFlags::strInterruptRequest(
 			return( "" );
 //			return( "<interrupt:undef>" + separator );
 
-		case INTERRUPT_FAM_REQUEST:
-			return( "FAM_IRQ" + separator );
+//		case INTERRUPT_FAM_REQUEST:
+//			return( "FAM_IRQ" + separator );
 
 		case INTERRUPT_USER_REQUEST:
 			return( "USER_IRQ" + separator );
@@ -137,33 +142,43 @@ std::string ExecutionContextFlags::strExecutionTrace(
 
 
 /**
- * ANALYSIS TRACE to STRING
+ * ANALYSIS VERDICT to STRING
  */
-std::string ExecutionContextFlags::strAnalysisTrace(
+std::string ExecutionContextFlags::strAnalysisVerdict(
 		bit_field_t analysisTrace, const std::string & separator)
 {
-	if( analysisTrace != FAM_UNDEFINED_TRACE )
+	if( analysisTrace != FAM_UNDEFINED_VERDICT )
 	{
 		std::ostringstream oss;
 
-		if( (analysisTrace & FAM_COVERAGE_ELEMENT_TRACE) != 0 )
+		if( (analysisTrace & FAM_COVERAGE_ELEMENT_VERDICT) != 0 )
 		{
 			oss << "COVERAGE-ELEMENT" << separator;
 		}
 
-		if( (analysisTrace & FAM_OBJECTIVE_ACHIEVED_TRACE) != 0 )
+		if( (analysisTrace & FAM_OBJECTIVE_ACHIEVED_VERDICT) != 0 )
 		{
 			oss << "OBJECTIVE-ACHIEVED" << separator;
 		}
 
-		if( (analysisTrace & FAM_OBJECTIVE_FAILED_TRACE) != 0 )
+		if( (analysisTrace & FAM_OBJECTIVE_INCONCLUSIVE_VERDICT) != 0 )
+		{
+			oss << "OBJECTIVE-INCONCLUSIVE" << separator;
+		}
+
+		if( (analysisTrace & FAM_OBJECTIVE_FAILED_VERDICT) != 0 )
 		{
 			oss << "OBJECTIVE-FAILED" << separator;
 		}
 
-		if( (analysisTrace & FAM_OBJECTIVE_ABORTED_TRACE) != 0 )
+		if( (analysisTrace & FAM_OBJECTIVE_ABORTED_VERDICT) != 0 )
 		{
 			oss << "OBJECTIVE-ABORTED" << separator;
+		}
+
+		if( (analysisTrace & FAM_OBJECTIVE_TIMEOUT_VERDICT) != 0 )
+		{
+			oss << "OBJECTIVE-TIMEOUT" << separator;
 		}
 
 		return( oss.str() );

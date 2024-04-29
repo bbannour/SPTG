@@ -1,7 +1,16 @@
-# Banner 
+# =============================================================================
+#              CMake module: Prin project pretty banner 
+# =============================================================================
 
-message (STATUS "\n  _________________________________________________  
- /                                                 \\
- |        This is Symbex build system              |
- \\_________________________________________________/
- ")
+
+include (Utils)
+
+set(BANNER_WIDTH 100)
+
+formatprint (${BANNER_WIDTH} "-" " " " " "")
+formatprint (${BANNER_WIDTH} " " "/" "\\" "")
+formatprint (${BANNER_WIDTH} " " "|" "|" "This is Diversity/Symbex Build System")
+formatprint (${BANNER_WIDTH} " " "\\" "/" "")
+formatprint (${BANNER_WIDTH} "-" " " " " "")
+
+message (STATUS)

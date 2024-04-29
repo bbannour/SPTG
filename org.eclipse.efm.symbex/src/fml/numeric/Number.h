@@ -99,10 +99,10 @@ public:
 	 * CONVERSION
 	 */
 	virtual bool isInt32() const = 0;
-	virtual avm_int32_t toInt32() const = 0;
+	virtual std::int32_t toInt32() const = 0;
 
 	virtual bool isInt64() const = 0;
-	virtual avm_int64_t toInt64() const = 0;
+	virtual std::int64_t toInt64() const = 0;
 
 
 	virtual bool isInteger() const = 0;

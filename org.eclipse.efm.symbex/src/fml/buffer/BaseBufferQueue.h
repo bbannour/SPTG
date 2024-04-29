@@ -41,7 +41,7 @@ protected:
 	 */
 	ListOfMessage mMessages;
 
-	avm_size_t mCapacity;
+	std::size_t mCapacity;
 
 
 public:
@@ -49,10 +49,10 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	BaseBufferQueue(class_kind_t aClassKind, InstanceOfBuffer * aBuffer)
+	BaseBufferQueue(class_kind_t aClassKind, const InstanceOfBuffer & aBuffer)
 	: BaseBufferForm(aClassKind, aBuffer),
 	mMessages( ),
-	mCapacity( aBuffer->capacity() )
+	mCapacity( aBuffer.getCapacity() )
 	{
 			//!! NOTHING
 	}
@@ -102,7 +102,7 @@ public:
 	 * GETTER - SETTER
 	 * mCapacity
 	 */
-	inline avm_size_t capacity() const
+	inline std::size_t capacity() const
 	{
 		return( mCapacity );
 	}
@@ -132,7 +132,7 @@ public:
 	 * Comparison
 	 * operator==
 	 */
-	virtual bool equals(const BaseBufferForm & aBuffer) const;
+	virtual bool equals(const BaseBufferForm & aBuffer) const override;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -142,32 +142,32 @@ public:
 	 * emptiness
 	 * size
 	 */
-	inline virtual bool empty() const
+	inline virtual bool empty() const override
 	{
 		return( mMessages.empty() );
 	}
 
-	inline virtual bool nonempty() const
+	inline virtual bool nonempty() const override
 	{
 		return( mMessages.nonempty() );
 	}
 
-	inline virtual bool singleton() const
+	inline virtual bool singleton() const override
 	{
 		return( mMessages.singleton() );
 	}
 
-	inline virtual bool populated() const
+	inline virtual bool populated() const override
 	{
 		return( mMessages.populated() );
 	}
 
-	inline virtual bool full() const
+	inline virtual bool full() const override
 	{
 		return( size() == mCapacity );
 	}
 
-	inline virtual avm_size_t size() const
+	inline virtual std::size_t size() const override
 	{
 		return( mMessages.size() );
 	}
@@ -177,12 +177,12 @@ public:
 	 * resize
 	 * remove
 	 */
-	inline virtual void clear()
+	inline virtual void clear() override
 	{
 		mMessages.clear();
 	}
 
-	inline virtual void resize(avm_size_t newSize)
+	inline virtual void resize(std::size_t newSize) override
 	{
 		if( mCapacity > newSize )
 		{
@@ -198,7 +198,7 @@ public:
 		mCapacity = newSize;
 	}
 
-	inline virtual void resize(avm_size_t newSize, const Message & aMsg)
+	inline virtual void resize(std::size_t newSize, const Message & aMsg) override
 	{
 		if( mCapacity > newSize )
 		{
@@ -223,7 +223,7 @@ public:
 	}
 
 
-	inline virtual void remove(InstanceOfPort * aSignal)
+	inline virtual void remove(InstanceOfPort * aSignal) override
 	{
 		ListOfMessage::iterator it = mMessages.begin();
 		for( ; it != mMessages.end() ; )
@@ -269,8 +269,8 @@ public:
 	 * contains
 	 * uncontains
 	 */
-	inline virtual bool contains(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+	inline virtual bool contains(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		const_iterator it = mMessages.begin();
 		const_iterator itEnd = mMessages.end();
@@ -286,7 +286,7 @@ public:
 
 
 	inline virtual bool contains(InstanceOfPort * aSignal,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		const_iterator it = mMessages.begin();
 		const_iterator itEnd = mMessages.end();
@@ -302,24 +302,22 @@ public:
 
 
 	inline virtual bool contains(ListOfInstanceOfPort & aSignalTrace,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
-		ListOfInstanceOfPort::const_iterator itSignal = aSignalTrace.begin();
-		ListOfInstanceOfPort::const_iterator endSignal = aSignalTrace.end();
-		for( ; itSignal != endSignal ; ++itSignal )
+		for( const auto & itSignal : aSignalTrace )
 		{
-			if( not contains( *itSignal , aReceiverRID ) )
+			if( not contains( itSignal , aReceiverRID ) )
 			{
 				return( false );
 			}
 		}
 
-		return( itSignal == endSignal );
+		return( true );
 	}
 
 
 	inline virtual bool uncontains(ListOfInstanceOfPort & aSignalTrace,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		ListOfInstanceOfPort::iterator itSignal = aSignalTrace.begin();
 		ListOfInstanceOfPort::iterator endSignal = aSignalTrace.end();
@@ -338,10 +336,12 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
 
-	virtual void toFscn(OutStream & os, const RuntimeID & aRID,
-			const BaseBufferForm * prevBuf = NULL) const;
+	virtual void toStreamValue(OutStream & out) const override;
+
+	virtual void toFscn(OutStream & out, const RuntimeID & aRID,
+			const BaseBufferForm * prevBuf = nullptr) const override;
 
 };
 

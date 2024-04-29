@@ -18,8 +18,6 @@
 
 #include <computer/BaseEnvironment.h>
 
-#include <common/AvmPointer.h>
-
 #include <computer/primitive/AvmPrimitiveProcessor.h>
 
 #include <fml/expression/AvmCode.h>
@@ -59,23 +57,23 @@ public :
 	////////////////////////////////////////////////////////////////////////////
 	// OUTPUTs
 	////////////////////////////////////////////////////////////////////////////
-	ListOfAPExecutionData outEDS;
+	ListOfExecutionData outEDS;
 
 
 	////////////////////////////////////////////////////////////////////////////
 	// SYNC Execution Data
 	////////////////////////////////////////////////////////////////////////////
-	ListOfAPExecutionData syncEDS;
+	ListOfExecutionData syncEDS;
 
 	////////////////////////////////////////////////////////////////////////////
 	// INTERRUPT REQUEST Execution Data
 	////////////////////////////////////////////////////////////////////////////
-	ListOfAPExecutionData irqEDS;
+	ListOfExecutionData irqEDS;
 
 	////////////////////////////////////////////////////////////////////////////
 	// INTERRUPT REQUEST Execution Data
 	////////////////////////////////////////////////////////////////////////////
-	ListOfAPExecutionData exitEDS;
+	ListOfExecutionData exitEDS;
 
 
 public:
@@ -86,7 +84,7 @@ public:
 	ExecutionEnvironment(AvmPrimitiveProcessor & aPrimitiveProcessor)
 	: BaseEnvironment( aPrimitiveProcessor ),
 	saveEXEC_LOCATION( ),
-	inEXEC_LOCATION( NULL ),
+	inEXEC_LOCATION( nullptr ),
 	outEDS( ),
 	syncEDS( ),
 	irqEDS( ),
@@ -99,7 +97,7 @@ public:
 			const ExecutionContext * aParentEC)
 	: BaseEnvironment( aPrimitiveProcessor , aParentEC ),
 	saveEXEC_LOCATION( ),
-	inEXEC_LOCATION( NULL ),
+	inEXEC_LOCATION( nullptr ),
 	outEDS( ),
 	syncEDS( ),
 	irqEDS( ),
@@ -129,7 +127,7 @@ public:
 	ExecutionEnvironment(const BaseEnvironment & form, const BF & bf)
 	: BaseEnvironment( form , bf ),
 	saveEXEC_LOCATION( ),
-	inEXEC_LOCATION( NULL ),
+	inEXEC_LOCATION( nullptr ),
 	outEDS( ),
 	syncEDS( ),
 	irqEDS( ),
@@ -141,7 +139,7 @@ public:
 	ExecutionEnvironment(const BaseEnvironment & form, const BFCode & aCode)
 	: BaseEnvironment( form , aCode ),
 	saveEXEC_LOCATION( ),
-	inEXEC_LOCATION( NULL ),
+	inEXEC_LOCATION( nullptr ),
 	outEDS( ),
 	syncEDS( ),
 	irqEDS( ),
@@ -154,7 +152,7 @@ public:
 			const RuntimeID & aRID, const BFCode & aCode)
 	: BaseEnvironment( form , aRID , aCode ),
 	saveEXEC_LOCATION( ),
-	inEXEC_LOCATION( NULL ),
+	inEXEC_LOCATION( nullptr ),
 	outEDS( ),
 	syncEDS( ),
 	irqEDS( ),
@@ -165,10 +163,10 @@ public:
 
 
 	ExecutionEnvironment(const BaseEnvironment & form,
-			const APExecutionData & anED)
+			const ExecutionData & anED)
 	: BaseEnvironment( form , anED ),
 	saveEXEC_LOCATION( ),
-	inEXEC_LOCATION( NULL ),
+	inEXEC_LOCATION( nullptr ),
 	outEDS( ),
 	syncEDS( ),
 	irqEDS( ),
@@ -179,10 +177,10 @@ public:
 
 
 	ExecutionEnvironment(const BaseEnvironment & form,
-			const APExecutionData & anED, const BF & bf)
+			const ExecutionData & anED, const BF & bf)
 	: BaseEnvironment( form , anED , bf ),
 	saveEXEC_LOCATION( ),
-	inEXEC_LOCATION( NULL ),
+	inEXEC_LOCATION( nullptr ),
 	outEDS( ),
 	syncEDS( ),
 	irqEDS( ),
@@ -192,10 +190,10 @@ public:
 	}
 
 	ExecutionEnvironment(const BaseEnvironment & form,
-			const APExecutionData & anED, const BFCode & aCode)
+			const ExecutionData & anED, const BFCode & aCode)
 	: BaseEnvironment( form , anED , aCode ),
 	saveEXEC_LOCATION( ),
-	inEXEC_LOCATION( NULL ),
+	inEXEC_LOCATION( nullptr ),
 	outEDS( ),
 	syncEDS( ),
 	irqEDS( ),
@@ -206,11 +204,11 @@ public:
 
 
 	ExecutionEnvironment(const BaseEnvironment & form,
-			const APExecutionData & anED, const RuntimeID & aRID,
+			const ExecutionData & anED, const RuntimeID & aRID,
 			const BFCode & aCode)
 	: BaseEnvironment( form , anED , aRID , aCode ),
 	saveEXEC_LOCATION( ),
-	inEXEC_LOCATION( NULL ),
+	inEXEC_LOCATION( nullptr ),
 	outEDS( ),
 	syncEDS( ),
 	irqEDS( ),
@@ -242,7 +240,7 @@ public:
 	///// the OUTPUT management
 	////////////////////////////////////////////////////////////////////////////
 
-	inline void appendOutput(const APExecutionData & anED)
+	inline void appendOutput(const ExecutionData & anED)
 	{
 		outEDS.append(anED);
 	}
@@ -250,32 +248,32 @@ public:
 	void appendOutput(EvaluationEnvironment & ENV);
 
 
-	inline virtual bool hasOutput() const
+	inline virtual bool hasOutput() const override
 	{
 		return( outEDS.nonempty() );
 	}
 
-	inline virtual bool hasntOutput() const
+	inline virtual bool hasnoOutput() const override
 	{
 		return( outEDS.empty() );
 	}
 
-	bool extractOtherOutputED(const APExecutionData & anED,
-			ListOfAPExecutionData & listEDS);
+	bool extractOtherOutputED(const ExecutionData & anED,
+			ListOfExecutionData & listEDS);
 
 
 	/**
 	 * appendOutput
-	 * w.r.t. AVM_EXEC_ENDING_STATUS
+	 * w.r.t. AVM_EXECUTION_ENDING_STATUS
 	 */
-	void appendOutput_wrtAEES(APExecutionData & anED);
+	void appendOutput_wrtAEES(ExecutionData & anED);
 
 
 	/**
 	 * appendOutput
 	 * mwset PROCESS_EVAL_STATE
 	 */
-	inline bool appendOutput_mwsetPES(APExecutionData & anED,
+	inline bool appendOutput_mwsetPES(ExecutionData & anED,
 			const RuntimeID & aRID, PROCESS_EVAL_STATE aPES)
 	{
 		anED.mwsetRuntimeFormState(aRID, aPES);
@@ -289,19 +287,21 @@ public:
 	/**
 	 * appendOutput
 	 * mwset PROCESS_EVAL_STATE
-	 * mwset AVM_EXEC_ENDING_STATUS
+	 * mwset AVM_EXECUTION_ENDING_STATUS
 	 */
-	bool mwsetPES_mwsetAEES(APExecutionData & anED,
+	bool mwsetPES(const RuntimeID & aRID, PROCESS_EVAL_STATE aPES);
+
+	bool mwsetPES_mwsetAEES(ExecutionData & anED,
 			const RuntimeID & aRID, PROCESS_EVAL_STATE aPES);
 
-	bool appendOutput_mwsetPES_mwsetAEES(APExecutionData & anED,
+	bool appendOutput_mwsetPES_mwsetAEES(ExecutionData & anED,
 			const RuntimeID & aRID, PROCESS_EVAL_STATE aPES);
 
 	bool appendOutput_mwsetPES_mwsetAEES(ExecutionEnvironment & ENV,
 			const RuntimeID & aRID, PROCESS_EVAL_STATE aPES);
 
 
-	bool appendOutput_mwsetPES_mwsetAEES(APExecutionData & anED,
+	bool appendOutput_mwsetPES_mwsetAEES(ExecutionData & anED,
 			const RuntimeID & aRID,
 			PROCESS_EVAL_STATE oldPES, PROCESS_EVAL_STATE aPES);
 
@@ -310,7 +310,7 @@ public:
 			PROCESS_EVAL_STATE oldPES, PROCESS_EVAL_STATE aPES);
 
 
-	bool appendOutput_mwsetPES_mwsetAEES_mwsetRID(APExecutionData & anED,
+	bool appendOutput_mwsetPES_mwsetAEES_mwsetRID(ExecutionData & anED,
 			const RuntimeID & currentRID, const RuntimeID & nextRID,
 			PROCESS_EVAL_STATE oldPES, PROCESS_EVAL_STATE aPES);
 
@@ -354,7 +354,7 @@ public:
 	 * GETTER - SETTER
 	 * SYNC EDS
 	 */
-	inline void appendSync(const APExecutionData & anED)
+	inline void appendSync(const ExecutionData & anED)
 	{
 		syncEDS.append(anED);
 	}
@@ -371,7 +371,7 @@ public:
 
 	inline bool isSync() const
 	{
-		return( hasntOutput() && syncEDS.nonempty() );
+		return( hasnoOutput() && syncEDS.nonempty() );
 	}
 
 
@@ -379,8 +379,8 @@ public:
 	 * appendOutput
 	 * mwset PROCESS_EVAL_STATE
 	 */
-	inline bool appendSync_mwsetAEES(APExecutionData & anED,
-			AVM_EXEC_ENDING_STATUS anAEES)
+	inline bool appendSync_mwsetAEES(ExecutionData & anED,
+			AVM_EXECUTION_ENDING_STATUS anAEES)
 	{
 		anED.mwsetAEES(anAEES);
 
@@ -392,7 +392,7 @@ public:
 
 	/**
 	 * append SYNC
-	 * w.r.t. AVM_EXEC_ENDING_STATUS
+	 * w.r.t. AVM_EXECUTION_ENDING_STATUS
 	 *
 	 * case AEES_STEP_MARK:
 	 * case AEES_WAITING_INCOM_RDV:
@@ -401,22 +401,20 @@ public:
 	 *
 	 * store statement position
 	 */
-	inline bool appendSync_mwStorePos(APExecutionData anED)
+	inline bool appendSync_mwStorePos(ExecutionData anED)
 	{
-		anED.makeWritable();
-		anED->mSTATEMENT_QUEUE.push(anED->mRID, inCODE);
+		anED.pushExecutionLocation(inCODE);
 
 		syncEDS.append( anED );
 
 		return( true );
 	}
 
-	inline bool appendSync_mwStorePos(APExecutionData anED,
+	inline bool appendSync_mwStorePos(ExecutionData anED,
 			const AvmCode::const_iterator & it,
 			const AvmCode::const_iterator & endIt)
 	{
-		anED.makeWritable();
-		anED->mSTATEMENT_QUEUE.push(anED->mRID, inCODE, it, endIt);
+		anED.pushExecutionLocation(inCODE, it, endIt);
 
 		syncEDS.append( anED );
 
@@ -426,7 +424,7 @@ public:
 
 	/**
 	 * splice SYNC
-	 * w.r.t. AVM_EXEC_ENDING_STATUS
+	 * w.r.t. AVM_EXECUTION_ENDING_STATUS
 	 *
 	 * case AEES_STEP_MARK:
 	 * case AEES_WAITING_INCOM_RDV:
@@ -462,7 +460,7 @@ public:
 	 * GETTER - SETTER
 	 * INTERRUPT REQUEST EDS
 	 */
-	inline void appendIrq(const APExecutionData & anED)
+	inline void appendIrq(const ExecutionData & anED)
 	{
 		irqEDS.append(anED);
 	}
@@ -477,14 +475,14 @@ public:
 		return( irqEDS.nonempty() );
 	}
 
-	inline bool hasntIrq() const
+	inline bool hasnoIrq() const
 	{
 		return( irqEDS.empty() );
 	}
 
 	inline bool isIrq() const
 	{
-		return( hasntOutput() && irqEDS.nonempty() );
+		return( hasnoOutput() && irqEDS.nonempty() );
 	}
 
 
@@ -492,8 +490,8 @@ public:
 	 * appendOutput
 	 * mwset PROCESS_EVAL_STATE
 	 */
-	inline bool appendIrq_mwsetAEES(APExecutionData & anED,
-			AVM_EXEC_ENDING_STATUS anAEES)
+	inline bool appendIrq_mwsetAEES(ExecutionData & anED,
+			AVM_EXECUTION_ENDING_STATUS anAEES)
 	{
 		anED.mwsetAEES(anAEES);
 
@@ -511,7 +509,7 @@ public:
 	 * GETTER - SETTER
 	 * EXIT REQUEST EDS
 	 */
-	inline void appendExit(const APExecutionData & anED)
+	inline void appendExit(const ExecutionData & anED)
 	{
 		exitEDS.append(anED);
 	}
@@ -526,14 +524,14 @@ public:
 		return( exitEDS.nonempty() );
 	}
 
-	inline bool hasntExit() const
+	inline bool hasnoExit() const
 	{
 		return( exitEDS.empty() );
 	}
 
 	inline bool isExit() const
 	{
-		return( hasntOutput() && exitEDS.nonempty() );
+		return( hasnoOutput() && exitEDS.nonempty() );
 	}
 
 
@@ -541,8 +539,8 @@ public:
 	 * appendOutput
 	 * mwset PROCESS_EVAL_STATE
 	 */
-	inline bool appendExit_mwsetAEES(APExecutionData & anED,
-			AVM_EXEC_ENDING_STATUS anAEES)
+	inline bool appendExit_mwsetAEES(ExecutionData & anED,
+			AVM_EXECUTION_ENDING_STATUS anAEES)
 	{
 		anED.mwsetAEES(anAEES);
 
@@ -568,13 +566,13 @@ public:
 		return( outEDS.nonempty() || syncEDS.nonempty() || irqEDS.nonempty() );
 	}
 
-	inline bool hasntOutputSyncIrq() const
+	inline bool hasnoOutputSyncIrq() const
 	{
 		return( outEDS.empty() && syncEDS.empty() && irqEDS.empty() );
 	}
 
 
-	inline bool hasNoneOutput() const
+	inline bool hasNoneOutputs() const
 	{
 		return( outEDS.empty() && syncEDS.empty() &&
 				irqEDS.empty() && failureEDS.empty() );
@@ -597,7 +595,7 @@ public:
 		return( PRIMITIVE_PROCESSOR.run(inCODE->getOpOffset(), *this) );
 	}
 
-	inline bool run(Operator * op, const BFCode & aCode)
+	inline bool run(const Operator * op, const BFCode & aCode)
 	{
 		inFORM = inCODE = aCode;
 
@@ -619,9 +617,9 @@ public:
 		return( PRIMITIVE_PROCESSOR.run(inCODE->getOpOffset(), *this) );
 	}
 
-	inline bool run(APExecutionData & anED, const BFCode & aCode)
+	inline bool run(ExecutionData & anED, const BFCode & aCode)
 	{
-		inEC = anED->getExecutionContext();
+		inEC = anED.getExecutionContext();
 
 		inED = anED;
 
@@ -630,7 +628,7 @@ public:
 		return( PRIMITIVE_PROCESSOR.run(inCODE->getOpOffset(), *this) );
 	}
 
-	bool run(ListOfAPExecutionData & inEDS, const BFCode & aCode);
+	bool run(ListOfExecutionData & inEDS, const BFCode & aCode);
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -639,7 +637,7 @@ public:
 
 	bool runFromOutputs(const BFCode & aCode);
 
-	bool runFromOutputs(Operator * op, const BFCode & aCode);
+	bool runFromOutputs(const Operator * op, const BFCode & aCode);
 
 
 
@@ -647,7 +645,7 @@ public:
 	///// the RESUME statement
 	////////////////////////////////////////////////////////////////////////////
 
-	bool resume(ExecutionEnvironment & ENV, APExecutionData & anED);
+	bool resume(ExecutionEnvironment & ENV, ExecutionData & anED);
 
 	inline bool decode_resume()
 	{
@@ -660,11 +658,9 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 	inline void restoreContext(const RuntimeID & aRID)
 	{
-		ListOfAPExecutionData::iterator itED = outEDS.begin();
-		ListOfAPExecutionData::iterator endED = outEDS.end();
-		for( ; itED != endED ; ++itED )
+		for( const auto & itED : outEDS )
 		{
-			(*itED)->mRID = aRID;
+			itED.setRID( aRID );
 		}
 	}
 
@@ -673,7 +669,10 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
+
+	// Due to [-Woverloaded-virtual=]
+	using BaseEnvironment::toStream;
 
 
 	///////////////////////////////////////////////////////////////////////////
@@ -693,7 +692,7 @@ public:
 
 		BFCode inCODE;
 
-		APExecutionData inED;
+		ExecutionData inED;
 
 
 		////////////////////////////////////////////////////////////////////////
@@ -706,29 +705,29 @@ public:
 		////////////////////////////////////////////////////////////////////////
 		// OUTPUTs
 		////////////////////////////////////////////////////////////////////////
-		ListOfAPExecutionData outEDS;
+		ListOfExecutionData outEDS;
 
 
 		////////////////////////////////////////////////////////////////////////
 		// SYNC Execution Data
 		////////////////////////////////////////////////////////////////////////
-		ListOfAPExecutionData syncEDS;
+		ListOfExecutionData syncEDS;
 
 		////////////////////////////////////////////////////////////////////////
 		// INTERRUPT REQUEST Execution Data
 		////////////////////////////////////////////////////////////////////////
-		ListOfAPExecutionData irqEDS;
+		ListOfExecutionData irqEDS;
 
 		////////////////////////////////////////////////////////////////////////
 		// INTERRUPT REQUEST Execution Data
 		////////////////////////////////////////////////////////////////////////
-		ListOfAPExecutionData exitEDS;
+		ListOfExecutionData exitEDS;
 
 		////////////////////////////////////////////////////////////////////////
 		// FAILED Execution Data
 		////////////////////////////////////////////////////////////////////////
 
-		ListOfAPExecutionData failureEDS;
+		ListOfExecutionData failureEDS;
 
 	};
 

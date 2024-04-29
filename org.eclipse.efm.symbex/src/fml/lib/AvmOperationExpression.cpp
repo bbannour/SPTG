@@ -26,7 +26,7 @@ namespace sep
 {
 
 
-std::map< std::string , Operator * > AvmOperationExpression::theOtherMap;
+std::map< std::string , const Operator * > AvmOperationExpression::theOtherMap;
 
 
 

@@ -52,6 +52,9 @@ namespace sep
 #define DEFINE_LIST_PTR(ClassName)                \
 	typedef List < ClassName * > ListOf##ClassName;
 
+#define DEFINE_LIST_CONST_PTR(ClassName)                \
+	typedef List < const ClassName * > ListOf##ClassName;
+
 
 // VECTOR
 #define DEFINE_VECTOR_REF_T(ClassName, TypedefName)   \
@@ -94,8 +97,6 @@ class AvmTransition;
 
 class ExecutableForm;
 
-class Form;
-
 class InstanceOfBuffer;
 class InstanceOfData;
 class InstanceOfMachine;
@@ -130,8 +131,6 @@ DEFINE_LIST_PTR( Machine )
 
 DEFINE_LIST_PTR( AvmProgram )
 
-DEFINE_LIST_PTR( AvmTransition )
-
 DEFINE_LIST_PTR( ExecutableForm )
 
 DEFINE_LIST_PTR( InstanceOfBuffer )
@@ -155,8 +154,6 @@ DEFINE_VECTOR_REF_T( std::string , String )
 DEFINE_VECTOR_PTR( AvmProgram )
 
 DEFINE_VECTOR_PTR( AvmTransition )
-
-DEFINE_VECTOR_PTR( ExecutableForm )
 
 DEFINE_VECTOR_PTR( InstanceOfData )
 

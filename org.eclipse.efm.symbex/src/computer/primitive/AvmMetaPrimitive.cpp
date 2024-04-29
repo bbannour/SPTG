@@ -36,7 +36,7 @@ namespace sep
 bool AvmPrimitive_Informal::seval(EvaluationEnvironment & ENV)
 {
 	ExecutionDataFactory::appendIOElementTrace(ENV.outED,
-			BF(new ExecutionConfiguration(ENV.outED->mRID, ENV.inCODE)) );
+			BF(new ExecutionConfiguration(ENV.outED.getRID(), ENV.inCODE)) );
 
 	return( true );
 }
@@ -44,10 +44,10 @@ bool AvmPrimitive_Informal::seval(EvaluationEnvironment & ENV)
 
 bool AvmPrimitive_Informal::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 
 	ExecutionDataFactory::appendIOElementTrace(outED,
-			BF(new ExecutionConfiguration(outED->mRID, ENV.inCODE)) );
+			BF(new ExecutionConfiguration(outED.getRID(), ENV.inCODE)) );
 
 	ENV.outEDS.append(outED);
 
@@ -62,8 +62,15 @@ bool AvmPrimitive_Informal::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_Trace::seval(EvaluationEnvironment & ENV)
 {
-	ExecutionDataFactory::appendIOElementTrace(ENV.outED,
-			BF(new ExecutionConfiguration(ENV.outED->mRID, ENV.inCODE)) );
+	BFCode aTrace(OperatorManager::OPERATOR_TRACE);
+
+	for( ENV.mARG->begin() ; ENV.mARG->hasNext() ; ENV.mARG->next() )
+	{
+		aTrace->append( ENV.mARG->current() );
+	}
+
+	ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
+			BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(), aTrace)) );
 
 	return( true );
 }
@@ -71,12 +78,17 @@ bool AvmPrimitive_Trace::seval(EvaluationEnvironment & ENV)
 
 bool AvmPrimitive_Trace::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	BFCode aTrace(OperatorManager::OPERATOR_TRACE);
 
-	ExecutionDataFactory::appendIOElementTrace(outED,
-			BF(new ExecutionConfiguration(outED->mRID, ENV.inCODE)) );
+	for( ENV.mARG->begin() ; ENV.mARG->hasNext() ; ENV.mARG->next() )
+	{
+		aTrace->append( ENV.mARG->current() );
+	}
 
-	ENV.outEDS.append(outED);
+	ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
+			BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(), aTrace)) );
+
+	ENV.outEDS.append(ENV.mARG->outED);
 
 	return( true );
 }
@@ -89,17 +101,20 @@ bool AvmPrimitive_Trace::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_Debug::seval(EvaluationEnvironment & ENV)
 {
-	if( ENV.inCODE->empty() )
+	BFCode aDebug(OperatorManager::OPERATOR_DEBUG);
+
+	AVM_OS_INFO << std::endl << "@debug{" << std::endl;
+
+	for( ENV.mARG->begin() ; ENV.mARG->hasNext() ; ENV.mARG->next() )
 	{
-		ExecutionDataFactory::appendIOElementTrace(ENV.outED,
-				BF(new ExecutionConfiguration(ENV.outED->mRID, ENV.inCODE)) );
+		AVM_OS_INFO << TAB << ENV.mARG->current();
+
+		aDebug->append( ENV.mARG->current() );
 	}
-	else
-	{
-		ExecutionDataFactory::appendIOElementTrace(ENV.outED,
-				BF(new ExecutionConfiguration(ENV.outED->mRID,
-						ENV.mARG->at(0))) );
-	}
+
+	AVM_OS_INFO << "}" << std::endl;
+
+	ENV.outVAL = aDebug;
 
 	return( true );
 }
@@ -107,23 +122,16 @@ bool AvmPrimitive_Debug::seval(EvaluationEnvironment & ENV)
 
 bool AvmPrimitive_Debug::run(ExecutionEnvironment & ENV)
 {
-	if( ENV.inCODE->empty() )
+	AVM_OS_INFO << std::endl << "@debug{" << std::endl;
+
+	for( ENV.mARG->begin() ; ENV.mARG->hasNext() ; ENV.mARG->next() )
 	{
-		APExecutionData outED = ENV.inED;
-
-		ExecutionDataFactory::appendIOElementTrace(outED,
-				BF(new ExecutionConfiguration(outED->mRID, ENV.inCODE)) );
-
-		ENV.outEDS.append(outED);
+		AVM_OS_INFO << TAB << ENV.mARG->current();
 	}
-	else
-	{
-		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
-				BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
-						ENV.mARG->at(0))) );
 
-		ENV.outEDS.append(ENV.mARG->outED);
-	}
+	AVM_OS_INFO << "}" << std::endl;
+
+	ENV.outEDS.append(ENV.mARG->outED);
 
 	return( true );
 }
@@ -185,7 +193,7 @@ bool AvmPrimitive_MetaEval::run(ExecutionEnvironment & ENV)
 	{
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			codeToEval = ENV.getRvalue( codeToEval.to_ptr< InstanceOfData >() );
+			codeToEval = ENV.getRvalue( codeToEval.to< InstanceOfData >() );
 
 			break;
 		}
@@ -227,7 +235,7 @@ bool AvmPrimitive_MetaEval::seval(EvaluationEnvironment & ENV)
 	{
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			codeToEval = ENV.getRvalue( codeToEval.to_ptr< InstanceOfData >() );
+			codeToEval = ENV.getRvalue( codeToEval.to< InstanceOfData >() );
 
 			return( ENV.seval(codeToEval) );
 		}
@@ -266,7 +274,7 @@ bool AvmPrimitive_MetaRun::run(ExecutionEnvironment & ENV)
 	{
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			codeToRun = ENV.getRvalue( codeToRun.to_ptr< InstanceOfData >() );
+			codeToRun = ENV.getRvalue( codeToRun.to< InstanceOfData >() );
 
 			break;
 		}

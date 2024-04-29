@@ -28,9 +28,8 @@ namespace sep
 
 AVM_PRIMITIVE_RUN_CLASS_HEADER(InputEnabled, BaseAvmPrimitive)
 	void restoreMessage(
-			const RuntimeID & rieRID, InstanceOfBuffer * ieBuffer,
-			ListOfMessage & saveMessages, ListOfAPExecutionData EDS);
-
+			const RuntimeID & rieRID, const InstanceOfBuffer * ieBuffer,
+			ListOfMessage & saveMessages, ListOfExecutionData EDS);
 };
 
 

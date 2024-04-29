@@ -33,7 +33,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	MultiFifoBuffer(InstanceOfBuffer * aBuffer)
+	MultiFifoBuffer(const InstanceOfBuffer & aBuffer)
 	: BaseBufferQueue(CLASS_KIND_T( MultiFifoBuffer ), aBuffer)
 	{
 		//!! NOTHING
@@ -57,7 +57,7 @@ public:
 	 * push
 	 * top
 	 */
-	inline virtual bool push(const Message & aMsg)
+	inline virtual bool push(const Message & aMsg) override
 	{
 		if( size() < capacity() )
 		{
@@ -70,7 +70,7 @@ public:
 	}
 
 
-	inline virtual bool top(const Message & aMsg)
+	inline virtual bool top(const Message & aMsg) override
 	{
 		if( nonempty() )
 		{
@@ -82,7 +82,7 @@ public:
 		return( false );
 	}
 
-	inline virtual const Message & top() const
+	inline virtual const Message & top() const override
 	{
 		if( nonempty() )
 		{
@@ -92,16 +92,16 @@ public:
 		return( Message::_NULL_ );
 	}
 
-	inline virtual const Message & top(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+	inline virtual const Message & top(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; it != itEnd ; ++it )
+		ListOfMessage::const_iterator itMessage = mMessages.begin();
+		ListOfMessage::const_iterator endMessage = mMessages.end();
+		for( ; itMessage != endMessage ; ++itMessage )
 		{
-			if( (*it).isCompatible(mid, aReceiverRID) )
+			if( (*itMessage).isCompatible(mid, aReceiverRID) )
 			{
-				return( *it );
+				return( *itMessage );
 			}
 		}
 
@@ -114,15 +114,15 @@ public:
 	 * uncontains
 	 */
 	inline virtual bool contains(ListOfInstanceOfPort & aSignalTrace,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		ListOfInstanceOfPort::const_iterator itSignal = aSignalTrace.begin();
 		ListOfInstanceOfPort::const_iterator endSignal = aSignalTrace.end();
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; (it != itEnd) && (itSignal != endSignal) ; ++it )
+		ListOfMessage::const_iterator itMessage = mMessages.begin();
+		ListOfMessage::const_iterator endMessage = mMessages.end();
+		for( ; (itMessage != endMessage) && (itSignal != endSignal) ; ++itMessage )
 		{
-			if( (*it).isCompatible(*itSignal, aReceiverRID) )
+			if( (*itMessage).isCompatible(*itSignal, aReceiverRID) )
 			{
 				++itSignal;
 			}
@@ -131,17 +131,20 @@ public:
 		return( itSignal == endSignal );
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using BaseBufferQueue::contains;
+
 
 	inline virtual bool uncontains(ListOfInstanceOfPort & aSignalTrace,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		ListOfInstanceOfPort::iterator itSignal = aSignalTrace.begin();
 		ListOfInstanceOfPort::iterator endSignal = aSignalTrace.end();
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; (it != itEnd) && (itSignal != endSignal) ; ++it )
+		ListOfMessage::const_iterator itMessage = mMessages.begin();
+		ListOfMessage::const_iterator endMessage = mMessages.end();
+		for( ; (itMessage != endMessage) && (itSignal != endSignal) ; ++itMessage )
 		{
-			if( (*it).isCompatible(*itSignal, aReceiverRID) )
+			if( (*itMessage).isCompatible(*itSignal, aReceiverRID) )
 			{
 				itSignal = aSignalTrace.erase( itSignal );
 			}
@@ -154,7 +157,7 @@ public:
 	/**
 	 * pop
 	 */
-	inline virtual Message pop()
+	inline virtual Message pop() override
 	{
 		if( nonempty() )
 		{
@@ -169,8 +172,8 @@ public:
 	}
 
 
-	Message pop(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+	inline virtual Message pop(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
 		if( nonempty() )
 		{
@@ -186,67 +189,85 @@ public:
 		return( Message::_NULL_ );
 	}
 
-
-	inline virtual void popBefore(const RuntimeID & aReceiverRID)
+	inline virtual void pop(std::size_t mid, List< Message > & messages,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
-		ListOfMessage::iterator it = mMessages.begin();
-		for( ; it != mMessages.end() ; )
+		if( nonempty() )
 		{
-			if( (*it).isCompatible(aReceiverRID) )
+			Message aMsg = mMessages.front();
+			if( aMsg.isCompatible(mid, aReceiverRID) )
 			{
-				it = mMessages.erase( it );
+				mMessages.pop_front();
+
+				messages.append( aMsg );
+			}
+		}
+	}
+
+	// Due to [-Woverloaded-virtual=]
+	using BaseBufferQueue::pop;
+
+
+	inline virtual void popBefore(const RuntimeID & aReceiverRID) override
+	{
+		ListOfMessage::iterator itMessage = mMessages.begin();
+		for( ; itMessage != mMessages.end() ; )
+		{
+			if( (*itMessage).isCompatible(aReceiverRID) )
+			{
+				itMessage = mMessages.erase( itMessage );
 			}
 			else
 			{
-				++it;
+				++itMessage;
 			}
 		}
 	}
 
 	inline virtual void popBefore(const ListOfInstanceOfPort & ieComs,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
-		ListOfMessage::iterator it = mMessages.begin();
-		for( ; it != mMessages.end() ; )
+		ListOfMessage::iterator itMessage = mMessages.begin();
+		for( ; itMessage != mMessages.end() ; )
 		{
-			if( (*it).isCompatible(aReceiverRID) )
+			if( (*itMessage).isCompatible(aReceiverRID) )
 			{
-				if( (*it).isCompatible(ieComs) )
+				if( (*itMessage).isCompatible(ieComs) )
 				{
 					break;
 				}
 				else
 				{
-					it = mMessages.erase( it );
+					itMessage = mMessages.erase( itMessage );
 				}
 			}
 			else
 			{
-				++it;
+				++itMessage;
 			}
 		}
 	}
 
 	inline virtual void popBefore(const ListOfSizeT & ieComs,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
-		ListOfMessage::iterator it = mMessages.begin();
-		for( ; it != mMessages.end() ; )
+		ListOfMessage::iterator itMessage = mMessages.begin();
+		for( ; itMessage != mMessages.end() ; )
 		{
-			if( (*it).isCompatible(aReceiverRID) )
+			if( (*itMessage).isCompatible(aReceiverRID) )
 			{
-				if( (*it).isCompatible(ieComs) )
+				if( (*itMessage).isCompatible(ieComs) )
 				{
 					break;
 				}
 				else
 				{
-					it = mMessages.erase( it );
+					itMessage = mMessages.erase( itMessage );
 				}
 			}
 			else
 			{
-				++it;
+				++itMessage;
 			}
 		}
 	}
@@ -256,17 +277,15 @@ public:
 	 * copyTo
 	 * restore
 	 */
-	inline virtual void copyTo(BaseBufferForm & aBuffer) const
+	inline virtual void copyTo(BaseBufferForm & aBuffer) const override
 	{
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itMessage : mMessages )
 		{
-			aBuffer.push( *it );
+			aBuffer.push( itMessage );
 		}
 	}
 
-	inline virtual void restore(ListOfMessage & listOfMessage)
+	inline virtual void restore(ListOfMessage & listOfMessage) override
 	{
 		listOfMessage.splice( mMessages );
 

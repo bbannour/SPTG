@@ -40,33 +40,35 @@ namespace sep
 
 void BaseMachineCompiler::postcompileExecutableSystem()
 {
-	TableOfExecutableForm::const_raw_iterator itExec =
-			getConfiguration().getExecutableSystem().getExecutables().begin();
-	TableOfExecutableForm::const_raw_iterator endExec =
-			getConfiguration().getExecutableSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( auto & itExec : getConfiguration().getExecutableSystem().getExecutables() )
 	{
-		optimizeExecutable( itExec );
+		optimizeExecutable( const_cast< ExecutableForm & >(
+				itExec.to< ExecutableForm >() ));
 	}
 
 	// Optimize the system Instance
 	InstanceOfMachine * theSystemInstance = getConfiguration().
 			getExecutableSystem().getSystemInstance().rawMachine();
-	optimizeInstance( theSystemInstance->getExecutable(), theSystemInstance );
+	optimizeInstance( theSystemInstance->refExecutable(), theSystemInstance );
 }
 
 
-void BaseMachineCompiler::optimizeExecutable(ExecutableForm * anExecutableForm)
+void BaseMachineCompiler::optimizeExecutable(ExecutableForm & anExecutableForm)
 {
-	if( anExecutableForm->isOptimizedFlag() )
+	if( anExecutableForm.getLifecycle().isOptimized() ||
+		anExecutableForm.getLifecycle().isOptimizing() )
 	{
 		return;
+	}
+	else
+	{
+		anExecutableForm.getwLifecycle().setOptimizing();
 	}
 
 AVM_IF_DEBUG_FLAG( COMPILING )
 	AVM_OS_TRACE << INCR_INDENT_TAB
 			<< "< begin postcompiling executable routine:> "
-			<< anExecutableForm->getFullyQualifiedNameID() << std::endl;
+			<< anExecutableForm.getFullyQualifiedNameID() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 	// Optimize all routines which defined the executable's behavior
@@ -75,22 +77,24 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	// Optimize all instance of machine parameters
 	optimizeInstance( anExecutableForm );
 
+	anExecutableForm.updateOpcodeFamily();
+
+	anExecutableForm.getwLifecycle().setOptimized();
+
 AVM_IF_DEBUG_FLAG( COMPILING )
 	AVM_OS_TRACE << TAB_DECR_INDENT
 	<< "> end postcompiling executable routine:> "
-			<< anExecutableForm->getFullyQualifiedNameID() << std::endl;
+			<< anExecutableForm.getFullyQualifiedNameID() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
-
-	anExecutableForm->setOptimizedFlag();
 }
 
 
 
 void BaseMachineCompiler::optimizeAllBehavioralRoutines(
-		ExecutableForm * anExecutableForm)
+		ExecutableForm & anExecutableForm)
 {
 //	AVM_OS_TRACE << TAB << "<| optimizing<machine>: "
-//			<< anExecutableForm->getFullyQualifiedNameID() << std::endl;
+//			<< anExecutableForm.getFullyQualifiedNameID() << std::endl;
 
 
 	/*
@@ -102,203 +106,203 @@ void BaseMachineCompiler::optimizeAllBehavioralRoutines(
 	/*
 	 * onCreate
 	 */
-	if( anExecutableForm->hasOnCreate() )
+	if( anExecutableForm.hasOnCreate() )
 	{
-		anExecutableForm->setOnCreate(
+		anExecutableForm.setOnCreate(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnCreate()) );
+						anExecutableForm.getOnCreate()) );
 	}
 
 	/*
 	 * onInit
 	 */
-	if( anExecutableForm->hasOnInit() )
+	if( anExecutableForm.hasOnInit() )
 	{
-		anExecutableForm->setOnInit(
+		anExecutableForm.setOnInit(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnInit()) );
+						anExecutableForm.getOnInit()) );
 	}
 
 	/*
 	 * onExit
 	 */
-	if( anExecutableForm->hasOnFinal() )
+	if( anExecutableForm.hasOnFinal() )
 	{
-		anExecutableForm->setOnFinal(
+		anExecutableForm.setOnFinal(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnFinal()) );
+						anExecutableForm.getOnFinal()) );
 	}
 
 
 	/*
 	 * onStart
 	 */
-	if( anExecutableForm->hasOnStart() )
+	if( anExecutableForm.hasOnStart() )
 	{
-		anExecutableForm->setOnStart(
+		anExecutableForm.setOnStart(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnStart()) );
+						anExecutableForm.getOnStart()) );
 	}
 
 	/*
 	 * onStop
 	 */
-	if( anExecutableForm->hasOnStop() )
+	if( anExecutableForm.hasOnStop() )
 	{
-		anExecutableForm->setOnStop(
+		anExecutableForm.setOnStop(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnStop()) );
+						anExecutableForm.getOnStop()) );
 	}
 
 
 	/*
 	 * onIEnable
 	 */
-	if( anExecutableForm->hasOnIEnable() )
+	if( anExecutableForm.hasOnIEnable() )
 	{
-		anExecutableForm->setOnIEnable(
+		anExecutableForm.setOnIEnable(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnIEnable()) );
+						anExecutableForm.getOnIEnable()) );
 	}
 
 	/*
 	 * onEnable
 	 */
-	if( anExecutableForm->hasOnEnable() )
+	if( anExecutableForm.hasOnEnable() )
 	{
-		anExecutableForm->setOnEnable(
+		anExecutableForm.setOnEnable(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnEnable()) );
+						anExecutableForm.getOnEnable()) );
 	}
 
 
 	/*
 	 * onIDisable
 	 */
-	if( anExecutableForm->hasOnIDisable() )
+	if( anExecutableForm.hasOnIDisable() )
 	{
-		anExecutableForm->setOnIDisable(
+		anExecutableForm.setOnIDisable(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnIDisable()) );
+						anExecutableForm.getOnIDisable()) );
 	}
 
 	/*
 	 * onDisable
 	 */
-	if( anExecutableForm->hasOnDisable() )
+	if( anExecutableForm.hasOnDisable() )
 	{
-		anExecutableForm->setOnDisable(
+		anExecutableForm.setOnDisable(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnDisable()) );
+						anExecutableForm.getOnDisable()) );
 	}
 
 
 	/*
 	 * onIAbort
 	 */
-	if( anExecutableForm->hasOnIAbort() )
+	if( anExecutableForm.hasOnIAbort() )
 	{
-		anExecutableForm->setOnIAbort(
+		anExecutableForm.setOnIAbort(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnIAbort()) );
+						anExecutableForm.getOnIAbort()) );
 	}
 
 	/*
 	 * onAbort
 	 */
-	if( anExecutableForm->hasOnAbort() )
+	if( anExecutableForm.hasOnAbort() )
 	{
-		anExecutableForm->setOnAbort(
+		anExecutableForm.setOnAbort(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnAbort()) );
+						anExecutableForm.getOnAbort()) );
 	}
 
 
 	/*
 	 * onIRun
 	 */
-	if( anExecutableForm->hasOnIRun() )
+	if( anExecutableForm.hasOnIRun() )
 	{
-		anExecutableForm->setOnIRun(
+		anExecutableForm.setOnIRun(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnIRun()) );
+						anExecutableForm.getOnIRun()) );
 	}
 
 	/*
 	 * onRun
 	 */
-	if( anExecutableForm->hasOnRun() )
+	if( anExecutableForm.hasOnRun() )
 	{
-		anExecutableForm->setOnRun(
+		anExecutableForm.setOnRun(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnRun()) );
+						anExecutableForm.getOnRun()) );
 	}
-	else if( anExecutableForm->hasOnIRun() )
+	else if( anExecutableForm.hasOnIRun() )
 	{
-		anExecutableForm->setOnRun( anExecutableForm->getOnIRun() );
+		anExecutableForm.setOnRun( anExecutableForm.getOnIRun() );
 	}
 
 
 	/*
 	 * onRtc
 	 */
-	if( anExecutableForm->hasOnRtc() )
+	if( anExecutableForm.hasOnRtc() )
 	{
-		anExecutableForm->setOnRtc(
+		anExecutableForm.setOnRtc(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnRtc()) );
+						anExecutableForm.getOnRtc()) );
 	}
 
 
 	/*
 	 * onConcurrency
 	 */
-	if( anExecutableForm->hasOnConcurrency() )
+	if( anExecutableForm.hasOnConcurrency() )
 	{
 		if( not StatementTypeChecker::isEmptySchedule(
-				anExecutableForm->getOnConcurrency()) )
+				* anExecutableForm.getOnConcurrency()) )
 		{
-			anExecutableForm->setOnConcurrency(
+			anExecutableForm.setOnConcurrency(
 				mAvmcodeCompiler.optimizeStatement(
 					anExecutableForm,
-					anExecutableForm->getOnConcurrency()) );
+					anExecutableForm.getOnConcurrency()) );
 		}
 	}
 
 	/*
 	 * onSchedule
 	 */
-	if( anExecutableForm->hasOnSchedule() )
+	if( anExecutableForm.hasOnSchedule() )
 	{
-		anExecutableForm->setOnSchedule(
+		anExecutableForm.setOnSchedule(
 				optimizeSchedulingRoutine(
 						anExecutableForm,
-						anExecutableForm->getOnSchedule() ) );
+						anExecutableForm.getOnSchedule() ) );
 	}
 
 	/*
 	 * onSynchronize
 	 */
-	if( anExecutableForm->hasOnSynchronize() )
+	if( anExecutableForm.hasOnSynchronize() )
 	{
-		anExecutableForm->setOnSynchronize(
+		anExecutableForm.setOnSynchronize(
 				mAvmcodeCompiler.optimizeStatement(
 						anExecutableForm,
-						anExecutableForm->getOnSynchronize()) );
+						anExecutableForm.getOnSynchronize()) );
 	}
 
 
@@ -306,10 +310,10 @@ void BaseMachineCompiler::optimizeAllBehavioralRoutines(
 	 * all Transition
 	 */
 	AvmTransition * itTransition;
-	avm_size_t endOffset = anExecutableForm->getTransition().size();
-	for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+	std::size_t endOffset = anExecutableForm.getTransition().size();
+	for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 	{
-		itTransition = anExecutableForm->getTransition().rawAt(offset);
+		itTransition = anExecutableForm.getTransition().rawAt(offset);
 
 AVM_IF_DEBUG_FLAG( COMPILING )
 	AVM_OS_TRACE << INCR_INDENT_TAB
@@ -318,7 +322,7 @@ AVM_IF_DEBUG_FLAG( COMPILING )
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 		// Optimize all program routine
-		mAvmcodeCompiler.optimizeProgramRoutine( itTransition );
+		mAvmcodeCompiler.optimizeProgramRoutine( *itTransition );
 
 AVM_IF_DEBUG_FLAG( COMPILING )
 	AVM_OS_TRACE << TAB_DECR_INDENT
@@ -332,10 +336,10 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	 * all Program
 	 */
 	AvmProgram * itProg;
-	endOffset = anExecutableForm->getProgram().size();
-	for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+	endOffset = anExecutableForm.getProgram().size();
+	for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 	{
-		itProg = anExecutableForm->getProgram().rawAt(offset);
+		itProg = anExecutableForm.getProgram().rawAt(offset);
 
 AVM_IF_DEBUG_FLAG( COMPILING )
 	AVM_OS_TRACE << INCR_INDENT_TAB
@@ -344,7 +348,7 @@ AVM_IF_DEBUG_FLAG( COMPILING )
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 		// Optimize all program routine
-		mAvmcodeCompiler.optimizeProgramRoutine( itProg );
+		mAvmcodeCompiler.optimizeProgramRoutine( *itProg );
 
 AVM_IF_DEBUG_FLAG( COMPILING )
 	AVM_OS_TRACE << TAB_DECR_INDENT
@@ -354,37 +358,37 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	}
 
 //	AVM_OS_TRACE << TAB << ">| optimizing<machine>: "
-//			<< anExecutableForm->getFullyQualifiedNameID() << std::endl << std::endl;
+//			<< anExecutableForm.getFullyQualifiedNameID() << std::endl << std::endl;
 }
 
 
 
-void BaseMachineCompiler::optimizeInstance(ExecutableForm * anExecutableForm)
+void BaseMachineCompiler::optimizeInstance(ExecutableForm & anExecutableForm)
 {
 //AVM_OS_TRACE << TAB << "<| optimizing<machine>: "
-//		<< anExecutableForm->getFullyQualifiedNameID() << std::endl;
+//		<< anExecutableForm.getFullyQualifiedNameID() << std::endl;
 
 	/*
 	 * all Program
 	 */
-	if( anExecutableForm->hasInstanceStatic() )
+	if( anExecutableForm.hasInstanceStatic() )
 	{
 		TableOfSymbol::const_iterator itMachine =
-				anExecutableForm->instance_static_begin();
+				anExecutableForm.instance_static_begin();
 		TableOfSymbol::const_iterator endMachine =
-				anExecutableForm->instance_static_end();
+				anExecutableForm.instance_static_end();
 		for( ; itMachine != endMachine ; ++itMachine )
 		{
 			optimizeInstance(anExecutableForm, (*itMachine).rawMachine());
 		}
 	}
 
-	if( anExecutableForm->hasInstanceDynamic() )
+	if( anExecutableForm.hasInstanceDynamic() )
 	{
 		TableOfSymbol::const_iterator itMachine =
-				anExecutableForm->instance_dynamic_begin();
+				anExecutableForm.instance_dynamic_begin();
 		TableOfSymbol::const_iterator endMachine =
-				anExecutableForm->instance_dynamic_end();
+				anExecutableForm.instance_dynamic_end();
 		for( ; itMachine != endMachine ; ++itMachine )
 		{
 			optimizeInstance(anExecutableForm, (*itMachine).rawMachine());
@@ -392,19 +396,22 @@ void BaseMachineCompiler::optimizeInstance(ExecutableForm * anExecutableForm)
 	}
 
 //AVM_OS_TRACE << TAB << ">| optimizing<machine>: "
-//		<< anExecutableForm->getFullyQualifiedNameID() << std::endl << std::endl;
+//		<< anExecutableForm.getFullyQualifiedNameID() << std::endl << std::endl;
 }
 
 
 
 void BaseMachineCompiler::optimizeInstance(
-		ExecutableForm * theExecutableContainer, InstanceOfMachine * anInstance)
+		ExecutableForm & theExecutableContainer, InstanceOfMachine * anInstance)
 {
 	AVM_IF_DEBUG_FLAG( COMPILING )
 		AVM_OS_TRACE << INCR_INDENT_TAB
 				<< "< begin postcompiling instance of machine parameter :> "
 				<< str_header( anInstance ) << std::endl;
 	AVM_ENDIF_DEBUG_FLAG( COMPILING )
+
+	// Optimize Executable model if it's not yet
+	optimizeExecutable( anInstance->refExecutable() );
 
 	// Optimize all instance routine
 	mAvmcodeCompiler.optimizeInstance( theExecutableContainer, anInstance );
@@ -422,24 +429,23 @@ void BaseMachineCompiler::optimizeInstance(
  * Specific because of dynamic instantiation
  */
 BFCode BaseMachineCompiler::compileSchedulerRoutine(
-		ExecutableForm * anExecutableForm,
-		ListOfInstanceOfMachine & usedInstance,
-		const BFCode & aSchedulerCode)
+		ExecutableForm & anExecutableForm,
+		ListOfInstanceOfMachine & usedInstance, BFCode & aSchedulerCode)
 {
 	if( aSchedulerCode.invalid() )
 	{
 		AVM_OS_EXIT( FAILED )
-				<< "completeSchedulerRoutine:> Unexpected a << null<code> >> !!!"
+				<< "completeSchedulerRoutine:> Unexpected a << $null<code> >> !!!"
 				<< SEND_EXIT;
 
 		return( aSchedulerCode );
 	}
-	else if( aSchedulerCode->empty() )
+	else if( aSchedulerCode->noOperand() )
 	{
 		return( aSchedulerCode );
 	}
 
-	if( aSchedulerCode->singleton()
+	if( aSchedulerCode->hasOneOperand()
 		&& aSchedulerCode->first().is< InstanceOfMachine >()
 		&& OperatorManager::isActivity( aSchedulerCode->getOperator() ) )
 	{
@@ -451,9 +457,9 @@ BFCode BaseMachineCompiler::compileSchedulerRoutine(
 			return( aSchedulerCode );
 		}
 
-		else if( anExecutableForm->hasOnConcurrency() )
+		else if( anExecutableForm.hasOnConcurrency() )
 		{
-			BFCode compilCode( anExecutableForm->getOnConcurrencyOperator() );
+			BFCode compilCode( anExecutableForm.getOnConcurrencyOperator() );
 
 			compileSchedulerRoutine(anExecutableForm,
 					usedInstance, aSchedulerCode, compilCode);
@@ -468,9 +474,9 @@ BFCode BaseMachineCompiler::compileSchedulerRoutine(
 		else
 		{
 			TableOfSymbol::const_iterator itMachine =
-					anExecutableForm->instance_static_begin();
+					anExecutableForm.instance_static_begin();
 			TableOfSymbol::const_iterator endMachine =
-					anExecutableForm->instance_static_end();
+					anExecutableForm.instance_static_end();
 			for( ; itMachine != endMachine ; ++itMachine )
 			{
 				if( anInstance->getSpecifier().hasDesignModel()
@@ -494,27 +500,55 @@ BFCode BaseMachineCompiler::compileSchedulerRoutine(
 		}
 	}
 
+	else if( aSchedulerCode->isOpCode(AVM_OPCODE_IF) )
+	{
+		BFCode compilCode( aSchedulerCode->getOperator() );
+
+		compilCode->append(
+				mAvmcodeCompiler.decode_compileExpression(
+						anExecutableForm, aSchedulerCode->first()) );
+
+		compileSchedulerRoutine(anExecutableForm, usedInstance,
+				aSchedulerCode->second().bfCode(), compilCode);
+
+		return( compilCode );
+	}
+	else if( aSchedulerCode->isOpCode(AVM_OPCODE_IFE) )
+	{
+		BFCode compilCode( aSchedulerCode->getOperator() );
+
+		compilCode->append(
+				mAvmcodeCompiler.decode_compileExpression(
+						anExecutableForm, aSchedulerCode->first()) );
+
+		compileSchedulerRoutine(anExecutableForm, usedInstance,
+				aSchedulerCode->second().bfCode(), compilCode);
+
+		compileSchedulerRoutine(anExecutableForm, usedInstance,
+				aSchedulerCode->third().bfCode(), compilCode);
+
+		return( compilCode );
+	}
+
 	else
 	{
 		BFCode compilCode( aSchedulerCode->getOperator() );
 
-		AvmCode::iterator itArg = aSchedulerCode->begin();
-		AvmCode::iterator endArg = aSchedulerCode->end();
-		for( ; itArg != endArg ; ++itArg )
+		for( auto & itOperand : aSchedulerCode.getOperands() )
 		{
-			if( (*itArg).is< AvmCode >() )
+			if( itOperand.is< AvmCode >() )
 			{
 				compileSchedulerRoutine(anExecutableForm,
-						usedInstance, (*itArg).bfCode(), compilCode);
+						usedInstance, itOperand.bfCode(), compilCode);
 			}
 			else
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "completeSchedulerRoutine:> Unexpected arg :>\n"
-						<< (*itArg)
+						<< itOperand
 						<< SEND_EXIT;
 
-				compilCode->append( *itArg );
+				compilCode->append( itOperand );
 			}
 		}
 
@@ -524,13 +558,13 @@ BFCode BaseMachineCompiler::compileSchedulerRoutine(
 
 
 void BaseMachineCompiler::compileSchedulerRoutine(
-		ExecutableForm * anExecutableForm,
+		ExecutableForm & anExecutableForm,
 		ListOfInstanceOfMachine & usedInstance,
-		const BFCode & aSchedulerCode, BFCode & compilCode)
+		BFCode & aSchedulerCode, BFCode & compilCode)
 {
-	if( aSchedulerCode->singleton() &&
-		aSchedulerCode->first().is< InstanceOfMachine >() &&
-		OperatorManager::isActivity( aSchedulerCode->getOperator() ) )
+	if( aSchedulerCode->hasOneOperand()
+		&& aSchedulerCode->first().is< InstanceOfMachine >()
+		&& OperatorManager::isActivity( aSchedulerCode->getOperator() ) )
 	{
 		InstanceOfMachine * anInstance =
 				aSchedulerCode->first().to_ptr< InstanceOfMachine >();
@@ -547,8 +581,8 @@ void BaseMachineCompiler::compileSchedulerRoutine(
 			{
 				if( anInstance->isAutoStart() )
 				{
-					AVM_OS_ASSERT_FATAL_ERROR_EXIT( compilCode->nonempty()
-						|| (anInstance->getExecutable() != anExecutableForm) )
+					AVM_OS_ASSERT_FATAL_ERROR_EXIT( compilCode->hasOperand()
+						|| (anInstance->getExecutable() != (& anExecutableForm)) )
 							<< "Infinite recursive loop detection with "
 								"instance << " << str_header( anInstance )
 							<< " >> in the schedule code of the executable << "
@@ -582,9 +616,9 @@ void BaseMachineCompiler::compileSchedulerRoutine(
 			}
 
 			TableOfSymbol::const_iterator itMachine =
-					anExecutableForm->instance_static_begin();
+					anExecutableForm.instance_static_begin();
 			TableOfSymbol::const_iterator endMachine =
-					anExecutableForm->instance_static_end();
+					anExecutableForm.instance_static_end();
 			for( ; itMachine != endMachine ; ++itMachine )
 			{
 				if( anInstance == (*itMachine).getInstanceModel() &&
@@ -612,29 +646,28 @@ void BaseMachineCompiler::compileSchedulerRoutine(
 
 
 BFCode BaseMachineCompiler::compileSchedulerRoutine(
-		ExecutableForm * anExecutableForm, const BFCode & aCode)
+		ExecutableForm & anExecutableForm, BFCode & aCode)
 {
-	if( OperatorManager::isSchedule( aCode->getOperator() ) )
+	if( OperatorManager::isSchedule( aCode->getOperator() )
+		|| aCode->hasOpCode(AVM_OPCODE_AND_THEN, AVM_OPCODE_OR_ELSE) )
 	{
 		BFCode schedCode( aCode->getOperator() );
 
-		AvmCode::iterator itArg = aCode->begin();
-		AvmCode::iterator endArg = aCode->end();
-		for( ; itArg != endArg ; ++itArg )
+		for( auto & itOperand : aCode.getOperands() )
 		{
-			if( (*itArg).is< AvmCode >() )
+			if( itOperand.is< AvmCode >() )
 			{
 				schedCode->append( compileSchedulerRoutine(
-						anExecutableForm, (*itArg).bfCode() ) );
+						anExecutableForm, itOperand.bfCode() ) );
 			}
 			else
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "compileSchedulerRoutine:> Unexpected arg :>\n"
-						<< (*itArg)
+						<< itOperand
 						<< SEND_EXIT;
 
-				schedCode->append( *itArg );
+				schedCode->append( itOperand );
 			}
 		}
 
@@ -644,19 +677,45 @@ BFCode BaseMachineCompiler::compileSchedulerRoutine(
 	{
 		return( mAvmcodeCompiler.compileStatement(anExecutableForm, aCode) );
 	}
+	else if( aCode->isOpCode(AVM_OPCODE_IF) )
+	{
+		BFCode schedCode( aCode->getOperator() );
+		schedCode->append(
+				mAvmcodeCompiler.decode_compileExpression(
+						anExecutableForm, aCode->first()) );
+		schedCode->append(
+				compileSchedulerRoutine(
+						anExecutableForm, aCode->second().bfCode()) );
+
+		return( schedCode );
+	}
+	else if( aCode->isOpCode(AVM_OPCODE_IFE) )
+	{
+		BFCode schedCode( aCode->getOperator() );
+		schedCode->append(
+				mAvmcodeCompiler.decode_compileExpression(
+						anExecutableForm, aCode->first()) );
+		schedCode->append(
+				compileSchedulerRoutine(
+						anExecutableForm, aCode->second().bfCode()) );
+		schedCode->append(
+				compileSchedulerRoutine(
+						anExecutableForm, aCode->third().bfCode()) );
+
+		return( schedCode );
+	}
 	else
 	{
 		AVM_OS_FATAL_ERROR_EXIT
 				<< "compileSchedulerRoutine:> Unexpected code :>\n" << aCode
 				<< SEND_EXIT;
-
 		return( aCode );
 	}
 }
 
 
 BFCode BaseMachineCompiler::optimizeSchedulingRoutine(
-		ExecutableForm * anExecutableForm, const BFCode & aSchedulerCode)
+		ExecutableForm & anExecutableForm, BFCode & aSchedulerCode)
 {
 	if( aSchedulerCode.invalid() )
 	{
@@ -666,14 +725,14 @@ BFCode BaseMachineCompiler::optimizeSchedulingRoutine(
 
 		return( aSchedulerCode );
 	}
-	else if( aSchedulerCode->empty() )
+	else if( aSchedulerCode->noOperand() )
 	{
 		return( aSchedulerCode );
 	}
 
-	if( aSchedulerCode->singleton() &&
-		aSchedulerCode->first().is< InstanceOfMachine >() &&
-		OperatorManager::isActivity( aSchedulerCode->getOperator() ) )
+	if( aSchedulerCode->hasOneOperand()
+		&& aSchedulerCode->first().is< InstanceOfMachine >()
+		&& OperatorManager::isActivity( aSchedulerCode->getOperator() ) )
 	{
 		InstanceOfMachine * anInstance =
 				aSchedulerCode->first().to_ptr< InstanceOfMachine >();
@@ -725,14 +784,12 @@ BFCode BaseMachineCompiler::optimizeSchedulingRoutine(
 		BFCode optiCode( aSchedulerCode->getOperator() );
 		BFCode argCode;
 
-		AvmCode::iterator itArg = aSchedulerCode->begin();
-		AvmCode::iterator endArg = aSchedulerCode->end();
-		for( ; itArg != endArg ; ++itArg )
+		for( auto & itOperand : aSchedulerCode.getOperands() )
 		{
-			if( (*itArg).is< AvmCode >() )
+			if( itOperand.is< AvmCode >() )
 			{
 				argCode = optimizeSchedulingRoutine(
-						anExecutableForm, (*itArg).bfCode() );
+						anExecutableForm, itOperand.bfCode() );
 
 				if( argCode.valid() )
 				{
@@ -741,11 +798,11 @@ BFCode BaseMachineCompiler::optimizeSchedulingRoutine(
 			}
 			else
 			{
-				optiCode->append( *itArg );
+				optiCode->append( itOperand );
 			}
 		}
 
-		if( optiCode->empty() )
+		if( optiCode->noOperand() )
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "optimizeSchedulingRoutine:> "

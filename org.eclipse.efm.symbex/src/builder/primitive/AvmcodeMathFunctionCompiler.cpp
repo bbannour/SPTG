@@ -42,7 +42,7 @@ BF AvmcodeMathFunctionCompiler::optimizeExpression(
 			/*processor*/ AVM_ARG_ARITHMETIC_LOGIC_CPU,
 			/*operation*/ AVM_ARG_SEVAL_RVALUE,
 			/*operand  */ AVM_ARG_EXPRESSION_KIND,
-			/*dtype    */ TypeManager::UNIVERSAL );
+			/*dtype    */ TypeManager::UNIVERSAL.rawType() );
 
 
 	return( optCode );

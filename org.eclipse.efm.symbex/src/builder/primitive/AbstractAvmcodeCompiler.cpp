@@ -17,24 +17,19 @@
 
 #include <builder/primitive/AvmcodeCompiler.h>
 
-#include <computer/instruction/AvmInstruction.h>
-
 #include <fml/builtin/QualifiedIdentifier.h>
-
-#include <fml/executable/BaseAvmProgram.h>
-#include <fml/executable/ExecutableLib.h>
-#include <fml/executable/InstanceOfBuffer.h>
-#include <fml/executable/InstanceOfConnect.h>
-#include <fml/executable/InstanceOfData.h>
-#include <fml/executable/InstanceOfMachine.h>
-#include <fml/executable/InstanceOfPort.h>
 
 #include <fml/builtin/Boolean.h>
 #include <fml/builtin/Character.h>
 
-#include <fml/numeric/Float.h>
-#include <fml/numeric/Integer.h>
-#include <fml/numeric/Rational.h>
+#include <fml/executable/AvmInstruction.h>
+#include <fml/executable/BaseAvmProgram.h>
+#include <fml/executable/ExecutableLib.h>
+#include <fml/executable/InstanceOfBuffer.h>
+#include <fml/executable/InstanceOfConnector.h>
+#include <fml/executable/InstanceOfData.h>
+#include <fml/executable/InstanceOfMachine.h>
+#include <fml/executable/InstanceOfPort.h>
 
 #include <fml/expression/AvmCode.h>
 #include <fml/expression/BuiltinArray.h>
@@ -43,6 +38,10 @@
 
 #include <fml/lib/AvmOperationFactory.h>
 #include <fml/lib/ITypeSpecifier.h>
+
+#include <fml/numeric/Float.h>
+#include <fml/numeric/Integer.h>
+#include <fml/numeric/Rational.h>
 
 #include <fml/type/ContainerTypeSpecifier.h>
 
@@ -80,7 +79,7 @@ BF AbstractAvmcodeCompiler::compileArgLvalue(
 
 		case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
 		{
-			if( arg.to_ptr< QualifiedIdentifier >()->isPositionalParameter() )
+			if( arg.to< QualifiedIdentifier >().isPositionalParameter() )
 			{
 				compileArg = AVMCODE_COMPILER.
 						compileQualifiedPositionalIdentifier(aCTX, arg);
@@ -120,7 +119,7 @@ BF AbstractAvmcodeCompiler::compileArgLvalue(
 		case FORM_UFI_KIND:
 		{
 			compileArg = AVMCODE_COMPILER.compileUFI(
-					aCTX, arg.to_ref< UniFormIdentifier>());
+					aCTX, arg.to< UniFormIdentifier>());
 			break;
 		}
 
@@ -167,7 +166,7 @@ BF AbstractAvmcodeCompiler::compileArgLvalue(
 					if( not iodArg->getModifier().
 							hasFeatureVolatile( aCTX->getModifier() ) )
 					{
-						if( iodArg->getAstElement()->isnot< ObjectElement >() )
+						if( iodArg->safeAstElement().isnot< ObjectElement >() )
 						{
 							getCompilerTable().incrErrorCount();
 							aCTX->errorContext( AVM_OS_WARN )
@@ -279,25 +278,21 @@ BF AbstractAvmcodeCompiler::compileArgRvalue(
 BFCode AbstractAvmcodeCompiler::compileExpressionCode(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	Operator * mainOperator = aCode->getOperator();
+	const Operator * mainOperator = aCode->getOperator();
 	BFCode newCode( mainOperator );
 
 	BF arg;
-	AvmCode * pCode;
 
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
-
-	for( ; itArg != itEndArg ; ++itArg )
+	for( auto & itOperand : aCode->getOperands() )
 	{
-		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, itOperand);
 
 		if( arg.invalid() )
 		{
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< expression > compilation error << "
-					<< (*itArg).str() << " >>" << std::endl << std::endl;
+					<< itOperand.str() << " >>" << std::endl << std::endl;
 
 			newCode->append( arg );
 			continue;
@@ -305,12 +300,12 @@ BFCode AbstractAvmcodeCompiler::compileExpressionCode(
 
 		if( arg.is< AvmCode >() )
 		{
-			pCode = arg.to_ptr< AvmCode >();
+			const AvmCode & argCode = arg.to< AvmCode >();
 
-			if( pCode->isOperator( mainOperator )
+			if( argCode.isOperator( mainOperator )
 				&& mainOperator->isAssociative() )
 			{
-				newCode->append( pCode->getArgs() );
+				newCode->append( argCode.getOperands() );
 			}
 			else
 			{
@@ -331,52 +326,48 @@ BFCode AbstractAvmcodeCompiler::optimizeExpressionCode(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode,
 		avm_arg_operand_t anOperand)
 {
-	Operator * mainOperator = aCode->getOperator();
+	const Operator * mainOperator = aCode->getOperator();
 	BFCode newCode( mainOperator );
 
 	BF arg;
-	AvmCode * pCode;
-
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
 
 	AvmInstruction * argsInstruction = newCode->newEmptyInstruction();
 
 	Vector< AvmBytecode > vectorOfArgOpcode;
 
-	for( ; itArg != itEndArg ; ++itArg )
+	for( const auto & itOperand : aCode->getOperands() )
 	{
-		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, itOperand);
 
 		if( arg.invalid() )
 		{
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< expression > optimization error << "
-					<< (*itArg).str() << " >>" << std::endl << std::endl;
+					<< itOperand.str() << " >>" << std::endl << std::endl;
 
-			newCode->append( arg );
+			newCode->append( itOperand );
 			continue;
 		}
 
 		if( arg.is< AvmCode >() )
 		{
-			pCode = arg.to_ptr< AvmCode >();
+			const AvmCode & argCode = arg.to< AvmCode >();
 
-			if( pCode->isOperator( mainOperator )
+			if( argCode.isOperator( mainOperator )
 				&& mainOperator->isAssociative() )
 			{
-				newCode->append( pCode->getArgs() );
+				newCode->append( argCode.getOperands() );
 
 				vectorOfArgOpcode.append(
-						pCode->getInstruction()->getBytecode(),
-						pCode->size());
+						argCode.getInstruction()->getBytecode(),
+						argCode.size());
 			}
 			else
 			{
 				newCode->append( arg );
 
-				vectorOfArgOpcode.append( argcodeOfExpression(aCTX, pCode) );
+				vectorOfArgOpcode.append( argcodeOfExpression(aCTX, argCode) );
 			}
 		}
 		else
@@ -406,26 +397,23 @@ BFCode AbstractAvmcodeCompiler::optimizeExpressionCode(
 BFCode AbstractAvmcodeCompiler::compileStatementCode(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	Operator * mainOperator = aCode->getOperator();
+	const Operator * mainOperator = aCode->getOperator();
 	BFCode newCode( mainOperator );
 
 	BF arg;
 
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
-
-	for( ; itArg != itEndArg ; ++itArg )
+	for( const auto & itOperand : aCode->getOperands() )
 	{
-		arg = AVMCODE_COMPILER.decode_compileStatement(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_compileStatement(aCTX, itOperand);
 
 		if( arg.invalid() )
 		{
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< statement > compilation error << "
-					<< (*itArg).str() << " >>" << std::endl << std::endl;
+					<< itOperand.str() << " >>" << std::endl << std::endl;
 
-			newCode->append( *itArg );
+			newCode->append( itOperand );
 			continue;
 		}
 
@@ -433,10 +421,10 @@ BFCode AbstractAvmcodeCompiler::compileStatementCode(
 		{
 			case FORM_AVMCODE_KIND:
 			{
-				if( arg.to_ptr< AvmCode >()->isOpCode( mainOperator )
+				if( arg.to< AvmCode >().isOpCode( mainOperator )
 					&& mainOperator->isAssociative() )
 				{
-					newCode->append( arg.to_ptr< AvmCode >()->getArgs() );
+					newCode->append( arg.to< AvmCode >().getOperands() );
 				}
 				else
 				{
@@ -466,28 +454,25 @@ BFCode AbstractAvmcodeCompiler::compileStatementCode(
 BFCode AbstractAvmcodeCompiler::compileAvmcode(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	Operator * mainOperator = aCode->getOperator();
+	const Operator * mainOperator = aCode->getOperator();
 	BFCode newCode( mainOperator );
 
 	BF arg;
 
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
-
-	for( ; itArg != itEndArg ; ++itArg )
+	for( const auto & itOperand : aCode->getOperands() )
 	{
-		switch( (*itArg).classKind() )
+		switch( itOperand.classKind() )
 		{
 			case FORM_AVMCODE_KIND:
 			{
-				arg = compileAvmcode(aCTX, (*itArg).bfCode());
+				arg = compileAvmcode(aCTX, itOperand.bfCode());
 
 				break;
 			}
 
 			default:
 			{
-				arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, *itArg);
+				arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, itOperand);
 
 				break;
 			}
@@ -500,9 +485,9 @@ BFCode AbstractAvmcodeCompiler::compileAvmcode(
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< statement > compilation error << "
-					<< (*itArg).str() << " >>" << std::endl << std::endl;
+					<< itOperand.str() << " >>" << std::endl << std::endl;
 
-			newCode->append( *itArg );
+			newCode->append( itOperand );
 			continue;
 		}
 
@@ -510,10 +495,10 @@ BFCode AbstractAvmcodeCompiler::compileAvmcode(
 		{
 			case FORM_AVMCODE_KIND:
 			{
-				if( arg.to_ptr< AvmCode >()->isOperator( mainOperator )
+				if( arg.to< AvmCode >().isOperator( mainOperator )
 					&& mainOperator->isAssociative() )
 				{
-					newCode->append( arg.to_ptr< AvmCode >()->getArgs() );
+					newCode->append( arg.to< AvmCode >().getOperands() );
 				}
 				else
 				{
@@ -590,7 +575,9 @@ bool AbstractAvmcodeCompiler::mustBeEvaluatedArgument(const BF & arg)
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			return( true );
+			return( (not arg.to< InstanceOfData >().isEnumSymbolPointer()) );
+//					|| arg.to_ptr< InstanceOfData >()
+//							->getModifier().hasModifierPublicFinalStatic() );
 		}
 
 		case FORM_RUNTIME_ID_KIND:
@@ -622,7 +609,7 @@ bool AbstractAvmcodeCompiler::mustBeEvaluatedArgument(const BF & arg)
 
 bool AbstractAvmcodeCompiler::mustBeEvaluatedArgumentArray(ArrayBF * arrayArg)
 {
-	for( avm_size_t idx = 0 ; idx < arrayArg->size() ; ++idx )
+	for( std::size_t idx = 0 ; idx < arrayArg->size() ; ++idx )
 	{
 		if( mustBeEvaluatedArgument(arrayArg->at(idx)) )
 		{
@@ -693,7 +680,7 @@ avm_arg_operand_t AbstractAvmcodeCompiler::operandOf(const BF & arg)
 		case FORM_ARRAY_BF_KIND:
 		{
 			ArrayBF * arrayArg = arg.to_ptr< ArrayBF >();
-			for( avm_size_t idx = 0 ; idx < arrayArg->size() ; ++idx )
+			for( std::size_t idx = 0 ; idx < arrayArg->size() ; ++idx )
 			{
 				if( mustBeEvaluatedArgument(arrayArg->at(idx)) )
 				{
@@ -705,26 +692,26 @@ avm_arg_operand_t AbstractAvmcodeCompiler::operandOf(const BF & arg)
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			InstanceOfData * anInstance = arg.to_ptr< InstanceOfData >();
+			const InstanceOfData & anInstance = arg.to< InstanceOfData >();
 
-			if( anInstance->isUfiMixedPointer() )
+			if( anInstance.isUfiMixedPointer() )
 			{
 				return( AVM_ARG_DATA_UFI_KIND );
 			}
-			else if( anInstance->getModifier().hasNatureReference() )
+			else if( anInstance.getModifier().hasNatureReference() )
 			{
-				return( anInstance->isUfiOffsetPointer() ?
+				return( anInstance.isUfiOffsetPointer() ?
 						AVM_ARG_DATA_UFI_KIND : AVM_ARG_DATA_REF_KIND );
 			}
-			else if( anInstance->getModifier().hasNatureMacro() )
+			else if( anInstance.getModifier().hasNatureMacro() )
 			{
 				return( AVM_ARG_DATA_MACRO_KIND );
 			}
-			else if( anInstance->getModifier().hasFeatureMutable() )
+			else if( anInstance.getModifier().hasFeatureMutable() )
 			{
 				return( AVM_ARG_DATA_KIND );
 			}
-			else if( anInstance->getModifier().hasModifierPublicFinalStatic() )
+			else if( anInstance.getModifier().hasModifierPublicFinalStatic() )
 			{
 				if( ExecutableLib::MACHINE_COMPONENT_SELF == anInstance )
 				{
@@ -750,9 +737,13 @@ avm_arg_operand_t AbstractAvmcodeCompiler::operandOf(const BF & arg)
 					return( AVM_ARG_SYSTEM_RID );
 				}
 
+				else if( ExecutableLib::MACHINE_THIS == anInstance )
+				{
+					return( AVM_ARG_THIS_RID );
+				}
 				else if( ExecutableLib::MACHINE_SELF == anInstance )
 				{
-					return( AVM_ARG_SELF_RID );
+					return( AVM_ARG_THIS_RID );
 				}
 				else if( ExecutableLib::MACHINE_PARENT == anInstance )
 				{
@@ -767,7 +758,7 @@ avm_arg_operand_t AbstractAvmcodeCompiler::operandOf(const BF & arg)
 					return( AVM_ARG_DATA_CST_KIND );
 				}
 			}
-			else if( anInstance->getModifier().hasFeatureFinal() )
+			else if( anInstance.getModifier().hasFeatureFinal() )
 			{
 				return( AVM_ARG_DATA_CST_KIND );
 			}
@@ -813,9 +804,9 @@ avm_arg_operand_t AbstractAvmcodeCompiler::operandOf(const BF & arg)
 
 
 avm_arg_processor_t AbstractAvmcodeCompiler::processorOf(
-		BaseTypeSpecifier * aType)
+		const BaseTypeSpecifier & aType)
 {
-	switch( aType->getTypeSpecifierKind() )
+	switch( aType.getTypeSpecifierKind() )
 	{
 		case TYPE_BOOLEAN_SPECIFIER:
 		case TYPE_INTEGER_SPECIFIER:
@@ -831,6 +822,11 @@ avm_arg_processor_t AbstractAvmcodeCompiler::processorOf(
 		}
 
 		case TYPE_STRING_SPECIFIER:
+		{
+			return( AVM_ARG_STRING_CPU );
+		}
+
+		case TYPE_ENUM_SPECIFIER:
 		{
 			return( AVM_ARG_STRING_CPU );
 		}
@@ -875,9 +871,10 @@ avm_arg_processor_t AbstractAvmcodeCompiler::processorOf(
 }
 
 
-avm_arg_operand_t AbstractAvmcodeCompiler::operandOf(BaseTypeSpecifier * aType)
+avm_arg_operand_t AbstractAvmcodeCompiler::operandOf(
+		const BaseTypeSpecifier & aType)
 {
-	switch( aType->getTypeSpecifierKind() )
+	switch( aType.getTypeSpecifierKind() )
 	{
 		case TYPE_BOOLEAN_SPECIFIER:
 		{
@@ -905,6 +902,11 @@ avm_arg_operand_t AbstractAvmcodeCompiler::operandOf(BaseTypeSpecifier * aType)
 			return( AVM_ARG_STRING_KIND );
 		}
 
+		case TYPE_ENUM_SPECIFIER:
+		{
+			return( AVM_ARG_ENUM_LITERAL_KIND );
+		}
+
 		case TYPE_OPERATOR_SPECIFIER:
 		{
 			return( AVM_ARG_OPERATOR_KIND );
@@ -922,7 +924,7 @@ avm_arg_operand_t AbstractAvmcodeCompiler::operandOf(BaseTypeSpecifier * aType)
 
 		default:
 		{
-			if( aType->hasTypeCollection() )
+			if( aType.hasTypeCollection() )
 			{
 				return( AVM_ARG_COLLECTION_KIND );
 			}
@@ -944,7 +946,7 @@ void AbstractAvmcodeCompiler::setArgcodeLValue(COMPILE_CONTEXT * aCTX,
 
 	if( arg.is< InstanceOfData >() )
 	{
-		InstanceOfData * anInstance = arg.to_ptr< InstanceOfData >();
+		const InstanceOfData & anInstance = arg.to< InstanceOfData >();
 
 		if( aCTX->isNeedTypeChecking(needTypeChecking) )
 		{
@@ -959,29 +961,29 @@ void AbstractAvmcodeCompiler::setArgcodeLValue(COMPILE_CONTEXT * aCTX,
 			}
 			else
 			{
-				argCode.dtype = anInstance->getTypeSpecifier();
+				argCode.dtype = anInstance.ptrTypeSpecifier();
 			}
 		}
 		else if( not argCode.hasType() )
 		{
-			argCode.dtype = anInstance->getTypeSpecifier();
+			argCode.dtype = anInstance.ptrTypeSpecifier();
 		}
 
-		if( anInstance->isUfiMixedPointer() )
+		if( anInstance.isUfiMixedPointer() )
 		{
 			argCode.operand   = AVM_ARG_DATA_UFI_KIND;
 		}
-		else if( anInstance->getModifier().hasNatureReference() )
+		else if( anInstance.getModifier().hasNatureReference() )
 		{
-			argCode.operand   = (anInstance->isUfiOffsetPointer() ?
+			argCode.operand   = (anInstance.isUfiOffsetPointer() ?
 					AVM_ARG_DATA_UFI_KIND : AVM_ARG_DATA_REF_KIND);
 		}
-		else if( anInstance->getModifier().hasNatureMacro() )
+		else if( anInstance.getModifier().hasNatureMacro() )
 		{
 			argCode.operand   = AVM_ARG_DATA_MACRO_KIND;
 		}
 
-		else if( anInstance->getModifier().hasFeatureMutable() )
+		else if( anInstance.getModifier().hasFeatureMutable() )
 		{
 			argCode.processor = AVM_ARG_NOP_CPU;
 			argCode.operation = AVM_ARG_NOP_LVALUE;
@@ -1023,7 +1025,7 @@ void AbstractAvmcodeCompiler::setArgcodeLValueRef(COMPILE_CONTEXT * aCTX,
 		AvmBytecode & argCode, const BF & arg, bool needTypeChecking)
 {
 	if( arg.is< InstanceOfData >()
-		&& arg.to_ptr< InstanceOfData >()->getModifier().hasNatureReference() )
+		&& arg.to< InstanceOfData >().getModifier().hasNatureReference() )
 	{
 		if( aCTX->isNeedTypeChecking(needTypeChecking) )
 		{
@@ -1038,14 +1040,14 @@ void AbstractAvmcodeCompiler::setArgcodeLValueRef(COMPILE_CONTEXT * aCTX,
 			}
 			else
 			{
-				argCode.dtype = arg.to_ptr<
-						InstanceOfData >()->getTypeSpecifier();
+				argCode.dtype = arg.to<
+						InstanceOfData >().ptrTypeSpecifier();
 			}
 		}
 		else if( not argCode.hasType() )
 		{
-			argCode.dtype = arg.to_ptr<
-					InstanceOfData >()->getTypeSpecifier();
+			argCode.dtype = arg.to<
+					InstanceOfData >().ptrTypeSpecifier();
 		}
 
 		argCode.processor = AVM_ARG_NOP_CPU;
@@ -1071,7 +1073,7 @@ void AbstractAvmcodeCompiler::setArgcodeLValueMacro(COMPILE_CONTEXT * aCTX,
 		AvmBytecode & argCode, const BF & arg, bool needTypeChecking)
 {
 	if( arg.is< InstanceOfData >()
-		&& arg.to_ptr< InstanceOfData >()->getModifier().hasNatureMacro() )
+		&& arg.to< InstanceOfData >().getModifier().hasNatureMacro() )
 	{
 		if( aCTX->isNeedTypeChecking(needTypeChecking) )
 		{
@@ -1086,14 +1088,14 @@ void AbstractAvmcodeCompiler::setArgcodeLValueMacro(COMPILE_CONTEXT * aCTX,
 			}
 			else
 			{
-				argCode.dtype = arg.to_ptr<
-						InstanceOfData >()->getTypeSpecifier();
+				argCode.dtype = arg.to<
+						InstanceOfData >().ptrTypeSpecifier();
 			}
 		}
 		else if( not argCode.hasType() )
 		{
-			argCode.dtype = arg.to_ptr<
-					InstanceOfData >()->getTypeSpecifier();
+			argCode.dtype = arg.to<
+					InstanceOfData >().ptrTypeSpecifier();
 		}
 
 		argCode.processor = AVM_ARG_NOP_CPU;
@@ -1175,37 +1177,37 @@ void AbstractAvmcodeCompiler::setArgcodeRValue(COMPILE_CONTEXT * aCTX,
 
 	else if( arg.is< InstanceOfData >() )
 	{
-		InstanceOfData * anInstance = arg.to_ptr< InstanceOfData >();
+		const InstanceOfData & anInstance = arg.to< InstanceOfData >();
 
-		argCode.processor = anInstance->isTypedMachine() ?
+		argCode.processor = anInstance.isTypedMachine() ?
 				AVM_ARG_MEMORY_MACHINE_CPU  :  AVM_ARG_MEMORY_RVALUE_CPU;
 
 		argCode.operation = AVM_ARG_SEVAL_RVALUE;
 
-		if( anInstance->isUfiMixedPointer() )
+		if( anInstance.isUfiMixedPointer() )
 		{
 			argCode.operand = AVM_ARG_DATA_UFI_KIND;
 		}
-		else if( anInstance->getModifier().hasNatureReference() )
+		else if( anInstance.getModifier().hasNatureReference() )
 		{
-			argCode.operand = (anInstance->isUfiOffsetPointer() ?
+			argCode.operand = (anInstance.isUfiOffsetPointer() ?
 					AVM_ARG_DATA_UFI_KIND : AVM_ARG_DATA_REF_KIND);
 		}
-		else if( anInstance->getModifier().hasNatureMacro() )
+		else if( anInstance.getModifier().hasNatureMacro() )
 		{
 			argCode.operand = AVM_ARG_DATA_MACRO_KIND;
 		}
 
-		else if( anInstance->getModifier().hasFeatureMutable() )
+		else if( anInstance.getModifier().hasFeatureMutable() )
 		{
 			argCode.operand = AVM_ARG_DATA_KIND;
 		}
 
-		else if( anInstance->getModifier().hasModifierPublicFinalStatic() )
+		else if( anInstance.getModifier().hasModifierPublicFinalStatic() )
 		{
-			if( anInstance->isTypedEnum() && anInstance->hasValue() )
+			if( anInstance.isTypedEnum() && anInstance.hasValue() )
 			{
-				arg = anInstance->getValue();
+				arg = anInstance.getValue();
 				setArgcodeRValue(aCTX, argCode, arg, false);
 			}
 			else
@@ -1235,9 +1237,13 @@ void AbstractAvmcodeCompiler::setArgcodeRValue(COMPILE_CONTEXT * aCTX,
 					argCode.operand = AVM_ARG_SYSTEM_RID;
 				}
 
+				else if( ExecutableLib::MACHINE_THIS == anInstance )
+				{
+					argCode.operand = AVM_ARG_THIS_RID;
+				}
 				else if( ExecutableLib::MACHINE_SELF == anInstance )
 				{
-					argCode.operand = AVM_ARG_SELF_RID;
+					argCode.operand = AVM_ARG_THIS_RID;
 				}
 				else if( ExecutableLib::MACHINE_PARENT == anInstance )
 				{
@@ -1255,7 +1261,7 @@ void AbstractAvmcodeCompiler::setArgcodeRValue(COMPILE_CONTEXT * aCTX,
 				}
 			}
 		}
-		else if( anInstance->getModifier().hasFeatureFinal() )
+		else if( anInstance.getModifier().hasFeatureFinal() )
 		{
 			argCode.processor = AVM_ARG_NOP_CPU;
 			argCode.operation = AVM_ARG_NOP_RVALUE;
@@ -1276,7 +1282,7 @@ void AbstractAvmcodeCompiler::setArgcodeRValue(COMPILE_CONTEXT * aCTX,
 
 		if( argCode.dtype == TypeManager::UNIVERSAL )
 		{
-			argCode.dtype = anInstance->getTypeSpecifier();
+			argCode.dtype = anInstance.ptrTypeSpecifier();
 		}
 
 	}
@@ -1315,7 +1321,7 @@ void AbstractAvmcodeCompiler::setArgcodeRValue(COMPILE_CONTEXT * aCTX,
 		argCode.operation = AVM_ARG_NOP_RVALUE;
 		argCode.operand   = AVM_ARG_BUFFER_KIND;
 	}
-	else if( arg.is< InstanceOfConnect >() )
+	else if( arg.is< InstanceOfConnector >() )
 	{
 		argCode.processor = AVM_ARG_NOP_CPU;
 		argCode.operation = AVM_ARG_NOP_RVALUE;
@@ -1332,12 +1338,12 @@ void AbstractAvmcodeCompiler::setArgcodeRValue(COMPILE_CONTEXT * aCTX,
 
 	else if( arg.is< AvmCode >() )
 	{
-		if( not arg.to_ptr< AvmCode >()->hasInstruction() )
+		if( not arg.to< AvmCode >().hasInstruction() )
 		{
 			arg = AVMCODE_COMPILER.optimizeExpression(aCTX, arg.bfCode());
 		}
 
-		argCode = argcodeOfExpression(aCTX, arg.to_ptr< AvmCode >());
+		argCode = argcodeOfExpression(aCTX, arg.to< AvmCode >());
 	}
 
 	else if( arg.is< Operator >()
@@ -1364,14 +1370,14 @@ void AbstractAvmcodeCompiler::setArgcodeRValue(COMPILE_CONTEXT * aCTX,
 
 
 AvmBytecode AbstractAvmcodeCompiler::argcodeOfExpression(
-		COMPILE_CONTEXT * aCTX, AvmCode * aCode)
+		COMPILE_CONTEXT * aCTX, const AvmCode & aCode)
 {
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( aCode->hasInstruction() )
-			<< "setArgcodeRvalue :> Unexpected << " << aCode->str()
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( aCode.hasInstruction() )
+			<< "setArgcodeRvalue :> Unexpected << " << aCode.str()
 			<< " >> without compileInstruction !!!"
 			<< SEND_EXIT;
 
-	AvmBytecode argCode = aCode->getInstruction()->getMainBytecode();
+	AvmBytecode argCode = aCode.getInstruction()->getMainBytecode();
 
 	if(StatementTypeChecker::isAssign(aCode) )
 	{
@@ -1400,7 +1406,7 @@ AvmBytecode AbstractAvmcodeCompiler::argcodeOfExpression(
 void AbstractAvmcodeCompiler::setArgcodeRValueArray(COMPILE_CONTEXT * aCTX,
 		AvmBytecode & argCode, BF & arg, bool needTypeChecking)
 {
-	ContainerTypeSpecifier * arrayT =
+	const ContainerTypeSpecifier & arrayT =
 			argCode.dtype->as< ContainerTypeSpecifier >();
 
 	if( arg.is< ArrayBF >() )
@@ -1413,25 +1419,25 @@ void AbstractAvmcodeCompiler::setArgcodeRValueArray(COMPILE_CONTEXT * aCTX,
 		ArrayBF * argArray = arg.to_ptr< ArrayBF >();
 
 
-		if( argArray->size() < arrayT->size() )
+		if( argArray->size() < arrayT.size() )
 		{
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "setArgcodeRValueArray :> Too few element in array :>\n<< "
-					<< arg.str() << " >>\nas type << " << arrayT->strT()
+					<< arg.str() << " >>\nas type << " << arrayT.strT()
 					<< " >> argument !!!" << std::endl;
 		}
-		else if( argArray->size() > arrayT->size() )
+		else if( argArray->size() > arrayT.size() )
 		{
 			getCompilerTable().incrWarningCount();
 			aCTX->warningContext( AVM_OS_WARN )
 					<< "setArgcodeRValueArray :> Too much element in array\n<< "
-					<< arg.str() << " >>\nas type << " << arrayT->strType()
+					<< arg.str() << " >>\nas type << " << arrayT.strType()
 					<< " >> argument !!!" << std::endl;
 
-			ArrayBF * reducedArgArray = new ArrayBF(arrayT, arrayT->size());
+			ArrayBF * reducedArgArray = new ArrayBF(arrayT, arrayT.size());
 
-			for( avm_size_t idx = 0 ; idx < arrayT->size() ; ++idx )
+			for( std::size_t idx = 0 ; idx < arrayT.size() ; ++idx )
 			{
 				reducedArgArray->set(idx, argArray->at(idx));
 			}
@@ -1451,7 +1457,7 @@ void AbstractAvmcodeCompiler::setArgcodeRValueArray(COMPILE_CONTEXT * aCTX,
 
 	else if( arg.is< InstanceOfData >()
 			&& ExpressionTypeChecker::weaklyTyped( arrayT,
-					arg.to_ptr< InstanceOfData >()->getTypeSpecifier() ) )
+					arg.to< InstanceOfData >().getTypeSpecifier() ) )
 	{
 		argCode.processor = AVM_ARG_MEMORY_RVALUE_CPU;
 		argCode.operation = AVM_ARG_SEVAL_RVALUE;
@@ -1467,13 +1473,17 @@ void AbstractAvmcodeCompiler::setArgcodeRValueArray(COMPILE_CONTEXT * aCTX,
 
 	else
 	{
-		while( arrayT->getContentsTypeSpecifier().isTypedArray() )
+		const ContainerTypeSpecifier * ptrArrayT = (& arrayT);
+
+		while( ptrArrayT->getContentsTypeSpecifier().isTypedArray() )
 		{
-			arrayT = arrayT->getContentsTypeSpecifier().rawContainer();
+			ptrArrayT = ptrArrayT->getContentsTypeSpecifier().rawContainer();
 		}
+
 		if( aCTX->isNeedTypeChecking(needTypeChecking) )
 		{
-			checkArgType(aCTX, arrayT->getContentsTypeSpecifier(), arg);
+			checkArgType(aCTX,
+					ptrArrayT->getContentsTypeSpecifier().refType(), arg);
 		}
 
 		argCode.processor = AVM_ARG_ARRAY_RVALUE_CPU;
@@ -1485,13 +1495,13 @@ void AbstractAvmcodeCompiler::setArgcodeRValueArray(COMPILE_CONTEXT * aCTX,
 void AbstractAvmcodeCompiler::setArgcodeRValueArray(COMPILE_CONTEXT * aCTX,
 		AvmBytecode & argCode, ArrayBF * argArray, bool needTypeChecking)
 {
-	avm_size_t argArraySize = argArray->size();
+	std::size_t argArraySize = argArray->size();
 
 	argCode.processor = AVM_ARG_ARRAY_RVALUE_CPU;
 	argCode.operation = AVM_ARG_NOP_RVALUE;
 	argCode.operand   = AVM_ARG_BUILTIN_ARRAY_KIND;
 
-	for( avm_size_t idx = 0 ; idx < argArraySize ; ++idx )
+	for( std::size_t idx = 0 ; idx < argArraySize ; ++idx )
 	{
 		if( mustBeEvaluatedArgument(argArray->at(idx)) )
 		{
@@ -1509,15 +1519,15 @@ void AbstractAvmcodeCompiler::setArgcodeRValueArray(COMPILE_CONTEXT * aCTX,
 	// Global ArgCode
 	arrayInstruction->setMainBytecode(argCode);
 
-	if( argArray->getTypeSpecifier()->is< ClassTypeSpecifier >() )
+	if( argArray->getTypeSpecifier().is< ClassTypeSpecifier >() )
 	{
-		ClassTypeSpecifier * structT =
-				argArray->getTypeSpecifier()->to< ClassTypeSpecifier >();
+		const ClassTypeSpecifier & structT =
+				argArray->getTypeSpecifier().to< ClassTypeSpecifier >();
 
-		for( avm_size_t idx = 0 ; idx < argArraySize ; ++idx )
+		for( std::size_t idx = 0 ; idx < argArraySize ; ++idx )
 		{
 			setArgcodeRValue(
-					aCTX->clone(structT->getSymbolData(idx).getTypeSpecifier()),
+					aCTX->clone(structT.getSymbolData(idx).getTypeSpecifier()),
 					arrayInstruction->at(idx), argArray->at(idx), needTypeChecking);
 
 			arrayInstruction->at(idx).offset = idx;
@@ -1525,17 +1535,17 @@ void AbstractAvmcodeCompiler::setArgcodeRValueArray(COMPILE_CONTEXT * aCTX,
 	}
 	else
 	{
-		if( argArray->getTypeSpecifier()->is< ContainerTypeSpecifier >() )
+		if( argArray->getTypeSpecifier().is< ContainerTypeSpecifier >() )
 		{
-			aCTX = aCTX->clone( argArray->getTypeSpecifier()->
-					to< ContainerTypeSpecifier >()->getContentsTypeSpecifier() );
+			aCTX = aCTX->clone( argArray->getTypeSpecifier().
+					to< ContainerTypeSpecifier >().getContentsTypeSpecifier() );
 		}
 		else
 		{
 			needTypeChecking = false;
 		}
 
-		for( avm_size_t idx = 0 ; idx < argArraySize ; ++idx )
+		for( std::size_t idx = 0 ; idx < argArraySize ; ++idx )
 		{
 			setArgcodeRValue(aCTX, arrayInstruction->at(idx),
 					argArray->at(idx), needTypeChecking);
@@ -1569,23 +1579,23 @@ void AbstractAvmcodeCompiler::setArgcodeContainerWValue(COMPILE_CONTEXT * aCTX,
 	{
 		argCode.operation = AVM_ARG_SEVAL_WVALUE;
 
-		InstanceOfData * anInstance = arg.to_ptr< InstanceOfData >();
+		const InstanceOfData & anInstance = arg.to< InstanceOfData >();
 
-		if( anInstance->isUfiMixedPointer() )
+		if( anInstance.isUfiMixedPointer() )
 		{
 			argCode.operand = AVM_ARG_DATA_UFI_KIND;
 		}
-		else if( anInstance->getModifier().hasNatureReference() )
+		else if( anInstance.getModifier().hasNatureReference() )
 		{
-			argCode.operand = (anInstance->isUfiOffsetPointer() ?
+			argCode.operand = (anInstance.isUfiOffsetPointer() ?
 					AVM_ARG_DATA_UFI_KIND : AVM_ARG_DATA_REF_KIND);
 		}
-		else if( anInstance->getModifier().hasNatureMacro() )
+		else if( anInstance.getModifier().hasNatureMacro() )
 		{
 			argCode.operand = AVM_ARG_DATA_MACRO_KIND;
 		}
 
-		else if( anInstance->getModifier().hasFeatureMutable() )
+		else if( anInstance.getModifier().hasFeatureMutable() )
 		{
 			argCode.operand = AVM_ARG_DATA_KIND;
 		}
@@ -1603,9 +1613,11 @@ void AbstractAvmcodeCompiler::setArgcodeContainerWValue(COMPILE_CONTEXT * aCTX,
 			argCode.operand   = AVM_ARG_DATA_KIND;
 		}
 
-		if( anInstance->isTypedBuffer() || anInstance->hasTypeCollection() )
+		const BaseTypeSpecifier & concreteTS = anInstance.referedTypeSpecifier();
+		if( concreteTS.isTypedBuffer()
+			|| concreteTS.hasTypeCollection() )
 		{
-			argCode.dtype = anInstance->getTypeSpecifier();
+			argCode.dtype = (& concreteTS);
 		}
 		else
 		{
@@ -1618,7 +1630,7 @@ void AbstractAvmcodeCompiler::setArgcodeContainerWValue(COMPILE_CONTEXT * aCTX,
 			AVM_OS_WARN << "The type below, is there a type of "
 					"collection ? If yes, you found a BUG ! "
 					<< std::endl
-					<< to_stream( anInstance->referedTypeSpecifier() );
+					<< to_stream( anInstance.referedTypeSpecifier() );
 		}
 	}
 
@@ -1660,23 +1672,23 @@ void AbstractAvmcodeCompiler::setArgcodeContainerRValue(COMPILE_CONTEXT * aCTX,
 		argCode.processor = AVM_ARG_MEMORY_RVALUE_CPU;
 		argCode.operation = AVM_ARG_SEVAL_RVALUE;
 
-		InstanceOfData * anInstance = arg.to_ptr< InstanceOfData >();
+		const InstanceOfData & anInstance = arg.to< InstanceOfData >();
 
-		if( anInstance->isUfiMixedPointer() )
+		if( anInstance.isUfiMixedPointer() )
 		{
 			argCode.operand = AVM_ARG_DATA_UFI_KIND;
 		}
-		else if( anInstance->getModifier().hasNatureReference() )
+		else if( anInstance.getModifier().hasNatureReference() )
 		{
-			argCode.operand = (anInstance->isUfiOffsetPointer() ?
+			argCode.operand = (anInstance.isUfiOffsetPointer() ?
 					AVM_ARG_DATA_UFI_KIND : AVM_ARG_DATA_REF_KIND);
 		}
-		else if( anInstance->getModifier().hasNatureMacro() )
+		else if( anInstance.getModifier().hasNatureMacro() )
 		{
 			argCode.operand = AVM_ARG_DATA_MACRO_KIND;
 		}
 
-		else if( anInstance->getModifier().hasFeatureMutable() )
+		else if( anInstance.getModifier().hasFeatureMutable() )
 		{
 			argCode.operand = AVM_ARG_DATA_KIND;
 		}
@@ -1694,11 +1706,12 @@ void AbstractAvmcodeCompiler::setArgcodeContainerRValue(COMPILE_CONTEXT * aCTX,
 			argCode.operand   = AVM_ARG_DATA_KIND;
 		}
 
-		if( anInstance->isTypedBuffer()
-			|| anInstance->isTypedString()
-			|| anInstance->hasTypeCollection() )
+		const BaseTypeSpecifier & concreteTS = anInstance.referedTypeSpecifier();
+		if( concreteTS.isTypedBuffer()
+			|| concreteTS.isTypedString()
+			|| concreteTS.hasTypeCollection() )
 		{
-			argCode.dtype = anInstance->getTypeSpecifier();
+			argCode.dtype = (& concreteTS);
 		}
 		else
 		{
@@ -1711,7 +1724,7 @@ void AbstractAvmcodeCompiler::setArgcodeContainerRValue(COMPILE_CONTEXT * aCTX,
 			AVM_OS_WARN << "The type below, is there a type of "
 					"collection ? if yes, you found a BUG ! "
 					<< std::endl
-					<< to_stream( anInstance->referedTypeSpecifier() );
+					<< to_stream( anInstance.referedTypeSpecifier() );
 		}
 	}
 
@@ -1744,27 +1757,27 @@ void AbstractAvmcodeCompiler::setArgcodeStatement(COMPILE_CONTEXT * aCTX,
 
 	if( arg.is< InstanceOfData >() )
 	{
-		InstanceOfData * anInstance = arg.to_ptr< InstanceOfData >();
+		const InstanceOfData & anInstance = arg.to< InstanceOfData >();
 
 		argCode.processor = AVM_ARG_MEMORY_RVALUE_CPU;
 		argCode.operation = AVM_ARG_SEVAL_RVALUE;
 
-		if( anInstance->isUfiMixedPointer() )
+		if( anInstance.isUfiMixedPointer() )
 		{
-			argCode.operand   = AVM_ARG_DATA_UFI_KIND;
+			argCode.operand = AVM_ARG_DATA_UFI_KIND;
 		}
-		else if( anInstance->getModifier().hasNatureReference() )
+		else if( anInstance.getModifier().hasNatureReference() )
 		{
-			argCode.operand   = (anInstance->isUfiOffsetPointer() ?
+			argCode.operand   = (anInstance.isUfiOffsetPointer() ?
 					AVM_ARG_DATA_UFI_KIND : AVM_ARG_DATA_REF_KIND);
 		}
-		else if( anInstance->getModifier().hasNatureMacro() )
+		else if( anInstance.getModifier().hasNatureMacro() )
 		{
-			argCode.operand   = AVM_ARG_DATA_MACRO_KIND;
+			argCode.operand = AVM_ARG_DATA_MACRO_KIND;
 		}
-		else if( anInstance->getModifier().hasFeatureMutable() )
+		else if( anInstance.getModifier().hasFeatureMutable() )
 		{
-			argCode.operand   = AVM_ARG_DATA_KIND;
+			argCode.operand = AVM_ARG_DATA_KIND;
 		}
 	}
 	else if( arg.is< AvmCode >() )
@@ -1802,21 +1815,21 @@ ExecutableForm * AbstractAvmcodeCompiler::getExecutableMachine(
 
 		case FORM_INSTANCE_MACHINE_KIND:
 		{
-			return( arg.to_ptr< InstanceOfMachine >()->getExecutable() );
+			return( arg.to< InstanceOfMachine >().getExecutable() );
 		}
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			InstanceOfData * anInstance = arg.to_ptr< InstanceOfData >();
+			const InstanceOfData & anInstance = arg.to< InstanceOfData >();
 
-			if( anInstance->isTypedMachine()
-				&& anInstance->getModifier().hasModifierPublicFinalStatic() )
+			if( anInstance.isTypedMachine()
+				&& anInstance.getModifier().hasModifierPublicFinalStatic() )
 			{
 				ExecutableForm * anExecutable = aCTX->mCompileCtx->getExecutable();
 
 				if( ExecutableLib::MACHINE_COMPONENT_SELF == anInstance )
 				{
-					while( anExecutable != NULL )
+					while( anExecutable != nullptr )
 					{
 						if( anExecutable->isMainComponent() )
 						{
@@ -1828,7 +1841,7 @@ ExecutableForm * AbstractAvmcodeCompiler::getExecutableMachine(
 				}
 				else if( ExecutableLib::MACHINE_COMPONENT_PARENT == anInstance )
 				{
-					for( bool isParent = false ; anExecutable != NULL ;  )
+					for( bool isParent = false ; anExecutable != nullptr ;  )
 					{
 						if( anExecutable->isMainComponent() )
 						{
@@ -1845,7 +1858,7 @@ ExecutableForm * AbstractAvmcodeCompiler::getExecutableMachine(
 				else if( ExecutableLib::MACHINE_COMPONENT_COMMUNICATOR
 						== anInstance )
 				{
-					while( anExecutable != NULL )
+					while( anExecutable != nullptr )
 					{
 						if( anExecutable->isMainComponent()
 							&& anExecutable->hasPort() )
@@ -1866,7 +1879,11 @@ ExecutableForm * AbstractAvmcodeCompiler::getExecutableMachine(
 					return( anExecutable );
 				}
 
-				if( ExecutableLib::MACHINE_SELF == anInstance )
+				if( ExecutableLib::MACHINE_THIS == anInstance )
+				{
+					return( anExecutable );
+				}
+				else if( ExecutableLib::MACHINE_SELF == anInstance )
 				{
 					return( anExecutable );
 				}
@@ -1876,7 +1893,7 @@ ExecutableForm * AbstractAvmcodeCompiler::getExecutableMachine(
 				}
 				else if( ExecutableLib::MACHINE_COMMUNICATOR == anInstance )
 				{
-					while( anExecutable != NULL )
+					while( anExecutable != nullptr )
 					{
 						if( anExecutable->hasPort() )
 						{
@@ -1888,26 +1905,26 @@ ExecutableForm * AbstractAvmcodeCompiler::getExecutableMachine(
 				}
 			}
 
-			return( NULL );
+			return( nullptr );
 		}
 
 		case FORM_UFI_KIND:
 		case FORM_AVMCODE_KIND:
 		default:
 		{
-			return( NULL );
+			return( nullptr );
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
 
 void AbstractAvmcodeCompiler::checkArgType(COMPILE_CONTEXT * aCTX,
-		BaseTypeSpecifier * aType, const BF & arg)
+		const BaseTypeSpecifier & aType, const BF & arg)
 {
-	if( (aType == NULL) || aType->isTypedUniversal() )
+	if( aType.isNullref() || aType.isTypedUniversal() )
 	{
 		return;
 	}
@@ -1923,14 +1940,14 @@ AVM_ELSE
 	AVM_OS_WARN << str_header( arg );
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
-		AVM_OS_WARN << " >> as << " << aType->strT()
+		AVM_OS_WARN << " >> as << " << aType.strT()
 				<< " >> argument !!!" << std::endl;
 
-		if( aType->isTypedAlias() )
+		if( aType.is< TypeAliasSpecifier >() )
 		{
-			AVM_OS_WARN << "Info: << " << aType->strT()
+			AVM_OS_WARN << "Info: << " << aType.strT()
 					<< " >> is an alias or a typedef of :> "
-					<< aType->referedTypeSpecifier()->strT() << std::endl;
+					<< aType.referedTypeSpecifier().strT() << std::endl;
 		}
 	}
 }

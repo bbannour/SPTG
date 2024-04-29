@@ -15,7 +15,7 @@
 
 #include "ITracePoint.h"
 
-#include <fml/workflow/Query.h>
+#include <util/avm_string.h>
 
 
 namespace sep
@@ -26,6 +26,17 @@ namespace sep
 // TRACE POINT
 ////////////////////////////////////////////////////////////////////////////////
 
+
+/**
+ * CONSTANTS
+ * ATTRIBUTE ID
+ */
+const std::string ENUM_TRACE_POINT::ATTRIBUTE_EXECUTION_INFORMATION_ID
+		= CONS_WID2( "(exec(ution)?", ")?info(rmation)?");
+
+/**
+ * UTILS
+ */
 ENUM_TRACE_POINT::TRACE_NATURE ENUM_TRACE_POINT::to_nature(
 		IComPoint::ENUM_IO_NATURE io)
 {
@@ -108,6 +119,12 @@ ENUM_TRACE_POINT::TRACE_NATURE ENUM_TRACE_POINT::to_nature(
 
 	if( id == "runnable"     ) return TRACE_RUNNABLE_NATURE;
 
+	if( REGEX_MATCH(id, ENUM_TRACE_POINT::ATTRIBUTE_EXECUTION_INFORMATION_ID) )
+			return TRACE_EXECUTION_INFORMATION_NATURE;
+
+	if( id == "trace"     ) return TRACE_META_TRACE_NATURE;
+	if( id == "debug"     ) return TRACE_META_DEBUG_NATURE;
+
 	if( REGEX_MATCH(id, CONS_WID2(
 			"init", "header")) ) return TRACE_INIT_HEADER_NATURE;
 
@@ -127,6 +144,9 @@ ENUM_TRACE_POINT::TRACE_NATURE ENUM_TRACE_POINT::to_nature(
 	if( REGEX_MATCH(id, CONS_WID2(
 			"step", "end"   )) ) return TRACE_STEP_END_NATURE;
 
+
+	if( id == "trace"        ) return TRACE_META_TRACE_NATURE;
+	if( id == "debug"        ) return TRACE_META_DEBUG_NATURE;
 
 	if( id == "comment"      ) return TRACE_COMMENT_NATURE;
 	if( id == "separator"    ) return TRACE_SEPARATOR_NATURE;
@@ -213,6 +233,11 @@ std::string ENUM_TRACE_POINT::to_string(ENUM_TRACE_POINT::TRACE_NATURE nature)
 
 		case TRACE_RUNNABLE_NATURE     : return( "runnable" );
 
+		case TRACE_EXECUTION_INFORMATION_NATURE: return( "execution#information" );
+
+		case TRACE_META_TRACE_NATURE   : return( "trace" );
+		case TRACE_META_DEBUG_NATURE   : return( "debug" );
+
 		case TRACE_STEP_HEADER_NATURE  : return( "step#header" );
 		case TRACE_STEP_BEGIN_NATURE   : return( "step#begin"  );
 		case TRACE_STEP_END_NATURE     : return( "step#end"    );
@@ -225,9 +250,11 @@ std::string ENUM_TRACE_POINT::to_string(ENUM_TRACE_POINT::TRACE_NATURE nature)
 		case TRACE_SEPARATOR_NATURE    : return( "separator" );
 		case TRACE_NEWLINE_NATURE      : return( "newline" );
 
-		case TRACE_UNDEFINED_NATURE    : return( "undefined<point#nature>" );
+		case TRACE_UNDEFINED_NATURE    : return( "undefined<trace_point#nature>" );
 
-		default                        : return( "unknown<point#nature>"   );
+		case TRACE_NULL_NATURE         : return( "null<trace_point#nature>" );
+
+		default                        : return( "unknown<trace_point#nature>" );
 	}
 }
 
@@ -287,6 +314,11 @@ std::string ENUM_TRACE_POINT::to_uid(
 		case TRACE_ROUTINE_NATURE      : return( "routine"      );
 
 		case TRACE_RUNNABLE_NATURE     : return( "runnable"     );
+
+		case TRACE_EXECUTION_INFORMATION_NATURE: return( "execution#information" );
+
+		case TRACE_META_TRACE_NATURE   : return( "trace" );
+		case TRACE_META_DEBUG_NATURE   : return( "debug" );
 
 		case TRACE_STEP_HEADER_NATURE  : return( "step#header"  );
 		case TRACE_STEP_BEGIN_NATURE   : return( "step#begin"   );

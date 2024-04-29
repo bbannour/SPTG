@@ -35,25 +35,25 @@ namespace sep
 
 bool AvmPrimitive_AtomicSequence::run(ExecutionEnvironment & ENV)
 {
-	AvmCode::const_iterator itProg = ENV.inCODE->begin();
-	AvmCode::const_iterator itEnd = ENV.inCODE->end();
+	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
+	AvmCode::const_iterator endOperand = ENV.inCODE->end();
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	// Evaluation of FIRST SEQUENCIAL STATEMENT
-	ExecutionEnvironment tmpENV(ENV, (*itProg).bfCode());
+	ExecutionEnvironment tmpENV(ENV, (*itOperand).bfCode());
 	if( not tmpENV.run() )
 	{
 		return( false );
 	}
 
-	for( ++itProg ; itProg != itEnd ; ++itProg )
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
 AVM_IF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
-		static avm_uint32_t ecCount = 8;
+		static std::uint32_t ecCount = 8;
 		if( tmpENV.outEDS.size() > ecCount )
 		{
-			ecCount = (avm_uint32_t)( ecCount * 1.5 );
+			ecCount = (std::uint32_t)( ecCount * 1.5 );
 			AVM_OS_TRACE << REPEAT("==========", 5) << std::endl
 					<< ">>>> Execution from " << tmpENV.outEDS.size()
 					<< " ECs" << std::endl;
@@ -63,7 +63,7 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 		// for output ED
 		if( tmpENV.outEDS.nonempty() )
 		{
-			if( not tmpENV.runFromOutputs((*itProg).bfCode()) )
+			if( not tmpENV.runFromOutputs((*itOperand).bfCode()) )
 			{
 				return( false );
 			}
@@ -89,34 +89,34 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
  */
 
 bool AvmPrimitive_Sequence::run(ExecutionEnvironment & ENV,
-		AvmCode::const_iterator itProg, AvmCode::const_iterator itEnd)
+		AvmCode::const_iterator itOperand, AvmCode::const_iterator endOperand)
 {
-	APExecutionData tmpED;
-	RuntimeID tmpRID = ENV.inED->mRID;
+	ExecutionData tmpED;
+	RuntimeID tmpRID = ENV.inED.getRID();
 
-	ListOfAPExecutionData listOfCurrentED;
+	ListOfExecutionData listOfCurrentED;
 
 	// Evaluation of FIRST SEQUENCIAL STATEMENT
-	ExecutionEnvironment tmpENV(ENV, (*itProg).bfCode());
+	ExecutionEnvironment tmpENV(ENV, (*itOperand).bfCode());
 	if( tmpENV.run() )
 	{
 		listOfCurrentED.splice( tmpENV.outEDS );
 
 		// Sync EDS traitement
-		ENV.spliceSync_mwStorePos(tmpENV, (itProg + 1), itEnd);
+		ENV.spliceSync_mwStorePos(tmpENV, (itOperand + 1), endOperand);
 	}
 	else
 	{
 		return( false );
 	}
 
-	for( ++itProg ; itProg != itEnd ; ++itProg )
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
 AVM_IF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
-		static avm_uint32_t ecCount = 8;
+		static std::uint32_t ecCount = 8;
 		if( listOfCurrentED.size() > ecCount )
 		{
-			ecCount = (avm_uint32_t)( ecCount * 1.5 );
+			ecCount = (std::uint32_t)( ecCount * 1.5 );
 			AVM_OS_TRACE << REPEAT("==========", 5) << std::endl
 					<< ">>>> Execution from " << listOfCurrentED.size()
 					<< " ECs" << std::endl;
@@ -125,10 +125,9 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 		while( listOfCurrentED.nonempty() )
 		{
-//			currentED.pop_first_to( tmpED );
 			listOfCurrentED.pop_last_to( tmpED );
 
-			switch( tmpED->mAEES )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -136,27 +135,27 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 				{
 					tmpED.mwsetAEES( AEES_OK );
 
-					//!!! NO << break >> for these statement
+					[[fallthrough]]; //!! No BREAK for that CASE statement
 				}
 
 				// Evaluation of NEXT SEQUENCIAL STATEMENT
 				case AEES_OK:
 				case AEES_STEP_RESUME:
 				{
-					if( tmpED->mPreserveRID )
+					if( tmpED.isPreserveRID() )
 					{
-						tmpED->mPreserveRID = false;
-						tmpRID = tmpED->mRID;
+						tmpED.setPreserveRID( false );
+						tmpRID = tmpED.getRID();
 					}
 					else
 					{
-						tmpED->mRID = tmpRID;
+						tmpED.setRID( tmpRID );
 					}
 
-					if( tmpENV.run(tmpED, (*itProg).bfCode()) )
+					if( tmpENV.run(tmpED, (*itOperand).bfCode()) )
 					{
 						// Sync EDS traitement
-						ENV.spliceSync_mwStorePos(tmpENV, (itProg + 1), itEnd);
+						ENV.spliceSync_mwStorePos(tmpENV, (itOperand + 1), endOperand);
 					}
 					else
 					{
@@ -172,7 +171,7 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as outEDS:> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -193,35 +192,35 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 bool AvmPrimitive_Sequence::run(ExecutionEnvironment & ENV)
 {
-	AvmCode::const_iterator itProg = ENV.inCODE->begin();
-	AvmCode::const_iterator itEnd = ENV.inCODE->end();
+	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
+	AvmCode::const_iterator endOperand = ENV.inCODE->end();
 
-	APExecutionData tmpED;
-	RuntimeID tmpRID = ENV.inED->mRID;
+	ExecutionData tmpED;
+	RuntimeID tmpRID = ENV.inED.getRID();
 
-	ListOfAPExecutionData listOfCurrentED;
+	ListOfExecutionData listOfCurrentED;
 
 	// Evaluation of FIRST SEQUENCIAL STATEMENT
-	ExecutionEnvironment tmpENV(ENV, (*itProg).bfCode());
+	ExecutionEnvironment tmpENV(ENV, (*itOperand).bfCode());
 	if( tmpENV.run() )
 	{
 		listOfCurrentED.splice( tmpENV.outEDS );
 
 		// Sync EDS traitement
-		ENV.spliceSync_mwStorePos(tmpENV, (itProg + 1), itEnd);
+		ENV.spliceSync_mwStorePos(tmpENV, (itOperand + 1), endOperand);
 	}
 	else
 	{
 		return( false );
 	}
 
-	for( ++itProg ; itProg != itEnd ; ++itProg )
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
 AVM_IF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
-		static avm_uint32_t ecCount = 8;
+		static std::uint32_t ecCount = 8;
 		if( listOfCurrentED.size() > ecCount )
 		{
-			ecCount = (avm_uint32_t)( ecCount * 1.5 );
+			ecCount = (std::uint32_t)( ecCount * 1.5 );
 			AVM_OS_TRACE << REPEAT("==========", 5) << std::endl
 					<< ">>>> Execution from " << listOfCurrentED.size()
 					<< " ECs" << std::endl;
@@ -230,10 +229,9 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 		while( listOfCurrentED.nonempty() )
 		{
-//			currentED.pop_first_to( tmpED );
 			listOfCurrentED.pop_last_to( tmpED );
 
-			switch( tmpED->mAEES )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -241,27 +239,27 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 				{
 					tmpED.mwsetAEES( AEES_OK );
 
-					//!!! NO << break >> for these statement
+					[[fallthrough]]; //!! No BREAK for that CASE statement
 				}
 
 				// Evaluation of NEXT SEQUENCIAL STATEMENT
 				case AEES_OK:
 				case AEES_STEP_RESUME:
 				{
-					if( tmpED->mPreserveRID )
+					if( tmpED.isPreserveRID() )
 					{
-						tmpED->mPreserveRID = false;
-						tmpRID = tmpED->mRID;
+						tmpED.setPreserveRID( false );
+						tmpRID = tmpED.getRID();
 					}
 					else
 					{
-						tmpED->mRID = tmpRID;
+						tmpED.setRID( tmpRID );
 					}
 
-					if( tmpENV.run(tmpED, (*itProg).bfCode()) )
+					if( tmpENV.run(tmpED, (*itOperand).bfCode()) )
 					{
 						// Sync EDS traitement
-						ENV.spliceSync_mwStorePos(tmpENV, (itProg + 1), itEnd);
+						ENV.spliceSync_mwStorePos(tmpENV, (itOperand + 1), endOperand);
 					}
 					else
 					{
@@ -277,7 +275,7 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as outEDS:> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -319,35 +317,35 @@ bool AvmPrimitive_Sequence::resume(ExecutionEnvironment & ENV)
  ***************************************************************************
  */
 bool AvmPrimitive_SideSequence::run(ExecutionEnvironment & ENV,
-		AvmCode::const_iterator itProg, AvmCode::const_iterator itEnd)
+		AvmCode::const_iterator itOperand, AvmCode::const_iterator endOperand)
 {
-	APExecutionData tmpED;
-	RuntimeID tmpRID = ENV.inED->mRID;
+	ExecutionData tmpED;
+	RuntimeID tmpRID = ENV.inED.getRID();
 
-	ListOfAPExecutionData listOfCurrentED;
-	ListOfAPExecutionData listOfNextED;
+	ListOfExecutionData listOfCurrentED;
+	ListOfExecutionData listOfNextED;
 
 	// Evaluation of FIRST SEQUENCIAL STATEMENT
-	ExecutionEnvironment tmpENV(ENV, (*itProg).bfCode());
+	ExecutionEnvironment tmpENV(ENV, (*itOperand).bfCode());
 	if( tmpENV.run() )
 	{
 		listOfCurrentED.splice( tmpENV.outEDS );
 
 		// Sync EDS traitement
-		ENV.spliceSync_mwStorePos(tmpENV, (itProg + 1), itEnd);
+		ENV.spliceSync_mwStorePos(tmpENV, (itOperand + 1), endOperand);
 	}
 	else
 	{
 		return( false );
 	}
 
-	for( ++itProg ; itProg != itEnd ; ++itProg )
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
 AVM_IF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
-		static avm_uint32_t ecCount = 8;
+		static std::uint32_t ecCount = 8;
 		if( listOfCurrentED.size() > ecCount )
 		{
-			ecCount = (avm_uint32_t)( ecCount * 1.5 );
+			ecCount = (std::uint32_t)( ecCount * 1.5 );
 			AVM_OS_TRACE << REPEAT("==========", 5) << std::endl
 					<< ">>>> Execution from " << listOfCurrentED.size()
 					<< " ECs" << std::endl;
@@ -356,10 +354,9 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 		while( listOfCurrentED.nonempty() )
 		{
-//			currentED.pop_first_to( tmpED );
 			listOfCurrentED.pop_last_to( tmpED );
 
-			switch( tmpED->mAEES )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -367,27 +364,27 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 				{
 					tmpED.mwsetAEES( AEES_OK );
 
-					//!!! NO << break >> for these statement
+					[[fallthrough]]; //!! No BREAK for that CASE statement
 				}
 
 				// Evaluation of NEXT SEQUENCIAL STATEMENT
 				case AEES_OK:
 				case AEES_STEP_RESUME:
 				{
-					if( tmpED->mPreserveRID )
+					if( tmpED.isPreserveRID() )
 					{
-						tmpED->mPreserveRID = false;
-						tmpRID = tmpED->mRID;
+						tmpED.setPreserveRID( false );
+						tmpRID = tmpED.getRID();
 					}
 					else
 					{
-						tmpED->mRID = tmpRID;
+						tmpED.setRID( tmpRID );
 					}
 
-					if( tmpENV.run(tmpED, (*itProg).bfCode()) )
+					if( tmpENV.run(tmpED, (*itOperand).bfCode()) )
 					{
 						// Sync EDS traitement
-						ENV.spliceSync_mwStorePos(tmpENV, (itProg + 1), itEnd);
+						ENV.spliceSync_mwStorePos(tmpENV, (itOperand + 1), endOperand);
 					}
 					else
 					{
@@ -414,7 +411,7 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as outEDS:> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -459,16 +456,16 @@ bool AvmPrimitive_SideSequence::resume(ExecutionEnvironment & ENV)
  ***************************************************************************
  */
 bool AvmPrimitive_WeakSequence::run(ExecutionEnvironment & ENV,
-		AvmCode::const_iterator itProg, AvmCode::const_iterator itEnd)
+		AvmCode::const_iterator itOperand, AvmCode::const_iterator endOperand)
 {
-	APExecutionData tmpED;
-	RuntimeID tmpRID = ENV.inED->mRID;
+	ExecutionData tmpED;
+	RuntimeID tmpRID = ENV.inED.getRID();
 
-	ListOfAPExecutionData listOfCurrentED;
-	ListOfAPExecutionData listOfNextED;
+	ListOfExecutionData listOfCurrentED;
+	ListOfExecutionData listOfNextED;
 
 	// Evaluation of FIRST SEQUENCIAL STATEMENT
-	ExecutionEnvironment tmpENV(ENV, (*itProg).bfCode());
+	ExecutionEnvironment tmpENV(ENV, (*itOperand).bfCode());
 	if( tmpENV.run() )
 	{
 		if( tmpENV.outEDS.nonempty() )
@@ -487,20 +484,22 @@ bool AvmPrimitive_WeakSequence::run(ExecutionEnvironment & ENV,
 		}
 
 		// Sync EDS traitement
-		ENV.spliceSync_mwStorePos(tmpENV, (itProg + 1), itEnd);
+		ENV.spliceSync_mwStorePos(tmpENV, (itOperand + 1), endOperand);
+
+		ENV.spliceNotOutput(tmpENV);
 	}
 	else
 	{
-		return( false );
+		listOfCurrentED.append( ENV.inED );
 	}
 
-	for( ++itProg ; itProg != itEnd ; ++itProg )
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
 AVM_IF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
-		static avm_uint32_t ecCount = 8;
+		static std::uint32_t ecCount = 8;
 		if( listOfCurrentED.size() > ecCount )
 		{
-			ecCount = (avm_uint32_t)( ecCount * 1.5 );
+			ecCount = (std::uint32_t)( ecCount * 1.5 );
 			AVM_OS_TRACE << REPEAT("==========", 5) << std::endl
 					<< ">>>> Execution from " << listOfCurrentED.size()
 					<< " ECs" << std::endl;
@@ -509,10 +508,9 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 		while( listOfCurrentED.nonempty() )
 		{
-//			currentED.pop_first_to( tmpED );
 			listOfCurrentED.pop_last_to( tmpED );
 
-			switch( tmpED->mAEES )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -520,33 +518,34 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 				{
 					tmpED.mwsetAEES( AEES_OK );
 
-					//!!! NO << break >> for these statement
+					[[fallthrough]]; //!! No BREAK for that CASE statement
 				}
 
 				// Evaluation of NEXT SEQUENCIAL STATEMENT
 				case AEES_OK:
 				case AEES_STEP_RESUME:
 				{
-					tmpED->mRID = tmpRID;
+					tmpED.setRID( tmpRID );
 
-					if( tmpENV.run(tmpED, (*itProg).bfCode()) )
+					if( tmpENV.run(tmpED, (*itOperand).bfCode()) )
 					{
+						if( tmpENV.outEDS.nonempty() )
+						{
+							listOfNextED.splice(tmpENV.outEDS);
+						}
+						else if( tmpENV.exitEDS.empty() && tmpENV.syncEDS.empty() )
+						{
+							listOfNextED.append(tmpED);
+						}
+
 						// Sync EDS traitement
-						ENV.spliceSync_mwStorePos(tmpENV, (itProg + 1), itEnd);
+						ENV.spliceSync_mwStorePos(tmpENV, (itOperand + 1), endOperand);
 					}
 					else
 					{
-						ENV.outEDS.append( tmpED );
+						listOfNextED.append( tmpED );
 					}
 
-					if( tmpENV.outEDS.nonempty() )
-					{
-						listOfNextED.splice(tmpENV.outEDS);
-					}
-					else if( tmpENV.exitEDS.empty() && tmpENV.syncEDS.empty() )
-					{
-						listOfNextED.append(tmpED);
-					}
 
 					ENV.spliceNotOutput(tmpENV);
 
@@ -559,7 +558,7 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as outEDS:> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -577,7 +576,7 @@ AVM_ENDIF_DEBUG_LEVEL_OR_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 		if( ENV.inED == tmpED )
 		{
-			return( true );
+			return( false );
 		}
 	}
 

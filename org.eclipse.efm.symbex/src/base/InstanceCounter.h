@@ -92,5 +92,12 @@ std::size_t InstanceCounter< T >::INSTANCE_ALIVE = 0;
 
 
 
+/**
+ * Global report counter usage function
+ */
+void reportInstanceCounterUsage(OutStream & os, const std::string & aMsg, bool forced = false);
+
+
+
 } /* namespace sep */
 #endif /* BASE_INSTANCECOUNTER_H_ */

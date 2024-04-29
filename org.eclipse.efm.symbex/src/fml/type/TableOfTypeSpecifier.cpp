@@ -87,7 +87,7 @@ const Symbol & TableOfTypeSpecifier::getSymbolDataByNameID(
 
 
 const Symbol & TableOfTypeSpecifier::getSymbolDataByAstElement(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	ContainerOfType::const_iterator it = ContainerOfType::begin();
 	ContainerOfType::const_iterator endIt = ContainerOfType::end();

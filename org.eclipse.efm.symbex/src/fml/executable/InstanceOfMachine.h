@@ -19,8 +19,6 @@
 #include <fml/executable/BaseInstanceForm.h>
 #include <fml/common/SpecifierElement.h>
 
-#include <common/AvmPointer.h>
-
 #include <collection/Typedef.h>
 
 #include <fml/common/ModifierElement.h>
@@ -51,11 +49,11 @@ class Specifier;
 class InstanceOfMachine :
 		public BaseInstanceForm,
 		public SpecifierImpl,
+		AVM_INJECT_STATIC_NULL_REFERENCE( InstanceOfMachine ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( InstanceOfMachine )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( InstanceOfMachine )
-
 
 protected:
 	/*
@@ -69,12 +67,12 @@ protected:
 	AvmProgram onCreateRoutine;
 	AvmProgram onStartRoutine;
 
-	avm_size_t mPossibleDynamicInstanciationCount;
-	avm_size_t mMaximalInstanceCount;
+	std::size_t mPossibleDynamicInstanciationCount;
+	std::size_t mMaximalInstanceCount;
 
 	APTableOfData mParamReturnTable;
 
-	avm_size_t mReturnOffset;
+	std::size_t mReturnOffset;
 
 	InstanceOfMachine * mInstanceModel;
 
@@ -83,23 +81,17 @@ protected:
 
 	bool mModifierAutoStart;
 
-	// static class of Port/Message/Signal in communicated statement
-	ListOfInstanceOfBuffer mInputEnabledBuffer;
-	ListOfInstanceOfPort mInputEnabledCom;
-	ListOfInstanceOfPort mInputEnabledSave;
-
-
 public:
 	/**
 	 * CONSTRUCTOR
 	 * Default
 	 */
 	InstanceOfMachine(ExecutableForm * aContainer,
-			const Machine * astMachine, ExecutableForm * anExecutable,
+			const Machine & astMachine, ExecutableForm & anExecutable,
 			InstanceOfMachine * anInstanceModel, avm_offset_t anOffset);
 
-	InstanceOfMachine(ExecutableForm * aContainer, const Machine * astMachine,
-			ExecutableForm * anExecutable, InstanceOfMachine * anInstanceModel,
+	InstanceOfMachine(ExecutableForm * aContainer, const Machine & astMachine,
+			ExecutableForm & anExecutable, InstanceOfMachine * anInstanceModel,
 			avm_offset_t anOffset, const Specifier & aSpecifier);
 
 
@@ -125,11 +117,7 @@ public:
 	mReturnOffset( aMachine.mReturnOffset ),
 	mInstanceModel(  aMachine.mInstanceModel ),
 	mRuntimeRID( aMachine.mRuntimeRID ),
-	mModifierAutoStart(  aMachine.mModifierAutoStart ),
-
-	mInputEnabledBuffer( aMachine.mInputEnabledBuffer ),
-	mInputEnabledCom( aMachine.mInputEnabledCom ),
-	mInputEnabledSave( aMachine.mInputEnabledSave )
+	mModifierAutoStart(  aMachine.mModifierAutoStart )
 	{
 		//!! NOTHING
 	}
@@ -138,31 +126,28 @@ public:
 	 * CONSTRUCTOR
 	 * for Alias
 	 */
-	InstanceOfMachine(BaseAvmProgram * aContainer, InstanceOfMachine * aTarget,
+	InstanceOfMachine(BaseAvmProgram * aContainer,
+			const InstanceOfMachine & aTarget,
 			VectorOfInstanceOfMachine & aRelativeMachinePath)
 	: BaseInstanceForm(CLASS_KIND_T( InstanceOfMachine ),
 			aContainer, aTarget, aRelativeMachinePath),
-	SpecifierImpl( aTarget->getSpecifier() ),
+	SpecifierImpl( aTarget.getSpecifier() ),
 
-	mExecutable( aTarget->mExecutable ),
+	mExecutable( aTarget.mExecutable ),
 
-	mThisFlag( aTarget->mThisFlag ),
+	mThisFlag( aTarget.mThisFlag ),
 
-	onCreateRoutine ( aTarget->onCreateRoutine ),
-	onStartRoutine( aTarget->onStartRoutine ),
+	onCreateRoutine ( aTarget.onCreateRoutine ),
+	onStartRoutine( aTarget.onStartRoutine ),
 
 	mPossibleDynamicInstanciationCount(
-			aTarget->mPossibleDynamicInstanciationCount ),
-	mMaximalInstanceCount( aTarget->mMaximalInstanceCount ),
-	mParamReturnTable( aTarget->mParamReturnTable ),
-	mReturnOffset( aTarget->mReturnOffset ),
-	mInstanceModel(  aTarget->mInstanceModel ),
-	mRuntimeRID( aTarget->mRuntimeRID ),
-	mModifierAutoStart(  aTarget->mModifierAutoStart ),
-
-	mInputEnabledBuffer( aTarget->mInputEnabledBuffer ),
-	mInputEnabledCom( aTarget->mInputEnabledCom ),
-	mInputEnabledSave( aTarget->mInputEnabledSave )
+			aTarget.mPossibleDynamicInstanciationCount ),
+	mMaximalInstanceCount( aTarget.mMaximalInstanceCount ),
+	mParamReturnTable( aTarget.mParamReturnTable ),
+	mReturnOffset( aTarget.mReturnOffset ),
+	mInstanceModel(  aTarget.mInstanceModel ),
+	mRuntimeRID( aTarget.mRuntimeRID ),
+	mModifierAutoStart(  aTarget.mModifierAutoStart )
 	{
 		//!! NOTHING
 	}
@@ -179,11 +164,18 @@ public:
 
 	/**
 	 * GETTER
+	 * Unique Null Reference
+	 */
+	static InstanceOfMachine & nullref();
+
+
+	/**
+	 * GETTER
 	 * Compiled ObjectElement as Compiled Machine
 	 */
-	inline const Machine * getAstMachine() const
+	inline const Machine & getAstMachine() const
 	{
-		return( getAstElement()->as< Machine >() );
+		return( safeAstElement().as< Machine >() );
 	}
 
 
@@ -191,7 +183,7 @@ public:
 	 * SETTER
 	 * mFullyQualifiedNameID
 	 */
-	virtual void updateFullyQualifiedNameID();
+	virtual void updateFullyQualifiedNameID() override;
 
 
 	/**
@@ -203,10 +195,22 @@ public:
 		return( mExecutable );
 	}
 
+	inline const ExecutableForm & refExecutable() const
+	{
+		return( * mExecutable );
+	}
+
+	inline ExecutableForm & refExecutable()
+	{
+		return( * mExecutable );
+	}
+
 	inline bool hasExecutable() const
 	{
-		return( mExecutable != NULL );
+		return( mExecutable != nullptr );
 	}
+
+	bool hasnotNullExecutable() const;
 
 	inline void setExecutable(ExecutableForm * anExecutable)
 	{
@@ -250,12 +254,12 @@ public:
 	static std::string THIS_FQN_SUFFIX;
 	static std::string THIS_ID;
 
-	static InstanceOfMachine * newThis(ExecutableForm * anExecutable,
+	static InstanceOfMachine * newThis(ExecutableForm & anExecutable,
 			InstanceOfMachine * anInstanceModel, avm_offset_t anOffset);
 
 	static InstanceOfMachine * newInstanceModelThis(
-			ExecutableForm * aContainer, Machine * aCompiled,
-			ExecutableForm * anExecutable, InstanceOfMachine * anInstanceModel,
+			ExecutableForm * aContainer, const Machine & astMachine,
+			ExecutableForm & anExecutable, InstanceOfMachine * anInstanceModel,
 			avm_offset_t anOffset, const Specifier & aSpecifier);
 
 	/**
@@ -265,11 +269,6 @@ public:
 	inline AvmProgram & getOnCreateRoutine()
 	{
 		return( onCreateRoutine );
-	}
-
-	inline BFCode & getOnCreate()
-	{
-		return( onCreateRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnCreate() const
@@ -295,11 +294,6 @@ public:
 	inline AvmProgram & getOnStartRoutine()
 	{
 		return( onStartRoutine );
-	}
-
-	inline BFCode & getOnStart()
-	{
-		return( onStartRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnStart() const
@@ -333,7 +327,7 @@ public:
 	 * Instanciation Information
 	 * for Data Access optimisation
 	 */
-	inline avm_size_t getStaticInstanciationCount() const
+	inline std::size_t getStaticInstanciationCount() const
 	{
 		return( mInstanciationCount );
 	}
@@ -344,7 +338,7 @@ public:
 	}
 
 
-	inline avm_size_t getPossibleDynamicInstanciationCount() const
+	inline std::size_t getPossibleDynamicInstanciationCount() const
 	{
 		return( mPossibleDynamicInstanciationCount );
 	}
@@ -354,7 +348,7 @@ public:
 		return( mPossibleDynamicInstanciationCount > 0 );
 	}
 
-	void incrPossibleDynamicInstanciationCount(avm_size_t offset = 1);
+	void incrPossibleDynamicInstanciationCount(std::size_t offset = 1);
 
 
 	inline bool hasSingleRuntimeInstance()
@@ -368,7 +362,7 @@ public:
 	 * GETTER - SETTER
 	 * mMaximalInstanceCount
 	 */
-	inline avm_size_t getMaximalInstanceCount() const
+	inline std::size_t getMaximalInstanceCount() const
 	{
 		return( mMaximalInstanceCount );
 	}
@@ -384,14 +378,14 @@ public:
 				&& (mMaximalInstanceCount != AVM_NUMERIC_MAX_SIZE_T) );
 	}
 
-	inline void setMaximalInstanceCount(avm_size_t aMaximalInstanceCount)
+	inline void setMaximalInstanceCount(std::size_t aMaximalInstanceCount)
 	{
 		mMaximalInstanceCount = aMaximalInstanceCount;
 	}
 
 
 	inline void setInstanceCount(
-			avm_uint32_t anInitialCount, avm_size_t aMaximalInstanceCount)
+			std::uint32_t anInitialCount, std::size_t aMaximalInstanceCount)
 	{
 		BaseInstanceForm::setInstanciationCount( anInitialCount );
 
@@ -426,12 +420,12 @@ public:
 	}
 
 
-	inline BF & getParamReturn(avm_size_t offset)
+	inline BF & getParamReturn(std::size_t offset)
 	{
 		return( mParamReturnTable->at(offset) );
 	}
 
-	inline const BF & getParamReturn(avm_size_t offset) const
+	inline const BF & getParamReturn(std::size_t offset) const
 	{
 		return( mParamReturnTable->at(offset) );
 	}
@@ -442,7 +436,7 @@ public:
 		return( mParamReturnTable.valid() && mParamReturnTable->nonempty() );
 	}
 
-	inline void setParamReturn(avm_size_t offset, const BF & aParam)
+	inline void setParamReturn(std::size_t offset, const BF & aParam)
 	{
 		mParamReturnTable->set(offset, aParam);
 	}
@@ -454,28 +448,28 @@ public:
 	 * mReturnOffset
 	 */
 
-	inline avm_size_t getParamOffset() const
+	inline std::size_t getParamOffset() const
 	{
 		return( 0 );
 	}
 
-	inline avm_size_t getParamCount() const
+	inline std::size_t getParamCount() const
 	{
 		return( mReturnOffset );
 	}
 
-	inline BF & getParam(avm_size_t offset)
+	inline BF & getParam(std::size_t offset)
 	{
 		return( mParamReturnTable->at(offset) );
 	}
 
-	inline const BF & getParam(avm_size_t offset) const
+	inline const BF & getParam(std::size_t offset) const
 	{
 		return( mParamReturnTable->at(offset) );
 	}
 
 
-	BaseTypeSpecifier * getParamType(avm_size_t offset) const;
+	const BaseTypeSpecifier & getParamType(std::size_t offset) const;
 
 
 	inline bool hasParam() const
@@ -486,7 +480,7 @@ public:
 	}
 
 
-	inline void setParam(avm_size_t offset, const BF & aParam)
+	inline void setParam(std::size_t offset, const BF & aParam)
 	{
 		mParamReturnTable->set(offset, aParam);
 	}
@@ -497,12 +491,12 @@ public:
 	 * mParamReturnTable
 	 * mReturnOffset
 	 */
-	inline void setReturnOffset(avm_size_t aReturnOffset)
+	inline void setReturnOffset(std::size_t aReturnOffset)
 	{
 		mReturnOffset = aReturnOffset;
 	}
 
-	inline avm_size_t getReturnCount() const
+	inline std::size_t getReturnCount() const
 	{
 		return( mParamReturnTable->size() - mReturnOffset );
 	}
@@ -526,12 +520,12 @@ public:
 
 	inline bool hasInstanceModel() const
 	{
-		return( mInstanceModel != NULL );
+		return( mInstanceModel != nullptr );
 	}
 
 	inline bool isInstanceModel(InstanceOfMachine * anOtherModel) const
 	{
-		return( (mInstanceModel != NULL)
+		return( (mInstanceModel != nullptr)
 				&& ( (mInstanceModel == anOtherModel)
 					|| (anOtherModel->getSpecifier().isDesignPrototypeStatic()
 						&& (mInstanceModel
@@ -580,148 +574,13 @@ public:
 
 
 	/**
-	 * GETTER - SETTER
-	 * mInputEnabledBuffer
-	 */
-	inline void addInputEnabledBuffer(InstanceOfBuffer * aBuffer)
-	{
-		mInputEnabledBuffer.add_union( aBuffer );
-	}
-
-	inline void addInputEnabledBuffer(ListOfInstanceOfBuffer & inputEnabledBuffer)
-	{
-		mInputEnabledBuffer.add_union( inputEnabledBuffer );
-	}
-
-
-	inline ListOfInstanceOfBuffer & getInputEnabledBuffer()
-	{
-		return( mInputEnabledBuffer );
-	}
-
-	inline const ListOfInstanceOfBuffer & getInputEnabledBuffer() const
-	{
-		return( mInputEnabledBuffer );
-	}
-
-
-	bool containsInputEnabledBuffer(InstanceOfBuffer * aBuffer) const
-	{
-		return( mInputEnabledBuffer.contains(aBuffer) );
-	}
-
-	inline bool hasInputEnabledBuffer() const
-	{
-		return( mInputEnabledBuffer.nonempty() );
-	}
-
-
-	inline void setInputEnabledBuffer(ListOfInstanceOfBuffer & inputEnabledBuffer)
-	{
-		mInputEnabledBuffer.clear();
-
-		mInputEnabledBuffer.add_union( inputEnabledBuffer );
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * mInputEnabledCom
-	 */
-	inline void addInputEnabledCom(InstanceOfPort * aPort)
-	{
-		mInputEnabledCom.add_union( aPort );
-	}
-
-	inline void addInputEnabledCom(ListOfInstanceOfPort & inputEnabledPort)
-	{
-		mInputEnabledCom.add_union( inputEnabledPort );
-	}
-
-
-	inline ListOfInstanceOfPort & getInputEnabledCom()
-	{
-		return( mInputEnabledCom );
-	}
-
-	inline const ListOfInstanceOfPort & getInputEnabledCom() const
-	{
-		return( mInputEnabledCom );
-	}
-
-
-	bool containsInputEnabledCom(InstanceOfPort * aPort) const
-	{
-		return( mInputEnabledCom.contains(aPort) );
-	}
-
-	inline bool hasInputEnabledCom() const
-	{
-		return( mInputEnabledCom.nonempty() );
-	}
-
-
-	inline void setInputEnabledCom(ListOfInstanceOfPort & inputEnabledPort)
-	{
-		mInputEnabledCom.clear();
-
-		mInputEnabledCom.add_union( inputEnabledPort );
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * mInputEnabledSave
-	 */
-	inline void addInputEnabledSave(InstanceOfPort * aPort)
-	{
-		mInputEnabledSave.add_union( aPort );
-	}
-
-	inline void addInputEnabledSave(ListOfInstanceOfPort & inputEnabledSavePort)
-	{
-		mInputEnabledSave.add_union( inputEnabledSavePort );
-	}
-
-
-	inline ListOfInstanceOfPort & getInputEnabledSave()
-	{
-		return( mInputEnabledSave );
-	}
-
-	inline const ListOfInstanceOfPort & getInputEnabledSave() const
-	{
-		return( mInputEnabledSave );
-	}
-
-
-	bool containsInputEnabledSave(InstanceOfPort * aPort) const
-	{
-		return( mInputEnabledSave.contains(aPort) );
-	}
-
-	inline bool hasInputEnabledSave() const
-	{
-		return( mInputEnabledSave.nonempty() );
-	}
-
-
-	inline void setInputEnabledSave(ListOfInstanceOfPort & inputEnabledSavePort)
-	{
-		mInputEnabledSave.clear();
-
-		mInputEnabledSave.add_union( inputEnabledSavePort );
-	}
-
-
-	/**
 	 * Serialization
 	 */
 	void header(OutStream & out) const;
 
-	void strHeader(OutStream & out) const;
+	void strHeader(OutStream & out) const override;
 
-	void toStream(OutStream & out) const;
+	void toStream(OutStream & out) const override;
 
 };
 

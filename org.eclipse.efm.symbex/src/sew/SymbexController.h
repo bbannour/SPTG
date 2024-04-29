@@ -43,7 +43,7 @@ public:
 	 * Default
 	 */
 	SymbexController(SymbexDispatcher & aSymbexDispatcher,
-			WObject * wfParameterObject,
+			const WObject * wfParameterObject,
 			SymbexControllerUnitManager & aControllerUnitManager);
 
 
@@ -59,7 +59,7 @@ public:
 	/**
 	 * Thread main Run Method
 	 */
-	virtual void operator()();
+	virtual void operator()() override;
 
 
 	void analyseReady();

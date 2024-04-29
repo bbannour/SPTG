@@ -19,7 +19,6 @@
 #include <fml/common/BehavioralElement.h>
 #include <fml/common/SpecifierElement.h>
 
-#include <common/AvmPointer.h>
 #include <common/BF.h>
 
 #include <fml/expression/AvmCode.h>
@@ -29,6 +28,7 @@ namespace sep
 {
 
 class Machine;
+class Port;
 class PropertyPart;
 
 
@@ -45,7 +45,7 @@ public:
 	/**
 	 * TYPEDEF
 	 */
-	typedef avm_uint8_t         moc_kind_t;
+	typedef std::uint8_t         moc_kind_t;
 
 	enum MOC_KIND
 	{
@@ -95,10 +95,10 @@ protected:
 
 	int   mTokenCount;
 
-	Machine * mSource;
+	Machine & mSource;
 	BF        mTarget;
 
-	PropertyPart * mDeclaration;
+	PropertyPart * mPropertyDeclaration;
 
 	BFCode mStatement;
 
@@ -109,12 +109,18 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	Transition(Machine * aContainer);
+	Transition(Machine & aContainer);
 
-	Transition(Machine * aContainer, const std::string & aNameID,
-			MOC_KIND aKind = MOC_SIMPLE_KIND);
+	Transition(Machine & aContainer,
+			const std::string & aNameID, MOC_KIND aKind);
 
-	Transition(Machine * aContainer, const Transition * aTransitionPattern);
+	Transition(Machine & aContainer, const Transition & aTransitionPattern);
+
+	// For Python Binding
+	Transition(Machine & aContainer, const std::string & aNameID);
+
+	Transition(Machine & aSource,
+			const std::string & aNameID, Machine & aTarget);
 
 	/**
 	 * DESTRUCTOR
@@ -268,14 +274,9 @@ public:
 	 * GETTER - SETTER
 	 * mSource
 	 */
-	inline Machine * getSource() const
+	inline Machine & getSource() const
 	{
 		return( mSource );
-	}
-
-	inline void setSource(Machine * aSource)
-	{
-		mSource = aSource;
 	}
 
 	Machine * getSourceContainer() const;
@@ -305,22 +306,16 @@ public:
 		mTarget = aTarget;
 	}
 
+	void setTarget(Machine & aTarget);
+
 
 	/**
 	 * GETTER - SETTER
-	 * mDeclaration
+	 * mPropertyDeclaration
 	 */
-	inline PropertyPart * getDeclaration() const
-	{
-		return( mDeclaration );
-	}
+	const PropertyPart & getPropertyPart() const;
 
-	bool hasDeclaration() const;
-
-	inline void setDeclaration(PropertyPart * aDeclaration)
-	{
-		mDeclaration = aDeclaration;
-	}
+	bool hasPropertyPart() const;
 
 
 	/**
@@ -342,6 +337,21 @@ public:
 		mStatement = aStatement;
 	}
 
+	void addStatement(const BFCode & aStatement);
+
+	void seqStatement(const BFCode & aStatement);
+
+
+	// For Python Binding
+	bool addStatement(const std::string & rawStatement);
+
+	bool setStatement(const std::string & rawStatement);
+
+
+	bool addOutput(Port & outPort, std::vector< std::string > & rvalues);
+
+	bool addInput(Port & inPort, std::vector< std::string > & lvalues);
+
 
 	/**
 	 * Serialization
@@ -350,10 +360,10 @@ public:
 
 	std::string strMocKind(
 			moc_kind_t mask = MOC_MASK_ALL_KIND,
-			const std::string & SEPARATOR = "%") const;
+			const std::string & SEPARATOR = " & ") const;
 
 
-	virtual void strHeader(OutStream & os) const;
+	virtual void strHeader(OutStream & out) const override;
 
 
 	inline std::string strTransitionHeader() const
@@ -365,10 +375,10 @@ public:
 		return( oss.str() );
 	}
 
-	void toStreamHeader(OutStream & os) const;
+	void toStreamHeader(OutStream & out) const;
 
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
 
 };
 

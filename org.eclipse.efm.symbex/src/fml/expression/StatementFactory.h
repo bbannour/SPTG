@@ -17,11 +17,13 @@
 #define STATEMENTFACTORY_H_
 
 #include <collection/Typedef.h>
+#include <collection/BFContainer.h>
 
 #include <fml/executable/AvmTransition.h>
 #include <fml/executable/ExecutableLib.h>
 #include <fml/executable/InstanceOfMachine.h>
 
+#include <fml/operator/OperatorLib.h>
 #include <fml/operator/OperatorLib.h>
 
 #include <fml/runtime/RuntimeID.h>
@@ -46,15 +48,18 @@ public:
 	 * COLLECT
 	 * [state]machine
 	 */
-	static void collectRunMachine(ExecutableForm * anExecutableForm,
+	static void collectRunMachine(
 			const BF & aStatement, ListOfInstanceOfMachine & listOfMachine);
 
-	static void collectActivityMachine(
-			ExecutableForm * anExecutableForm, AVM_OPCODE opCode,
+	static bool hasActivityMachine(AVM_OPCODE opCode, const BF & aStatement);
+
+	static void collectActivityMachine(AVM_OPCODE opCode,
 			const BF & aStatement, ListOfInstanceOfMachine & listOfMachine);
 
-	static void collectActivityMachine(ExecutableForm * anExecutableForm,
-			AVM_OPCODE opCode1, AVM_OPCODE opCode2,
+	static void collectActivityMachine(AVM_OPCODE opCode,
+			const BF & aStatement, BFCollection & listOfMachine);
+
+	static void collectActivityMachine(AVM_OPCODE opCode1, AVM_OPCODE opCode2,
 			const BF & aStatement, ListOfInstanceOfMachine & listOfMachine);
 
 
@@ -62,9 +67,15 @@ public:
 	 * COLLECT
 	 * Transition
 	 */
-	static void collectInvokeTransition(ExecutableForm * anExecutableForm,
+	static void collectInvokeTransition(const ExecutableForm & anExecutableForm,
 			const BF & aStatement, ListOfAvmTransition & listOfTransition);
 
+	/**
+	 * COLLECT
+	 * Communication Statement
+	 */
+	static void collectCommunication(
+			const BF & aStatement, BFCollection & listOfComStatement);
 
 	/**
 	 * COLLECT
@@ -73,14 +84,12 @@ public:
 	static void collectRID(const BF & aStatement,
 			List< RuntimeID > & listOfRID);
 
-
 	/**
 	 * CONTAINS
 	 * Activity on RID
 	 */
-	static bool containsOperationOnRID(AvmCode * aCode,
+	static bool containsOperationOnRID(const AvmCode & aCode,
 			const AVM_OPCODE opActivity, const RuntimeID & aRID);
-
 
 	/**
 	 * is activity statement is
@@ -88,15 +97,15 @@ public:
 	 * or
 	 * singleton const::machine#self
 	 */
-	inline static bool isActivityOnSelf(AvmCode * aCode)
+	inline static bool isActivityOnSelf(const AvmCode & aCode)
 	{
 //		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aCode ) << "AvmCode" ); !!!"
 //				<< SEND_EXIT;
 
-		return( aCode->empty() || (aCode->singleton() &&
-				aCode->first() == ExecutableLib::MACHINE_SELF) );
+		return( aCode.noOperand()
+				|| ( aCode.hasOneOperand()
+					&& (aCode.first() == ExecutableLib::MACHINE_SELF) ) );
 	}
-
 
 	/**
 	 * get activity
@@ -104,13 +113,13 @@ public:
 	 * or
 	 * RuntimeID
 	 */
-	static ExecutableForm * getActivityTargetExecutable(
-			AvmProgram * anAvmProgram, AvmCode * aCode);
+	static const ExecutableForm * getActivityTargetExecutable(
+			const AvmProgram & anAvmProgram, const AvmCode & aCode);
 
 
 	static const RuntimeID & getActivityTargetRID(
 			const ExecutionData & anED,
-			const RuntimeID & aRID, AvmCode * aCode);
+			const RuntimeID & aRID, const AvmCode & aCode);
 
 
 };

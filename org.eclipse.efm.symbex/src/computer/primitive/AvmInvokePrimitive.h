@@ -24,10 +24,10 @@ namespace sep
 
 
 class AvmProgram;
-class APExecutionData;
 class ArrayBF;
 class BF;
 class BaseAvmProgram;
+class ExecutionData;
 
 
 AVM_PRIMITIVE_RUN_EVAL_CLASS(InvokeNew, BaseAvmPrimitive)
@@ -43,7 +43,7 @@ AVM_PRIMITIVE_CLASS_HEADER(AvmBaseInvokePrimitive, BaseAvmPrimitive)
 	bool pushLocalVars(ExecutionEnvironment & ENV,
 			const BaseAvmProgram & aProgram);
 
-	bool popLocalVars(APExecutionData & anED);
+	bool popLocalVars(ExecutionData & anED);
 };
 
 

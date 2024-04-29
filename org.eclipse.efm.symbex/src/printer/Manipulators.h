@@ -21,6 +21,8 @@
 
 namespace sep {
 
+class WObject;
+
 
 //class Manipulators {
 //public:
@@ -249,7 +251,7 @@ struct _refHeader_
 template< class T >
 struct _ptrHeader_
 {
-	T * ptr;
+	const T * ptr;
 
 	// CONSTRUCTOR
 	_ptrHeader_(T * aPtr)
@@ -494,6 +496,14 @@ struct SymbexValueCSS
 	END( end )
 	{
 		//!! NOTHING
+	}
+
+	bool configure(const WObject * wfParameterObject,
+			const std::string & scheme, const SymbexValueCSS & DEFAULT);
+
+	std::string str() const
+	{
+		return( BEGIN + SEPARATOR + END );
 	}
 
 };

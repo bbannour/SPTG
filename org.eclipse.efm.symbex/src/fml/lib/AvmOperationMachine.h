@@ -46,9 +46,9 @@ public:
 	 * GETTER - SETTER
 	 * theActivityMap
 	 */
-	static std::map< std::string , Operator * > theActivityMap;
+	static std::map< std::string , const Operator * > theActivityMap;
 
-	inline static Operator * getActivity(const std::string & method)
+	inline static const Operator * getActivity(const std::string & method)
 	{
 		return( theActivityMap[ method ] );
 	}
@@ -58,8 +58,8 @@ public:
 		return( theActivityMap.find( method ) != theActivityMap.end() );
 	}
 
-	inline static void putActivity(const std::string & method,
-			Operator * anOperator)
+	inline static void putActivity(
+			const std::string & method, const Operator * anOperator)
 	{
 		theActivityMap[ method ] = anOperator;
 	}
@@ -70,9 +70,9 @@ public:
 	 * GETTER - SETTER
 	 * theStatusMap
 	 */
-	static std::map< std::string , Operator * > theStatusMap;
+	static std::map< std::string , const Operator * > theStatusMap;
 
-	inline static Operator * getStatus(const std::string & method)
+	inline static const Operator * getStatus(const std::string & method)
 	{
 		return( theStatusMap[ method ] );
 	}
@@ -82,8 +82,8 @@ public:
 		return( theStatusMap.find( method ) != theStatusMap.end() );
 	}
 
-	inline static void putStatus(const std::string & method,
-			Operator * anOperator)
+	inline static void putStatus(
+			const std::string & method, const Operator * anOperator)
 	{
 		theStatusMap[ method ] = anOperator;
 	}
@@ -94,9 +94,9 @@ public:
 	 * GETTER - SETTER
 	 * theOtherMap
 	 */
-	static std::map< std::string , Operator * > theOtherMap;
+	static std::map< std::string , const Operator * > theOtherMap;
 
-	inline static Operator * getOther(const std::string & method)
+	inline static const Operator * getOther(const std::string & method)
 	{
 		return( theOtherMap[ method ] );
 	}
@@ -106,8 +106,8 @@ public:
 		return( theOtherMap.find( method ) != theOtherMap.end() );
 	}
 
-	inline static void putOther(const std::string & method,
-			Operator * anOperator)
+	inline static void putOther(
+			const std::string & method, const Operator * anOperator)
 	{
 		theOtherMap[ method ] = anOperator;
 	}
@@ -117,35 +117,38 @@ public:
 	/**
 	 * GETTER - SETTER
 	 */
-	static Operator * get(const std::string & method);
+	static const Operator * get(const std::string & method);
 
-	static Operator * get(const BF & aReceiver, const std::string & method);
+	static const Operator * get(
+			const BF & aReceiver, const std::string & method);
 
-	inline static Operator * get(Machine * aMachine, const std::string & method)
+	inline static const Operator * get(
+			Machine * aMachine, const std::string & method)
 	{
 		return( get(method) );
 	}
 
-	inline static Operator * get(BaseInstanceForm * anInstance,
-			const std::string & method)
+	inline static const Operator * get(
+			BaseInstanceForm * anInstance, const std::string & method)
 	{
 		return( get(method) );
 	}
 
 
-	inline static bool exist(const std::string & method)
+	inline static bool exists(const std::string & method)
 	{
 		return( isActivity(method) || isStatus(method) ||
 				isOther(method) );
 	}
 
-	inline static bool exist(BaseInstanceForm * anInstance,
+	inline static bool exists(BaseInstanceForm * anInstance,
 			const std::string & method)
 	{
-		return( exist(method) );
+		return( exists(method) );
 	}
 
-	inline static bool exist(const std::string & method, Operator * anOperator)
+	inline static bool exists(
+			const std::string & method, const Operator * anOperator)
 	{
 		return( (anOperator == getActivity(method)) ||
 				(anOperator == getStatus(method))   ||
@@ -154,7 +157,7 @@ public:
 
 
 	inline static void put(BaseInstanceForm * anInstance,
-			const std::string & method, Operator * anOperator)
+			const std::string & method, const Operator * anOperator)
 	{
 		putOther(method, anOperator);
 	}

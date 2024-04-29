@@ -35,6 +35,18 @@ public:
 	}
 
 
+	/**
+	 * ASSIGMENT OP STATEMENT
+	 *  :=  +=  -=  *=  /= "  %=  ^='
+	 */
+	inline static BFCode assignOpExpr(
+			const Operator * anOperator, const BF & arg1, const BF & arg2)
+	{
+		return( newCode(OperatorManager::OPERATOR_ASSIGN_OP, arg1,
+				newCode(anOperator, arg2)) );
+	}
+
+
 
 };
 

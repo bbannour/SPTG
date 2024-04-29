@@ -37,17 +37,17 @@ namespace sep
  * Default
  */
 InstanceOfPort::InstanceOfPort(BaseAvmProgram * aContainer,
-		PropertyElement * aCompiled, avm_offset_t anOffset,
-		avm_size_t aParameterCount, ENUM_IO_NATURE aNature)
+		const PropertyElement & astPort, avm_offset_t anOffset,
+		std::size_t aParameterCount, ENUM_IO_NATURE aNature)
 : BaseInstanceForm( CLASS_KIND_T( InstanceOfPort ),
-		aContainer, aCompiled, TypeManager::PORT, anOffset),
+		aContainer, astPort, TypeManager::PORT, anOffset),
 mRouteOffset( anOffset ),
 mComPointNature( aNature ),
 
 mParameters(aParameterCount),
 mContents( ),
 
-mRoutingChannel( NULL ),
+mRoutingChannel( nullptr ),
 
 mInputRoutingData( ),
 mOutputRoutingData( )
@@ -64,11 +64,11 @@ void InstanceOfPort::formatStream(
 {
 	if( bfValue.is< ArrayBF >() )
 	{
-		formatStream(out, bfValue.as_ref< ArrayBF >());
+		formatStream(out, bfValue.as< ArrayBF >());
 	}
 	else if( hasParameterType(0) )
 	{
-		getParameterType(0)->formatStream(out, bfValue);
+		getParameterType(0).formatStream(out, bfValue);
 	}
 	else
 	{
@@ -84,19 +84,20 @@ void InstanceOfPort::formatStream(
 
 	if( hasParameterType(0) )
 	{
-		getParameterType(0)->formatStream(out, arrayValue[0]);
+		getParameterType(0).formatStream(out, arrayValue[0]);
 	}
 	else
 	{
 		out << arrayValue[0].str();
 	}
-	for( avm_size_t offset = 1 ; offset < arrayValue.size() ; ++offset )
+	for( std::size_t offset = 1 ; offset < arrayValue.size() ; ++offset )
+//	for( std::size_t offset = 1 ; offset < (arrayValue.size() - 1) ; ++offset )
 	{
 		out << out.VALUE_PARAMS_CSS.SEPARATOR;
 
 		if( hasParameterType(offset) )
 		{
-			getParameterType(offset)->formatStream(out, arrayValue[offset]);
+			getParameterType(offset).formatStream(out, arrayValue[offset]);
 		}
 		else
 		{
@@ -115,7 +116,7 @@ void InstanceOfPort::strParameter(OutStream & out, const BF & aParameter) const
 {
 	if( aParameter.is< BaseTypeSpecifier >() )
 	{
-		out << aParameter.to_ptr< BaseTypeSpecifier >()->strT();
+		out << aParameter.to< BaseTypeSpecifier >().strT();
 	}
 	else if( aParameter.is< InstanceOfData >() )
 	{
@@ -171,7 +172,7 @@ std::string InstanceOfPort::strArg() const
 
 	oss << getFullyQualifiedNameID();// << " '" << getNameID() << "'";
 
-	if( mRoutingChannel != NULL )
+	if( mRoutingChannel != nullptr )
 	{
 		oss << "< #via " << mRoutingChannel->getFullyQualifiedNameID() << " >";
 	}
@@ -209,7 +210,7 @@ AVM_IF_DEBUG_FLAG( COMPILING )
 	}
 
 	out << TAB2 << "//container = "
-		<< (hasContainer() ? getContainer()->getFullyQualifiedNameID() : "NULL")
+		<< (hasContainer() ? getContainer()->getFullyQualifiedNameID() : "nullptr")
 		<< ";" << EOL;
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
@@ -217,7 +218,7 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	{
 		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
 		out << TAB2 << "target = "
-			<< str_header( getAliasTarget()->as< InstanceOfPort >() )
+			<< str_header( getAliasTarget()->as_ptr< InstanceOfPort >() )
 			<< ";" << EOL;
 	}
 
@@ -269,18 +270,16 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
 
 		out << TAB << "parameter:" << EOL;
-		ArrayOfBF::const_iterator it = getParameters().begin();
-		ArrayOfBF::const_iterator endIt = getParameters().end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itParam : getParameters() )
 		{
-			if( (*it).is< BaseTypeSpecifier >() )
+			if( itParam.is< BaseTypeSpecifier >() )
 			{
-				out << TAB2 << (*it).to_ptr< BaseTypeSpecifier >()->strT()
+				out << TAB2 << itParam.to< BaseTypeSpecifier >().strT()
 					<< ";" << EOL;
 			}
-			else if( (*it).is< InstanceOfData >() )
+			else if( itParam.is< InstanceOfData >() )
 			{
-				InstanceOfData * aVar = (*it).to_ptr< InstanceOfData >();
+				InstanceOfData * aVar = itParam.to_ptr< InstanceOfData >();
 
 				out << TAB2 << aVar->strHeaderId();
 				if( aVar->hasValue() )
@@ -292,7 +291,7 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 			// #bind expression parameter
 			else
 			{
-				out << TAB2 << "#bind " << (*it).str() << ";" << EOL;
+				out << TAB2 << "#bind " << itParam.str() << ";" << EOL;
 			}
 		}
 	}
@@ -302,17 +301,28 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
 
 		out << TAB << "contents:" << EOL;
-		TableOfSymbol::const_iterator it = getContents().begin();
-		TableOfSymbol::const_iterator endIt = getContents().end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itSymbol : getContents() )
 		{
-			out << TAB2 << str_header( *it ) << EOL;
+			out << TAB2 << str_header( itSymbol ) << EOL;
 		}
 	}
 
 	( isEmpty ? (out << ";") : (out << TAB << "}") ) << EOL_FLUSH;
 }
 
+
+void InstanceOfPort::toStream(OutStream & out,
+		const ListOfInstanceOfPort & iePorts)
+{
+	for( const auto & itPort : iePorts )
+	{
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , COMMUNICATION )
+		out << TAB2 << str_header( itPort ) << EOL;
+AVM_ELSE
+		out << TAB2 << itPort->getFullyQualifiedNameID() << EOL;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , COMMUNICATION )
+	}
+}
 
 
 }

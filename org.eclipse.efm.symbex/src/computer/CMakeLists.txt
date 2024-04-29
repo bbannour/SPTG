@@ -16,5 +16,3 @@ target_include_directories (computer PUBLIC ..) # FIXME : explicit the dependen
 target_include_directories (computer PUBLIC ${GMP_INCLUDE_DIR} ${GMPXX_INCLUDE_DIR})
 target_include_directories (computer PUBLIC ${Boost_INCLUDE_DIRS})
 target_include_directories (computer PUBLIC ${CVC4_INCLUDE_DIR})
-
-add_dependencies(computer rescan_cvc4)

@@ -29,13 +29,13 @@
 #include <fml/runtime/RuntimeID.h>
 
 #include <fml/type/BaseTypeSpecifier.h>
+#include <fml/type/TypeSpecifier.h>
 
 
 namespace sep
 {
 
-
-class Element;
+class BuiltinArray;
 class ContainerTypeSpecifier;
 class ClassTypeSpecifier;
 class EnumTypeSpecifier;
@@ -61,35 +61,39 @@ public:
 	inline static bool isMacro(const BF & anExpr)
 	{
 		return( (anExpr.is< BaseInstanceForm >() &&
-				anExpr.to_ptr< BaseInstanceForm >()->getModifier().hasNatureMacro()) ||
+				anExpr.to< BaseInstanceForm >().getModifier().hasNatureMacro()) ||
 				(anExpr.is< AvmCode >() &&
-						isMacro(anExpr.to_ptr< AvmCode >())) );
+						isMacro(anExpr.to< AvmCode >())) );
 	}
 
-	inline static bool isMacro(AvmCode * aCode)
+	inline static bool isMacro(const AvmCode & aCode)
 	{
-		return( OperatorManager::isQuote( aCode->getOperator() ) );
+		return( OperatorManager::isQuote( aCode.getOperator() ) );
 	}
 
 
-	static bool isMachine(const BF & anExpr);
+	static bool isMachine(
+			const BaseTypeSpecifier & refTypeSpecifier, const BF & anExpr);
 
-	inline static bool isPort(const BF & anExpr)
-	{
-		return( anExpr.is< BaseInstanceForm >() &&
-				anExpr.to_ptr< BaseInstanceForm >()->isTypedPort()  );
-	}
-
-	inline static bool isBuffer(const BF & anExpr)
+	inline static bool isPort(
+			const BaseTypeSpecifier & refTypeSpecifier, const BF & anExpr)
 	{
 		return( anExpr.is< BaseInstanceForm >() &&
-				anExpr.to_ptr< BaseInstanceForm >()->isTypedBuffer() );
+				anExpr.to< BaseInstanceForm >().isTypedPort()  );
 	}
 
-	inline static bool isMessage(const BF & anExpr)
+	inline static bool isBuffer(
+			const BaseTypeSpecifier & refTypeSpecifier, const BF & anExpr)
 	{
 		return( anExpr.is< BaseInstanceForm >() &&
-				anExpr.to_ptr< BaseInstanceForm >()->isTypedMessage() );
+				anExpr.to< BaseInstanceForm >().isTypedBuffer() );
+	}
+
+	inline static bool isMessage(
+			const BaseTypeSpecifier & refTypeSpecifier, const BF & anExpr)
+	{
+		return( anExpr.is< BaseInstanceForm >() &&
+				anExpr.to< BaseInstanceForm >().isTypedMessage() );
 	}
 
 
@@ -99,19 +103,22 @@ public:
 	}
 
 	static bool isArray(
-			ContainerTypeSpecifier * refTypeSpecifier, const BF & anExpr);
+			const ContainerTypeSpecifier & refTypeSpecifier, const BF & anExpr);
 
 	static bool isClass(
-			ClassTypeSpecifier * refTypeSpecifier, const BF & anExpr);
+			const ClassTypeSpecifier & refTypeSpecifier, const BF & anExpr);
 
 	static bool isCollection(
-			ContainerTypeSpecifier * refTypeSpecifier, const BF & anExpr);
+			const ContainerTypeSpecifier & refTypeSpecifier, const BF & anExpr);
+
+	static bool isCollectionOfTypedElement(
+			const BaseTypeSpecifier & refTypeSpecifier, const BF & anExpr);
 
 	static bool isVector(const BF & anExpr);
 
 
 	static bool isEnum(
-			EnumTypeSpecifier * refTypeSpecifier, const BF & anExpr);
+			const EnumTypeSpecifier & refTypeSpecifier, const BF & anExpr);
 
 	static bool isEnum(const BF & anExpr);
 
@@ -142,97 +149,133 @@ public:
 	static bool isAvmCode(const BF & anExpr);
 
 
-	inline static bool isClock(const BF & anExpr)
+	// TIME & CLOCK type checking
+	inline static bool isweaklyClock(const BF & anExpr)
 	{
 		return( isReal(anExpr) );
 	}
 
-	inline static bool isTime(const BF & anExpr)
+	inline static bool isweaklyTime(const BF & anExpr)
 	{
 		return( isReal(anExpr) );
 	}
 
-	inline static bool isCTime(const BF & anExpr)
+	inline static bool isweaklyCTime(const BF & anExpr)
 	{
 		return( isReal(anExpr) );
 	}
 
-	inline static bool isDTime(const BF & anExpr)
+	inline static bool isweaklyDTime(const BF & anExpr)
 	{
 		return( isInteger(anExpr) );
 	}
 
 
+	inline static bool isClock(
+			const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr)
+	{
+		return( isClockTime(typeSpecifier, anExpr) );
+	}
+
+	inline static bool isTime(
+			const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr)
+	{
+		return( isClockTime(typeSpecifier, anExpr) );
+	}
+
+	static bool isClockTime(
+			const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr);
+
+	static bool isClockTime(const BF & anExpr);
+
+	static bool isContinuousTime(
+			const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr);
+
+	static bool isDenseTime(
+			const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr);
+
+	static bool isDiscreteTime(
+			const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr);
+
+
 	inline static bool isCtor(const BF & anExpr)
 	{
 		return( anExpr.is< AvmCode >() &&
-				isCtor(anExpr.to_ptr< AvmCode >()) );
+				isCtor(anExpr.to< AvmCode >()) );
 	}
 
-	inline static bool isCtor(AvmCode * aCode)
+	inline static bool isCtor(const AvmCode & aCode)
 	{
-		return( OperatorManager::isCtor( aCode->getOperator() ) );
+		return( OperatorManager::isCtor( aCode.getOperator() ) );
 	}
 
-	static bool isCtor(BaseTypeSpecifier * refTypeSpecifier, AvmCode * aCode);
+	static bool isCtor(
+			const BaseTypeSpecifier & refTypeSpecifier, const AvmCode & aCode);
 
 
 	inline static bool isNewfresh(const BF & anExpr)
 	{
 		return( anExpr.is< AvmCode >() &&
-				isNewfresh(anExpr.to_ptr< AvmCode >()) );
+				isNewfresh(anExpr.to< AvmCode >()) );
 	}
 
-	inline static bool isNewfresh(AvmCode * aCode)
+	inline static bool isNewfresh(const AvmCode & aCode)
 	{
-		return( OperatorManager::isNewfresh( aCode->getOperator() ) );
+		return( OperatorManager::isNewfresh( aCode.getOperator() ) );
 	}
 
-	static bool isNewfresh(BaseTypeSpecifier * refTypeSpecifier, AvmCode * aCode);
+	static bool isNewfresh(
+			const BaseTypeSpecifier & refTypeSpecifier, const AvmCode & aCode);
 
 
 	inline static bool isLookup(const BF & anExpr)
 	{
 		return( anExpr.is< AvmCode >() &&
-				isLookup(anExpr.to_ptr< AvmCode >()) );
+				isLookup(anExpr.to< AvmCode >()) );
 	}
 
-	inline static bool isLookup(AvmCode * aCode)
+	inline static bool isLookup(const AvmCode & aCode)
 	{
-		return( OperatorManager::isLookup( aCode->getOperator() ) );
+		return( OperatorManager::isLookup( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isLookup1D(const BF & anExpr)
 	{
 		return( anExpr.is< AvmCode >() &&
-				isLookup1D(anExpr.to_ptr< AvmCode >()) );
+				isLookup1D(anExpr.to< AvmCode >()) );
 	}
 
-	inline static bool isLookup1D(AvmCode * aCode)
+	inline static bool isLookup1D(const AvmCode & aCode)
 	{
-		return( OperatorManager::isLookup1D( aCode->getOperator() ) );
+		return( OperatorManager::isLookup1D( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isLookup2D(const BF & anExpr)
 	{
 		return( anExpr.is< AvmCode >() &&
-				isLookup2D(anExpr.to_ptr< AvmCode >()) );
+				isLookup2D(anExpr.to< AvmCode >()) );
 	}
 
-	inline static bool isLookup2D(AvmCode * aCode)
+	inline static bool isLookup2D(const AvmCode & aCode)
 	{
-		return( OperatorManager::isLookup2D( aCode->getOperator() ) );
+		return( OperatorManager::isLookup2D( aCode.getOperator() ) );
 	}
 
 
-	static bool isTyped(BaseTypeSpecifier * refTypeSpecifier,
-			BaseTypeSpecifier * aTypeSpecifier);
+	static bool isTyped(const BaseTypeSpecifier & refTypeSpecifier,
+			const BaseTypeSpecifier & aTypeSpecifier);
+
+	inline static bool isTyped(const BaseTypeSpecifier & refTypeSpecifier,
+			const TypeSpecifier & aTypeSpecifier)
+	{
+		return( isTyped(refTypeSpecifier, aTypeSpecifier.refType()) );
+	}
 
 
-	inline static bool weaklyTyped(BaseTypeSpecifier * refTypeSpecifier,
-			BaseTypeSpecifier * aTypeSpecifier)
+	inline static bool weaklyTyped(const BaseTypeSpecifier & refTypeSpecifier,
+			const BaseTypeSpecifier & aTypeSpecifier)
 	{
 		if( isTyped(refTypeSpecifier, aTypeSpecifier) )
 		{
@@ -240,13 +283,14 @@ public:
 		}
 		else
 		{
-			return( refTypeSpecifier->weaklyTyped(
-					aTypeSpecifier->getTypeSpecifierKind()) );
+			return( refTypeSpecifier.weaklyTyped(
+					aTypeSpecifier.getTypeSpecifierKind()) );
 		}
 	}
 
 
-	static bool isTyped(BaseTypeSpecifier * refTypeSpecifier, const BF & arg);
+	static bool isTyped(
+			const BaseTypeSpecifier & refTypeSpecifier, const BF & arg);
 
 
 };

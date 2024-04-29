@@ -46,6 +46,8 @@ bool OperatorLib::isPropositional(AVM_OPCODE opcode)
 
 		case AVM_OPCODE_XOR:
 		case AVM_OPCODE_XNOR:
+
+		case AVM_OPCODE_IMPLIES:
 		{
 			return( true );
 		}
@@ -91,48 +93,49 @@ std::string OperatorLib::to_string(AVM_OPCODE opcode,
 {
 	switch( opcode )
 	{
-		case AVM_OPCODE_ASSIGN:        return( ":="  );
-		case AVM_OPCODE_ASSIGN_AFTER:  return( "=:"  );
-		case AVM_OPCODE_ASSIGN_MACRO:  return( "::=" );
+		case AVM_OPCODE_ASSIGN          : return( ":="   );
+		case AVM_OPCODE_ASSIGN_AFTER    : return( "=:"   );
+		case AVM_OPCODE_ASSIGN_MACRO    : return( "::="  );
 
-		case AVM_OPCODE_EQ:      return( "=" );
+		case AVM_OPCODE_EQ              : return( "="    );
 
-		case AVM_OPCODE_NEQ:     return( "!="  );
-		case AVM_OPCODE_SEQ:     return( "===" );
-		case AVM_OPCODE_NSEQ:    return( "=/=" );
+		case AVM_OPCODE_NEQ             : return( "!="   );
+		case AVM_OPCODE_SEQ             : return( "==="  );
+		case AVM_OPCODE_NSEQ            : return( "=/="  );
 
-		case AVM_OPCODE_BAND:    return( "&" );
-		case AVM_OPCODE_BOR:     return( "|" );
-		case AVM_OPCODE_BXOR:    return( "^" );
-		case AVM_OPCODE_BNOT:    return( "~" );
+		case AVM_OPCODE_BAND            : return( "&"    );
+		case AVM_OPCODE_BOR             : return( "|"    );
+		case AVM_OPCODE_BXOR            : return( "^"    );
+		case AVM_OPCODE_BNOT            : return( "~"    );
 
-		case AVM_OPCODE_PLUS :   return( "+" );
-		case AVM_OPCODE_MINUS:   return( "-" );
-		case AVM_OPCODE_UMINUS:  return( "-" );
-		case AVM_OPCODE_MOD:     return( "%" );
-		case AVM_OPCODE_MULT:    return( "*" );
-		case AVM_OPCODE_DIV:     return( "/" );
-		case AVM_OPCODE_POW:     return( "^" );
+		case AVM_OPCODE_PLUS            : return( "+"    );
+		case AVM_OPCODE_MINUS           : return( "-"    );
+		case AVM_OPCODE_UMINUS          : return( "-"    );
+		case AVM_OPCODE_MOD             : return( "%"    );
+		case AVM_OPCODE_MULT            : return( "*"    );
+		case AVM_OPCODE_DIV             : return( "/"    );
+		case AVM_OPCODE_POW             : return( "^"    );
 
-		case AVM_OPCODE_LT:      return( "<"  );
-		case AVM_OPCODE_LTE:     return( "<=" );
-		case AVM_OPCODE_GT:      return( ">"  );
-		case AVM_OPCODE_GTE:     return( ">=" );
+		case AVM_OPCODE_LT              : return( "<"    );
+		case AVM_OPCODE_LTE             : return( "<="   );
+		case AVM_OPCODE_GT              : return( ">"    );
+		case AVM_OPCODE_GTE             : return( ">="   );
 
-		case AVM_OPCODE_NOT:     return( "not" );
-		case AVM_OPCODE_AND:     return( "and" );
-		case AVM_OPCODE_OR :     return( "or"  );
-		case AVM_OPCODE_XOR:     return( "xor" );
+		case AVM_OPCODE_NOT             : return( "not"  );
+		case AVM_OPCODE_AND             : return( "and"  );
+		case AVM_OPCODE_OR              : return( "or"   );
+		case AVM_OPCODE_XOR             : return( "xor"  );
+		case AVM_OPCODE_IMPLIES         : return( "=>"   );
 
-		case AVM_OPCODE_SEQUENCE        :  return( "|;|"     );
-		case AVM_OPCODE_ATOMIC_SEQUENCE :  return( "|§|"     );
-		case AVM_OPCODE_SEQUENCE_WEAK   :  return( "|;;|"    );
+		case AVM_OPCODE_SEQUENCE        : return( "|;|"  );
+		case AVM_OPCODE_ATOMIC_SEQUENCE : return( "|§|"  );
+		case AVM_OPCODE_SEQUENCE_WEAK   : return( "|;;|" );
 
-		case AVM_OPCODE_INTERLEAVING    :  return( "|i|"     );
+		case AVM_OPCODE_INTERLEAVING    : return( "|i|"  );
 
-		case AVM_OPCODE_PRIOR_GT        :  return( "|<|"     );
+		case AVM_OPCODE_PRIOR_GT        : return( "|<|"  );
 
-		case AVM_OPCODE_REGEX           :  return( "|regex|" );
+		case AVM_OPCODE_REGEX           : return( "|regex|" );
 
 		default:  return( "opcode#unknown" );
 	}
@@ -142,18 +145,20 @@ std::string OperatorLib::to_string(AVM_OPCODE opcode,
 AVM_OPCODE OperatorLib::toOpcode(
 		const std::string & op, AVM_OPCODE defaultOpcode)
 {
-	if( op == "NOT" )  return( AVM_OPCODE_NOT );
-	if( op == "AND" )  return( AVM_OPCODE_AND );
-	if( op == "OR"  )  return( AVM_OPCODE_OR  );
-	if( op == "XOR" )  return( AVM_OPCODE_XOR );
+	if( op == "NOT"      )  return( AVM_OPCODE_NOT );
+	if( op == "AND"      )  return( AVM_OPCODE_AND );
+	if( op == "OR"       )  return( AVM_OPCODE_OR  );
+	if( op == "XOR"      )  return( AVM_OPCODE_XOR );
 
-	if( op == "|;|"  )  return( AVM_OPCODE_SEQUENCE );
-	if( op == "|§|"  )  return( AVM_OPCODE_ATOMIC_SEQUENCE );
-	if( op == "|;;|" )  return( AVM_OPCODE_SEQUENCE_WEAK );
+	if( op == "IMPLIES"  )  return( AVM_OPCODE_IMPLIES );
 
-	if( op == "|i|"  )  return( AVM_OPCODE_INTERLEAVING );
+	if( op == "|;|"      )  return( AVM_OPCODE_SEQUENCE );
+	if( op == "|§|"      )  return( AVM_OPCODE_ATOMIC_SEQUENCE );
+	if( op == "|;;|"     )  return( AVM_OPCODE_SEQUENCE_WEAK );
 
-	if( op == "|<|"  )  return( AVM_OPCODE_PRIOR_GT );
+	if( op == "|i|"      )  return( AVM_OPCODE_INTERLEAVING );
+
+	if( op == "|<|"      )  return( AVM_OPCODE_PRIOR_GT );
 
 	if( op == "|regex|"  )  return( AVM_OPCODE_REGEX );
 
@@ -243,19 +248,17 @@ IStatementFamily::computeStatementFamily(AVM_OPCODE opcode)
 
 
 IStatementFamily::avm_opcode_family
-IStatementFamily::computeStatementFamily(AvmCode * aCode)
+IStatementFamily::computeStatementFamily(const AvmCode & aCode)
 {
 	avm_opcode_family opcodeFamily =
-			computeStatementFamily( aCode->getOptimizedOpCode() );
+			computeStatementFamily( aCode.getOptimizedOpCode() );
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator itEnd = aCode->end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		if( (*it).is< AvmCode >() )
+		if( itOperand.is< AvmCode >() )
 		{
 			opcodeFamily = opcodeFamily |
-					computeStatementFamily( (*it).to_ptr< AvmCode >() );
+					computeStatementFamily( itOperand.to< AvmCode >() );
 		}
 	}
 

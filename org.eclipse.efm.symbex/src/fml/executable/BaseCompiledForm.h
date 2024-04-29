@@ -35,7 +35,7 @@ protected:
 	/**
 	 * ATTRIBUTES
 	 */
-	const ObjectElement * mAstElement;
+	const ObjectElement & mAstElement;
 
 
 public:
@@ -44,34 +44,33 @@ public:
 	 * Default
 	 */
 	BaseCompiledForm(class_kind_t aClassKind,
-			BaseAvmProgram * aContainer, const ObjectElement * astElement);
+			BaseAvmProgram * aContainer, const ObjectElement & astElement);
 
-	BaseCompiledForm(class_kind_t aClassKind,
-			const std::string & aFullyQualifiedNameID,
-			const std::string & aNameID)
-	: ObjectElement( aClassKind , NULL , aFullyQualifiedNameID , aNameID),
-	mAstElement( NULL )
+	BaseCompiledForm(class_kind_t aClassKind, const ObjectElement & astElement,
+		const std::string & aFullyQualifiedNameID, const std::string & aNameID)
+	: ObjectElement( aClassKind , nullptr , aFullyQualifiedNameID , aNameID),
+	mAstElement( astElement )
 	{
 		//!! NOTHING
 	}
 
-	BaseCompiledForm(class_kind_t aClassKind,
-			BaseAvmProgram * aContainer, const std::string & aNameID);
+	BaseCompiledForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
+			const ObjectElement & astElement, const std::string & aNameID);
 
 
 	BaseCompiledForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			const ObjectElement * astElement, const Modifier & aModifier);
+			const ObjectElement & astElement, const Modifier & aModifier);
 
 	/**
 	 * CONSTRUCTOR
 	 * Other
 	 */
 	BaseCompiledForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			const ObjectElement * astElement, const Modifier & aModifier,
+			const ObjectElement & astElement, const Modifier & aModifier,
 			const std::string & aFullyQualifiedNameID);
 
 	BaseCompiledForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			const ObjectElement * astElement, const Modifier & aModifier,
+			const ObjectElement & astElement, const Modifier & aModifier,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID);
 
@@ -99,38 +98,45 @@ public:
 	 * GETTER - SETTER
 	 * mAstElement
 	 */
-	inline const ObjectElement * getAstElement() const
+	inline const ObjectElement & getAstElement() const
 	{
 		return( mAstElement );
 	}
 
-	inline bool isAstElement(const ObjectElement * astElement) const
+	inline const ObjectElement & safeAstElement() const
 	{
-		return( mAstElement == astElement );
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mAstElement.isnotNullObjectReference() )
+				<< "Unexpected " << mAstElement.getNameID()
+				<< " for " << getFullyQualifiedNameID() << "!!!"
+				<< SEND_EXIT;
+
+		return( mAstElement );
+	}
+
+	inline bool isAstElement(const ObjectElement & astElement) const
+	{
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( astElement.isnotNullObjectReference() )
+				<< "Unexpected " << astElement.getNameID()
+				<< " for " << getFullyQualifiedNameID() << "!!!"
+				<< SEND_EXIT;
+
+		return( mAstElement.isTEQ( astElement ) );
 	}
 
 	inline bool hasAstElement() const
 	{
-		return( mAstElement != NULL );
+		return( mAstElement.isnotNullObjectReference() );
 	}
 
-	inline void setAstElement(const ObjectElement * astElement)
-	{
-		mAstElement = astElement;
-
-		updateFullyQualifiedNameID();
-	}
 
 	inline std::string getAstFullyQualifiedNameID() const
 	{
-		return( (mAstElement != NULL)?
-				mAstElement->getFullyQualifiedNameID() : "<fqn-id:null>" );
+		return( mAstElement.getFullyQualifiedNameID() );
 	}
 
 	inline std::string getAstNameID() const
 	{
-		return( (mAstElement != NULL)?
-				mAstElement->getNameID() : "<name-id:null>" );
+		return( mAstElement.getNameID() );
 	}
 
 
@@ -138,9 +144,24 @@ public:
 	 * GETTER - SETTER
 	 * mFullyQualifiedNameID
 	 */
-	inline virtual const std::string & getFullyQualifiedNameID() const
+	inline virtual const std::string & getFullyQualifiedNameID() const override
 	{
-		return( USE_ONLY_ID ? getNameID() : mFullyQualifiedNameID );
+AVM_IF_DEBUG_FLAG( QUALIFIED_NAME_ID )
+
+		return( mFullyQualifiedNameID );
+
+AVM_ELSE
+
+		return( ObjectElement::USE_ONLY_ID ?
+				getNameID() : mFullyQualifiedNameID );
+
+AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
+	}
+
+
+	inline const std::string & getFQNameID() const
+	{
+		return( mFullyQualifiedNameID );
 	}
 
 	virtual void updateFullyQualifiedNameID() = 0;
@@ -150,7 +171,7 @@ public:
 	 * GETTER - SETTER
 	 * mNameID
 	 */
-	inline virtual const std::string & getNameID() const
+	inline virtual const std::string & getNameID() const override
 	{
 		if( mNameID.empty() )
 		{
@@ -162,15 +183,24 @@ public:
 
 	virtual void updateNameID()
 	{
-		mNameID = getAstNameID();
-		if( mNameID.empty() || NamedElement::isNull(mNameID) )
+		if( mFullyQualifiedNameID.empty() )
+		{
+			mNameID = ( getAstElement().isNullObjectReference()
+						?  ""  :  getAstNameID() );
+
+			if( mNameID.empty() || NamedElement::isNullNameID(mNameID) )
+			{
+				mNameID = NamedElement::extractNameID( mFullyQualifiedNameID );
+			}
+		}
+		else
 		{
 			mNameID = NamedElement::extractNameID( mFullyQualifiedNameID );
 		}
 	}
 
 
-	virtual void updateUfid(avm_size_t instanceId)
+	virtual void updateUfid(std::size_t instanceId)
 	{
 		mFullyQualifiedNameID =
 				(OSS() << mFullyQualifiedNameID << '#' << instanceId);
@@ -187,9 +217,6 @@ public:
 	}
 
 
-	static bool USE_ONLY_ID;
-
-
 	/**
 	 * GETTER
 	 * Compiled Element Name
@@ -203,9 +230,9 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void strHeader(OutStream & out) const = 0;
+	virtual void strHeader(OutStream & out) const override = 0;
 
-	virtual std::string strHeader() const
+	virtual std::string strHeader() const override
 	{
 		StringOutStream oss;
 
@@ -213,15 +240,6 @@ public:
 
 		return( oss.str() );
 	}
-
-
-	static void toStreamStaticCom(OutStream & out, const BF & comBF);
-
-	static void toStreamStaticCom(OutStream & out,
-			const ListOfInstanceOfBuffer & ieBuffers);
-
-	static void toStreamStaticCom(OutStream & out,
-			const ListOfInstanceOfPort & iePorts);
 
 };
 

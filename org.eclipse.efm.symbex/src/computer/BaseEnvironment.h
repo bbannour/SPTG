@@ -44,6 +44,10 @@ class BuiltinContainer;
 class Configuration;
 
 class ExecutableSystem;
+class ExecutionConfiguration;
+
+class InstanceOfData;
+class InstanceOfPort;
 
 class Loader;
 class LocalRuntime;
@@ -74,7 +78,7 @@ public :
 
 	BFCode inCODE;
 
-	APExecutionData inED;
+	ExecutionData inED;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -88,7 +92,7 @@ public :
 	// FAILED Execution Data
 	////////////////////////////////////////////////////////////////////////////
 
-	ListOfAPExecutionData failureEDS;
+	ListOfExecutionData failureEDS;
 
 
 public:
@@ -99,11 +103,11 @@ public:
 	BaseEnvironment(AvmPrimitiveProcessor & aPrimitiveProcessor)
 	: AvmObject( ),
 	PRIMITIVE_PROCESSOR( aPrimitiveProcessor ),
-	inEC( NULL ),
+	inEC( nullptr ),
 	inFORM( ),
 	inCODE( ),
 	inED( ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		//!! NOTHING
@@ -116,8 +120,8 @@ public:
 	inEC( anEC ),
 	inFORM( ),
 	inCODE( ),
-	inED( anEC->getAPExecutionData() ),
-	mARG( NULL ),
+	inED( anEC->getExecutionData() ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		//!! NOTHING
@@ -134,7 +138,7 @@ public:
 	inFORM( form.inFORM ),
 	inCODE( form.inCODE ),
 	inED( form.inED ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( form.failureEDS )
 	{
 		//!! NOTHING
@@ -147,7 +151,7 @@ public:
 	inFORM( aCode ),
 	inCODE( aCode ),
 	inED( form.inED ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		//!! NOTHING
@@ -161,69 +165,69 @@ public:
 	inFORM( aCode ),
 	inCODE( aCode ),
 	inED( form.inED ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		inED.mwsetRID(aRID);
 	}
 
 
-	BaseEnvironment(const BaseEnvironment & form, const APExecutionData & apED)
+	BaseEnvironment(const BaseEnvironment & form, const ExecutionData & apED)
 	: AvmObject( form ),
 	PRIMITIVE_PROCESSOR( form.PRIMITIVE_PROCESSOR ),
 	inEC( form.inEC ),
 	inFORM( ),
 	inCODE( ),
 	inED( apED ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		//!! NOTHING
 	}
 
 	BaseEnvironment(const BaseEnvironment & form,
-			const APExecutionData & apED, const BF & bf)
+			const ExecutionData & apED, const BF & bf)
 	: AvmObject( form ),
 	PRIMITIVE_PROCESSOR( form.PRIMITIVE_PROCESSOR ),
 	inEC( form.inEC ),
 	inFORM( bf ),
 	inCODE( (bf.is< AvmCode >()) ? bf.bfCode() : BFCode::REF_NULL ),
 	inED( apED ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		//!! NOTHING
 	}
 
 	BaseEnvironment(const BaseEnvironment & form,
-			const APExecutionData & apED, const BFCode & aCode)
+			const ExecutionData & apED, const BFCode & aCode)
 	: AvmObject( form ),
 	PRIMITIVE_PROCESSOR( form.PRIMITIVE_PROCESSOR ),
 	inEC( form.inEC ),
 	inFORM( aCode ),
 	inCODE( aCode ),
 	inED( apED ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		//!! NOTHING
 	}
 
 	BaseEnvironment(const BaseEnvironment & form,
-			const APExecutionData & apED, const RuntimeID & aRID)
+			const ExecutionData & apED, const RuntimeID & aRID)
 	: AvmObject( form ),
 	PRIMITIVE_PROCESSOR( form.PRIMITIVE_PROCESSOR ),
 	inEC( form.inEC ),
 	inFORM( form.inFORM ),
 	inCODE( form.inCODE ),
 	inED( apED ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		inED.mwsetRID(aRID);
 	}
 
-	BaseEnvironment(const BaseEnvironment & form, const APExecutionData & apED,
+	BaseEnvironment(const BaseEnvironment & form, const ExecutionData & apED,
 			const RuntimeID & aRID, const BFCode & aCode)
 	: AvmObject( form ),
 	PRIMITIVE_PROCESSOR( form.PRIMITIVE_PROCESSOR ),
@@ -231,7 +235,7 @@ public:
 	inFORM( aCode ),
 	inCODE( aCode ),
 	inED( apED ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		inED.mwsetRID(aRID);
@@ -245,7 +249,7 @@ public:
 	inFORM( bf ),
 	inCODE( (bf.is< AvmCode >()) ? bf.bfCode() : BFCode::REF_NULL ),
 	inED( form.inED ),
-	mARG( NULL ),
+	mARG( nullptr ),
 	failureEDS( )
 	{
 		//!! NOTHING
@@ -303,14 +307,14 @@ public:
 	*/
 	virtual bool hasOutput() const = 0;
 
-	virtual bool hasntOutput() const = 0;
+	virtual bool hasnoOutput() const = 0;
 
 
 	/**
 	 * GETTER - SETTER
 	 * FAILED EDS
 	 */
-	inline void appendFailure(const APExecutionData & anED)
+	inline void appendFailure(const ExecutionData & anED)
 	{
 		failureEDS.append(anED);
 	}
@@ -327,7 +331,7 @@ public:
 
 	inline bool isFailure() const
 	{
-		return( hasntOutput() && failureEDS.nonempty() );
+		return( hasnoOutput() && failureEDS.nonempty() );
 	}
 
 
@@ -335,7 +339,10 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
+
+	// Due to [-Woverloaded-virtual=]
+	using AvmObject::toStream;
 
 
 
@@ -346,63 +353,64 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 
 	InstanceOfData * create(const RuntimeID & aRID,
-			BaseTypeSpecifier * aTypeSpecifier, InstanceOfData * lvalue);
+			const BaseTypeSpecifier & aTypeSpecifier,
+			const InstanceOfData & lvalue);
 
 	inline InstanceOfData * create(
-			const RuntimeID & aRID, InstanceOfData * lvalue)
+			const RuntimeID & aRID, const InstanceOfData & lvalue)
 	{
-		return( create(aRID, lvalue->getTypeSpecifier(), lvalue));
+		return( create(aRID, lvalue.getTypeSpecifier(), lvalue));
 	}
 
-	BF evalInitial(APExecutionData & anED, const RuntimeID & aRID,
-			InstanceOfData * lvalue, const BF & anInitialValue);
+	static BF evalInitial(ExecutionData & anED, const RuntimeID & aRID,
+			const InstanceOfData & lvalue, const BF & anInitialValue);
 
-	BF createInitial(APExecutionData & anED,
-			const RuntimeID & aRID, InstanceOfData * lvalue);
+	BF createInitial(ExecutionData & anED,
+			const RuntimeID & aRID, const InstanceOfData & lvalue);
 
-	inline BF createInitial(APExecutionData & anED,
+	inline BF createInitial(ExecutionData & anED,
 			const RuntimeID & aRID, const Symbol & lvalue)
 	{
-		return( createInitial(anED, aRID, lvalue.rawData()) );
+		return( createInitial(anED, aRID,
+				const_cast< InstanceOfData & >(lvalue.variable())) );
 	}
 
-	BF createInitial(APExecutionData & anED, const RuntimeID & aRID,
-			InstanceOfData * lvalue, BuiltinArray * initialArray);
+	BF createInitial(ExecutionData & anED, const RuntimeID & aRID,
+			const InstanceOfData & lvalue, BuiltinArray * initialArray);
 
 
 	BF createNewFreshParam(const RuntimeID & aPRID,
-			BaseTypeSpecifier * aTypeSpecifier,
-			InstanceOfData * lvalue, BFList & paramList);
+			const BaseTypeSpecifier & aTypeSpecifier,
+			const InstanceOfData & lvalue, BFCollection & paramList);
 
 	inline BF createNewFreshParam(const RuntimeID & aPRID,
-			InstanceOfData * lvalue, BFList & paramList)
+			const InstanceOfData & lvalue, BFCollection & paramList)
 	{
-		return( createNewFreshParam(aPRID, lvalue->getTypeSpecifier(),
-				lvalue, paramList) );
+		return( createNewFreshParam(
+				aPRID, lvalue.getTypeSpecifier(), lvalue, paramList) );
 	}
 
-	inline BF createNewFreshParam(const RuntimeID & aPRID,
-			BaseTypeSpecifier * aTypeSpecifier,
-			const Symbol & lvalue, BFList & paramList)
-	{
-		return( createNewFreshParam(aPRID, aTypeSpecifier,
-				lvalue.rawData(), paramList) );
-	}
 
 	inline BF createNewFreshParam(const RuntimeID & aPRID,
-			const Symbol & lvalue, BFList & paramList)
+			const Symbol & lvalue, BFCollection & paramList)
 	{
-		return( createNewFreshParam(aPRID, lvalue.rawData(), paramList) );
+		return( createNewFreshParam(aPRID,
+				const_cast< InstanceOfData & >(lvalue.variable()),
+				paramList) );
 	}
+
+	void createNewFreshParam(
+			const RuntimeID & aPRID, const InstanceOfPort & port,
+			BFCollection & newfreshList, BFCollection & paramList);
 
 
 	Symbol create(const RuntimeID & aRID, const std::string & paramID,
 			const TypeSpecifier & aTypeSpecifier, const BF & aValue);
 
 
-	Symbol create4ArrayAccess(APExecutionData & anED,
+	Symbol create4ArrayAccess(ExecutionData & anED,
 			const RuntimeID & aRID, const BF & arrayValue,
-			InstanceOfData * lvalueOfIndex);
+			const InstanceOfData & lvalueOfIndex);
 
 
 
@@ -416,8 +424,8 @@ public:
 	 * GETTER
 	 * Assigned Flags
 	 */
-	static bool isAssigned(const APExecutionData & apED,
-			const RuntimeID & aRID, InstanceOfData * lvalue);
+	static bool isAssigned(const ExecutionData & apED,
+			const RuntimeID & aRID, const InstanceOfData & lvalue);
 
 
 	/*
@@ -425,42 +433,42 @@ public:
 	 * Runtime instance
 	 */
 	static bool getRuntimeForm(
-			const APExecutionData & apED, const RuntimeID & aRID,
-			InstanceOfData * lvalue, RuntimeID & aDataRID);
+			const ExecutionData & apED, const RuntimeID & aRID,
+			const InstanceOfData & lvalue, RuntimeID & aDataRID);
 
-	static bool getRuntimeForm(const APExecutionData & apED,
-			InstanceOfData * lvalue, LocalRuntime & aLocalRuntime);
+	static bool getRuntimeForm(const ExecutionData & apED,
+			const InstanceOfData & lvalue, LocalRuntime & aLocalRuntime);
 
 
 	/**
 	 * Generate numeric offset for array access using symbolic expression
 	 */
-	avm_size_t genNumericOffset(
-			APExecutionData & apED, const RuntimeID & aRID,
+	std::size_t genNumericOffset(
+			ExecutionData & apED, const RuntimeID & aRID,
 			const Symbol & lvSymbolicOffset, const BF & rvEvaluatedOffset,
-			avm_size_t offsetMin, avm_size_t offsetMax);
+			std::size_t offsetMin, std::size_t offsetMax);
 
 	/*
 	 * GETTER
 	 * rvalue for an lvalue
 	 */
-	BF & getRvalue(APExecutionData & apED, const RuntimeID & aRID,
-			InstanceOfData * lvUFI, BF & rvalue, const Symbol & offsetValue);
+	BF & getRvalue(ExecutionData & apED, const RuntimeID & aRID,
+			const InstanceOfData & lvUFI, BF & rvalue, const Symbol & offsetValue);
 
-	BF & getRvalue(APExecutionData & apED, const RuntimeID & aRID,
-			InstanceOfData * lvalue);
+	BF & getRvalue(ExecutionData & apED, const RuntimeID & aRID,
+			const InstanceOfData & lvalue);
 
-	inline BF & getRvalue(APExecutionData & apED, InstanceOfData * lvalue)
+	inline BF & getRvalue(ExecutionData & apED, const InstanceOfData & lvalue)
 	{
-		return( getRvalue(apED, apED->mRID, lvalue) );
+		return( getRvalue(apED, apED.getRID(), lvalue) );
 	}
 
-	inline BF & getRvalue(InstanceOfData * lvalue)
+	inline BF & getRvalue(const InstanceOfData & lvalue)
 	{
-		return( getRvalue(inED, inED->mRID, lvalue) );
+		return( getRvalue(inED, inED.getRID(), lvalue) );
 	}
 
-	inline BF & getRvalue(const RuntimeID & aRID, InstanceOfData * lvalue)
+	inline BF & getRvalue(const RuntimeID & aRID, const InstanceOfData & lvalue)
 	{
 		return( getRvalue(inED, aRID, lvalue) );
 	}
@@ -470,19 +478,19 @@ public:
 	 * GETTER
 	 * writable rvalue for an lvalue
 	 */
-	BF & getWvalue(APExecutionData & apED, const RuntimeID & aRID,
+	BF & getWvalue(ExecutionData & apED, const RuntimeID & aRID,
 			ArrayBF * rvArray, const Symbol & lvalue);
 
-	BF & getWvalue(APExecutionData & apED, const RuntimeID & aRID,
+	BF & getWvalue(ExecutionData & apED, const RuntimeID & aRID,
 			BuiltinContainer * rvArray, const Symbol & lvalue);
 
 
-	BF & getWvalue(APExecutionData & apED,
-			const RuntimeID & aRID, InstanceOfData * lvalue);
+	BF & getWvalue(ExecutionData & apED,
+			const RuntimeID & aRID, const InstanceOfData & lvalue);
 
-	inline BF & getWvalue(APExecutionData & apED, InstanceOfData * lvalue)
+	inline BF & getWvalue(ExecutionData & apED, const InstanceOfData & lvalue)
 	{
-		return( getWvalue(apED, apED->mRID, lvalue) );
+		return( getWvalue(apED, apED.getRID(), lvalue) );
 	}
 
 
@@ -490,36 +498,36 @@ public:
 	 * SETTER
 	 * lvalue := rvalue
 	 */
-	inline bool setRvalue(InstanceOfData * lvalue, const BF & rvalue)
+	inline bool setRvalue(const InstanceOfData & lvalue, const BF & rvalue)
 	{
 		return( setRvalue(inED, lvalue, rvalue) );
 	}
 
-	bool setRvalue(APExecutionData & apED,
-			InstanceOfData * lvalue, const BF & rvalue);
+	bool setRvalue(ExecutionData & apED,
+			const InstanceOfData & lvalue, const BF & rvalue);
 
 	inline bool setRvalue(
-			APExecutionData & apED, const RuntimeID & aRID,
-			InstanceOfData * lvalue, const BF & rvalue)
+			ExecutionData & apED, const RuntimeID & aRID,
+			const InstanceOfData & lvalue, const BF & rvalue)
 	{
-		const RuntimeID prevRID = apED->mRID;
-		apED->mRID = aRID;
+		const RuntimeID prevRID = apED.getRID();
+		apED.setRID( aRID );
 
 		bool rt = setRvalue(apED, lvalue, rvalue);
 
-		apED->mRID = prevRID;
+		apED.setRID( prevRID );
 
 		return( rt );
 	}
 
 
 	bool invokeOnWriteRoutine(
-			APExecutionData & apED, const RuntimeID & aRID,
-			InstanceOfData * lvalue, const BF & rvalue);
+			ExecutionData & apED, const RuntimeID & aRID,
+			const InstanceOfData & lvalue, const BF & rvalue);
 
 	inline bool writeData(
-			APExecutionData & apED, const RuntimeID & aRID,
-			InstanceOfData * lvalue, const BF & rvalue)
+			ExecutionData & apED, const RuntimeID & aRID,
+			const InstanceOfData & lvalue, const BF & rvalue)
 	{
 		if( invokeOnWriteRoutine(apED, aRID, lvalue, rvalue) )
 		{
@@ -533,23 +541,30 @@ public:
 	/**
 	 * set[Local]Data
 	 */
-	bool setData(APExecutionData & apED, const RuntimeID & aRID,
-			InstanceOfData * lvalue, const BF & rvalue);
+	bool setData(ExecutionData & apED, const RuntimeID & aRID,
+			const InstanceOfData & lvalue, const BF & rvalue);
 
-	bool setLocalRuntime(APExecutionData & apED, LocalRuntime & aLocalRuntime,
-			InstanceOfData * lvalue, const BF & rvalue);
+	static bool setLocalRuntime(ExecutionData & apED, LocalRuntime & aLocalRuntime,
+			const InstanceOfData & lvalue, const BF & rvalue);
 
 
 	/**
 	 * TOOLS
 	 */
-	BFCode searchTraceIO(const BF & aTrace, AvmCode * ioFormula);
+	static BFCode searchTraceIO(const BF & aTrace);
 
+	static BFCode searchTraceIO(const BF & aTrace, const AvmCode & ioFormula);
+
+	static BFCode searchTraceIO(const BF & aTrace,
+			const RuntimeID & ctxRID, const AvmCode & ioFormula);
+
+
+	static const ExecutionConfiguration & searchTraceIOExecConf(const BF & aTrace);
 
 	/*
 	 * STATIC ATTRIBUTES
 	 */
-	static avm_uint32_t NEW_PARAM_OFFSET;
+	static std::uint32_t NEW_PARAM_OFFSET;
 
 };
 

@@ -30,19 +30,19 @@ AVM_PRIMITIVE_RUN_CLASS(AtomicSequence, BaseAvmPrimitive)
 
 AVM_PRIMITIVE_RUN_RESUME_CLASS_HEADER(Sequence, BaseAvmPrimitive)
 	bool run(ExecutionEnvironment & ENV,
-			AvmCode::const_iterator itProg, AvmCode::const_iterator itEnd);
+		AvmCode::const_iterator itOperand, AvmCode::const_iterator endOperand);
 };
 
 
 AVM_PRIMITIVE_RUN_RESUME_CLASS_HEADER(SideSequence, BaseAvmPrimitive)
 	bool run(ExecutionEnvironment & ENV,
-		AvmCode::const_iterator itProg, AvmCode::const_iterator itEnd);
+		AvmCode::const_iterator itOperand, AvmCode::const_iterator endOperand);
 };
 
 
 AVM_PRIMITIVE_RUN_RESUME_CLASS_HEADER(WeakSequence, BaseAvmPrimitive)
 	bool run(ExecutionEnvironment & ENV,
-		AvmCode::const_iterator itProg, AvmCode::const_iterator itEnd);
+		AvmCode::const_iterator itOperand, AvmCode::const_iterator endOperand);
 };
 
 

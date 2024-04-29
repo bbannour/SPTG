@@ -21,7 +21,6 @@
 #include <builder/compiler/Compiler.h>
 #include <builder/compiler/CompilerOfVariable.h>
 
-#include <fml/executable/AvmLambda.h>
 #include <fml/executable/ExecutableForm.h>
 #include <fml/executable/ExecutableLib.h>
 
@@ -48,9 +47,9 @@ namespace sep
 CompilerOfTransition::CompilerOfTransition(Compiler & aCompiler)
 : BaseCompiler(aCompiler),
 mCompiler( aCompiler ),
-mDataCompiler( aCompiler.mDataCompiler ),
+mVariableCompiler( aCompiler.getVariableCompiler() ),
 mMocStack( ),
-mCurrentMoc( NULL ),
+mCurrentMoc( nullptr ),
 mDefaultMoc( TransitionMoc::MOE_RDE_RUN )
 {
 	setDefaultMoc();
@@ -64,7 +63,7 @@ void CompilerOfTransition::setDefaultMoc()
 }
 
 
-void CompilerOfTransition::pushMoc(WObject * mocTransition)
+void CompilerOfTransition::pushMoc(const WObject * mocTransition)
 {
 	mCurrentMoc = new TransitionMoc( mocTransition );
 
@@ -95,27 +94,27 @@ void CompilerOfTransition::popMoc()
  *******************************************************************************
  */
 void CompilerOfTransition::precompileTransition(
-		ExecutableForm * aContainer, Transition * aTransition)
+		ExecutableForm & aContainer, Transition & aTransition)
 {
 //	AVM_OS_TRACE << TAB << "<$$$$$ precompiling transition < "
-//			<< aTransition->getFullyQualifiedNameID() << " >" << std::endl;
+//			<< aTransition.getFullyQualifiedNameID() << " >" << std::endl;
 
 	AvmTransition * anAvmTransition =
-			new AvmTransition(aContainer, aTransition, 0);
+			new AvmTransition((& aContainer), aTransition, 0);
 
 	getSymbolTable().addTransition(
-			aContainer->saveTransition( anAvmTransition ) );
+			aContainer.saveTransition( anAvmTransition ) );
 
-	Machine * target = NULL;
-	if( aTransition->hasTarget() )
+	Machine * target = nullptr;
+	if( aTransition.hasTarget() )
 	{
-		target = getTransitionTarget(aTransition, aTransition->getTarget());
-		if( target != NULL )
+		target = getTransitionTarget(aTransition, aTransition.getTarget());
+		if( target != nullptr )
 		{
-			aTransition->getTarget().acquirePointer( target );
+			aTransition.getTarget().acquirePointer( target );
 
 			target->getUniqBehaviorPart()->
-					appendIncomingTransition( INCR_BF(aTransition) );
+					appendIncomingTransition( INCR_BF(& aTransition) );
 		}
 	}
 
@@ -123,23 +122,23 @@ void CompilerOfTransition::precompileTransition(
 	 * Allocation of declaration contents :>
 	 * constant, variable, typedef, buffer, port
 	 */
-	if( aTransition->hasDeclaration() )
+	if( aTransition.hasPropertyPart() )
 	{
 		TableOfInstanceOfData tableOfVariable;
 
-		mCompiler.precompileDataType(anAvmTransition,
-				*(aTransition->getDeclaration()), tableOfVariable);
+		mCompiler.precompileDataType( (* anAvmTransition),
+				aTransition.getPropertyPart(), tableOfVariable );
 
 		/*
 		 * Update data table
 		 */
-		anAvmTransition->setData(tableOfVariable);
+		anAvmTransition->setVariables(tableOfVariable);
 	}
 
 
 
 //	AVM_OS_TRACE << TAB << ">$$$$$ end precompiling transition < "
-//			<< aTransition->getFullyQualifiedNameID() << " >" << std::endl;
+//			<< aTransition.getFullyQualifiedNameID() << " >" << std::endl;
 }
 
 
@@ -155,38 +154,41 @@ void CompilerOfTransition::precompileTransition(
  * compile
  * transition
  */
-void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
+void CompilerOfTransition::compileTransition(AvmTransition & anAvmTransition)
 {
-	const Transition * aTransition = anAvmTransition->getAstTransition();
+	const Transition & aTransition = anAvmTransition.getAstTransition();
 
 //	AVM_OS_TRACE << TAB << "<| compiling<transiton>: "
-//			<< TRIM(aTransition->toString(AVM_OS_TRACE.INDENT))
+//			<< TRIM(aTransition.toString(AVM_OS_TRACE.INDENT))
 //			<< std::endl;
 
-	const Machine * source = aTransition->getSource();
-	const Machine * target = NULL;
+	const Machine & source = aTransition.getSource();
 
+	const Machine * target = nullptr;
+
+
+	BF sourceMachine = getSymbolTable().searchInstanceStatic(source);
 	BF targetVariable;
 	BF targetMachine;
 
-	if( aTransition->hasTarget() )
+	if( aTransition.hasTarget() )
 	{
-		BF tgt = compileTransitionTarget(anAvmTransition, aTransition->getTarget());
+		BF tgt = compileTransitionTarget(anAvmTransition, aTransition.getTarget());
 
 		if( tgt.valid() )
 		{
-			anAvmTransition->setTarget( tgt );
+			anAvmTransition.setTarget( tgt );
 
 			if( tgt.is< InstanceOfMachine >() )
 			{
-				target = tgt.to_ptr< InstanceOfMachine >()->getAstMachine();
+				target = &( tgt.to< InstanceOfMachine >().getAstMachine() );
 
 				targetMachine = tgt;
 
 				if( target->getSpecifier().isPseudostateInitial() )
 				{
 					incrWarningCount();
-					aTransition->warningLocation(AVM_OS_WARN)
+					aTransition.warningLocation(AVM_OS_WARN)
 							<< "Unexpected the pseudo-state< initial > '"
 							<< target->getFullyQualifiedNameID()
 							<< "' as target of the transition : "
@@ -202,14 +204,13 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 
 	// By default : the last active state
 	// Only for Trace usage
-	else if( not source->getSpecifier().isPseudostate() )
+	else if( not source.getSpecifier().isPseudostate() )
 	{
-		anAvmTransition->setTarget(
-				getSymbolTable().searchInstanceStatic(source) );
+		anAvmTransition.setTarget( sourceMachine );
 
 		//???
-//		aTransition->setTarget( anAvmTransition->getTarget() );
-//		aTransition->setTarget( INCR_BF(source) );
+//		aTransition.setTarget( anAvmTransition.getTarget() );
+//		aTransition.setTarget( INCR_BF(source) );
 	}
 	else
 	{
@@ -218,7 +219,7 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 
 
 	// COMPILATION OF DATA
-	mDataCompiler.compileData(anAvmTransition);
+	mVariableCompiler.compileVariable(anAvmTransition);
 
 	/*
 	 * EVAL transition
@@ -228,13 +229,14 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 	// DISABLE source / ENABLE target
 	BFCode disableSource;
 	BFCode enableTarget;
-	BFCodeList ienableAtomicSequence;
+	BFCodeList ienableSequence;
 
 	// DISABLE source
 	disableSource = StatementConstructor::newCode(
-			aTransition->hasMocAbort() ?
+			aTransition.hasMocAbort() ?
 					OperatorManager::OPERATOR_ABORT_INVOKE :
-					OperatorManager::OPERATOR_DISABLE_INVOKE);
+					OperatorManager::OPERATOR_DISABLE_INVOKE,
+			sourceMachine);
 
 	if( targetMachine.valid() )
 	{
@@ -258,7 +260,7 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 			//!! moe< statemachine > :> no need to invoke ENABLE_SET
 		}
 		// TRANSITION INSTABLE
-		else if( aTransition->getModifier().hasFeatureTransient() )
+		else if( aTransition.getModifier().hasFeatureTransient() )
 		{
 			enableTarget = StatementConstructor::newCode(
 					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
@@ -285,19 +287,20 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 					enableTarget);
 		}
 
-		if( source == target )
+		if( (& source) == target )
 		{
-			if( source->getSpecifier().isPseudostateInitial() )
+			if( source.getSpecifier().isPseudostateInitial() )
 			{
 				incrErrorCount();
-				AVM_OS_WARN << source->errorLocation(aTransition)
+				AVM_OS_WARN << source.errorLocation(aTransition)
 						<< "Unexpected transition loop in initial state << "
 						<< str_header( source ) << " >> !!!" << std::endl;
 			}
-			else if( source->getSpecifier().isPseudostate() )
+			else if( source.getSpecifier().isPseudostate() )
 			{
 				incrWarningCount();
-				AVM_OS_WARN << source->warningLocation(aTransition)
+				OS_VERBOSITY_MINIMUM_OR_DEBUG( AVM_OS_WARN )
+						<< source.warningLocation(aTransition)
 						<< "Transition loop in (unstable) pseudo state << "
 						<< str_header( source ) << " >> !!!" << std::endl;
 			}
@@ -307,36 +310,37 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 			// ==>  ENABLE TARGET
 		}
 
-		else if( source->getContainerMachine() == target->getContainerMachine() )
+		else if( source.getContainerMachine() == target->getContainerMachine() )
 		{
 			//!! NOTHING
 			// BETWEEN  DISABLE/ABORT SOURCE
 			// ==>  ENABLE TARGET
 		}
 
-		else if( source == target->getContainerMachine() )
+		else if( (& source) == target->getContainerMachine() )
 		{
 			// IDISABLE/IABORT SOURCE
 			// ==>  IENABLE & ENABLE TARGET
 			disableSource = StatementConstructor::newCode(
-					aTransition->hasMocAbort() ?
+					aTransition.hasMocAbort() ?
 							OperatorManager::OPERATOR_IABORT_INVOKE :
-							OperatorManager::OPERATOR_IDISABLE_INVOKE);
+							OperatorManager::OPERATOR_IDISABLE_INVOKE,
+					sourceMachine);
 
 			disableSource = StatementConstructor::newCode(
 					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 					StatementConstructor::newCode(
-							aTransition->hasMocAbort() ?
+							aTransition.hasMocAbort() ?
 									OperatorManager::OPERATOR_ABORT_CHILD :
 									OperatorManager::OPERATOR_DISABLE_CHILD),
 					disableSource);
 
-			ienableAtomicSequence.push_front(
+			ienableSequence.push_front(
 					BFCode(OperatorManager::OPERATOR_IENABLE_INVOKE) );
 //							ExecutableLib::MACHINE_SELF) );
 		}
 
-		else if( source->getContainerMachine() == target )
+		else if( source.getContainerMachine() == target )
 		{
 			// DISABLE/ABORT SOURCE & IDISABLE/IABORT CONTAINER
 			// ==>  IENABLE & ENABLE TARGET
@@ -344,31 +348,31 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 					disableSource,
 					StatementConstructor::newCode(
-							aTransition->hasMocAbort() ?
+							aTransition.hasMocAbort() ?
 									OperatorManager::OPERATOR_IABORT_INVOKE :
 									OperatorManager::OPERATOR_IDISABLE_INVOKE) );
 
 			enableTarget = BFCode(
-					aTransition->getModifier().hasFeatureTransient()
+					aTransition.getModifier().hasFeatureTransient()
 						? OperatorManager::OPERATOR_RETURN
 						: OperatorManager::OPERATOR_ENABLE_INVOKE );
 		}
 
 		else
 		{
-			const Machine * lcaMachine = source->LCA(
+			const Machine * lcaMachine = source.LCA(
 				( target->getSpecifier().hasPseudostateHistory()
 				|| target->getSpecifier().isPseudostateInitial() ) ?
 						target->getContainerMachine() : target );
 
 			AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( lcaMachine ) "LCA( "
-					<< source->getFullyQualifiedNameID() << " , "
+					<< source.getFullyQualifiedNameID() << " , "
 					<< target->getFullyQualifiedNameID() << " ) !!!"
 					<< SEND_EXIT;
 
-			if( source != lcaMachine )
+			if( (& source) != lcaMachine )
 			{
-				const Machine * containerOfSource = source->getContainerMachine();
+				const Machine * containerOfSource = source.getContainerMachine();
 				if( containerOfSource != lcaMachine )
 				{
 					avm_uinteger_t disableLevel = 1;
@@ -380,17 +384,17 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 					}
 
 					disableSource = StatementConstructor::newCode(
-							aTransition->hasMocAbort()
+							aTransition.hasMocAbort()
 								? OperatorManager::OPERATOR_ABORT_SELVES
 								: OperatorManager::OPERATOR_DISABLE_SELVES,
 							ExpressionConstructor::newUInteger(disableLevel) );
 
-					if( source->hasMachine() )
+					if( source.hasMachine() )
 					{
 						disableSource = StatementConstructor::newCode(
 							OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 							StatementConstructor::newCode(
-								aTransition->hasMocAbort() ?
+								aTransition.hasMocAbort() ?
 									OperatorManager::OPERATOR_ABORT_CHILD :
 									OperatorManager::OPERATOR_DISABLE_CHILD),
 							disableSource);
@@ -404,29 +408,30 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 				for( ; containerOfTarget != lcaMachine ;
 					containerOfTarget = containerOfTarget->getContainerMachine() )
 				{
-					if( (targetMachine = getSymbolTable().searchInstanceStatic(
-							containerOfTarget)).valid() )
+					targetMachine = getSymbolTable().
+							searchInstanceStatic(* containerOfTarget);
+					if( targetMachine.valid() )
 					{
-						ienableAtomicSequence.push_front(
+						ienableSequence.push_front(
 								BFCode(OperatorManager::OPERATOR_IENABLE_INVOKE,
 										targetMachine) );
 //										ExecutableLib::MACHINE_SELF) );
 
-						ienableAtomicSequence.push_front(
+						ienableSequence.push_front(
 								BFCode(OperatorManager::OPERATOR_ENABLE_SET,
 										targetMachine) );
 					}
 					else
 					{
 						incrErrorCount();
-						aTransition->errorLocation(AVM_OS_WARN)
+						aTransition.errorLocation(AVM_OS_WARN)
 								<< "Unfound transition target container"
 									" state instance < "
 								<< str_header( containerOfTarget )
 								<< " > where LCA is < "
 								<< str_header( lcaMachine )<< " >"
 								<< std::endl
-								<< aTransition->toString(AVM_TAB1_INDENT)
+								<< aTransition.toString(AVM_TAB1_INDENT)
 								<< std::endl;
 					}
 				}
@@ -446,41 +451,43 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 	}
 
 
-	if( aTransition->hasStatement() )
+	if( aTransition.hasStatement() )
 	{
 		// Attention: création possible de variable local dans le conteneur,
 		// i.e. l'état source de la transition
-		OnRun->appendFlat( aTransition->getStatement() );
+		OnRun->appendFlat( aTransition.getStatement() );
 	}
 
 	/*
 	 * DISABLE source / ENABLE target
 	 */
 	if( disableSource.valid() && enableTarget.valid() &&
-			(! aTransition->isMocInternal()) )
+			(! aTransition.isMocInternal()) )
 	{
 		switch( mCurrentMoc->getMoeRun() )
 		{
 			case TransitionMoc::MOE_RDE_RUN:
 			{
-//				OnRun->push_back( disableSource );
-//				OnRun->push_back( ienableAtomicSequence );
-//				OnRun->push_back( enableTarget );
+//				OnRun->getOperands().push_back( disableSource );
+//				OnRun->getOperands().push_back( ienableSequence );
+//				OnRun->getOperands().push_back( enableTarget );
 
-				if( ienableAtomicSequence.nonempty() )
+				if( ienableSequence.nonempty() )
 				{
 					BFCode disableEnableAtomicSequence(
 							StatementConstructor::newCodeFlat(
 									OperatorManager::OPERATOR_SEQUENCE,
 									disableSource) );
-					disableEnableAtomicSequence->push_back(ienableAtomicSequence);
-					disableEnableAtomicSequence->push_back(enableTarget);
+					disableEnableAtomicSequence->getOperands().push_back(
+							ienableSequence);
+					disableEnableAtomicSequence->getOperands().push_back(
+							enableTarget);
 
-					OnRun->push_back( disableEnableAtomicSequence );
+					OnRun->getOperands().push_back( disableEnableAtomicSequence );
 				}
 				else
 				{
-					OnRun->push_back( StatementConstructor::newCodeFlat(
+					OnRun->getOperands().push_back( StatementConstructor::newCodeFlat(
 							OperatorManager::OPERATOR_SEQUENCE,
 							disableSource, enableTarget ) );
 				}
@@ -489,47 +496,52 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 
 			case TransitionMoc::MOE_DRE_RUN:
 			{
-				OnRun->push_front( disableSource );
+				OnRun->getOperands().push_front( disableSource );
 
-				if( ienableAtomicSequence.nonempty() )
+				if( ienableSequence.nonempty() )
 				{
 					BFCode ienableEnableAtomicSequence(
 							StatementConstructor::newCode(
 									OperatorManager::OPERATOR_SEQUENCE,
-									ienableAtomicSequence) );
-					ienableEnableAtomicSequence->push_back( enableTarget );
+									ienableSequence) );
+					ienableEnableAtomicSequence->getOperands().push_back(
+							enableTarget );
 
-					OnRun->push_back( ienableEnableAtomicSequence );
+					OnRun->getOperands().push_back( ienableEnableAtomicSequence );
 				}
 				else
 				{
-					OnRun->push_back( enableTarget );
+					OnRun->getOperands().push_back( enableTarget );
 				}
 				break;
 			}
 
 			case TransitionMoc::MOE_DER_RUN:
 			{
-//				OnRun->push_front( enableTarget );
-//				OnRun->push_front( ienableAtomicSequence );
-//				OnRun->push_front( disableSource );
+//				OnRun->getOperands().push_front( enableTarget );
+//				OnRun->getOperands().push_front( ienableSequence );
+//				OnRun->getOperands().push_front( disableSource );
 
-				if( ienableAtomicSequence.nonempty() )
+				if( ienableSequence.nonempty() )
 				{
 					BFCode disableEnableAtomicSequence(
 							StatementConstructor::newCodeFlat(
 									OperatorManager::OPERATOR_SEQUENCE,
 									disableSource) );
-					disableEnableAtomicSequence->push_back( ienableAtomicSequence );
-					disableEnableAtomicSequence->push_back( enableTarget );
+					disableEnableAtomicSequence->getOperands().push_back(
+							ienableSequence );
+					disableEnableAtomicSequence->getOperands().push_back(
+							enableTarget );
 
-					OnRun->push_front( disableEnableAtomicSequence );
+					OnRun->getOperands().push_front(
+							disableEnableAtomicSequence );
 				}
 				else
 				{
-					OnRun->push_front( StatementConstructor::newCodeFlat(
-							OperatorManager::OPERATOR_SEQUENCE,
-							disableSource, enableTarget ) );
+					OnRun->getOperands().push_front(
+							StatementConstructor::newCodeFlat(
+									OperatorManager::OPERATOR_SEQUENCE,
+									disableSource, enableTarget ) );
 				}
 				break;
 			}
@@ -543,65 +555,67 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 		}
 	}
 
-	if( OnRun->nonempty() )
+	if( OnRun->hasOperand() )
 	{
-		anAvmTransition->setCode( mAvmcodeCompiler.
+		anAvmTransition.setCode( mAvmcodeCompiler.
 				compileStatement(anAvmTransition, OnRun) );
 
-		if( aTransition->hasStatement() )
+		if( aTransition.hasStatement() )
 		{
 			// Attention: création possible de variable local dans le conteneur,
 			// i.e. l'état source de la transition
-			BFCode aCompiledCode = anAvmTransition->getCode();
+			const BFCode & aCompiledCode = anAvmTransition.getCode();
 
 
 			// the communication information
 			bool hasMutableSchedule = false;
 
-			anAvmTransition->setCommunicationCode(
+			anAvmTransition.setCommunicationCode(
 					CommunicationDependency::getCommunicationCode(
 							anAvmTransition, aCompiledCode, hasMutableSchedule) );
 
-			anAvmTransition->setMutableCommunication( hasMutableSchedule );
+			anAvmTransition.setMutableCommunication( hasMutableSchedule );
 
 
-			anAvmTransition->setInternalCommunicationCode(
+			anAvmTransition.setInternalCommunicationCode(
 					CommunicationDependency::getInternalCommunicationCode(
 							anAvmTransition, aCompiledCode, hasMutableSchedule) );
 
 //??!!??
-//			if( anAvmTransition->getExecutableContainer()->
+//			if( anAvmTransition.getExecutableContainer()->
 //					getSpecifier().hasFeatureInputEnabled() )
 			{
+				const AvmCode & aCode = (* aCompiledCode);
+
 				CommunicationDependency::computeInputEnabledCom(
-						anAvmTransition, aCompiledCode );
+						anAvmTransition, aCode);
 
 				CommunicationDependency::computeInputEnabledSave(
-						anAvmTransition, aCompiledCode );
+						anAvmTransition, aCode);
 
 
 				CommunicationDependency::computeInputCom(
-						anAvmTransition, aCompiledCode);
+						anAvmTransition, aCode);
 
 				CommunicationDependency::computeOutputCom(
-						anAvmTransition, aCompiledCode);
+						anAvmTransition, aCode);
 
 
-				anAvmTransition->setEnvironmentCom(
+				anAvmTransition.setEnvironmentCom(
 						CommunicationDependency::getEnvironmentCom(
 							anAvmTransition, aCompiledCode, hasMutableSchedule) );
 
-				anAvmTransition->setEnvironmentInputCom(
+				anAvmTransition.setEnvironmentInputCom(
 						CommunicationDependency::getEnvironmentInputCom(
 							anAvmTransition, aCompiledCode, hasMutableSchedule) );
 
-				anAvmTransition->setEnvironmentOutputCom(
+				anAvmTransition.setEnvironmentOutputCom(
 						CommunicationDependency::getEnvironmentOutputCom(
 							anAvmTransition, aCompiledCode, hasMutableSchedule) );
 
 //				AVM_OS_COUT << "compileTransition:> "
 //						<< str_header( anAvmTransition ) << std::endl;
-//				anAvmTransition->toStreamStaticCom(AVM_OS_COUT);
+//				anAvmTransition.toStreamStaticCom(AVM_OS_COUT);
 			}
 		}
 	}
@@ -611,11 +625,11 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
 		{
 			OnRun = StatementConstructor::nopCode();
 		}
-		anAvmTransition->setCode( OnRun );
+		anAvmTransition.setCode( OnRun );
 	}
 
 //	AVM_OS_TRACE << TAB << ">| compiling<transiton>: "
-//			<< aTransition->getFullyQualifiedNameID() << std::endl;
+//			<< aTransition.getFullyQualifiedNameID() << std::endl;
 }
 
 
@@ -625,7 +639,7 @@ void CompilerOfTransition::compileTransition(AvmTransition * anAvmTransition)
  * for transition
  */
 Machine * CompilerOfTransition::getTransitionTarget(
-		Transition * aTransition, const BF & smTarget)
+		const Transition & aTransition, const BF & smTarget)
 {
 	if( smTarget.is< Machine >() )
 	{
@@ -633,31 +647,29 @@ Machine * CompilerOfTransition::getTransitionTarget(
 	}
 	else if( smTarget.is< Variable >() )
 	{
-		return( NULL );
+		return( nullptr );
 	}
 	else
 	{
-		Machine * tgtMachine = NULL;
+		Machine * tgtMachine = nullptr;
 
-		Machine * srcMachine = aTransition->getContainer()->as< Machine >();
+		Machine * srcMachine = aTransition.getContainer()->as_ptr< Machine >();
 		if( srcMachine->getNameID() == smTarget.str() )
 		{
 			return( srcMachine );
 		}
 
 		Machine * containerMachine = srcMachine;
-		while( containerMachine->hasContainer() &&
-				containerMachine->getContainer()->is< Machine >() )
+		while( containerMachine->isContainerMachine() )
 		{
 			tgtMachine = containerMachine;
-			containerMachine = containerMachine->getContainer()->as< Machine >();
+			containerMachine = containerMachine->getContainer()->as_ptr< Machine >();
 
 			tgtMachine = containerMachine->getrecMachine(smTarget.str(), tgtMachine);
-			if( tgtMachine != NULL )
+			if( tgtMachine != nullptr )
 			{
-				if( tgtMachine->hasContainer()
-					&& tgtMachine->getContainer()->is< Machine >()
-					&& tgtMachine->getContainer()->to< Machine >()->
+				if( tgtMachine->isContainerMachine()
+					&& tgtMachine->getContainer()->to_ptr< Machine >()->
 							getSpecifier().isMocStateTransitionStructure() )
 				{
 					return( tgtMachine );
@@ -665,16 +677,16 @@ Machine * CompilerOfTransition::getTransitionTarget(
 				else
 				{
 					incrErrorCount();
-					aTransition->errorLocation(AVM_OS_WARN)
+					aTransition.errorLocation(AVM_OS_WARN)
 							<< "Unexpected transition target without "
 							"a STATEMACHINE< or > container :> "
 							<< std::endl
 							<< TAB << "target state:> " << str_header( tgtMachine )
 							<< std::endl
 							<< TAB << "target super:> " << str_header(
-								tgtMachine->getContainer()->to< Machine >() )
+								tgtMachine->getContainer()->to_ptr< Machine >() )
 							<< std::endl
-							<< aTransition->toString(AVM_TAB1_INDENT)
+							<< aTransition.toString(AVM_TAB1_INDENT)
 							<< std::endl;
 
 					return( tgtMachine );
@@ -685,30 +697,29 @@ Machine * CompilerOfTransition::getTransitionTarget(
 		if( srcMachine->hasMachine() )
 		{
 			Machine * tgtMachine =
-					srcMachine->getrecMachine(smTarget.str(), NULL);
-			if( tgtMachine != NULL )
+					srcMachine->getrecMachine(smTarget.str(), nullptr);
+			if( tgtMachine != nullptr )
 			{
-				if( tgtMachine->hasContainer()
-					&& tgtMachine->getContainer()->is< Machine >()
-					&& tgtMachine->getContainer()->to< Machine >()->
+				if( tgtMachine->isContainerMachine()
+					&& tgtMachine->getContainer()->to_ptr< Machine >()->
 							getSpecifier().isMocStateTransitionStructure() )
 				{
 					incrWarningCount();
-					aTransition->warningLocation(AVM_OS_WARN)
+					aTransition.warningLocation(AVM_OS_WARN)
 							<< "The transition target is a sub-state"
 							" of the transition source "
 							<< std::endl
 							<< TAB << str_header(
-								tgtMachine->getContainer()->to< Machine >() )
+								tgtMachine->getContainer()->to_ptr< Machine >() )
 							<< " --> " << str_header( tgtMachine )
 							<< std::endl
-							<< aTransition->toString(AVM_TAB1_INDENT)
+							<< aTransition.toString(AVM_TAB1_INDENT)
 							<< std::endl;
 				}
 				else
 				{
 					incrErrorCount();
-					aTransition->errorLocation(AVM_OS_WARN)
+					aTransition.errorLocation(AVM_OS_WARN)
 							<< "Unexpected transition target without "
 							"a STATEMACHINE< or > container :> "
 							<< std::endl
@@ -716,9 +727,9 @@ Machine * CompilerOfTransition::getTransitionTarget(
 							<< str_header( tgtMachine )
 							<< std::endl
 							<< TAB << "target super:> " << str_header(
-								tgtMachine->getContainer()->to< Machine >() )
+								tgtMachine->getContainer()->to_ptr< Machine >() )
 							<< std::endl
-							<< aTransition->toString(AVM_TAB1_INDENT)
+							<< aTransition.toString(AVM_TAB1_INDENT)
 							<< std::endl;
 				}
 
@@ -727,31 +738,31 @@ Machine * CompilerOfTransition::getTransitionTarget(
 		}
 
 		incrErrorCount();
-		aTransition->errorLocation(AVM_OS_WARN)
+		aTransition.errorLocation(AVM_OS_WARN)
 				<< "Unfound the transition target :> " << smTarget.str()
 				<< std::endl
-				<< aTransition->toString(AVM_TAB1_INDENT)
+				<< aTransition.toString(AVM_TAB1_INDENT)
 				<< std::endl;
 
-		return( NULL );
+		return( nullptr );
 	}
 }
 
 
 BF CompilerOfTransition::compileTransitionTarget(
-		AvmTransition * anAvmTransition, const BF & smTarget)
+		AvmTransition & anAvmTransition, const BF & smTarget)
 {
 	if( smTarget.is< Variable >() )
 	{
 		CompilationEnvironment compilENV(anAvmTransition);
 
 		return( getSymbolTable().searchDataInstance(
-				compilENV.mCTX, smTarget.to_ptr< Variable >()) );
+				compilENV.mCTX, smTarget.to< Variable >()) );
 
 //		if( not ExpressionTypeChecker::isTyped(TypeManager::MACHINE, smTarget) )
 //		{
 //			incrErrorCount();
-//			anAvmTransition->getAstElement()->errorLocation(AVM_OS_WARN)
+//			anAvmTransition.safeAstElement().errorLocation(AVM_OS_WARN)
 //					<< "Unexpected the transition variable target type :> "
 //					<< str_header( smTarget.to_ptr< Variable >() ) << std::endl;
 //		}
@@ -760,7 +771,7 @@ BF CompilerOfTransition::compileTransitionTarget(
 	if( smTarget.is< Machine >() )
 	{
 		return( getSymbolTable().
-				searchInstanceStatic(smTarget.to_ptr< Machine >()) );
+				searchInstanceStatic(smTarget.to< Machine >()) );
 	}
 	else
 	{
@@ -809,7 +820,7 @@ BF CompilerOfTransition::compileTransitionTarget(
  * list of transition
  */
 BFCode CompilerOfTransition::scheduleListOfTransition(
-		ExecutableForm * anExecutableForm, BFList & listOfTransition)
+		ExecutableForm & anExecutableForm, const BFList & listOfTransition)
 {
 	if( listOfTransition.populated() )
 	{
@@ -826,11 +837,10 @@ BFCode CompilerOfTransition::scheduleListOfTransition(
 		ListOfInt::iterator itPrior;
 
 		// TRI
-		BFList::iterator it = listOfTransition.begin();
-		for( ; it != listOfTransition.end() ; ++it )
+		for( const auto & itTransition : listOfTransition )
 		{
-			priority = (*it).to_ptr< AvmTransition >()->
-					getAstTransition()->getPriority();
+			priority = itTransition.to< AvmTransition >().
+					getAstTransition().getPriority();
 
 			itSched = schedList.begin();
 			endSched = schedList.end();
@@ -839,7 +849,7 @@ BFCode CompilerOfTransition::scheduleListOfTransition(
 			{
 				if( (*itPrior) == priority )
 				{
-					(*itSched)->append( (*it) );
+					(*itSched)->append( itTransition );
 
 					break;
 				}
@@ -850,7 +860,7 @@ BFCode CompilerOfTransition::scheduleListOfTransition(
 								((*itPrior) < priority)) )
 				{
 					tmpList = new BFList();
-					tmpList->append( (*it) );
+					tmpList->append( itTransition );
 
 					schedList.insert( itSched , tmpList );
 					priorList.insert( itPrior , priority );
@@ -862,7 +872,7 @@ BFCode CompilerOfTransition::scheduleListOfTransition(
 			if( itSched == endSched )
 			{
 				tmpList = new BFList();
-				tmpList->append( (*it) );
+				tmpList->append( itTransition );
 
 				schedList.append( tmpList );
 				priorList.append( priority );
@@ -946,17 +956,38 @@ BFCode CompilerOfTransition::scheduleListOfTransition(
 }
 
 
+BFCode CompilerOfTransition::scheduleListOfTransition(
+		ExecutableForm & anExecutableForm,
+		const BFList & listOfTransition, const BFList & listOfElseTransition)
+{
+	if( listOfElseTransition.empty() )
+	{
+		return scheduleListOfTransition(anExecutableForm, listOfTransition);
+	}
+	else if( listOfTransition.empty() )
+	{
+		return scheduleListOfTransition(anExecutableForm, listOfElseTransition);
+	}
+	else
+	{
+		return StatementConstructor::newCodeFlat(
+				OperatorManager::OPERATOR_PRIOR_GT,
+				scheduleListOfTransition(anExecutableForm, listOfTransition),
+				scheduleListOfTransition(anExecutableForm, listOfElseTransition));
+	}
+}
+
 
 
 void CompilerOfTransition::compileStatemachineTransition(
-		ExecutableForm * anExecutableForm, const BFCode & runRoutine)
+		ExecutableForm & anExecutableForm, const BFCode & runRoutine)
 {
-	const Machine * aStatemachine = anExecutableForm->getAstMachine();
+	const Machine & aStatemachine = anExecutableForm.getAstMachine();
 
 //	AVM_OS_TRACE << TAB << "<| compiling<transition> of "
 //			<< str_header( aStatemachine ) << std::endl;
 
-	bool hasTransition = aStatemachine->hasOutgoingTransition();
+	bool hasTransition = aStatemachine.hasOutgoingTransition();
 
 	/*
 	 * Compiling transition
@@ -987,14 +1018,14 @@ void CompilerOfTransition::compileStatemachineTransition(
 					anExecutableForm, runRoutine, usedTransition);
 		}
 
-		BehavioralPart::const_transition_iterator it =
-				aStatemachine->getBehavior()->outgoing_transition_begin();
-		BehavioralPart::const_transition_iterator endIt =
-				aStatemachine->getBehavior()->outgoing_transition_end();
-		for( ; it != endIt ; ++it )
+		BehavioralPart::transition_iterator itTransition =
+				aStatemachine.getBehavior()->outgoing_transition_begin();
+		BehavioralPart::transition_iterator endIt =
+				aStatemachine.getBehavior()->outgoing_transition_end();
+		for( ; itTransition != endIt ; ++itTransition )
 		{
 			const BF & compiledTransition =
-					anExecutableForm->getTransitionByAstElement(it);
+					anExecutableForm.getTransitionByAstElement(itTransition);
 
 			if( usedTransition.nonempty() && usedTransition.contains(
 					compiledTransition.to_ptr< AvmTransition >()) )
@@ -1002,7 +1033,7 @@ void CompilerOfTransition::compileStatemachineTransition(
 				continue;
 			}
 
-			switch( (it)->getMocKind() )
+			switch( (itTransition)->getMocKind() )
 			{
 				case Transition::MOC_SIMPLE_KIND:
 				{
@@ -1064,9 +1095,9 @@ void CompilerOfTransition::compileStatemachineTransition(
 				default:
 				{
 					incrErrorCount();
-					(it)->warningLocation(AVM_OS_WARN)
+					(itTransition)->errorLocation(AVM_OS_WARN)
 							<< "Unexpected transition kind:> "
-							<< std::endl << (*it) << std::flush;
+							<< std::endl << (*itTransition) << std::flush;
 
 					break;
 				}
@@ -1086,11 +1117,11 @@ void CompilerOfTransition::compileStatemachineTransition(
 	 * NormalTerminaison Transition
 	 */
 
-	AvmCode::this_container_type listOfOrderArg;
+	AvmCode::OperandCollectionT listOfOrderArg;
 
 	if( hasTransition && runRoutine.valid() )
 	{
-		if( aStatemachine->hasModelOfComputation() )
+		if( aStatemachine.hasModelOfComputation() )
 		{
 
 		}
@@ -1114,7 +1145,7 @@ void CompilerOfTransition::compileStatemachineTransition(
 		 */
 		if( listOfSimpleTransition.nonempty() && runRoutine.valid() )
 		{
-			Operator * op = OperatorManager::OPERATOR_PRIOR_GT;
+			const Operator * op = OperatorManager::OPERATOR_PRIOR_GT;
 			if( (mCurrentMoc->isLcaEnabled() &&
 					mCurrentMoc->isLcaMinFirst()) ||
 					(mCurrentMoc->isSourceEnabled() &&
@@ -1241,43 +1272,36 @@ void CompilerOfTransition::compileStatemachineTransition(
 	 */
 	if( listOfOrderArg.populated() )
 	{
-		BFCode aCode = StatementConstructor::newCode(
+		BFCode aCode = StatementConstructor::newCodeFlat(
 				OperatorManager::OPERATOR_PRIOR_GT, listOfOrderArg);
 
-		anExecutableForm->setOnRun( aCode );
+		anExecutableForm.setOnRun( aCode );
 	}
 	else if( listOfOrderArg.nonempty() )
 	{
 		if( listOfOrderArg.first().is< AvmCode >() )
 		{
-			anExecutableForm->setOnRun( listOfOrderArg.first().bfCode() );
+			anExecutableForm.setOnRun( listOfOrderArg.first().bfCode() );
 		}
 		else
 		{
-			anExecutableForm->setOnRun( StatementConstructor::newCode(
+			anExecutableForm.setOnRun( StatementConstructor::newCode(
 					OperatorManager::OPERATOR_INVOKE_TRANSITION,
 					listOfOrderArg.first()) );
 		}
 	}
 
 
-	// Final Transition
-	if( listOfFinalTransition.nonempty() )
+	// Transition< final > and Transition< final & else >
+	if( listOfFinalTransition.nonempty()
+		|| listOfFinalElseTransition.nonempty() )
 	{
-		anExecutableForm->setOnFinal( StatementConstructor::xnewCodeFlat(
+		anExecutableForm.setOnFinal( StatementConstructor::xnewCodeFlat(
 				OperatorManager::OPERATOR_SEQUENCE,
-				anExecutableForm->getOnFinal(),
+				anExecutableForm.getOnFinal(),
+				anExecutableForm.getOnDisable(),
 				scheduleListOfTransition(anExecutableForm,
-						listOfFinalTransition) ) );
-	}
-	// Else Transition< final >
-	if( listOfFinalElseTransition.nonempty() )
-	{
-		anExecutableForm->setOnFinal( StatementConstructor::xnewCodeFlat(
-				OperatorManager::OPERATOR_SEQUENCE,
-				anExecutableForm->getOnFinal(),
-				scheduleListOfTransition(anExecutableForm,
-						listOfFinalElseTransition) ) );
+						listOfFinalTransition, listOfFinalElseTransition) ) );
 	}
 
 //	AVM_OS_TRACE << TAB << ">| compiling<transition> of "
@@ -1287,9 +1311,9 @@ void CompilerOfTransition::compileStatemachineTransition(
 
 
 void CompilerOfTransition::compileStateForkOutputTransition(
-		ExecutableForm * anExecutableForm, const BFCode & runRoutine)
+		ExecutableForm & anExecutableForm, const BFCode & runRoutine)
 {
-	const Machine * aStatemachine = anExecutableForm->getAstMachine();
+	const Machine & aStatemachine = anExecutableForm.getAstMachine();
 
 //	AVM_OS_TRACE << TAB << "<| compiling<transition> of "
 //			<< str_header( aStatemachine ) << std::endl;
@@ -1299,10 +1323,10 @@ void CompilerOfTransition::compileStateForkOutputTransition(
 	 */
 	BFCode forkCode(OperatorManager::OPERATOR_FORK);
 
-	BehavioralPart::const_transition_iterator it =
-			aStatemachine->getBehavior()->outgoing_transition_begin();
-	BehavioralPart::const_transition_iterator endIt =
-			aStatemachine->getBehavior()->outgoing_transition_end();
+	BehavioralPart::transition_iterator it =
+			aStatemachine.getBehavior()->outgoing_transition_begin();
+	BehavioralPart::transition_iterator endIt =
+			aStatemachine.getBehavior()->outgoing_transition_end();
 	for( ; it != endIt ; ++it )
 	{
 		switch( (it)->getMocKind() )
@@ -1311,7 +1335,7 @@ void CompilerOfTransition::compileStateForkOutputTransition(
 			{
 				forkCode->append( StatementConstructor::newCode(
 						OperatorManager::OPERATOR_INVOKE_TRANSITION,
-						anExecutableForm->getTransitionByAstElement(it)) );
+						anExecutableForm.getTransitionByAstElement(it)) );
 				break;
 			}
 
@@ -1324,7 +1348,7 @@ void CompilerOfTransition::compileStateForkOutputTransition(
 			default:
 			{
 				incrErrorCount();
-				(it)->warningLocation(AVM_OS_WARN)
+				(it)->errorLocation(AVM_OS_WARN)
 						<< "Unexpected outgoing transition kind:> "
 						<< (*it) << "for the pseudostate< fork > << "
 						<< str_header( aStatemachine ) << std::endl;
@@ -1333,7 +1357,7 @@ void CompilerOfTransition::compileStateForkOutputTransition(
 		}
 	}
 
-	anExecutableForm->setOnRun( StatementConstructor::xnewCodeFlat(
+	anExecutableForm.setOnRun( StatementConstructor::xnewCodeFlat(
 			OperatorManager::OPERATOR_SEQUENCE, runRoutine, forkCode) );
 
 //	AVM_OS_TRACE << TAB << ">| compiling<transition> of "
@@ -1343,9 +1367,9 @@ void CompilerOfTransition::compileStateForkOutputTransition(
 
 
 void CompilerOfTransition::compileStateJoinInputTransition(
-		ExecutableForm * anExecutableForm)
+		ExecutableForm & anExecutableForm)
 {
-	const Machine * aStatemachine = anExecutableForm->getAstMachine();
+	const Machine & aStatemachine = anExecutableForm.getAstMachine();
 
 //	AVM_OS_TRACE << TAB << "<| compiling<transition> of "
 //			<< str_header( aStatemachine ) << std::endl;
@@ -1357,30 +1381,30 @@ void CompilerOfTransition::compileStateJoinInputTransition(
 
 	CompilationEnvironment compilENV(anExecutableForm);
 
-	BehavioralPart::const_transition_iterator it =
-			aStatemachine->getBehavior()->incoming_transition_begin();
-	BehavioralPart::const_transition_iterator endIt =
-			aStatemachine->getBehavior()->incoming_transition_end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itTransition :
+			aStatemachine.getBehavior()->getIncomingTransitions() )
 	{
-		switch( (it)->getMocKind() )
+		const Transition & aTransition = itTransition.to< Transition >();
+
+		switch( aTransition.getMocKind() )
 		{
 			case Transition::MOC_SIMPLE_KIND:
 			{
-				const BF & aTransition =
-						getSymbolTable().searchTransition(compilENV.mCTX, (it));
-				if( aTransition.valid() )
+				const BF & bfTransition = getSymbolTable().
+						searchTransition(compilENV.mCTX, aTransition);
+				if( bfTransition.valid() )
 				{
 					syncCode->append( StatementConstructor::newCode(
-							OperatorManager::OPERATOR_INVOKE_TRANSITION, aTransition) );
+							OperatorManager::OPERATOR_INVOKE_TRANSITION,
+							bfTransition) );
 				}
 				else
 				{
 					incrErrorCount();
-					(it)->warningLocation(AVM_OS_WARN)
+					aTransition.errorLocation(AVM_OS_WARN)
 							<< "compileStateJoinInputTransition:> "
 							"Unfound incoming transition :"
-							<< std::endl << (*it) << std::flush;
+							<< std::endl << to_stream(aTransition) << std::flush;
 				}
 
 				break;
@@ -1395,9 +1419,9 @@ void CompilerOfTransition::compileStateJoinInputTransition(
 			default:
 			{
 				incrErrorCount();
-				(it)->warningLocation(AVM_OS_WARN)
+				aTransition.errorLocation(AVM_OS_WARN)
 						<< "Unexpected outgoing transition kind:> "
-						<< std::endl << (*it) << std::flush
+						<< std::endl << to_stream( aTransition ) << std::flush
 						<< "for the pseudostate< fork > << "
 						<< str_header( aStatemachine ) << std::endl;
 				break;
@@ -1405,11 +1429,11 @@ void CompilerOfTransition::compileStateJoinInputTransition(
 		}
 	}
 
-	anExecutableForm->setOnEnable( StatementConstructor::xnewCodeFlat(
+	anExecutableForm.setOnEnable( StatementConstructor::xnewCodeFlat(
 			OperatorManager::OPERATOR_SEQUENCE,
 			StatementConstructor::newCode(
 					OperatorManager::OPERATOR_JOIN, syncCode),
-			anExecutableForm->getOnEnable()) );
+			anExecutableForm.getOnEnable()) );
 
 //	AVM_OS_TRACE << TAB << ">| compiling<transition> of "
 //			<< str_header( aStatemachine ) << std::endl;

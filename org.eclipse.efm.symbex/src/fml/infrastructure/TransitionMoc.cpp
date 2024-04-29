@@ -56,15 +56,15 @@ endprototype
 */
 
 
-void TransitionMoc::setFlags(WObject * moc)
+void TransitionMoc::setFlags(const WObject * moc)
 {
 //!![MIGRATION]
-//	WObject * thePRIORITY = Query::getRegexWSequence(moc,
+//	const WObject * thePRIORITY = Query::getRegexWSequence(moc,
 //			OR_WID2("priority", "PRIORITY"));
 //
 //	if( thePRIORITY != WObject::_NULL_ )
 //	{
-//		WObject * aWProperty =
+//		const WObject * aWProperty =
 //				Query::getWProperty(thePRIORITY, "priority", WObject::_NULL_);
 //		if( aWProperty == WObject::_NULL_ )
 //		{
@@ -88,11 +88,11 @@ void TransitionMoc::setFlags(WObject * moc)
 //		}
 //
 //
-//		aWProperty = Query::getWProperty(thePRIORITY, "lca", NULL);
+//		aWProperty = Query::getWProperty(thePRIORITY, "lca", nullptr);
 //
 //		// DEFAULT
 //		theLcaEnabledFlag = false;
-//		if( aWProperty != NULL )
+//		if( aWProperty != nullptr )
 //		{
 //			theLcaEnabledFlag = true;
 //
@@ -106,11 +106,11 @@ void TransitionMoc::setFlags(WObject * moc)
 //		}
 //
 //
-//		aWProperty = Query::getWProperty( thePRIORITY, "source", NULL);
+//		aWProperty = Query::getWProperty( thePRIORITY, "source", nullptr);
 //
 //		// DEFAULT
 //		theSourceEnabledFlag = false;
-//		if( aWProperty != NULL )
+//		if( aWProperty != nullptr )
 //		{
 //			theSourceEnabledFlag = true;
 //
@@ -124,11 +124,11 @@ void TransitionMoc::setFlags(WObject * moc)
 //		}
 //
 //
-//		aWProperty = Query::getWProperty(thePRIORITY, "target", NULL);
+//		aWProperty = Query::getWProperty(thePRIORITY, "target", nullptr);
 //
 //		// DEFAULT
 //		theTargetEnabledFlag = false;
-//		if( aWProperty != NULL )
+//		if( aWProperty != nullptr )
 //		{
 //			theTargetEnabledFlag = true;
 //
@@ -142,7 +142,7 @@ void TransitionMoc::setFlags(WObject * moc)
 //		}
 //
 //
-//		WObject * theMOE = Query::getRegexWSequence(moc, OR_WID2("moe", "MOE"));
+//		const WObject * theMOE = Query::getRegexWSequence(moc, OR_WID2("moe", "MOE"));
 //
 //		if( theMOE != WObject::_NULL_ )
 //		{
@@ -153,23 +153,23 @@ void TransitionMoc::setFlags(WObject * moc)
 //			if( moeRun.valid() && (moeRun->size() == 3) )
 //			{
 //				if( (moeRun->first().is< Operator >() && moeRun->first().
-//						to_ptr< Operator >()->isOpCode( AVM_OPCODE_RUN )) ||
+//						to_ref< Operator >().isOpCode( AVM_OPCODE_RUN )) ||
 //					(moeRun->first().is< AvmCode >() && moeRun->first().
-//							to_ptr< AvmCode >()->isOpCode( AVM_OPCODE_RUN )) )
+//							to_ref< AvmCode >().isOpCode( AVM_OPCODE_RUN )) )
 //				{
 //					theMoeRun = MOE_RDE_RUN;
 //				}
 //				if( (moeRun->second().is< Operator >() && moeRun->second().
-//						to_ptr< Operator >()->isOpCode( AVM_OPCODE_RUN )) ||
+//						to_ref< Operator >().isOpCode( AVM_OPCODE_RUN )) ||
 //					(moeRun->second().is< AvmCode >() && moeRun->second().
-//							to_ptr< AvmCode >()->isOpCode( AVM_OPCODE_RUN )) )
+//							to_ref< AvmCode >().isOpCode( AVM_OPCODE_RUN )) )
 //				{
 //					theMoeRun = MOE_DRE_RUN;
 //				}
 //				if( (moeRun->third().is< Operator >() && moeRun->third().
-//						to_ptr< Operator >()->isOpCode( AVM_OPCODE_RUN )) ||
+//						to_ref< Operator >().isOpCode( AVM_OPCODE_RUN )) ||
 //					(moeRun->third().is< AvmCode >() && moeRun->third().
-//							to_ptr< AvmCode >()->isOpCode( AVM_OPCODE_RUN )) )
+//							to_ref< AvmCode >().isOpCode( AVM_OPCODE_RUN )) )
 //				{
 //					theMoeRun = MOE_DER_RUN;
 //				}

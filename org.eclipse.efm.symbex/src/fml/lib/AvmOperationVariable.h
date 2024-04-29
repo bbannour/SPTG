@@ -27,8 +27,9 @@ namespace sep
 
 class BF;
 class BaseInstanceForm;
-class Variable;
+class BaseTypeSpecifier;
 
+class Variable;
 
 
 class AvmOperationVariable
@@ -46,9 +47,9 @@ public:
 	 * GETTER - SETTER
 	 * theVariableMap
 	 */
-	static std::map< std::string , Operator * > theVariableMap;
+	static std::map< std::string , const Operator * > theVariableMap;
 
-	inline static Operator * getVariable(const std::string & method)
+	inline static const Operator * getVariable(const std::string & method)
 	{
 		return( theVariableMap[ method ] );
 	}
@@ -58,8 +59,8 @@ public:
 		return( theVariableMap.find( method ) != theVariableMap.end() );
 	}
 
-	inline static void putVariable(const std::string & method,
-			Operator * anOperator)
+	inline static void putVariable(
+			const std::string & method, const Operator * anOperator)
 	{
 		theVariableMap[ method ] = anOperator;
 	}
@@ -70,9 +71,9 @@ public:
 	 * GETTER - SETTER
 	 * theContainerMap
 	 */
-	static std::map< std::string , Operator * > theContainerMap;
+	static std::map< std::string , const Operator * > theContainerMap;
 
-	inline static Operator * getContainer(const std::string & method)
+	inline static const Operator * getContainer(const std::string & method)
 	{
 		return( theContainerMap[ method ] );
 	}
@@ -82,8 +83,8 @@ public:
 		return( theContainerMap.find( method ) != theContainerMap.end() );
 	}
 
-	inline static void putContainer(const std::string & method,
-			Operator * anOperator)
+	inline static void putContainer(
+			const std::string & method, const Operator * anOperator)
 	{
 		theContainerMap[ method ] = anOperator;
 	}
@@ -94,9 +95,9 @@ public:
 	 * GETTER - SETTER
 	 * theQueueMap
 	 */
-	static std::map< std::string , Operator * > theQueueMap;
+	static std::map< std::string , const Operator * > theQueueMap;
 
-	inline static Operator * getQueue(const std::string & method)
+	inline static const Operator * getQueue(const std::string & method)
 	{
 		return( theQueueMap[ method ] );
 	}
@@ -106,7 +107,8 @@ public:
 		return( theQueueMap.find( method ) != theQueueMap.end() );
 	}
 
-	inline static void putQueue(const std::string & method, Operator * anOperator)
+	inline static void putQueue(
+			const std::string & method, const Operator * anOperator)
 	{
 		theQueueMap[ method ] = anOperator;
 	}
@@ -117,9 +119,9 @@ public:
 	 * GETTER - SETTER
 	 * theTimeMap
 	 */
-	static std::map< std::string , Operator * > theTimeMap;
+	static std::map< std::string , const Operator * > theTimeMap;
 
-	inline static Operator * getTime(const std::string & method)
+	inline static const Operator * getTime(const std::string & method)
 	{
 		return( theTimeMap[ method ] );
 	}
@@ -129,7 +131,8 @@ public:
 		return( theTimeMap.find( method ) != theTimeMap.end() );
 	}
 
-	inline static void putTime(const std::string & method, Operator * anOperator)
+	inline static void putTime(
+			const std::string & method, const Operator * anOperator)
 	{
 		theTimeMap[ method ] = anOperator;
 	}
@@ -139,9 +142,9 @@ public:
 	 * GETTER - SETTER
 	 * theActivityMap
 	 */
-	static std::map< std::string , Operator * > theActivityMap;
+	static std::map< std::string , const Operator * > theActivityMap;
 
-	inline static Operator * getActivity(const std::string & method)
+	inline static const Operator * getActivity(const std::string & method)
 	{
 		return( theActivityMap[ method ] );
 	}
@@ -151,8 +154,8 @@ public:
 		return( theActivityMap.find( method ) != theActivityMap.end() );
 	}
 
-	inline static void putActivity(const std::string & method,
-			Operator * anOperator)
+	inline static void putActivity(
+			const std::string & method, const Operator * anOperator)
 	{
 		theActivityMap[ method ] = anOperator;
 	}
@@ -162,9 +165,9 @@ public:
 	 * GETTER - SETTER
 	 * theOtherMap
 	 */
-	static std::map< std::string , Operator * > theOtherMap;
+	static std::map< std::string , const Operator * > theOtherMap;
 
-	inline static Operator * getOther(const std::string & method)
+	inline static const Operator * getOther(const std::string & method)
 	{
 		return( theOtherMap[ method ] );
 	}
@@ -174,7 +177,8 @@ public:
 		return( theOtherMap.find( method ) != theOtherMap.end() );
 	}
 
-	inline static void putOther(const std::string & method, Operator * anOperator)
+	inline static void putOther(
+			const std::string & method, const Operator * anOperator)
 	{
 		theOtherMap[ method ] = anOperator;
 	}
@@ -184,29 +188,32 @@ public:
 	/**
 	 * GETTER - SETTER
 	 */
-	static Operator * get(const std::string & method);
+	static const Operator * get(const std::string & method);
 
-	static Operator * get(const BF & aReceiver, const std::string & method);
+	static const Operator * get(
+			const BF & aReceiver, const std::string & method);
 
-	static Operator * get(Variable * aVariable, const std::string & method);
+	static const Operator * get(
+			Variable * aVariable, const std::string & method);
 
-	static Operator * get(BaseInstanceForm * anInstance,
+	static const Operator * get(
+			BaseInstanceForm * anInstance, const std::string & method);
+
+	static const Operator * get(const BaseTypeSpecifier & aTypeSpecifier,
 			const std::string & method);
 
-	static Operator * get(BaseTypeSpecifier * aTypeSpecifier,
-			const std::string & method);
 
-
-	inline static bool exist(const std::string & method)
+	inline static bool exists(const std::string & method)
 	{
 		return( isVariable(method) || isContainer(method) ||
 				isQueue(method)    || isTime(method)      ||
 				isActivity(method) || isOther(method) );
 	}
 
-	static bool exist(BaseInstanceForm * anInstance, const std::string & method);
+	static bool exists(BaseInstanceForm * anInstance, const std::string & method);
 
-	inline static bool exist(const std::string & method, Operator * anOperator)
+	inline static bool exists(
+			const std::string & method, const Operator * anOperator)
 	{
 		return( (anOperator == getVariable(method))  ||
 				(anOperator == getContainer(method)) ||
@@ -218,7 +225,7 @@ public:
 
 
 	static void put(BaseInstanceForm * anInstance,
-			const std::string & method, Operator * anOperator);
+			const std::string & method, const Operator * anOperator);
 
 
 };

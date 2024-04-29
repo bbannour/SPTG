@@ -22,7 +22,6 @@
 
 #include <collection/BFContainer.h>
 
-#include <common/AvmPointer.h>
 #include <common/BF.h>
 
 
@@ -60,7 +59,7 @@ public:
 	 * Default
 	 */
 	Package(const std::string & id)
-	: Machine(CLASS_KIND_T( Package ), NULL, "pack::" + id,
+	: Machine(CLASS_KIND_T( Package ), nullptr, "pack::" + id,
 			id, id, Specifier::COMPONENT_PACKAGE_SPECIFIER),
 	mPackages( ),
 	mLocation( )
@@ -111,9 +110,9 @@ public:
 	/**
 	 * Serialization
 	 */
-	void strHeader(OutStream & os) const;
+	virtual void strHeader(OutStream & os) const override;
 
-	void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 };
 

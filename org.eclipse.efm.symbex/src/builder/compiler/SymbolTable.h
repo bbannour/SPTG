@@ -18,6 +18,8 @@
 #include <collection/Typedef.h>
 #include <collection/BFContainer.h>
 
+#include <fml/common/ObjectElement.h>
+
 #include <fml/executable/ExecutableQuery.h>
 #include <fml/executable/InstanceOfData.h>
 #include <fml/executable/InstanceOfMachine.h>
@@ -81,9 +83,9 @@ protected:
 	ExecutableQuery XQuery;
 
 
-	avm_size_t mErrorCount;
+	std::size_t mErrorCount;
 
-	avm_size_t mWarningCount;
+	std::size_t mWarningCount;
 
 	StringOutStream ERROR_OS;
 
@@ -156,16 +158,15 @@ public:
 	 * SEARCH
 	 * for Port
 	 */
-	InstanceOfPort * searchPortConnectorInstance(
-			ExecutableForm * anExecutable, const ObjectElement * aPort) const;
+	InstanceOfPort * searchPortConnectorPoint(
+			ExecutableForm * anExecutable, const ObjectElement & astPort) const;
 
-	InstanceOfPort * searchPortConnectorInstance(
-			ExecutableForm * anExecutable,
+	InstanceOfPort * searchPortConnectorPoint(ExecutableForm * anExecutable,
 			const std::string & aFullyQualifiedNameID) const;
 
 
 	const Symbol & searchPortSymbolInstance(
-			ExecutableForm * anExecutable, Port * aPort) const;
+			ExecutableForm * anExecutable, const Port & aPort) const;
 
 
 	/**
@@ -174,7 +175,11 @@ public:
 	 */
 	static const TypeSpecifier & searchTypeSpecifier(
 			ExecutableSystem & anExecutableSystem,
-			COMPILE_CONTEXT * aCTX, const ObjectElement * objElement);
+			const BaseAvmProgram * aProgramCtx, const ObjectElement & astElement);
+
+	static const TypeSpecifier & searchTypeSpecifier(
+			ExecutableSystem & anExecutableSystem,
+			COMPILE_CONTEXT * aCTX, const ObjectElement & astElement);
 
 	static const TypeSpecifier & searchTypeSpecifier(
 			ExecutableSystem & anExecutableSystem, COMPILE_CONTEXT * aCTX,
@@ -185,10 +190,10 @@ public:
 	 * for Data
 	 */
 	const BF & searchDataInstance(BaseAvmProgram * tmpProgram,
-			const ObjectElement * objElement) const;
+			const ObjectElement & astElement) const;
 
 	const BF & searchDataInstance(
-			COMPILE_CONTEXT * aCTX, const ObjectElement * objElement);
+			COMPILE_CONTEXT * aCTX, const ObjectElement & astElement);
 
 
 	const BF & searchDataInstance(BaseAvmProgram * tmpProgram,
@@ -215,7 +220,7 @@ public:
 
 
 	const BF & searchDataInstanceAlias(
-			COMPILE_CONTEXT * aCTX, const ObjectElement * objElement);
+			COMPILE_CONTEXT * aCTX, const ObjectElement & astElement);
 
 	const BF & searchDataInstanceAlias(COMPILE_CONTEXT * aCTX,
 			const std::string & aFullyQualifiedNameID);
@@ -223,11 +228,11 @@ public:
 
 	const BF & createDataInstanceAlias(ExecutableForm * anExecutable,
 			const std::string & aFullyQualifiedNameID,
-			InstanceOfData * anInstance, ExecutableForm * instContainer);
+			const InstanceOfData & anInstance, ExecutableForm * instContainer);
 
 	const BF & createDataInstanceAlias(ExecutableForm * anExecutable,
 			const std::string & aFullyQualifiedNameID,
-			InstanceOfData * anInstance,
+			const InstanceOfData & anInstance,
 			VectorOfInstanceOfMachine & theInstanceOfMachinePath);
 
 	/**
@@ -235,13 +240,13 @@ public:
 	 * for Machine Instance
 	 */
 	const Symbol & searchInstanceModel(
-			COMPILE_CONTEXT * aCTX, const ObjectElement * astElement) const;
+			COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const;
 
 	const Symbol & searchInstanceStatic(
-			COMPILE_CONTEXT * aCTX, const ObjectElement * astElement) const;
+			COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const;
 
 	const Symbol & searchInstanceDynamic(
-			COMPILE_CONTEXT * aCTX, const ObjectElement * astElement) const;
+			COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const;
 
 
 	const Symbol & searchInstanceModelByNameID(
@@ -258,9 +263,9 @@ public:
 
 
 	InstanceOfMachine * searchInstanceStatic(
-			const ObjectElement * fromMachine, const UniFormIdentifier & anUFI);
+			const ObjectElement & fromMachine, const UniFormIdentifier & anUFI);
 
-	void searchInstanceStatic(const ObjectElement * refMachine,
+	void searchInstanceStatic(const ObjectElement & refMachine,
 			const UniFormIdentifier & anUFI, BFList & foundList) const;
 
 
@@ -275,7 +280,7 @@ public:
 	 * for Data, Port or Machine
 	 */
 	const BF & searchInstance(
-			COMPILE_CONTEXT * aCTX, const ObjectElement * objElement);
+			COMPILE_CONTEXT * aCTX, const ObjectElement & astElement);
 
 	const BF & searchInstance(COMPILE_CONTEXT * aCTX,
 			const std::string & aFullyQualifiedNameID);
@@ -286,16 +291,22 @@ public:
 	 * for Data, Port or Machine
 	 */
 	const BF & searchSymbol(
-			COMPILE_CONTEXT * aCTX, const ObjectElement * objElement);
+			COMPILE_CONTEXT * aCTX, const ObjectElement & astElement);
 
 	const BF & searchSymbol(COMPILE_CONTEXT * aCTX,
 			const std::string & aFullyQualifiedNameID);
 
 	BF searchSymbolByUFI(COMPILE_CONTEXT * aCTX, const UniFormIdentifier & anUFI);
 
+	BF searchSymbolByFQN(COMPILE_CONTEXT * aCTX, const UniFormIdentifier & anFQN);
+
+	BF createSymbolAlias(ExecutableForm * anExecutable,
+			const VectorOfInstanceOfMachine & anInstanceOfMachinePath,
+			const BF & aTargetSymbol, const std::string & aFullyQualifiedNameID);
+
 
 	const BF & searchSemSymbol(COMPILE_CONTEXT * aCTX,
-			const ObjectElement * objElement) const;
+			const ObjectElement & astElement) const;
 
 	const BF & searchSemSymbolByQualifiedNameID(COMPILE_CONTEXT * aCTX,
 			const std::string & aQualifiedNameID) const;
@@ -322,7 +333,7 @@ public:
 	 * Executable for a given FORM
 	 */
 	const BF & searchTransition(
-			COMPILE_CONTEXT * aCTX, const ObjectElement * objElement) const;
+			COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const;
 
 	const BF & searchTransition(COMPILE_CONTEXT * aCTX,
 			const std::string & aFullyQualifiedNameID) const;
@@ -332,7 +343,7 @@ public:
 
 
 	const BF & searchProgram(COMPILE_CONTEXT * aCTX,
-			const ObjectElement * objElement) const;
+			const ObjectElement & astElement) const;
 
 	const BF & searchProgram(COMPILE_CONTEXT * aCTX,
 			const std::string & aFullyQualifiedNameID) const;
@@ -353,12 +364,11 @@ public:
 	inline const BF & searchCompiledElement(
 			const BFList & listOfInstance, const SymbolPredicate & pred) const
 	{
-		BFList::const_iterator it = listOfInstance.begin();
-		for( ; it != listOfInstance.end() ; ++it )
+		for( const auto & itInstance : listOfInstance )
 		{
-			if( pred( (*it).to_ptr< BaseCompiledForm >() ) )
+			if( pred( itInstance.to< ObjectElement >() ) )
 			{
-				return( *it );
+				return( itInstance );
 			}
 		}
 
@@ -369,46 +379,42 @@ public:
 			const ListOfSymbol & listOfInstance,
 			const SymbolPredicate & pred) const
 	{
-		ListOfSymbol::const_iterator it = listOfInstance.begin();
-		ListOfSymbol::const_iterator endIt = listOfInstance.end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itInstance : listOfInstance )
 		{
-			if( pred( (*it) ) )
+			if( pred( itInstance ) )
 			{
-				return( *it );
+				return( itInstance );
 			}
 		}
 
 		return( Symbol::REF_NULL );
 	}
 
+
 	template< typename T >
 	inline T * searchCompiledElement(BFVector & tableOfInstance,
 			const SymbolPredicate & pred) const
 	{
-		BFVector::const_iterator it = tableOfInstance.begin();
-		for( ; it != tableOfInstance.end() ; ++it )
+		for( const auto & itInstance : tableOfInstance )
 		{
-			if( pred( (*it).as_ptr< T >() ) )
+			if( pred( itInstance.as< T >() ) )
 			{
-				return( (*it).to_ptr< T >() );
+				return( itInstance.to_ptr< T >() );
 			}
 		}
 
-		return( NULL );
+		return( nullptr );
 	}
 
 	inline const Symbol & searchCompiledElement(
 			VectorOfSymbol & tableOfInstance,
 			const SymbolPredicate & pred) const
 	{
-		VectorOfSymbol::const_iterator it = tableOfInstance.begin();
-		VectorOfSymbol::const_iterator endIt = tableOfInstance.end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itInstance : tableOfInstance )
 		{
-			if( pred( (*it) ) )
+			if( pred( itInstance ) )
 			{
-				return( (*it) );
+				return( itInstance );
 			}
 		}
 
@@ -419,13 +425,11 @@ public:
 	inline void searchCompiledElement(const ListOfSymbol & listOfInstance,
 			const SymbolPredicate & pred, BFList & foundList) const
 	{
-		ListOfSymbol::const_iterator it = listOfInstance.begin();
-		ListOfSymbol::const_iterator endIt = listOfInstance.end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itInstance : listOfInstance )
 		{
-			if( pred( (*it) ) )
+			if( pred( itInstance ) )
 			{
-				foundList.append( *it );
+				foundList.append( itInstance );
 			}
 		}
 	}
@@ -437,9 +441,9 @@ public:
 	 * mListOfMachineExecutable
 	 ***************************************************************************
 	 */
-	inline const BF & searchExecutable(const ObjectElement * anElement) const
+	inline const BF & searchExecutable(const ObjectElement & astElement) const
 	{
-		SymbolPredicateByCompiledElement pred( anElement );
+		SymbolPredicateByCompiledElement pred( astElement );
 
 		return( searchCompiledElement(mListOfMachineExecutable, pred) );
 	}
@@ -484,9 +488,9 @@ public:
 	}
 
 	inline const Symbol & searchInstanceStatic(
-			const ObjectElement * anElement) const
+			const ObjectElement & astElement) const
 	{
-		SymbolPredicateByCompiledElement pred( anElement );
+		SymbolPredicateByCompiledElement pred( astElement );
 
 		return( searchCompiledElement(mListOfInstanceStatic, pred) );
 	}
@@ -530,9 +534,9 @@ public:
 	}
 
 	inline const Symbol & searchPortInstance(
-			const ObjectElement * anElement) const
+			const ObjectElement & astElement) const
 	{
-		SymbolPredicateByCompiledElement pred( anElement );
+		SymbolPredicateByCompiledElement pred( astElement );
 
 		return( searchCompiledElement(mListOfPortInstance, pred) );
 	}
@@ -571,9 +575,9 @@ public:
 	}
 
 	inline const Symbol & searchBufferInstance(
-			const ObjectElement * anElement) const
+			const ObjectElement & astElement) const
 	{
-		SymbolPredicateByCompiledElement pred( anElement );
+		SymbolPredicateByCompiledElement pred( astElement );
 
 		return( searchCompiledElement(mListOfBufferInstance, pred) );
 	}
@@ -595,13 +599,13 @@ public:
 	}
 
 	const Symbol & searchBufferInstance(ExecutableForm * anExecutable,
-			const ObjectElement * objElement) const;
+			const ObjectElement & astElement) const;
 
-	const Symbol & searchBufferInstance(ExecutableForm * anExecutable,
+	const Symbol & searchBufferInstance(ExecutableForm & anExecutable,
 			const std::string & aFullyQualifiedNameID);
 
 	const Symbol & searchBufferInstanceByQualifiedNameID(
-			ExecutableForm * anExecutable,
+			const ExecutableForm & anExecutable,
 			const std::string & aQualifiedNameID) const;
 
 	const Symbol & searchBufferInstanceByNameID(
@@ -613,17 +617,18 @@ public:
 
 	const Symbol & createBufferInstanceAlias(ExecutableForm * anExecutable,
 			const std::string & aFullyQualifiedNameID,
-			InstanceOfBuffer * anInstance,
+			const InstanceOfBuffer & anInstance,
 			VectorOfInstanceOfMachine & theInstanceOfMachinePath);
+
 
 	/**
 	 ***************************************************************************
 	 * GETTER / SETTER
 	 * theListOfConnectInstance
-	 * "SYMBOL TABLE : CONNECT"
+	 * "SYMBOL TABLE : CONNECTOR"
 	 ***************************************************************************
 	 */
-	inline void addConnectInstance(const Symbol & anInstance)
+	inline void addConnectorInstance(const Symbol & anInstance)
 	{
 		mListOfConnectorInstance.append(anInstance);
 	}
@@ -638,9 +643,9 @@ public:
 
 
 	inline const Symbol & searchConnectorInstance(
-			const ObjectElement * anElement) const
+			const ObjectElement & astElement) const
 	{
-		SymbolPredicateByCompiledElement pred( anElement );
+		SymbolPredicateByCompiledElement pred( astElement );
 
 		return( searchCompiledElement(mListOfConnectorInstance, pred) );
 	}
@@ -663,7 +668,7 @@ public:
 
 
 	const Symbol & searchConnectorInstance(ExecutableForm * anExecutable,
-			const ObjectElement * objElement) const;
+			const ObjectElement & astElement) const;
 
 	const Symbol & searchConnectorInstance(ExecutableForm * anExecutable,
 			const std::string & aFullyQualifiedNameID) const;
@@ -729,9 +734,9 @@ public:
 		mListOfAvmTransition.append( aTransition );
 	}
 
-	inline const BF & searchTransition(const ObjectElement * anElement) const
+	inline const BF & searchTransition(const ObjectElement & astElement) const
 	{
-		SymbolPredicateByCompiledElement pred( anElement );
+		SymbolPredicateByCompiledElement pred( astElement );
 
 		return( searchCompiledElement(mListOfAvmTransition, pred) );
 	}
@@ -764,9 +769,9 @@ public:
 		mListOfAvmProgram.append( aProgram );
 	}
 
-	inline const BF & searchProgram(const ObjectElement * anElement) const
+	inline const BF & searchProgram(const ObjectElement & astElement) const
 	{
-		SymbolPredicateByCompiledElement pred( anElement );
+		SymbolPredicateByCompiledElement pred( astElement );
 
 		return( searchCompiledElement(mListOfAvmProgram, pred) );
 	}
@@ -791,7 +796,7 @@ public:
 	 * GETTER
 	 * mErrorCount
 	 */
-	inline avm_size_t getErrorCount() const
+	inline std::size_t getErrorCount() const
 	{
 		return( mErrorCount );
 	}
@@ -806,7 +811,7 @@ public:
 		return( mErrorCount == 0 );
 	}
 
-	inline avm_size_t incrErrorCount()
+	inline std::size_t incrErrorCount()
 	{
 		return( ++mErrorCount );
 	}
@@ -817,7 +822,7 @@ public:
 	 * GETTER
 	 * mWarningCount
 	 */
-	inline avm_size_t getWarningCount() const
+	inline std::size_t getWarningCount() const
 	{
 		return( mWarningCount );
 	}
@@ -832,7 +837,7 @@ public:
 		return( mWarningCount == 0 );
 	}
 
-	inline avm_size_t incrWarningCount()
+	inline std::size_t incrWarningCount()
 	{
 		return( ++mWarningCount );
 	}

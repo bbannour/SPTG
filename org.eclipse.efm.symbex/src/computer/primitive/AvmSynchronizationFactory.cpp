@@ -15,6 +15,8 @@
 
 #include "AvmSynchronizationFactory.h"
 
+#include <computer/PathConditionProcessor.h>
+
 #include <fml/executable/InstanceOfData.h>
 #include <fml/executable/Router.h>
 
@@ -44,7 +46,7 @@ namespace sep
  *******************************************************************************
  */
 
-BF AvmSynchronizationFactory::buildScheduleForm(Operator * buildOp,
+BF AvmSynchronizationFactory::buildScheduleForm(const Operator * buildOp,
 		const BF & refScheduleForm, const BF & frstScheduleForm,
 		const BF & sndScheduleForm)
 {
@@ -53,16 +55,16 @@ BF AvmSynchronizationFactory::buildScheduleForm(Operator * buildOp,
 }
 
 
-APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
+ExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 		const ExecutionData & firstED, const ExecutionData & sndED)
 {
-	avm_size_t refMachineCount = refED.getTableOfRuntime().size();
+	std::size_t refMachineCount = refED.getTableOfRuntime().size();
 
-	avm_size_t syncMachineCount = std::max(
+	std::size_t syncMachineCount = std::max(
 			sndED.getTableOfRuntime().size(),
 			firstED.getTableOfRuntime().size() );
 
-	APExecutionData newED( new ExecutionData(syncMachineCount) );
+	ExecutionData newED( syncMachineCount );
 
 	// fusion of ExecutionContext
 	AVM_OS_ASSERT_FATAL_ERROR_EXIT( firstED.hasExecutionContext() )
@@ -76,37 +78,37 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 //			<< "firstED & sndED must have the same ExecutionContext container !!!"
 //			<< SEND_EXIT;
 
-	newED->setExecutionContext( firstED.getExecutionContext() );
+	newED.setExecutionContext( firstED.getExecutionContext() );
 
 
 	// fusion of mAEES
-	newED->mAEES = RuntimeDef::syncAEES(firstED.mAEES, sndED.mAEES);
-	if( newED->mAEES == AEES_UNKNOWN_SYNC )
+	newED.setAEES( RuntimeDef::syncAEES(firstED.getAEES(), sndED.getAEES()) );
+	if( newED.getAEES() == AEES_UNKNOWN_SYNC )
 	{
 		AVM_OS_ERROR_ALERT << "ExecutionData:> fusion of AEES FAILED : ( "
-				<< RuntimeDef::strAEES(firstED.mAEES)  << " |sync| "
-				<< RuntimeDef::strAEES(sndED.mAEES) << " ) !!!"
+				<< RuntimeDef::strAEES(firstED.getAEES())  << " |sync| "
+				<< RuntimeDef::strAEES(sndED.getAEES()) << " ) !!!"
 				<< SEND_ALERT;
 
-		return( APExecutionData::REF_NULL );
+		return( ExecutionData::_NULL_ );
 	}
 
 
 	// fusion of mRID
-	if( firstED.mRID == sndED.mRID )
+	if( firstED.getRID() == sndED.getRID() )
 	{
-		newED->mRID = firstED.mRID;
+		newED.setRID( firstED.getRID() );
 	}
 	else
 	{
-		newED->mRID = refED.mRID;
+		newED.setRID( refED.getRID() );
 
 //		AVM_OS_WARNING_ALERT << "ExecutionData:> fusion of RID FAILED : ( ref< "
-//				<< refED->mRID.str() << " > , " << firstED.mRID.str()
-//				<< " != " << sndED.mRID.str() << " )"
+//				<< refED.getRID().str() << " > , " << firstED.getRID().str()
+//				<< " != " << sndED.getRID().str() << " )"
 //				<< SEND_ALERT;
 //
-//		return( APExecutionData::REF_NULL );
+//		return( ExecutionData::_NULL_ );
 	}
 
 
@@ -120,15 +122,15 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 
 	if( refED.getOnInit() == firstED.getOnInit() )
 	{
-		newED->setOnInit( sndED.getOnInit() );
+		newED.setOnInit( sndED.getOnInit() );
 	}
 	else if( refED.getOnInit() == sndED.getOnInit() )
 	{
-		newED->setOnInit( firstED.getOnInit() );
+		newED.setOnInit( firstED.getOnInit() );
 	}
 	else if( firstED.getOnInit() == sndED.getOnInit() )
 	{
-		newED->setOnInit( firstED.getOnInit() );
+		newED.setOnInit( firstED.getOnInit() );
 	}
 //	else if( firstED.hasOnInit() && sndED.hasOnInit() )
 //	{
@@ -136,7 +138,7 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 ////				StatementConstructor::newCode(
 ////						OperatorManager::OPERATOR_PARALLEL,
 ////						firstED.getOnInit(), sndED.getOnInit()) );
-////		newED->setOnInit( onInit );
+////		newED.setOnInit( onInit );
 //
 //		AVM_OS_ERROR_ALERT << "ExecutionData:> fusion of routine OnInit FAILED :"
 //				<< "\n\t$0 = " << refED.getOnInit().str()
@@ -144,7 +146,7 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 //				<< "\n\t$2 = " << sndED.getOnInit().str()
 //				<< SEND_ALERT;
 //
-//		return( APExecutionData::REF_NULL );
+//		return( ExecutionData::_NULL_ );
 //	}
 	else
 	{
@@ -154,7 +156,7 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 				<< "\n\t$2 = " << sndED.getOnInit().str()
 				<< SEND_ALERT;
 
-		return( APExecutionData::REF_NULL );
+		return( ExecutionData::_NULL_ );
 	}
 
 	// fusion of onSchedule
@@ -167,15 +169,15 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 
 	if( refED.getOnSchedule() == firstED.getOnSchedule() )
 	{
-		newED->setOnSchedule( sndED.getOnSchedule() );
+		newED.setOnSchedule( sndED.getOnSchedule() );
 	}
 	else if( refED.getOnSchedule() == sndED.getOnSchedule() )
 	{
-		newED->setOnSchedule( firstED.getOnSchedule() );
+		newED.setOnSchedule( firstED.getOnSchedule() );
 	}
 	else if( firstED.getOnSchedule() == sndED.getOnSchedule() )
 	{
-		newED->setOnSchedule( firstED.getOnSchedule() );
+		newED.setOnSchedule( firstED.getOnSchedule() );
 	}
 //	else if( firstED.hasOnSchedule() && sndED.hasOnSchedule() )
 //	{
@@ -183,7 +185,7 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 ////				StatementConstructor::newCode(
 ////						OperatorManager::OPERATOR_PARALLEL,
 ////						firstED.getOnSchedule(), sndED.getOnSchedule()) );
-////		newED->setOnSchedule( onSchedule );
+////		newED.setOnSchedule( onSchedule );
 //
 //		AVM_OS_ERROR_ALERT << "ExecutionData:> fusion of routine OnSchedule FAILED :"
 //				<< "\n\t$0 = " << refED.getOnSchedule().str()
@@ -191,7 +193,7 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 //				<< "\n\t$2 = " << sndED.getOnSchedule().str()
 //				<< SEND_ALERT;
 //
-//		return( APExecutionData::REF_NULL );
+//		return( ExecutionData::_NULL_ );
 //	}
 	else
 	{
@@ -201,7 +203,7 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 				<< "\n\t$2 = " << sndED.getOnSchedule().str()
 				<< SEND_ALERT;
 
-		return( APExecutionData::REF_NULL );
+		return( ExecutionData::_NULL_ );
 	}
 
 
@@ -212,12 +214,12 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 		if( firstED.getRunnableElementTrace() ==
 				sndED.getRunnableElementTrace() )
 		{
-			newED->setRunnableElementTrace(
+			newED.setRunnableElementTrace(
 					firstED.getRunnableElementTrace() );
 		}
 		else
 		{
-			newED->setRunnableElementTrace( buildRunnableElementTrace(
+			newED.setRunnableElementTrace( buildRunnableElementTrace(
 					OperatorManager::OPERATOR_PARALLEL,
 					refED.getRunnableElementTrace(),
 					firstED.getRunnableElementTrace(),
@@ -226,15 +228,15 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 	}
 	else if( firstED.hasRunnableElementTrace() )
 	{
-		newED->setRunnableElementTrace( firstED.getRunnableElementTrace() );
+		newED.setRunnableElementTrace( firstED.getRunnableElementTrace() );
 	}
 	else if(  sndED.hasRunnableElementTrace() )
 	{
-		newED->setRunnableElementTrace( sndED.getRunnableElementTrace() );
+		newED.setRunnableElementTrace( sndED.getRunnableElementTrace() );
 	}
 	else
 	{
-		newED->setRunnableElementTrace( refED.getRunnableElementTrace() );
+		newED.setRunnableElementTrace( refED.getRunnableElementTrace() );
 	}
 
 
@@ -243,26 +245,26 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 	{
 		if( firstED.getIOElementTrace() == sndED.getIOElementTrace() )
 		{
-			newED->setIOElementTrace( firstED.getIOElementTrace() );
+			newED.setIOElementTrace( firstED.getIOElementTrace() );
 		}
 		else
 		{
-			newED->setIOElementTrace( buildIOElementTrace(
+			newED.setIOElementTrace( buildIOElementTrace(
 					OperatorManager::OPERATOR_PARALLEL, refED.getIOElementTrace(),
 					firstED.getIOElementTrace(), sndED.getIOElementTrace() ) );
 		}
 	}
 	else if( firstED.hasIOElementTrace() )
 	{
-		newED->setIOElementTrace( firstED.getIOElementTrace() );
+		newED.setIOElementTrace( firstED.getIOElementTrace() );
 	}
 	else if(  sndED.hasIOElementTrace() )
 	{
-		newED->setIOElementTrace( sndED.getIOElementTrace() );
+		newED.setIOElementTrace( sndED.getIOElementTrace() );
 	}
 	else
 	{
-		newED->setIOElementTrace( refED.getIOElementTrace() );
+		newED.setIOElementTrace( refED.getIOElementTrace() );
 	}
 
 
@@ -278,13 +280,14 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 			firstED.getNodeCondition(),
 			sndED.getNodeCondition());
 
-	newED->setNodeCondition( theNodeCondition );
-
-	if( theNodeCondition.isEqualFalse() )
+	if( PathConditionProcessor::isWeakSatisfiable(theNodeCondition) )
 	{
-		return( APExecutionData::REF_NULL );
+		newED.setNodeCondition( theNodeCondition );
 	}
-
+	else
+	{
+		return( ExecutionData::_NULL_ );
+	}
 
 	// fusion of NodeTimedCondition
 	AVM_OS_ASSERT_FATAL_ERROR_EXIT( firstED.hasNodeTimedCondition() )
@@ -298,11 +301,14 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 			firstED.getNodeTimedCondition(),
 			sndED.getNodeTimedCondition());
 
-	newED->setNodeTimedCondition( theNodeTimedCondition );
 
-	if( theNodeTimedCondition.isEqualFalse() )
+	if( PathConditionProcessor::isWeakSatisfiable(theNodeTimedCondition) )
 	{
-		return( APExecutionData::REF_NULL );
+		newED.setNodeTimedCondition( theNodeTimedCondition );
+	}
+	else
+	{
+		return( ExecutionData::_NULL_ );
 	}
 
 
@@ -316,19 +322,19 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 
 	if( firstED.getPathCondition() == sndED.getPathCondition() )
 	{
-		newED->setPathCondition( firstED.getPathCondition() );
+		newED.setPathCondition( firstED.getPathCondition() );
 	}
 	else
 	{
 		BF thePathCondition = ExpressionSimplifier::simplif_and(
 				firstED.getPathCondition(), sndED.getPathCondition());
-		if( thePathCondition.isEqualFalse() )
+		if( PathConditionProcessor::isWeakSatisfiable(thePathCondition))
 		{
-			return( APExecutionData::REF_NULL );
+			newED.setPathCondition( thePathCondition );
 		}
 		else
 		{
-			newED->setPathCondition( thePathCondition );
+			return( ExecutionData::_NULL_ );
 		}
 	}
 
@@ -343,44 +349,44 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 
 	if( firstED.getPathTimedCondition() == sndED.getPathTimedCondition() )
 	{
-		newED->setPathTimedCondition( firstED.getPathTimedCondition() );
+		newED.setPathTimedCondition( firstED.getPathTimedCondition() );
 	}
 	else
 	{
 		BF thePathTimedCondition = ExpressionSimplifier::simplif_and(
 				firstED.getPathTimedCondition(),
 				sndED.getPathTimedCondition());
-		if( thePathTimedCondition.isEqualFalse() )
+		if( PathConditionProcessor::isWeakSatisfiable(thePathTimedCondition) )
 		{
-			return( APExecutionData::REF_NULL );
+			newED.setPathTimedCondition( thePathTimedCondition );
 		}
 		else
 		{
-			newED->setPathTimedCondition( thePathTimedCondition );
+			return( ExecutionData::_NULL_ );
 		}
 	}
 
 
 	// ExecutionData::PARAM_MACHINE_RUNTIME_OFFSET === 0
-	if( not fusion((* newED), refED.getParametersRuntimeForm(),
+	if( not fusion(newED, refED.getParametersRuntimeForm(),
 		firstED.getParametersRuntimeForm(), sndED.getParametersRuntimeForm()) )
 	{
 		// AvmConcurrencyStatement Failed
-		return( APExecutionData::REF_NULL );
+		return( ExecutionData::_NULL_ );
 	}
 
 	// ExecutionData::SYSTEM_RUNTIME_OFFSET === 1
-	avm_size_t offset = ExecutionData::SYSTEM_RUNTIME_OFFSET;
+	std::size_t offset = ExecutionData::SYSTEM_RUNTIME_OFFSET;
 	for( ; offset < refMachineCount ; ++offset )
 	{
 		// fusion of Process Eval State
-		newED->setRuntimeFormState( offset,
+		newED.setRuntimeFormState( offset,
 				RuntimeDef::syncPES(
 						refED.getRuntimeFormState(offset),
 						firstED.getRuntimeFormState(offset),
 						sndED.getRuntimeFormState(offset) ) );
 
-		if( newED->isUndefinedPES(offset) )
+		if( newED.isUndefinedPES(offset) )
 		{
 			AVM_OS_ERROR_ALERT << "ExecutionData:> "
 				"Fusion of Runtime State FAILED : "
@@ -411,25 +417,25 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 				<< "\n\t$2 = " << RuntimeDef::strPES(sndED.getRuntimeFormState(offset))
 				<< SEND_ALERT;
 
-			return( APExecutionData::REF_NULL );
+			return( ExecutionData::_NULL_ );
 		}
 
 //		// Propagate synchronized EVAL STATE form childs to parent
 //		if( firstED.isFinalizedOrDestroyed(offset) ||
 //				sndED.isFinalizedOrDestroyed(offset) )
 //		{
-//			RuntimeID aRID = newED->getRuntimeID(offset);
-//			RuntimeForm * aRF = NULL;
+//			RuntimeID aRID = newED.getRuntimeID(offset);
+//			RuntimeForm * aRF = nullptr;
 //			while( aRID.hasPRID() && aRID.getPRID().hasKindAND() )
 //			{
-//				aRF = newED->getRuntimeForm( aRID = aRID.getPRID() );
+//				aRF = newED.getRuntimeForm( aRID = aRID.getPRID() );
 //
 //				// TODO:> Child may not be synchronized ==> defined
 //				TableOfRuntimeID::const_iterator it = aRF.beginChild();
 //				TableOfRuntimeID::const_iterator endIt = aRF.endChild();
 //				for( ; it != endIt ; ++it )
 //				{
-//					if( not newED->isFinalizedOrDestroyed(*it) )
+//					if( not newED.isFinalizedOrDestroyed(*it) )
 //					{
 //						break;
 //					}
@@ -437,7 +443,7 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 //
 //				if( it == endIt )
 //				{
-//					newED->setRuntimeFormState( aRID,
+//					newED.setRuntimeFormState( aRID,
 //							(firstED.isFinalized(offset) ||
 //									sndED.isFinalized(offset)) ?
 //											PROCESS_FINALIZED_STATE :
@@ -449,22 +455,22 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 //				}
 //			}
 //
-//			if( newED->isunRunnableSystem() )
+//			if( newED.isunRunnableSystem() )
 //			{
-//				newED->setAEES(AEES_STMNT_EXIT);
+//				newED.setAEES(AEES_STMNT_EXIT);
 //			}
 //		}
 
 		// fusion of Assign State
-		newED->getRuntimeFormStateTable()->setAssignedUnion(offset,
+		newED.wrRuntimeFormStateTable()->setAssignedUnion(offset,
 				firstED.getAssigned(offset), sndED.getAssigned(offset));
 
 		// fusion of RuntimeForm
-		if( not fusion((* newED), refED.getRuntime(offset),
+		if( not fusion(newED, refED.getRuntime(offset),
 			firstED.getRuntime(offset), sndED.getRuntime(offset)) )
 		{
 			// AvmConcurrencyStatement Failed
-			return( APExecutionData::REF_NULL );
+			return( ExecutionData::_NULL_ );
 		}
 	}
 
@@ -498,32 +504,32 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 		for( ; offset < syncMachineCount ; ++offset )
 		{
 			// fusion of Process Eval State
-			newED->setRuntimeFormState(offset,
+			newED.setRuntimeFormState(offset,
 					maxED.getRuntimeFormState(offset));
 
 			// fusion of Assign State
-			newED->getRuntimeFormStateTable()->
-					setAssigned(offset, maxED.getAssigned(offset));
+			newED.wrRuntimeFormStateTable()->setAssigned(
+					offset, maxED.getAssigned(offset) );
 
 			// fusion of RuntimeForm
-			newED->assignRuntimeForm(offset,
+			newED.assignRuntimeForm(offset,
 					const_cast< RuntimeForm * >( maxED.ptrRuntime(offset) ) );
 
 //			// Propagate synchronized EVAL STATE form childs to parent
 //			if( maxED.isFinalizedOrDestroyed(offset) )
 //			{
-//				RuntimeID aRID = newED->getRuntimeID(offset);
+//				RuntimeID aRID = newED.getRuntimeID(offset);
 //				while( aRID.hasPRID() && aRID.getPRID().hasKindAND() )
 //				{
 //					const RuntimeForm & aRF =
-//							newED->getRuntime( aRID = aRID.getPRID() );
+//							newED.getRuntime( aRID = aRID.getPRID() );
 //
 //					// TODO:> Child may not be synchronized / defined
 //					TableOfRuntimeID::const_iterator it = aRF.beginChild();
 //					TableOfRuntimeID::const_iterator endIt = aRF.endChild();
 //					for( ; it != endIt ; ++it )
 //					{
-//						if( not newED->isFinalizedOrDestroyed(*it) )
+//						if( not newED.isFinalizedOrDestroyed(*it) )
 //						{
 //							break;
 //						}
@@ -531,7 +537,7 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 //
 //					if( it == endIt )
 //					{
-//						newED->setRuntimeFormState(aRID,
+//						newED.setRuntimeFormState(aRID,
 //								(firstED.isFinalized(offset) ||
 //										sndED.isFinalized(offset)) ?
 //												PROCESS_FINALIZED_STATE :
@@ -543,9 +549,9 @@ APExecutionData AvmSynchronizationFactory::fusion(const ExecutionData & refED,
 //					}
 //				}
 //
-//				if( newED->isunRunnableSystem() )
+//				if( newED.isunRunnableSystem() )
 //				{
-//					newED->setAEES(AEES_STMNT_EXIT);
+//					newED.setAEES(AEES_STMNT_EXIT);
 //				}
 //			}
 		}
@@ -578,14 +584,14 @@ bool AvmSynchronizationFactory::fusion(const ExecutionData & newED,
 	}
 	else
 	{
-		avm_size_t refParamsCount = refParamsRF.getParametersSize();
+		std::size_t refParamsCount = refParamsRF.getParametersSize();
 
 		ParametersRuntimeForm * newParamsRF =
 				new ParametersRuntimeForm(refParamsRF.getRID(), refParamsCount);
 
 		newED.saveParametersRuntimeForm( newParamsRF );
 
-		avm_size_t offset = 0;
+		std::size_t offset = 0;
 		for( ; offset < refParamsCount ; ++offset )
 		{
 			// fusion of DATA
@@ -646,7 +652,7 @@ bool AvmSynchronizationFactory::fusion(const ExecutionData & newED,
 				}
 			}
 			else if( refParamsRF.rawParameter(offset)->
-					getTypeSpecifier()->hasTypeComposite() )
+					getTypeSpecifier().hasTypeComposite() )
 			{
 				// AvmConcurrencyStatement Failed
 				AVM_OS_WARNING_ALERT
@@ -796,8 +802,14 @@ bool AvmSynchronizationFactory::fusion(
 //	BF theNodeCondition = ExpressionSimplifier::simplif_and(
 //			firstRF.getNodeCondition(),
 //			sndRF.getNodeCondition());
-//
-//	newRF->setNodeCondition( theNodeCondition );
+//	if( PathConditionProcessor::isWeakSatisfiable(theNodeCondition) )
+//	{
+//		newRF->setNodeCondition( theNodeCondition );
+//	}
+//	else
+//	{
+//		return( false );
+//	}
 //
 //
 //	// fusion of NodeTimedCondition
@@ -811,8 +823,14 @@ bool AvmSynchronizationFactory::fusion(
 //	BF theNodeTimedCondition = ExpressionSimplifier::simplif_and(
 //			firstRF.getNodeTimedCondition(),
 //			sndRF.getNodeTimedCondition());
-//
-//	newRF->setNodeTimedCondition( theNodeTimedCondition );
+//	if( PathConditionProcessor::isWeakSatisfiable(theNodeTimedCondition) )
+//	{
+//		newRF->setNodeTimedCondition( theNodeTimedCondition );
+//	}
+//	else
+//	{
+//		return( false );
+//	}
 
 
 	// fusion of onSchedule
@@ -968,7 +986,7 @@ bool AvmSynchronizationFactory::fusion(RuntimeForm & aRF,
 			TableOfData::iterator itFirst = firstDataTable->begin();
 			TableOfData::iterator itSnd = sndDataTable->begin();
 
-			avm_size_t offset = 0;
+			std::size_t offset = 0;
 			for( ; itRef != itRefEnd ; ++itRef , ++itFirst, ++itSnd, ++offset )
 			{
 //	AVM_OS_COUT << str_header( aRF.rawVariable(offset) ) << std::endl
@@ -1019,7 +1037,7 @@ bool AvmSynchronizationFactory::fusion(RuntimeForm & aRF,
 					}
 				}
 				else if( aRF.rawVariable(offset)->
-						getTypeSpecifier()->hasTypeComposite() )
+						getTypeSpecifier().hasTypeComposite() )
 				{
 					// AvmConcurrencyStatement Failed
 					AVM_OS_WARNING_ALERT
@@ -1085,8 +1103,8 @@ bool AvmSynchronizationFactory::fusion(RuntimeForm & aRF,
 		// AvmConcurrencyStatement Failed
 		AVM_OS_ERROR_ALERT
 				<< "Runtime< " << aRF.getRID().str()
-				<< "> :> fusion of Data Table FAILED : (refDataTable != NULL) "
-					"&& ((firstDataTable == NULL) || (sndDataTable == NULL)) :\n"
+				<< "> :> fusion of Data Table FAILED : (refDataTable != nullptr) "
+					"&& ((firstDataTable == nullptr) || (sndDataTable == nullptr)) :\n"
 				<< refDataTable->toString(aRF.getVariables(), AVM_TAB1_INDENT)
 				<< firstDataTable->toString(aRF.getVariables(), AVM_TAB1_INDENT)
 				<< sndDataTable->toString(aRF.getVariables(), AVM_TAB1_INDENT)
@@ -1107,7 +1125,7 @@ BF AvmSynchronizationFactory::fusionArrayData(const RuntimeForm & aRF,
 			new ArrayBF(refArray->getTypeSpecifier(), refArray->size());
 	BF bfArray( syncArray );
 
-	for( avm_size_t offset = 0 ; offset < syncArray->size() ; ++offset )
+	for( std::size_t offset = 0 ; offset < syncArray->size() ; ++offset )
 	{
 		//??? TABLEAUX
 		if( refArray->at(offset) == firstArray->at(offset) )
@@ -1152,7 +1170,7 @@ BF AvmSynchronizationFactory::fusionArrayData(const RuntimeForm & aRF,
 			}
 		}
 //		else if( aRF.getVariable(i)->
-//				getTypeSpecifier()->isTypedComposite() )
+//				getTypeSpecifier().isTypedComposite() )
 //		{
 //			// AvmConcurrencyStatement Failed
 //			AVM_OS_WARNING_ALERT
@@ -1217,7 +1235,7 @@ bool AvmSynchronizationFactory::fusion(RuntimeForm & aRF,
 			TableOfBufferT::const_iterator itFirst = firstBufferTable.begin();
 			TableOfBufferT::const_iterator itSnd = sndBufferTable.begin();
 
-			avm_size_t offset = 0;
+			std::size_t offset = 0;
 			for( ; itRef != itRefEnd ; ++itRef , ++itFirst, ++itSnd, ++offset )
 			{
 				if( (*itRef)->equals( *(*itFirst) ) )
@@ -1270,8 +1288,8 @@ bool AvmSynchronizationFactory::fusion(RuntimeForm & aRF,
 		// AvmConcurrencyStatement Failed
 		AVM_OS_ERROR_ALERT
 				<< "Runtime< " << aRF.getRID().str()
-				<< "> :> fusion of Buffer Table FAILED : (refBufferTable != NULL) "
-				"&& ((firstBufferTable == NULL) || (sndBufferTable == NULL)) :\n"
+				<< "> :> fusion of Buffer Table FAILED : (refBufferTable != nullptr) "
+				"&& ((firstBufferTable == nullptr) || (sndBufferTable == nullptr)) :\n"
 				<< refBufferTable.toString(AVM_TAB1_INDENT)
 				<< firstBufferTable.toString(AVM_TAB1_INDENT)
 				<< sndBufferTable.toString(AVM_TAB1_INDENT)
@@ -1315,8 +1333,8 @@ bool AvmSynchronizationFactory::fusion(RuntimeForm & aRF,
 		// AvmConcurrencyStatement Failed
 		AVM_OS_ERROR_ALERT
 				<< "Runtime< " << aRF.getRID().str()
-				<< "> :> fusion of Router FAILED : (refRouter != NULL) && "
-				"((firstRouter == NULL) || (sndRouter == NULL)) :\n"
+				<< "> :> fusion of Router FAILED : (refRouter != nullptr) && "
+				"((firstRouter == nullptr) || (sndRouter == nullptr)) :\n"
 				<< refRouter.toString(AVM_TAB1_INDENT)
 				<< firstRouter.toString(AVM_TAB1_INDENT)
 				<< sndRouter.toString(AVM_TAB1_INDENT)
@@ -1333,7 +1351,7 @@ bool AvmSynchronizationFactory::fusion(RuntimeForm & aRF,
 
 
 
-BF AvmSynchronizationFactory::syncBF(Operator * buildOp,
+BF AvmSynchronizationFactory::syncBF(const Operator * buildOp,
 		const BF & refBF, const BF & frstBF, const BF & sndBF)
 {
 	if( refBF.invalid() )
@@ -1353,33 +1371,33 @@ BF AvmSynchronizationFactory::syncBF(Operator * buildOp,
 	}
 
 	else if( frstBF.is< AvmCode >() && sndBF.is< AvmCode >() &&
-			(frstBF.to_ptr< AvmCode >()->getOperator() ==
-					sndBF.to_ptr< AvmCode >()->getOperator()) )
+			(frstBF.to< AvmCode >().getOperator() ==
+					sndBF.to< AvmCode >().getOperator()) )
 	{
-		AvmCode * frstCode = frstBF.to_ptr< AvmCode >();
-		AvmCode * sndCode  = sndBF.to_ptr< AvmCode >();
+		const AvmCode & frstCode = frstBF.to< AvmCode >();
+		const AvmCode & sndCode  = sndBF.to< AvmCode >();
 
-		avm_size_t frstSize = frstCode->size();
-		avm_size_t sndSize  = sndCode->size();
+		std::size_t frstSize = frstCode.size();
+		std::size_t sndSize  = sndCode.size();
 
 
-		if( refBF.valid() && refBF.isEQ(frstCode->first()) &&
-				refBF.isEQ(sndCode->first()) )
+		if( refBF.valid() && refBF.isEQ(frstCode.first()) &&
+				refBF.isEQ(sndCode.first()) )
 		{
 			BFCode newCode(buildOp);
-			BFCode buildCode(frstCode->getOperator(), refBF, newCode);
+			BFCode buildCode(frstCode.getOperator(), refBF, newCode);
 
 			if( frstSize == 2 )
 			{
-				newCode->append( frstCode->second() );
+				newCode->append( frstCode.second() );
 			}
 			else if( frstSize > 2 )
 			{
-				BFCode restCode(frstCode->getOperator());
+				BFCode restCode(frstCode.getOperator());
 
-				for( avm_size_t offset = 1 ; offset < frstSize ; ++offset )
+				for( std::size_t offset = 1 ; offset < frstSize ; ++offset )
 				{
-					restCode->append( frstCode->at(offset) );
+					restCode->append( frstCode.at(offset) );
 				}
 
 				newCode->append( restCode );
@@ -1387,22 +1405,19 @@ BF AvmSynchronizationFactory::syncBF(Operator * buildOp,
 
 			if( sndSize == 2 )
 			{
-				newCode->append( sndCode->second() );
+				newCode->append( sndCode.second() );
 			}
 			else if( sndSize > 2 )
 			{
-				BFCode restCode(sndCode->getOperator());
+				BFCode restCode(sndCode.getOperator());
 
-				for( avm_size_t offset = 1 ; offset < sndSize ; ++offset )
+				for( std::size_t offset = 1 ; offset < sndSize ; ++offset )
 				{
-					restCode->append( sndCode->at(offset) );
+					restCode->append( sndCode.at(offset) );
 				}
 
 				newCode->append( restCode );
 			}
-
-//AVM_OS_DEBUG << "sync:> " << AvmCodeFactory::flattenCode( buildCode ).str(" ")
-//			<< std::endl;
 
 			return( AvmCodeFactory::flattenCode( buildCode ) );
 		}
@@ -1410,17 +1425,17 @@ BF AvmSynchronizationFactory::syncBF(Operator * buildOp,
 		{
 			const BFCode & refCode  = refBF.bfCode();
 
-			if( refCode->getOperator() == sndCode->getOperator() )
+			if( refCode->getOperator() == sndCode.getOperator() )
 			{
-				avm_size_t refSize = refCode->size();
+				std::size_t refSize = refCode->size();
 
 				BFCode buildCode( refCode->getOperator() );
 
-				avm_size_t k = 0;
+				std::size_t k = 0;
 				for( ; (k < refSize) && (k < frstSize) && (k < sndSize) ; ++k )
 				{
-					if( frstCode->at(k).isEQ(sndCode->at(k)) &&
-							refCode->at(k).isEQ(sndCode->at(k)))
+					if( frstCode.at(k).isEQ(sndCode.at(k)) &&
+							refCode->at(k).isEQ(sndCode.at(k)))
 					{
 						buildCode->append( refCode->at(k) );
 					}
@@ -1435,15 +1450,15 @@ BF AvmSynchronizationFactory::syncBF(Operator * buildOp,
 
 				if( frstSize == (k + 1) )
 				{
-					newCode->append( frstCode->last() );
+					newCode->append( frstCode.last() );
 				}
 				else if( frstSize != k )
 				{
-					BFCode restCode(frstCode->getOperator());
+					BFCode restCode(frstCode.getOperator());
 
-					for( avm_size_t idx = k ; idx < frstSize ; ++idx )
+					for( std::size_t idx = k ; idx < frstSize ; ++idx )
 					{
-						restCode->append( frstCode->at(idx) );
+						restCode->append( frstCode.at(idx) );
 					}
 
 					newCode->append( restCode );
@@ -1451,37 +1466,34 @@ BF AvmSynchronizationFactory::syncBF(Operator * buildOp,
 
 				if( sndSize == (k + 1) )
 				{
-					newCode->append( sndCode->last() );
+					newCode->append( sndCode.last() );
 				}
 				else if( sndSize != k )
 				{
-					BFCode restCode(sndCode->getOperator());
+					BFCode restCode(sndCode.getOperator());
 
-					for( avm_size_t idx = k ; idx < sndSize ; ++idx )
+					for( std::size_t idx = k ; idx < sndSize ; ++idx )
 					{
-						restCode->append( sndCode->at(idx) );
+						restCode->append( sndCode.at(idx) );
 					}
 
 					newCode->append( restCode );
 				}
 
-//AVM_OS_DEBUG << "sync:> " << AvmCodeFactory::flattenCode( buildCode ).str(" ")
-//		<< std::endl;
-
 				return( AvmCodeFactory::flattenCode( buildCode ) );
 			}
 		}
 
-		if( frstCode->first().isEQ(sndCode->first()) )
+		if( frstCode.first().isEQ(sndCode.first()) )
 		{
-			BFCode buildCode(frstCode->getOperator(),
-					frstCode->first());
+			BFCode buildCode(frstCode.getOperator(),
+					frstCode.first());
 
-			avm_size_t k = 1;
+			std::size_t k = 1;
 			for( ; (k < frstSize) && (k < sndSize) &&
-					frstCode->at(k).isEQ(sndCode->at(k)) ; ++k )
+					frstCode.at(k).isEQ(sndCode.at(k)) ; ++k )
 			{
-				buildCode->append( frstCode->at(k) );
+				buildCode->append( frstCode.at(k) );
 			}
 
 			BFCode newCode(buildOp);
@@ -1489,15 +1501,15 @@ BF AvmSynchronizationFactory::syncBF(Operator * buildOp,
 
 			if( frstSize == (k + 1) )
 			{
-				newCode->append( frstCode->last() );
+				newCode->append( frstCode.last() );
 			}
 			else if( frstSize != k )
 			{
-				BFCode restCode(frstCode->getOperator());
+				BFCode restCode(frstCode.getOperator());
 
-				for( avm_size_t idx = k ; idx < frstSize ; ++idx )
+				for( std::size_t idx = k ; idx < frstSize ; ++idx )
 				{
-					restCode->append( frstCode->at(idx) );
+					restCode->append( frstCode.at(idx) );
 				}
 
 				newCode->append( restCode );
@@ -1505,15 +1517,15 @@ BF AvmSynchronizationFactory::syncBF(Operator * buildOp,
 
 			if( sndSize == (k + 1) )
 			{
-				newCode->append( sndCode->last() );
+				newCode->append( sndCode.last() );
 			}
 			else if( sndSize != k )
 			{
-				BFCode restCode(sndCode->getOperator());
+				BFCode restCode(sndCode.getOperator());
 
-				for( avm_size_t idx = k ; idx < sndSize ; ++idx )
+				for( std::size_t idx = k ; idx < sndSize ; ++idx )
 				{
-					restCode->append( sndCode->at(idx) );
+					restCode->append( sndCode.at(idx) );
 				}
 
 				newCode->append( restCode );
@@ -1531,7 +1543,7 @@ BF AvmSynchronizationFactory::syncBF(Operator * buildOp,
 
 
 BF AvmSynchronizationFactory::buildRunnableElementTrace(
-		Operator * buildOp, const BF & refRunnableElementTrace,
+		const Operator * buildOp, const BF & refRunnableElementTrace,
 		const BF & frstRunnableElementTrace, const BF & sndRunnableElementTrace)
 {
 	return( syncBF(buildOp, refRunnableElementTrace,
@@ -1539,7 +1551,7 @@ BF AvmSynchronizationFactory::buildRunnableElementTrace(
 }
 
 BF AvmSynchronizationFactory::buildIOElementTrace(
-		Operator * buildOp, const BF & refIOElementTrace,
+		const Operator * buildOp, const BF & refIOElementTrace,
 		const BF & frstIOElementTrace, const BF & sndIOElementTrace)
 {
 	return( syncBF(buildOp, refIOElementTrace,

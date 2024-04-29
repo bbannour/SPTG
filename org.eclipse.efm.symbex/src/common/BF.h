@@ -32,7 +32,7 @@
 	#define AVM_DECLARE_DEBUG_BF_PTR         public: std::string dbgPTR;
 
 
-	#define AVM_STR_BF_PTR( ptr )   ( (ptr != NULL) ? ptr->str() : "BF<null>" )
+	#define AVM_STR_BF_PTR( ptr )   ( (ptr != nullptr) ? ptr->str() : "BF<null>" )
 
 	#define AVM_INIT_DEBUG_BF_PTR_NULL       , dbgPTR( "BF<null>" )
 
@@ -118,7 +118,7 @@ public:
 	}
 
 
-	static avm_uint64_t INSTANCE_COUNTER_ASP;
+	static std::uint64_t INSTANCE_COUNTER_ASP;
 
 	template< class U >
 	BF(const SmartPointer< U , DestroyElementPolicy > & other)
@@ -168,10 +168,10 @@ public:
 
 
 	virtual bool isInt32() const;
-	virtual avm_int32_t toInt32() const;
+	virtual std::int32_t toInt32() const;
 
 	virtual bool isInt64() const;
-	virtual avm_int64_t toInt64() const;
+	virtual std::int64_t toInt64() const;
 
 
 	virtual bool isInteger() const;
@@ -265,7 +265,7 @@ public:
 
 	void incrRefCount() const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			mPTR->incrRefCount();
 		}
@@ -316,20 +316,20 @@ public:
 //				<< "raw_pointer in BF::is< T >() !!!"
 //				<< SEND_EXIT;
 
-		return( (mPTR != NULL) && mPTR->is< T >() );
+		return( (mPTR != nullptr) && mPTR->is< T >() );
 	}
 
 	template<class T >
 	inline bool isnot() const
 	{
-		return(( mPTR == NULL) || mPTR->isnot< T >() );
+		return(( mPTR == nullptr) || mPTR->isnot< T >() );
 	}
 
 	// Check if BF is a handle to a T, not including base classes.
 	template< class T >
 	inline bool is_weakly() const
 	{
-		return( (mPTR == NULL) || mPTR->is< T >() );
+		return( (mPTR == nullptr) || mPTR->is< T >() );
 	}
 
 	// Check if BF is a handle to a T, not including base classes.
@@ -340,13 +340,13 @@ public:
 //				<< "raw_pointer in BF::is_exactly< T >() !!!"
 //				<< SEND_EXIT;
 
-		return( (mPTR != NULL) && mPTR->is_exactly< T >() );
+		return( (mPTR != nullptr) && mPTR->is_exactly< T >() );
 	}
 
 	template< class T >
 	inline bool isnot_exactly() const
 	{
-		return( (mPTR == NULL) || mPTR->isnot_exactly< T >() );
+		return( (mPTR == nullptr) || mPTR->isnot_exactly< T >() );
 	}
 
 	// Check if BF is a handle to a T, not including specific classes.
@@ -357,15 +357,36 @@ public:
 //				<< "raw_pointer in BF::is_strictly< T >() !!!"
 //				<< SEND_EXIT;
 
-		return( (mPTR != NULL) && mPTR->is_strictly< T >() );
+		return( (mPTR != nullptr) && mPTR->is_strictly< T >() );
 	}
 
 	template< class T >
 	inline bool isnot_strictly() const
 	{
-		return( (mPTR == NULL) || mPTR->isnot_strictly< T >() );
+		return( (mPTR == nullptr) || mPTR->isnot_strictly< T >() );
 	}
 
+
+	// cast BF as specified reference
+	template< class T >
+	inline T & as()
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
+				<< "raw_pointer in BF::as_ref< T >() !!!"
+				<< SEND_EXIT;
+
+		return( mPTR->as< T >() );
+	}
+
+	template< class T >
+	inline const T & as() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
+				<< "raw_pointer in BF::as< T >() !!!"
+				<< SEND_EXIT;
+
+		return( mPTR->as< T >() );
+	}
 
 	// cast BF as specified pointer
 	template< class T >
@@ -376,41 +397,26 @@ public:
 				<< "raw_pointer in BF::as_ptr< T >() !!!"
 				<< SEND_EXIT;
 
-		return( (mPTR != NULL) ? mPTR->as< T >() : NULL );
+		return( (mPTR != nullptr) ? mPTR->as_ptr< T >() : nullptr );
+	}
+
+
+	template< class T >
+	inline T & to()
+	{
+		return( mPTR->to< T >() );
+	}
+
+	template< class T >
+	inline const T & to() const
+	{
+		return( mPTR->to< T >() );
 	}
 
 	template< class T >
 	inline T * to_ptr() const
 	{
-		return( mPTR->to< T >() );
-	}
-
-
-	// cast BF as specified reference
-	template< class T >
-	inline T & as_ref()
-	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-				<< "raw_pointer in BF::as_ref< T >() !!!"
-				<< SEND_EXIT;
-
-		return( *( mPTR->as< T >() ) );
-	}
-
-	template< class T >
-	inline const T & as_ref() const
-	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-				<< "raw_pointer in BF::as< T >() !!!"
-				<< SEND_EXIT;
-
-		return( *( mPTR->as< T >() ) );
-	}
-
-	template< class T >
-	inline const T & to_ref() const
-	{
-		return( *( mPTR->as< T >() ) );
+		return( mPTR->to_ptr< T >() );
 	}
 
 
@@ -469,18 +475,18 @@ public:
 	 * for container of BF
 	 */
 	// Generally with range check
-	inline const BF & at(avm_size_t offset) const
+	inline const BF & at(std::size_t offset) const
 	{
 		return( mPTR->at(offset) );
 	}
 
-	inline BF & at(avm_size_t offset)
+	inline BF & at(std::size_t offset)
 	{
 		return( mPTR->at(offset) );
 	}
 
 	// move to contained element at position < offset >
-	inline void moveAt(avm_size_t offset)
+	inline void moveAt(std::size_t offset)
 	{
 		mPTR->decrRefCount();
 
@@ -491,13 +497,13 @@ public:
 
 
 	// Generally without range check
-	inline BF & operator[](avm_size_t offset)
+	inline BF & operator[](std::size_t offset)
 	{
 		return( mPTR->operator[](offset) );
 	}
 
 	// Generally without range check
-	inline const BF & operator[](avm_size_t offset) const
+	inline const BF & operator[](std::size_t offset) const
 	{
 		return( mPTR->operator[](offset) );
 	}
@@ -509,7 +515,7 @@ public:
 		return( *this );
 	}
 
-	inline BF & getWritable(avm_size_t offset)
+	inline BF & getWritable(std::size_t offset)
 	{
 		return( mPTR->getWritable(offset) );
 	}
@@ -519,13 +525,13 @@ public:
 		base_this_type::makeWritable();
 	}
 
-	inline void makeWritable(avm_size_t offset)
+	inline void makeWritable(std::size_t offset)
 	{
 		mPTR->makeWritable( offset );
 	}
 
 	// move to writable contained element at position < offset >
-	inline void moveAtWritable(avm_size_t offset)
+	inline void moveAtWritable(std::size_t offset)
 	{
 		mPTR->decrRefCount();
 
@@ -540,19 +546,19 @@ public:
 		base_this_type::release_acquire( bf.mPTR );
 	}
 
-	inline void set(avm_size_t offset, const BF & bf)
+	inline void set(std::size_t offset, const BF & bf)
 	{
 		mPTR->set(offset, bf);
 	}
 
-//	inline void mw_set(avm_size_t offset, const BF & bf)
+//	inline void mw_set(std::size_t offset, const BF & bf)
 //	{
 //		base_this_type::makeWritable();
 //		mPTR->set(offset, bf);
 //	}
 
 
-	inline avm_size_t size() const
+	inline std::size_t size() const
 	{
 		return( mPTR->size() );
 	}
@@ -580,7 +586,7 @@ public:
 //	// Type
 //	BF & operator=(const Type & aType);
 
-	inline BF & operator=(pointer aPtr)
+	inline BF & operator=(pointer_t aPtr)
 	{
 		if( mPTR != aPtr )
 		{
@@ -592,7 +598,7 @@ public:
 	}
 
 
-	inline void renew(pointer aPtr)
+	inline void renew(pointer_t aPtr)
 	{
 		if( mPTR != aPtr )
 		{
@@ -600,7 +606,7 @@ public:
 		}
 	}
 
-	inline void newincr(pointer aPtr)
+	inline void newincr(pointer_t aPtr)
 	{
 		if( mPTR != aPtr )
 		{
@@ -612,7 +618,6 @@ public:
 	 * COMPARISON
 	 * OPERATOR
 	 */
-
 	inline bool operator==(const BF & other) const
 	{
 		return( (mPTR == other.mPTR) || isEQ(other) );
@@ -626,7 +631,7 @@ public:
 	inline bool operator==(const Element * aPtr) const
 	{
 		return( (mPTR == aPtr) ||
-				((aPtr != NULL) && (mPTR != NULL) && mPTR->isEQ(*aPtr)) );
+				((aPtr != nullptr) && (mPTR != nullptr) && mPTR->isEQ(*aPtr)) );
 	}
 
 
@@ -643,13 +648,18 @@ public:
 	inline bool operator!=(const Element * aPtr) const
 	{
 		return( (mPTR != aPtr) &&
-				((mPTR == NULL) || (aPtr == NULL) || mPTR->isNEQ(*aPtr)) );
+				((mPTR == nullptr) || (aPtr == nullptr) || mPTR->isNEQ(*aPtr)) );
 	}
 
 
 	/**
 	 * POINTER TRIVIALLY EQUAL COMPARISON
 	 */
+	inline bool isTEQ(const Element & bf) const
+	{
+		return( mPTR == (& bf) );
+	}
+
 	inline bool isTEQ(const Element * bf) const
 	{
 		return( mPTR == bf );
@@ -660,6 +670,11 @@ public:
 		return( mPTR == other.mPTR );
 	}
 
+
+	inline bool isNTEQ(const Element & bf) const
+	{
+		return( mPTR != (& bf) );
+	}
 
 	inline bool isNTEQ(const Element * bf) const
 	{
@@ -691,14 +706,14 @@ public:
 	bool strEQ(const BF & other) const
 	{
 		return( (mPTR == other.mPTR)
-				|| ((mPTR != NULL) && (other.mPTR != NULL)
+				|| ((mPTR != nullptr) && (other.mPTR != nullptr)
 					&& (mPTR->str() == other.mPTR->str())) );
 	}
 
 	bool strNEQ(const BF & other) const
 	{
 		return( (mPTR != other.mPTR)
-				&& ((mPTR == NULL) || (other.mPTR == NULL)
+				&& ((mPTR == nullptr) || (other.mPTR == nullptr)
 					|| (mPTR->str() != other.mPTR->str())) );
 	}
 
@@ -707,7 +722,7 @@ public:
 	/**
 	 * BUILD NEW EXPRESSION
 	 */
-	BF & opExpr(Operator * anOperator, const BF & arg);
+	BF & opExpr(const Operator * anOperator, const BF & arg);
 
 	BF & eqExpr(const BF & arg);
 	BF & neqExpr(const BF & arg);
@@ -748,7 +763,7 @@ public:
 	 */
 	virtual void toStream(OutStream & os) const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			mPTR->toStream( os );
 		}
@@ -760,7 +775,7 @@ public:
 
 	virtual void toStream(PairOutStream & os) const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			mPTR->toStream( os.OS1 );
 			mPTR->toStream( os.OS2 );
@@ -773,7 +788,7 @@ public:
 
 	virtual void toStream(TripleOutStream & os) const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			mPTR->toStream( os.OS1 );
 			mPTR->toStream( os.OS2 );
@@ -838,7 +853,7 @@ public:
 
 	inline virtual std::string str() const
 	{
-		return( ( mPTR != NULL ) ? mPTR->str() : ("BF<null>") );
+		return( ( mPTR != nullptr ) ? mPTR->str() : ("BF<null>") );
 	}
 
 	inline virtual std::string wrapStr(
@@ -855,7 +870,7 @@ public:
 	// LEFT TRIM the result
 	inline virtual std::string _str() const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			std::string strTmp = mPTR->str();
 
@@ -869,7 +884,7 @@ public:
 	// RIGTH TRIM the result
 	inline virtual std::string str_() const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			std::string strTmp = mPTR->str();
 
@@ -883,7 +898,7 @@ public:
 	// LEFT & RIGTH TRIM the result
 	inline virtual std::string _str_() const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			std::string strTmp = mPTR->str();
 
@@ -898,13 +913,13 @@ public:
 	inline virtual std::string strNum(
 			uint8_t precision = AVM_MUMERIC_PRECISION) const
 	{
-		return( ( mPTR != NULL ) ? mPTR->strNum(precision) : "BF<null>" );
+		return( ( mPTR != nullptr ) ? mPTR->strNum(precision) : "BF<null>" );
 	}
 
 
 	inline virtual void AVM_DEBUG_REF_COUNTER(OutStream & os) const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			mPTR->AVM_DEBUG_REF_COUNTER(os);
 		}
@@ -916,7 +931,7 @@ public:
 
 	inline virtual std::string AVM_DEBUG_REF_COUNTER() const
 	{
-		return( ( mPTR != NULL ) ?
+		return( ( mPTR != nullptr ) ?
 				mPTR->AVM_DEBUG_REF_COUNTER() : "BF<null, ref:0>" );
 	}
 
@@ -944,6 +959,14 @@ private:
  * operator<<
  */
 AVM_OS_STREAM( BF )
+
+////////////////////////////////////////////////////////////////////////////////
+// INCR_BF
+////////////////////////////////////////////////////////////////////////////////
+
+
+#define INCR_BF(A)   \
+		sep::BF( sep::incrReferenceCount(A) )
 
 
 }

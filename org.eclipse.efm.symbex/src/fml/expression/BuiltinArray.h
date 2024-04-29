@@ -42,9 +42,9 @@ protected:
 	/**
 	 * ATTRIBUTES
 	 */
-	BaseTypeSpecifier * mTypeSpecifier;
+	const BaseTypeSpecifier * mTypeSpecifier;
 
-	avm_size_t mSize;
+	std::size_t mSize;
 
 
 public:
@@ -54,9 +54,9 @@ public:
 	 * Default
 	 */
 	BuiltinArray(class_kind_t aTypeId,
-			BaseTypeSpecifier * aTypeSpecifier, avm_size_t aSize = 0)
+			const BaseTypeSpecifier & aTypeSpecifier, std::size_t aSize = 0)
 	: BuiltinCollection( aTypeId ),
-	mTypeSpecifier( aTypeSpecifier ),
+	mTypeSpecifier( & aTypeSpecifier ),
 	mSize( aSize )
 	{
 		//!!! NOTHING
@@ -87,76 +87,80 @@ public:
 	 * GETTER - SETTER
 	 * mTypeSpecifier
 	 */
-	inline BaseTypeSpecifier * getTypeSpecifier() const
+	inline const BaseTypeSpecifier & getTypeSpecifier() const
 	{
-		return( mTypeSpecifier );
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTypeSpecifier )
+				<< "TypeSpecifier for " << toString() << "!!!"
+				<< SEND_EXIT;
+
+		return( * mTypeSpecifier );
 	}
 
 	inline avm_type_specifier_kind_t getTypeSpecifierKind() const
 	{
-		return( (mTypeSpecifier != NULL) ?
+		return( (mTypeSpecifier != nullptr) ?
 				mTypeSpecifier->getTypeSpecifierKind() : TYPE_NULL_SPECIFIER );
 	}
 
 	inline bool hasTypeSpecifier() const
 	{
-		return( mTypeSpecifier != NULL );
+		return( mTypeSpecifier != nullptr );
 	}
 
-
-	inline void setTypeSpecifier(BaseTypeSpecifier * aTypeSpecifier)
+//!@?MISUSED: TO DELETE
+	inline void setTypeSpecifier(const BaseTypeSpecifier & aTypeSpecifier)
 	{
-		mTypeSpecifier = aTypeSpecifier;
+		mTypeSpecifier = (& aTypeSpecifier);
 	}
 
 
 	// size is constant
-	inline avm_size_t size() const
+	inline std::size_t size() const override
 	{
 		return( mSize );
 	}
 
-	inline avm_size_t capacity() const
+	inline std::size_t capacity() const override
 	{
 		return( mSize );
 	}
 
-	inline void setCapacity(long aCapacity)
+	inline void setCapacity(long aCapacity) override
 	{
 		AVM_OS_FATAL_ERROR_EXIT << "NO SENSE HERE !!!" << SEND_EXIT;
 	}
 
 
-	inline bool empty() const
+	inline bool empty() const override
 	{
 		return( mSize == 0 );
 	}
 
-	inline bool nonempty() const
+	inline bool nonempty() const override
 	{
 		return( mSize > 0 );
 	}
 
-	inline bool singleton() const
+	inline bool singleton() const override
 	{
 		return( mSize == 1 );
 	}
 
-	inline bool populated() const
+	inline bool populated() const override
 	{
 		return( mSize > 1 );
 	}
 
 
 
-	inline virtual bool contains(const BF & arg) const
+	inline virtual bool contains(const BF & arg) const override
 	{
 		return( false );
 	}
 
 
 	// CAST
-	virtual ArrayBF * getArrayBF() = 0;
+	virtual ArrayBF * getArrayBF() const = 0;
 
 
 	static class_kind_t getArrayTypeId(class_kind_t aTypeId);
@@ -170,7 +174,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual std::string str(avm_size_t offset) const = 0;
+	virtual std::string str(std::size_t offset) const = 0;
 
 };
 
@@ -208,10 +212,10 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	_BuiltinArray_(class_kind_t aTypeId, BaseTypeSpecifier * aTypeSpecifier,
-			avm_size_t aSize = 0)
+	_BuiltinArray_(class_kind_t aTypeId,
+			const BaseTypeSpecifier & aTypeSpecifier, std::size_t aSize = 0)
 	: BuiltinArray( aTypeId , aTypeSpecifier, aSize ),
-	mTable( NULL )
+	mTable( nullptr )
 	{
 		alloc( aSize );
 	}
@@ -222,7 +226,7 @@ public:
 	 */
 	_BuiltinArray_(const _BuiltinArray_ & anArray)
 	: BuiltinArray( anArray ),
-	mTable( NULL )
+	mTable( nullptr )
 	{
 		alloc( anArray );
 	}
@@ -232,18 +236,20 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	_BuiltinArray_(class_kind_t aTypeId, BaseTypeSpecifier * aTypeSpecifier,
-			avm_size_t aSize, T defaultValue)
+	_BuiltinArray_(class_kind_t aTypeId,
+			const BaseTypeSpecifier & aTypeSpecifier,
+			std::size_t aSize, T defaultValue)
 	: BuiltinArray( aTypeId , aTypeSpecifier , aSize ),
-	mTable( NULL )
+	mTable( nullptr )
 	{
 		alloc( aSize , defaultValue );
 	}
 
-	_BuiltinArray_(class_kind_t aTypeId, BaseTypeSpecifier * aTypeSpecifier,
+	_BuiltinArray_(class_kind_t aTypeId,
+			const BaseTypeSpecifier & aTypeSpecifier,
 			const BaseVector & anArray)
 	: BuiltinArray( aTypeId , aTypeSpecifier , anArray.size() ),
-	mTable( NULL )
+	mTable( nullptr )
 	{
 		alloc( anArray );
 	}
@@ -258,12 +264,12 @@ public:
 
 		delete[] ( mTable );
 
-		mTable = NULL;
+		mTable = nullptr;
 	}
 
 	inline virtual void destroyContent()
 	{
-//		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+//		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 //		{
 //			sep::destroy( mTable[offset] );
 //		}
@@ -278,7 +284,7 @@ public:
 
 	void reset(T value)
 	{
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = value;
 		}
@@ -291,19 +297,19 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline void alloc(avm_size_t aSize)
+	inline void alloc(std::size_t aSize)
 	{
 		mSize = aSize;
 
-		mTable = ( (mSize > 0)? (new T[ mSize ]) : NULL );
+		mTable = ( (mSize > 0)? (new T[ mSize ]) : nullptr );
 	}
 
 
-	inline void alloc(avm_size_t aSize, T defaultValue)
+	inline void alloc(std::size_t aSize, T defaultValue)
 	{
 		alloc( aSize );
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = defaultValue;
 		}
@@ -314,7 +320,7 @@ public:
 	{
 		alloc( anArray.size() );
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 //			mTable[offset] = anArray[offset];
 			mTable[offset] = anArray.get(offset);
@@ -326,7 +332,7 @@ public:
 	{
 		alloc( anArray.size() );
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = anArray[offset];
 		}
@@ -340,7 +346,7 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline void realloc(avm_size_t aSize)
+	inline void realloc(std::size_t aSize)
 	{
 		destroyContent();
 
@@ -353,7 +359,7 @@ public:
 	}
 
 
-	inline void realloc(avm_size_t aSize, T defaultValue)
+	inline void realloc(std::size_t aSize, T defaultValue)
 	{
 		destroyContent();
 
@@ -379,7 +385,7 @@ public:
 			alloc( anArray.size() );
 		}
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = anArray[offset];
 		}
@@ -397,7 +403,7 @@ public:
 			alloc( anArray.size() );
 		}
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = anArray[offset];
 		}
@@ -410,11 +416,11 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline void resize(avm_size_t aSize)
+	inline void resize(std::size_t aSize) override
 	{
 		if( mSize > 0 )
 		{
-			avm_size_t oldSize = mSize;
+			std::size_t oldSize = mSize;
 			T * oldTable = mTable;
 
 			alloc( aSize );
@@ -424,7 +430,7 @@ public:
 				aSize = oldSize;
 			}
 
-			for( avm_size_t offset = 0 ; offset < aSize ; ++offset )
+			for( std::size_t offset = 0 ; offset < aSize ; ++offset )
 			{
 				mTable[offset] = oldTable[offset];
 			}
@@ -438,16 +444,16 @@ public:
 		}
 	}
 
-	inline void resize(avm_size_t aSize, T defaultValue)
+	inline void resize(std::size_t aSize, T defaultValue)
 	{
 		if( mSize > 0 )
 		{
-			avm_size_t oldSize = mSize;
+			std::size_t oldSize = mSize;
 			T * oldTable = mTable;
 
 			alloc( aSize );
 
-			avm_size_t offset = 0;
+			std::size_t offset = 0;
 
 			if( aSize > oldSize )
 			{
@@ -472,6 +478,16 @@ public:
 			alloc(aSize, defaultValue);
 		}
 	}
+
+
+	/**
+	 * DATA
+	 */
+	inline T * data() const
+	{
+		return( mTable );
+	}
+
 
 
 	/**
@@ -504,48 +520,50 @@ public:
 	 * GETTER - SETTER
 	 * mTable
 	 */
-//	inline const_reference at(avm_size_t offset) const
+//	inline const_reference at(std::size_t offset) const
 //	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 //
 //		return( mTable[offset] );
 //	}
 
-	inline reference get(avm_size_t offset)
+	inline reference get(std::size_t offset)
 	{
 		return( mTable[offset] );
 	}
 
 
-	inline const_reference get(avm_size_t offset) const
+	inline const_reference get(std::size_t offset) const
 	{
 		return( mTable[offset] );
 	}
 
 
-	inline void set(avm_size_t offset, T arg)
+	inline void set(std::size_t offset, T arg)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 
 		mTable[offset] = arg;
 	}
 
-	inline void set(avm_size_t offset, reference arg)
+	inline void set(std::size_t offset, reference arg)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 
 		mTable[offset] = arg;
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinArray::set;
 
 
 	// operator[]
-//	inline reference operator[](avm_size_t offset)
+//	inline reference operator[](std::size_t offset)
 //	{
 //		return( mTable[offset] );
 //	}
 //
-//	inline const_reference operator[](avm_size_t offset) const
+//	inline const_reference operator[](std::size_t offset) const
 //	{
 //		return( mTable[offset] );
 //	}
@@ -610,7 +628,7 @@ public:
 	 */
 	inline virtual bool contains(T anArray) const
 	{
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			if( mTable[offset] == anArray )
 			{
@@ -620,6 +638,9 @@ public:
 
 		return( false );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinArray::contains;
 
 };
 
@@ -660,43 +681,43 @@ public:
 	 */
 	ArrayBF(const BFVector & anArray);
 
-	ArrayBF(BaseTypeSpecifier * aTypeSpecifier, const BFVector & aVector)
+	ArrayBF(const BaseTypeSpecifier & aTypeSpecifier, const BFVector & aVector)
 	: _BuiltinArray_< BF >(CLASS_KIND_T( ArrayBF ), aTypeSpecifier, aVector),
 	mElementTypeId( ClassKindInfoInitializer::TYPE_UNDEFINED_ID ),
-	mInstruction( NULL )
+	mInstruction( nullptr )
 	{
 		//!!! NOTHING
 	}
 
-	ArrayBF(BaseTypeSpecifier * aTypeSpecifier, avm_size_t aSize = 0)
+	ArrayBF(const BaseTypeSpecifier & aTypeSpecifier, std::size_t aSize = 0)
 	: _BuiltinArray_< BF >(CLASS_KIND_T( ArrayBF ), aTypeSpecifier, aSize),
 	mElementTypeId( ClassKindInfoInitializer::TYPE_UNDEFINED_ID ),
-	mInstruction( NULL )
+	mInstruction( nullptr )
 	{
 		//!!! NOTHING
 	}
 
 
-	ArrayBF(class_kind_t eltTypeId, BaseTypeSpecifier * aTypeSpecifier,
-			avm_size_t aSize = 0)
+	ArrayBF(class_kind_t eltTypeId,
+			const BaseTypeSpecifier & aTypeSpecifier, std::size_t aSize = 0)
 	: _BuiltinArray_< BF >(CLASS_KIND_T( ArrayBF ), aTypeSpecifier, aSize),
 	mElementTypeId( eltTypeId ),
-	mInstruction( NULL )
+	mInstruction( nullptr )
 	{
 		//!!! NOTHING
 	}
 
 
-	ArrayBF(BaseTypeSpecifier * aTypeSpecifier, avm_size_t aSize,
-			const BF & defaultValue)
+	ArrayBF(const BaseTypeSpecifier & aTypeSpecifier,
+			std::size_t aSize, const BF & defaultValue)
 	: _BuiltinArray_< BF >(CLASS_KIND_T( ArrayBF ),	aTypeSpecifier, aSize ),
 	mElementTypeId( defaultValue.classKind() ),
-	mInstruction( NULL )
+	mInstruction( nullptr )
 	{
 		setAll( defaultValue );
 	}
 
-	ArrayBF(BaseTypeSpecifier * aTypeSpecifier, const BF & defaultValue);
+	ArrayBF(const BaseTypeSpecifier & aTypeSpecifier, const BF & defaultValue);
 
 	/**
 	 * DESTRUCTOR
@@ -706,14 +727,14 @@ public:
 		delete[] ( mTable );
 
 		mSize = 0;
-		mTable = NULL;
+		mTable = nullptr;
 	}
 
 
 	/**
 	 * INTERFACE
 	 */
-	bool contains(const BF & arg) const;
+	bool contains(const BF & arg) const override;
 
 	bool startsWith(const ArrayBF & other) const;
 
@@ -725,10 +746,17 @@ public:
 	 */
 	bool isTEQ(const ArrayBF & other) const;
 
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinArray::isTEQ;
+
+
 	inline bool isNTEQ(const ArrayBF & other) const
 	{
 		return( not ArrayBF::isTEQ( other ) );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinArray::isNTEQ;
 
 	/**
 	 * USUAL EQUAL
@@ -737,10 +765,16 @@ public:
 
 	bool isEQ(const ArrayBF & other) const;
 
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinArray::isEQ;
+
 	inline bool isNEQ(const ArrayBF & other) const
 	{
 		return( not isEQ( other ) );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinArray::isNEQ;
 
 	/**
 	 * SYNTAXIC EQUAL
@@ -749,7 +783,6 @@ public:
 
 	inline bool isNSEQ(const ArrayBF & other) const
 	{
-
 		return( not ArrayBF::isSEQ( other ) );
 	}
 
@@ -758,40 +791,14 @@ public:
 	 * GETTER - SETTER
 	 * for container of BF
 	 */
-	inline virtual BF & at(avm_size_t offset)
+	inline virtual BF & at(std::size_t offset) override
 	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 
 		return( mTable[offset] );
 	}
 
-	inline virtual const BF & at(avm_size_t offset) const
-	{
-//		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
-
-		return( mTable[offset] );
-	}
-
-
-	inline BF & operator[](avm_size_t offset)
-	{
-		return( mTable[offset] );
-	}
-
-	inline const BF & operator[](avm_size_t offset) const
-	{
-		return( mTable[offset] );
-	}
-
-
-	inline virtual BF & get(avm_size_t offset)
-	{
-//		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
-
-		return( mTable[offset] );
-	}
-
-	inline virtual const BF & get(avm_size_t offset) const
+	inline virtual const BF & at(std::size_t offset) const override
 	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 
@@ -799,24 +806,50 @@ public:
 	}
 
 
-	inline virtual BF & getWritable(avm_size_t offset)
+	inline BF & operator[](std::size_t offset) override
+	{
+		return( mTable[offset] );
+	}
+
+	inline const BF & operator[](std::size_t offset) const override
+	{
+		return( mTable[offset] );
+	}
+
+
+	inline virtual BF & get(std::size_t offset)
 	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
-
-		mTable[offset].makeWritable();
 
 		return( mTable[offset] );
 	}
 
-	inline virtual void makeWritable(avm_size_t offset)
+	inline virtual const BF & get(std::size_t offset) const
+	{
+//		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
+
+		return( mTable[offset] );
+	}
+
+
+	inline virtual BF & getWritable(std::size_t offset) override
 	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 
 		mTable[offset].makeWritable();
+
+		return( mTable[offset] );
+	}
+
+	inline virtual void makeWritable(std::size_t offset) override
+	{
+//		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
+
+		mTable[offset].makeWritable();
 	}
 
 
-	inline void set(avm_size_t offset, const BF & arg)
+	inline void set(std::size_t offset, const BF & arg) override
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 
@@ -831,7 +864,7 @@ public:
 
 	inline void setAll(const BF & arg)
 	{
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = arg;
 		}
@@ -854,17 +887,17 @@ public:
 
 
 	// CAST
-	ArrayBF * getArrayBF()
+	ArrayBF * getArrayBF() const override
 	{
 		AVM_OS_FATAL_ERROR_EXIT
 				<< "Unexpected invocation of ArrayBF::getArrayBF() !!!"
 				<< SEND_EXIT;
 
-		return( this );
+		return( const_cast< ArrayBF * >( this ) );
 	}
 
 	// COPY
-	void copy(BuiltinArray * intputArray, avm_size_t count);
+	void copy(BuiltinArray * intputArray, std::size_t count);
 
 
 	/**
@@ -878,7 +911,7 @@ public:
 
 	inline bool hasInstruction() const
 	{
-		return( mInstruction != NULL );
+		return( mInstruction != nullptr );
 	}
 
 	inline void setInstruction(AvmInstruction * anInstruction)
@@ -892,15 +925,15 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual std::string str(avm_size_t offset) const
+	inline virtual std::string str(std::size_t offset) const override
 	{
 		return( mTable[offset].str() );
 	}
 
-	virtual std::string str() const;
+	virtual std::string str() const override;
 
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 };
 
@@ -935,11 +968,11 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	ArrayInteger(avm_size_t aSize = 0);
+	ArrayInteger(std::size_t aSize = 0);
 
 
 	// CAST
-	ArrayBF * getArrayBF();
+	ArrayBF * getArrayBF() const override;
 
 
 	/**
@@ -947,18 +980,18 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual std::string str(avm_size_t offset) const
+	inline virtual std::string str(std::size_t offset) const override
 	{
 		return( OSS() << mTable[offset] );
 	}
 
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & os) const override
 	{
 		os << TAB << /*"%i"*/ "[ ";
 		if( mSize > 0 )
 		{
 			os << mTable[0];
-			for( avm_size_t offset = 1 ; offset < mSize ; ++offset )
+			for( std::size_t offset = 1 ; offset < mSize ; ++offset )
 			{
 				os << " , " << mTable[offset];
 			}
@@ -999,14 +1032,14 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	ArrayRational(avm_size_t aSize = 0);
+	ArrayRational(std::size_t aSize = 0);
 
 
 	// CAST
-	ArrayBF * getArrayBF();
+	ArrayBF * getArrayBF() const override;
 
 
-	inline void set(avm_size_t offset,
+	inline void set(std::size_t offset,
 			avm_integer_t aNumer, avm_integer_t aDenom)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
@@ -1014,24 +1047,27 @@ public:
 		mTable[offset] = PairInteger(aNumer, aDenom);
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinArray::set;
+
 	/**
 	 ***************************************************************************
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual std::string str(avm_size_t offset) const
+	inline virtual std::string str(std::size_t offset) const override
 	{
 		return( OSS()  << mTable[offset].first()
 				<< '/' << mTable[offset].second() );
 	}
 
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & os) const override
 	{
 		os << TAB << /*"%r"*/ "[ ";
 		if( mSize > 0 )
 		{
 			os << mTable[0].first() << '/' << mTable[0].second();
-			for( avm_size_t offset = 1 ; offset < mSize ; ++offset )
+			for( std::size_t offset = 1 ; offset < mSize ; ++offset )
 			{
 				os << " , " << mTable[offset].first()
 						<< '/' << mTable[offset].second();
@@ -1068,11 +1104,11 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	ArrayFloat(avm_size_t aSize = 0);
+	ArrayFloat(std::size_t aSize = 0);
 
 
 	// CAST
-	ArrayBF * getArrayBF();
+	ArrayBF * getArrayBF() const override;
 
 
 	/**
@@ -1080,18 +1116,18 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual std::string str(avm_size_t offset) const
+	inline virtual std::string str(std::size_t offset) const override
 	{
 		return( OSS() << mTable[offset] );
 	}
 
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & os) const override
 	{
 		os << TAB << /*"%f"*/ "[ ";
 		if( mSize > 0 )
 		{
 			os << mTable[0];
-			for( avm_size_t offset = 1 ; offset < mSize ; ++offset )
+			for( std::size_t offset = 1 ; offset < mSize ; ++offset )
 			{
 				os << " , " << mTable[offset];
 			}
@@ -1127,11 +1163,11 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	ArrayBoolean(avm_size_t aSize = 0);
+	ArrayBoolean(std::size_t aSize = 0);
 
 
 	// CAST
-	ArrayBF * getArrayBF();
+	ArrayBF * getArrayBF() const override;
 
 
 	/**
@@ -1139,18 +1175,18 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual std::string str(avm_size_t offset) const
+	inline virtual std::string str(std::size_t offset) const override
 	{
 		return( mTable[offset] ? "true" : "false" );
 	}
 
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & os) const override
 	{
 		os << TAB << /*"%b"*/ "[ ";
 		if( mSize > 0 )
 		{
 			os << (mTable[0] ? "true" : "false");
-			for( avm_size_t offset = 1 ; offset < mSize ; ++offset )
+			for( std::size_t offset = 1 ; offset < mSize ; ++offset )
 			{
 				os << " , " << (mTable[offset] ? "true" : "false");
 			}
@@ -1186,11 +1222,11 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	ArrayCharacter(avm_size_t aSize = 0);
+	ArrayCharacter(std::size_t aSize = 0);
 
 
 	// CAST
-	ArrayBF * getArrayBF();
+	ArrayBF * getArrayBF() const override;
 
 
 	/**
@@ -1198,19 +1234,19 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual std::string str(avm_size_t offset) const
+	inline virtual std::string str(std::size_t offset) const override
 	{
 		return( OSS() << mTable[offset] );
 	}
 
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & os) const override
 	{
 		os << TAB << /*"%c"*/ "[ ";
 		if( mSize > 0 )
 		{
 			os << "'" << mTable[0] << "'";
 
-			for( avm_size_t offset = 1 ; offset < mSize ; ++offset )
+			for( std::size_t offset = 1 ; offset < mSize ; ++offset )
 			{
 				os << " , '" << mTable[offset] << "'";
 			}
@@ -1245,11 +1281,11 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	ArrayString(avm_size_t aSize = 0);
+	ArrayString(std::size_t aSize = 0);
 
 
 	// CAST
-	ArrayBF * getArrayBF();
+	ArrayBF * getArrayBF() const override;
 
 
 	/**
@@ -1257,20 +1293,20 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual std::string str(avm_size_t offset) const
+	inline virtual std::string str(std::size_t offset) const override
 	{
 		return( OSS() << "\"" << mTable[offset] << "\"" );
 //		return( OSS() << mTable[offset] );
 	}
 
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & os) const override
 	{
 		os << TAB << /*"%s"*/ "[ ";
 		if( mSize > 0 )
 		{
 			os << "\"" << mTable[0] << "\"";
 
-			for( avm_size_t offset = 1 ; offset < mSize ; ++offset )
+			for( std::size_t offset = 1 ; offset < mSize ; ++offset )
 			{
 				os << " , \"" << mTable[offset] << "\"";
 			}
@@ -1305,11 +1341,11 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	ArrayIdentifier(avm_size_t aSize = 0);
+	ArrayIdentifier(std::size_t aSize = 0);
 
 
 	// CAST
-	ArrayBF * getArrayBF();
+	ArrayBF * getArrayBF() const override;
 
 
 	/**
@@ -1317,18 +1353,18 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual std::string str(avm_size_t offset) const
+	inline virtual std::string str(std::size_t offset) const override
 	{
 		return( OSS() << mTable[offset] );
 	}
 
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & os) const override
 	{
 		os << TAB << /*"%id"*/ "[ ";
 		if( mSize > 0 )
 		{
 			os << mTable[0];
-			for( avm_size_t offset = 1 ; offset < mSize ; ++offset )
+			for( std::size_t offset = 1 ; offset < mSize ; ++offset )
 			{
 				os << " , " << mTable[offset];
 			}
@@ -1364,11 +1400,11 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	ArrayQualifiedIdentifier(avm_size_t aSize = 0);
+	ArrayQualifiedIdentifier(std::size_t aSize = 0);
 
 
 	// CAST
-	ArrayBF * getArrayBF();
+	ArrayBF * getArrayBF() const override;
 
 
 	/**
@@ -1376,18 +1412,18 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual std::string str(avm_size_t offset) const
+	inline virtual std::string str(std::size_t offset) const override
 	{
 		return( OSS() << mTable[offset] );
 	}
 
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & os) const override
 	{
 		os << TAB << /*"%ufi"*/ "[ ";
 		if( mSize > 0 )
 		{
 			os << mTable[0];
-			for( avm_size_t offset = 1 ; offset < mSize ; ++offset )
+			for( std::size_t offset = 1 ; offset < mSize ; ++offset )
 			{
 				os << " , " << mTable[offset];
 			}

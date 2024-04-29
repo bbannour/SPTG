@@ -19,24 +19,14 @@
 #include <fml/common/ObjectElement.h>
 #include <fml/workflow/WPropertyImpl.h>
 
-#include <common/AvmPointer.h>
 #include <common/BF.h>
 
 #include <collection/Vector.h>
 
-//#include <fml/builtin/Identifier.h>
-//#include <fml/builtin/QualifiedIdentifier.h>
-//#include <fml/builtin/String.h>
-//
-//#include <fml/numeric/Float.h>
-//#include <fml/numeric/Integer.h>
-//#include <fml/numeric/Rational.h>
-
 #include <fml/operator/OperatorLib.h>
 
-#include <util/avm_string.h>
-
 #include <map>
+#include <string>
 
 
 namespace sep
@@ -172,7 +162,7 @@ protected:
 
 	union
 	{
-		Operator * mOperatorValue;
+		const Operator * mOperatorValue;
 
 		WObject  * mWOjectReferenceValue;
 	};
@@ -249,7 +239,7 @@ protected:
 	}
 
 	WObject(WObjectManager & aWObjectManager, WObject * wfContainer,
-			const std::string & aNameID, Operator * anOperator)
+			const std::string & aNameID, const Operator * anOperator)
 	: ObjectElement( CLASS_KIND_T( WObject ) , wfContainer , aNameID ),
 	mWObjectManager( aWObjectManager ),
 	mKind( WOBJECT_PROPERTY_OPERATOR_KIND ),
@@ -329,6 +319,21 @@ public:
 	 */
 	void destroyOwnedElement();
 
+
+	/**
+	 * GETTER - SETTER
+	 * mContainer
+	 */
+	inline WObject * getWContainer() const
+	{
+		ObjectElement * aContainer = getContainer();
+		if( (aContainer != nullptr) && aContainer->is< WObject >() )
+		{
+			return( aContainer->to_ptr< WObject >() );
+		}
+
+		return( WObject::_NULL_ );
+	}
 
 	/**
 	 * TEST
@@ -529,7 +534,7 @@ public:
 		return( mOwnedElements.empty() );
 	}
 
-	inline avm_size_t ownedSize() const
+	inline std::size_t ownedSize() const
 	{
 		return( mOwnedElements.size() );
 	}
@@ -550,13 +555,13 @@ public:
 		{
 			//!! NOTHING
 		}
-		else if( wfElement->getContainer() != NULL )
+		else if( wfElement->getContainer() != nullptr )
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Unexpected WObject <" << wfElement->strUniqId()
 					<< "> with container <" << this->strUniqId()
 					<< "> where old container is <"
-					<< wfElement->getContainer()->to< WObject >()->strUniqId()
+					<< wfElement->getContainer()->to_ptr< WObject >()->strUniqId()
 					<< ">"
 					<< SEND_EXIT;
 		}
@@ -604,7 +609,7 @@ public:
 	 * GETTER - SETTER
 	 * mOperatorValue
 	 */
-	inline Operator * getOperatorValue() const
+	inline const Operator * getOperatorValue() const
 	{
 		AVM_OS_ASSERT_FATAL_ERROR_EXIT( isWPropertyWReference() )
 				<< "WObject << " << strPropertyValue()
@@ -622,7 +627,7 @@ public:
 	 * GETTER - SETTER
 	 * mValue
 	 */
-	inline const BF & getValue() const
+	inline virtual  const BF & getValue() const override
 	{
 		return( mValue );
 	}
@@ -670,13 +675,13 @@ public:
 	/**
 	 * Serialisation
 	 */
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		return( strUniqId() );
 	}
 
 
-	inline virtual std::string strHeader() const
+	inline virtual std::string strHeader() const override
 	{
 		StringOutStream oss;
 
@@ -685,9 +690,9 @@ public:
 		return( oss.str() );
 	}
 
-	virtual void strHeader(OutStream & os) const;
+	virtual void strHeader(OutStream & os) const override;
 
-	inline virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
 		if( isWProperty() )
 		{
@@ -711,7 +716,7 @@ public:
 
 		if( hasReallyUnrestrictedName() )
 		{
-			os << " '" << getUnrestrictedName() << "'";
+			os << " \"" << getUnrestrictedName() << "\"";
 		}
 
 		toStreamOwnedElement( os << " " , "[" , "] // " + getNameID() );
@@ -732,7 +737,7 @@ public:
 
 		if( hasReallyUnrestrictedName() )
 		{
-			os << " '" << getUnrestrictedName() << "'";
+			os << " \"" << getUnrestrictedName() << "\"";
 		}
 
 		toStreamOwnedElement( os << " " , "{" , "} // " + getNameID() );
@@ -771,7 +776,7 @@ public:
 	WObjectManager(const std::string & fqnRoot)
 	: mTableOfManagedElement( ),
 	mTableOfRegisteredWObject( ),
-	ROOT_WOBJECT( *this , NULL, "virtual#root", "virtual#root" )
+	ROOT_WOBJECT( *this , nullptr, "virtual#root", "virtual#root" )
 	{
 		ROOT_WOBJECT.mFullyQualifiedNameID = fqnRoot;
 	}
@@ -793,7 +798,8 @@ public:
 	/**
 	 * return FullyQualifiedNameID + '.' aNameID
 	 */
-	std::string makeFQN(WObject * wfObject, const std::string & aNameID) const;
+	std::string makeFQN(
+			const WObject * wfObject, const std::string & aNameID) const;
 
 
 	/**
@@ -803,7 +809,7 @@ public:
 	{
 		if( wfObject != WObject::_NULL_ )
 		{
-			wfObject->setOffset( mTableOfManagedElement.size() );
+			wfObject->setOwnedOffset( mTableOfManagedElement.size() );
 
 			mTableOfManagedElement.append( wfObject );
 		}
@@ -856,6 +862,12 @@ public:
 		return( anElement.to_ptr< WObject >() );
 	}
 
+
+	inline static BF toBF(const WObject * wfObject)
+	{
+		return( toBF(const_cast< WObject * >(wfObject)) );
+	}
+
 	inline static BF toBF(WObject * wfObject)
 	{
 		if( wfObject != WObject::_NULL_ )
@@ -899,7 +911,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 
 	inline WObject * newWPropertyOperator(WObject * wfContainer,
-			const std::string & aNameID, Operator * anOperator)
+			const std::string & aNameID, const Operator * anOperator)
 	{
 		WObject * wfObject = new WObject( (*this), wfContainer,
 				aNameID, anOperator );

@@ -17,10 +17,10 @@
 #define TRACEPOINT_H_
 
 
-#include <common/AvmPointer.h>
 #include <common/Element.h>
 #include <common/BF.h>
 
+#include <collection/BFContainer.h>
 #include <collection/List.h>
 
 #include <fml/common/SpecifierElement.h>
@@ -41,7 +41,6 @@ class Configuration;
 
 class ExecutableForm;
 class ExecutionContext;
-class APExecutionData;
 class ExecutionData;
 class ExecutionConfiguration;
 
@@ -59,8 +58,8 @@ class TracePoint;
 typedef List< TracePoint * >  ListOfTracePoint;
 
 
-class TracePoint :
-		public Element ,
+class TracePoint : public Element ,
+		AVM_INJECT_STATIC_NULL_REFERENCE( TracePoint ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( TracePoint )
 {
 
@@ -71,11 +70,11 @@ public:
 	/**
 	 * ATTRIBUTES
 	 */
-	avm_size_t tpid;
+	std::size_t tpid;
 
 	const ExecutionContext & EC;
 
-	ExecutionConfiguration * config;
+	const ExecutionConfiguration & config;
 
 	ENUM_TRACE_POINT::TRACE_NATURE nature;
 
@@ -84,9 +83,9 @@ public:
 
 	RuntimeID RID;
 
-	InstanceOfMachine * machine;
+	const InstanceOfMachine * machine;
 
-	ObjectElement     * object;
+	const ObjectElement     * object;
 	bool any_object;
 
 	BF value;
@@ -101,39 +100,22 @@ public:
 			AVM_OPCODE anOP = AVM_OPCODE_NULL,
 			const BF & aValue = BF::REF_NULL);
 
+	TracePoint(ENUM_TRACE_POINT::TRACE_NATURE aNature,
+			AVM_OPCODE anOP, bool isAnyObject);
+
 	TracePoint(ENUM_TRACE_POINT::TRACE_NATURE aNature, AVM_OPCODE anOP,
-			InstanceOfMachine * aMachine, ObjectElement * anObject,
+			const InstanceOfMachine * aMachine, const ObjectElement * anObject,
 			const BF & aValue = BF::REF_NULL);
 
 
 	TracePoint(const ExecutionContext & anEC,
 			ENUM_TRACE_POINT::TRACE_NATURE aNature,
-			AVM_OPCODE anOP, InstanceOfMachine * aMachine,
-			ObjectElement * anObject, const BF & aValue = BF::REF_NULL)
-	: Element( CLASS_KIND_T( TracePoint ) ),
-	tpid( 0 ),
-
-	EC( anEC ),
-	config( NULL ),
-
-	nature( aNature ),
-	op( anOP ),
-
-	RID( ),
-
-	machine( aMachine ),
-
-	object( anObject ),
-	any_object( false ),
-
-	value( aValue )
-	{
-		//!! NOTHING
-	}
+			AVM_OPCODE anOP, const InstanceOfMachine * aMachine,
+			const ObjectElement * anObject, const BF & aValue = BF::REF_NULL);
 
 
 	TracePoint(ENUM_TRACE_POINT::TRACE_NATURE aNature, AVM_OPCODE anOP,
-			const RuntimeID & aRID, ObjectElement * anObject,
+			const RuntimeID & aRID, const ObjectElement * anObject,
 			const BF & aValue = BF::REF_NULL);
 
 	/**
@@ -170,33 +152,14 @@ public:
 	TracePoint(const ExecutionContext & anEC,
 			ENUM_TRACE_POINT::TRACE_NATURE aNature,
 			AVM_OPCODE anOP = AVM_OPCODE_NULL,
-			const BF & aValue = BF::REF_NULL)
-	: Element( CLASS_KIND_T( TracePoint ) ),
-	tpid( 0 ),
+			const BF & aValue = BF::REF_NULL);
 
-	EC( anEC ),
-	config( NULL ),
-
-	nature( aNature ),
-	op( anOP ),
-
-	RID( ),
-
-	machine( NULL ),
-
-	object ( NULL ),
-	any_object( false ),
-
-	value( aValue )
-	{
-		//!! NOTHING
-	}
-
-
-	TracePoint(const ExecutionContext & anEC, ExecutionConfiguration * aConfig,
+	TracePoint(const ExecutionContext & anEC,
+			const ExecutionConfiguration & aConfig,
 			ENUM_TRACE_POINT::TRACE_NATURE aNature,
 			AVM_OPCODE anOP, const RuntimeID & aRID,
-			ObjectElement * anObject, const BF & aValue = BF::REF_NULL)
+			const ObjectElement * anObject,
+			const BF & aValue = BF::REF_NULL)
 	: Element( CLASS_KIND_T( TracePoint ) ),
 	tpid( 0 ),
 
@@ -218,10 +181,11 @@ public:
 		updateNatureOpcodeRID();
 	}
 
-	TracePoint(const ExecutionContext & anEC, ExecutionConfiguration * aConfig,
+	TracePoint(const ExecutionContext & anEC,
+			const ExecutionConfiguration & aConfig,
 			ENUM_TRACE_POINT::TRACE_NATURE aNature,
-			AVM_OPCODE anOP, InstanceOfMachine * aMachine,
-			ObjectElement * anObject, const BF & aValue = BF::REF_NULL)
+			AVM_OPCODE anOP, const InstanceOfMachine * aMachine,
+			const ObjectElement * anObject, const BF & aValue = BF::REF_NULL)
 	: Element( CLASS_KIND_T( TracePoint ) ),
 	tpid( 0 ),
 
@@ -244,8 +208,9 @@ public:
 	}
 
 
-	TracePoint(const ExecutionContext & anEC, ExecutionConfiguration * aConfig,
-			const RuntimeID & aRID, ObjectElement * anObject, const BF & aValue)
+	TracePoint(const ExecutionContext & anEC,
+			const ExecutionConfiguration & aConfig, const RuntimeID & aRID,
+			const ObjectElement * anObject, const BF & aValue)
 	: Element( CLASS_KIND_T( TracePoint ) ),
 	tpid( 0 ),
 
@@ -267,7 +232,7 @@ public:
 		updateNatureOpcodeRID();
 	}
 
-	TracePoint(TracePoint * aTP)
+	TracePoint(const TracePoint * aTP)
 	: Element( CLASS_KIND_T( TracePoint ) ),
 	tpid( 0 ),
 
@@ -321,15 +286,40 @@ public:
 	}
 
 
+	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static TracePoint & nullref()
+	{
+		static TracePoint _NULL_( ENUM_TRACE_POINT::TRACE_NULL_NATURE );
+
+		return( _NULL_ );
+	}
+
+
 	////////////////////////////////////////////////////////////////////////////
 	// CONFIGURE API
 	////////////////////////////////////////////////////////////////////////////
 
 	void updateRID(const ExecutionData & anED);
 
-	void updateMachine(
+	bool isValidPoint();
+
+	std::size_t updateMachine(
 			const Configuration & aConfiguration,
-			const std::string & aQualifiedNameID);
+			const std::string & aQualifiedNameID,
+			ListOfSymbol & listofMachine);
+
+	std::size_t updateMachine(
+			const Configuration & aConfiguration,
+			const std::string & aQualifiedNameID,
+			std::string & objectID, ListOfSymbol & listofMachine);
+
+	bool isRegexPoint(std::string & objectID, AVM_OPCODE & op);
+
+	void configureComposite(BFList listofObject,
+			std::size_t aSize, AVM_OPCODE regexOpcode, AVM_OPCODE opcode);
 
 	bool configurePort(
 			const Configuration & aConfiguration,
@@ -357,7 +347,12 @@ public:
 
 	bool configureVariable(
 			const Configuration & aConfiguration,
-			const std::string & aQualifiedNameID);
+			const std::string & aQualifiedNameID,
+			ListOfTracePoint & otherTracePoint);
+
+	void configureVariable(
+			BFList & listofVariable, ListOfTracePoint & otherTracePoint);
+
 
 	bool configureBuffer(
 			const Configuration & aConfiguration,
@@ -393,6 +388,8 @@ public:
 		}
 	}
 
+	bool isComposite() const;
+
 	inline bool isAssign() const
 	{
 		return( (nature == ENUM_TRACE_POINT::TRACE_VARIABLE_NATURE)
@@ -416,13 +413,17 @@ public:
 				switch( op )
 				{
 					case AVM_OPCODE_INPUT:
+					case AVM_OPCODE_INPUT_BUFFER:
 					case AVM_OPCODE_INPUT_FROM:
 					case AVM_OPCODE_INPUT_ENV:
+					case AVM_OPCODE_INPUT_MULTI_RDV:
 					case AVM_OPCODE_INPUT_RDV:
 
 					case AVM_OPCODE_OUTPUT:
+					case AVM_OPCODE_OUTPUT_BUFFER:
 					case AVM_OPCODE_OUTPUT_TO:
 					case AVM_OPCODE_OUTPUT_ENV:
+					case AVM_OPCODE_OUTPUT_MULTI_RDV:
 					case AVM_OPCODE_OUTPUT_RDV:
 					{
 						return( true );
@@ -437,19 +438,65 @@ public:
 		}
 	}
 
-	inline bool isCom(AVM_OPCODE op, const RuntimeID & rid,
-			ObjectElement * object) const
+
+	inline bool isComInput() const
 	{
-		if( ((this->op == op) || (this->op == AVM_OPCODE_NULL))
-			&& ((this->object == object) || this->any_object) )
+		switch( op )
+		{
+			case AVM_OPCODE_INPUT:
+			case AVM_OPCODE_INPUT_BUFFER:
+			case AVM_OPCODE_INPUT_FROM:
+			case AVM_OPCODE_INPUT_ENV:
+			case AVM_OPCODE_INPUT_MULTI_RDV:
+			case AVM_OPCODE_INPUT_RDV:
+			{
+				return( true );
+			}
+
+			default:
+			{
+				return( false );
+			}
+		}
+	}
+
+	inline bool isComOutput() const
+	{
+		switch( op )
+		{
+			case AVM_OPCODE_OUTPUT:
+			case AVM_OPCODE_OUTPUT_BUFFER:
+			case AVM_OPCODE_OUTPUT_TO:
+			case AVM_OPCODE_OUTPUT_ENV:
+			case AVM_OPCODE_OUTPUT_MULTI_RDV:
+			case AVM_OPCODE_OUTPUT_RDV:
+			{
+				return( true );
+			}
+
+			default:
+			{
+				return( false );
+			}
+		}
+	}
+
+
+	inline bool isCom(AVM_OPCODE opFamily, AVM_OPCODE opSpecific,
+			const RuntimeID & rid, const ObjectElement & object) const
+	{
+		if( ((this->op == opSpecific)
+				|| (this->op == opFamily)
+				|| (this->op == AVM_OPCODE_NULL))
+			&& ((this->object == (& object)) || this->any_object) )
 		{
 			if( this->RID.valid() )
 			{
-				return( rid.hasAsAncestor(this->machine) );
+				return( rid.hasAsAncestor(* this->machine) );
 			}
-			else if( this->machine != NULL )
+			else if( this->machine != nullptr )
 			{
-				return( rid.hasAsAncestor(this->machine) );
+				return( rid.hasAsAncestor(* this->machine) );
 			}
 
 			return( true );
@@ -458,12 +505,33 @@ public:
 		return( false );
 	}
 
+	inline bool isOpEnv() const
+	{
+		return( (op == AVM_OPCODE_INPUT_ENV  )
+			|| ( op	== AVM_OPCODE_OUTPUT_ENV ) );
+
+	}
 
 	inline bool isTime() const
 	{
 		return( (nature == ENUM_TRACE_POINT::TRACE_TIME_NATURE)
 				|| (op == AVM_OPCODE_TIMED_GUARD) );
 	}
+
+	inline bool isTransition() const
+	{
+		return( (nature == ENUM_TRACE_POINT::TRACE_TRANSITION_NATURE)
+				|| (op == AVM_OPCODE_INVOKE_TRANSITION) );
+	}
+
+	inline bool isNodeCondition() const
+	{
+		return( (nature == ENUM_TRACE_POINT::TRACE_NODE_CONDITION_NATURE  )
+			||  (nature == ENUM_TRACE_POINT::TRACE_NODE_TIMED_CONDITION_NATURE )
+			|| (op == AVM_OPCODE_CHECK_SAT) );
+
+	}
+
 
 	static AVM_OPCODE to_kind(const std::string & id);
 
@@ -478,24 +546,30 @@ public:
 	 * machine
 	 * object
 	 */
-	ExecutableForm * getExecutable() const;
+	const ExecutableForm & getExecutable() const;
 
 	/**
 	 * GETTER / SETTER
 	 * value
 	 */
-	void newArrayValue(avm_size_t aSize);
 
-	const BF & val(avm_size_t offset) const;
+	inline bool hasValue() const
+	{
+		return value.valid();
+	}
 
-	void val(avm_size_t offset, const BF & arg);
+	void newArrayValue(std::size_t aSize);
 
-	avm_size_t valCount() const;
+	const BF & val(std::size_t offset) const;
+
+	void val(std::size_t offset, const BF & arg);
+
+	std::size_t valCount() const;
 
 	/**
 	 * Comparison
 	 */
-	inline bool isEQ(const TracePoint & otherTP, bool withValue = true)
+	inline bool isEQ(const TracePoint & otherTP, bool withValue = true) const
 	{
 		return( (this == (& otherTP))
 				|| (   (nature  == otherTP.nature )
@@ -506,7 +580,11 @@ public:
 						|| value.isEQ(otherTP.value)) ) );
 	}
 
-	inline bool isNEQ(const TracePoint & otherTP)
+	// Due to [-Woverloaded-virtual=]
+	using Element::isEQ;
+
+
+	inline bool isNEQ(const TracePoint & otherTP) const
 	{
 		return( (this != (& otherTP))
 				&& (   (nature  != otherTP.nature )
@@ -515,6 +593,10 @@ public:
 					|| (object  != otherTP.object )
 					|| value.isNEQ( otherTP.value ) ) );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using Element::isNEQ;
+
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -529,16 +611,14 @@ public:
 	std::string strUID() const;
 
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		return( strUID() );
 	}
 
-	virtual void formatValueStream(OutStream & os) const;
+	virtual void formatValueStream(OutStream & out) const;
 
-	virtual void toStream(OutStream & os) const;
-
-	virtual void traceMinimum(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
 
 };
 

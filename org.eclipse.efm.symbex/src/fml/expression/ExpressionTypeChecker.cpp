@@ -63,15 +63,15 @@ bool ExpressionTypeChecker::isFinalSymbolicBasicSymbol(const BF & anElement)
 	}
 
 	else if( anElement.is< InstanceOfMachine >()
-			&& anElement.to_ptr< InstanceOfMachine >()->
-					getModifier().hasModifierPublicFinalStatic() )
+			&& anElement.to< InstanceOfMachine >()
+					.getModifier().hasModifierPublicFinalStatic() )
 	{
 		return( true );
 	}
 
 	else if( anElement.is< BaseInstanceForm >()
-			&& anElement.to_ptr< BaseInstanceForm >()->
-					getModifier().hasModifierPublicFinalStatic() )
+			&& anElement.to< BaseInstanceForm >()
+					.getModifier().hasModifierPublicFinalStatic() )
 	{
 		return( true );
 	}
@@ -107,8 +107,8 @@ bool ExpressionTypeChecker::isFinalSymbolicCompositeSymbol(
 	}
 	if( arrayForm->is< ArrayBF >() )
 	{
-		ArrayBF * bfArray = arrayForm->to< ArrayBF >();
-		for( avm_size_t idx = 0 ; idx < bfArray->size() ; ++idx )
+		ArrayBF * bfArray = arrayForm->to_ptr< ArrayBF >();
+		for( std::size_t idx = 0 ; idx < bfArray->size() ; ++idx )
 		{
 			if( not isFinalSymbolicSymbol( bfArray->at(idx) ) )
 			{
@@ -121,30 +121,68 @@ bool ExpressionTypeChecker::isFinalSymbolicCompositeSymbol(
 }
 
 
-bool ExpressionTypeChecker::isMachine(const BF & anExpr)
+bool ExpressionTypeChecker::isMachine(
+		const BaseTypeSpecifier & refTypeSpecifier, const BF & anExpr)
 {
-	if( (anExpr.is< BaseInstanceForm >() &&
-		anExpr.to_ptr< BaseInstanceForm >()->isTypedMachine()) ||
-		anExpr.is< RuntimeID >() )
+	if( anExpr.is< BaseInstanceForm >()
+		&& ( ExpressionTypeChecker::isTyped(refTypeSpecifier,
+				anExpr.to< BaseInstanceForm >().getTypeSpecifier())
+			|| anExpr.to< BaseInstanceForm >().isTypedMachine() ) )
 	{
 		return( true );
 	}
-	else
+	else if( anExpr.is< RuntimeID >() )
 	{
-		return( StatementTypeChecker::isMachine( anExpr ) );
+		return( true );
 	}
+	else if( anExpr.is< AvmCode >() )
+	{
+		const AvmCode & aCode = anExpr.to< AvmCode >();
+
+		switch( aCode.getAvmOpCode() )
+		{
+			case AVM_OPCODE_SELF:
+			case AVM_OPCODE_SUPER:
+
+			case AVM_OPCODE_SCHEDULE_GET:
+			case AVM_OPCODE_INVOKE_NEW:
+			{
+				return( true );
+			}
+
+			case AVM_OPCODE_POP:
+			case AVM_OPCODE_TOP:
+			case AVM_OPCODE_ASSIGN_TOP:
+			{
+
+				return( aCode.hasOperand()
+						&& isCollectionOfTypedElement(
+								TypeManager::MACHINE, aCode.first()) );
+			}
+
+			default:
+			{
+				return( false );
+			}
+		}
+
+//		return( StatementTypeChecker::isMachine( anExpr ) );
+	}
+
+	return( false );
 }
 
 
 bool ExpressionTypeChecker::isArray(
-		ContainerTypeSpecifier * refTypeSpecifier, const BF & anExpr)
+		const ContainerTypeSpecifier & refTypeSpecifier, const BF & anExpr)
 {
 	if( anExpr.is< ArrayBF >() )
 	{
 		ArrayBF * bArray = anExpr.to_ptr< ArrayBF >();
-		for( avm_size_t idx = 1 ; idx < bArray->size() ; ++idx )
+		for( std::size_t idx = 1 ; idx < bArray->size() ; ++idx )
 		{
-			if( not isTyped(refTypeSpecifier->getContentsTypeSpecifier(),
+			if( not ExpressionTypeChecker::isTyped(
+					refTypeSpecifier.getContentsTypeSpecifier(),
 					bArray->at(idx)) )
 			{
 				return( false );
@@ -156,99 +194,148 @@ bool ExpressionTypeChecker::isArray(
 	{
 		BuiltinArray * bArray = anExpr.to_ptr< BuiltinArray >();
 
-		if( refTypeSpecifier == bArray->getTypeSpecifier() )
+		if( ExpressionTypeChecker::isTyped(
+				refTypeSpecifier, bArray->getTypeSpecifier()) )
 		{
 			return( true );
 		}
-		else if( bArray->getTypeSpecifier()->isTypedArray() &&
-				(refTypeSpecifier->getContentsTypeSpecifier() == bArray->
-						getTypeSpecifier()->as< ContainerTypeSpecifier >()->
-						getContentsTypeSpecifier()) )
+		else if( bArray->getTypeSpecifier().isTypedArray() &&
+				(refTypeSpecifier.getContentsTypeSpecifier()
+				== bArray->getTypeSpecifier().as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier()) )
 		{
 			return( true );
 		}
 		else
 		{
 			AVM_OS_WARN << "ExpressionTypeChecker::isArray :> ref< @ "
-					<< refTypeSpecifier << "->" << refTypeSpecifier->strT()
+					<< refTypeSpecifier.raw_address()
+					<< "->" << refTypeSpecifier.strT()
 					<< " > =/=  dtype< @ "
-					<< bArray->getTypeSpecifier()
-					<< "-> " << bArray->getTypeSpecifier()->strT()
+					<< bArray->getTypeSpecifier().raw_address()
+					<< "-> " << bArray->getTypeSpecifier().strT()
 					<< " >" << std::endl;
 
-//			bArray->getTypeSpecifier()->toStream(AVM_OS_WARN);
+//			bArray->getTypeSpecifier().toStream(AVM_OS_WARN);
 		}
 		return( ExpressionTypeChecker::weaklyTyped(
-				refTypeSpecifier->getContentsTypeSpecifier(),
+				refTypeSpecifier.getContentsTypeSpecifier(),
 				bArray->getTypeSpecifier()) );
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
 		return( ExpressionTypeChecker::weaklyTyped(
-				refTypeSpecifier->getContentsTypeSpecifier(),
-				anExpr.to_ptr< BaseInstanceForm >()->getTypeSpecifier()) );
+				refTypeSpecifier.getContentsTypeSpecifier(),
+				anExpr.to< BaseInstanceForm >().getTypeSpecifier()) );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
 bool ExpressionTypeChecker::isClass(
-		ClassTypeSpecifier * refTypeSpecifier, const BF & anExpr)
+		const ClassTypeSpecifier & refTypeSpecifier, const BF & anExpr)
 {
 	if( anExpr.is< BuiltinArray >() )
 	{
 		BuiltinArray * bArray = anExpr.to_ptr< BuiltinArray >();
 
-		if( refTypeSpecifier == bArray->getTypeSpecifier() )
+		if( ExpressionTypeChecker::isTyped(
+				refTypeSpecifier, bArray->getTypeSpecifier()) )
 		{
 			return( true );
 		}
-		else if( refTypeSpecifier->size() != bArray->size() )
+		else if( refTypeSpecifier.size() != bArray->size() )
 		{
 			return( false );
 		}
 		else if( bArray->hasTypeSpecifier() &&
 				anExpr.is_strictly< BuiltinArray >() &&
-				bArray->getTypeSpecifier()->hasTypeContainer() )
+				bArray->getTypeSpecifier().hasTypeContainer() )
 		{
-			BaseTypeSpecifier * eltTS = bArray->getTypeSpecifier()->
-					as< ContainerTypeSpecifier >()->getContentsTypeSpecifier();
+			const BaseTypeSpecifier & eltTS = bArray->getTypeSpecifier()
+					.as< ContainerTypeSpecifier >().getContentsTypeSpecifier();
 
-			TableOfSymbol::const_iterator it =
-					refTypeSpecifier->getSymbolData().begin();
-			TableOfSymbol::const_iterator endIt =
-					refTypeSpecifier->getSymbolData().end();
-			for( ; it != endIt ; ++it )
+			if( ExpressionTypeChecker::isTyped(refTypeSpecifier, eltTS) )
 			{
-				if( not ExpressionTypeChecker::isTyped(
-						(*it).getTypeSpecifier(), eltTS) )
-				{
-					AVM_OS_WARN << "ExpressionTypeChecker::isClass :> ref< "
-							<< (*it).getTypeSpecifier()->strT()
-							<< " > =/=  dtype< " << eltTS->strT() << " >"
-							<< std::endl;
-
-					return( false );
-				}
+				return( true );
 			}
-			return( true );
+			else if( eltTS.isTypedClass() )
+			{
+				const ClassTypeSpecifier & eltClassTS =
+						eltTS.to< ClassTypeSpecifier >();
+
+				 if( eltClassTS.getSymbolData().size()
+					!= refTypeSpecifier.getSymbolData().size() )
+				 {
+						AVM_OS_WARN << "ExpressionTypeChecker::isClass :> ref< "
+								<< refTypeSpecifier.strT()
+								<< " > =/=  dtype< " << eltClassTS.strT() << " >"
+								<< std::endl;
+
+						return( false );
+				 }
+
+				 TableOfSymbol::const_iterator itElt =
+						 eltClassTS.getSymbolData().begin();
+
+				TableOfSymbol::const_iterator itRef =
+						refTypeSpecifier.getSymbolData().begin();
+				TableOfSymbol::const_iterator endItRef =
+						refTypeSpecifier.getSymbolData().end();
+				for( ; itRef != endItRef ; ++itRef , ++itElt )
+				{
+					if( not ExpressionTypeChecker::isTyped(
+							(*itRef).getTypeSpecifier(), (*itElt).getTypeSpecifier()) )
+					{
+						AVM_OS_WARN << "ExpressionTypeChecker::isClass :> ref< "
+								<< (*itRef).getTypeSpecifier().strT()
+								<< " > =/=  dtype< "
+								<< (*itElt).getTypeSpecifier().strT() << " >"
+								<< std::endl;
+
+						return( false );
+					}
+				}
+				return( true );
+			}
+			else //if( eltTS.isTypedUniversal() )
+			{
+				TableOfSymbol::const_iterator it =
+						refTypeSpecifier.getSymbolData().begin();
+				TableOfSymbol::const_iterator endIt =
+						refTypeSpecifier.getSymbolData().end();
+				for( std::size_t offset = 0; it != endIt ; ++it , ++offset )
+				{
+					if( not ExpressionTypeChecker::isTyped(
+							(*it).getTypeSpecifier(), bArray->at(offset)) )
+					{
+						AVM_OS_WARN << "ExpressionTypeChecker::isClass :> ref< "
+								<< (*it).getTypeSpecifier().strT() << " > =/= arg<"
+								<< str_indent( bArray->at(offset) ) << " >"
+								<< std::endl;
+
+						return( false );
+					}
+				}
+				return( true );
+			}
 		}
 		else if( bArray->is< ArrayBF >() )
 		{
-			ArrayBF * bfArray = bArray->to< ArrayBF >();
+			ArrayBF * bfArray = bArray->to_ptr< ArrayBF >();
 
 			TableOfSymbol::const_iterator it =
-					refTypeSpecifier->getSymbolData().begin();
+					refTypeSpecifier.getSymbolData().begin();
 			TableOfSymbol::const_iterator endIt =
-					refTypeSpecifier->getSymbolData().end();
-			for( avm_size_t offset = 0; it != endIt ; ++it , ++offset )
+					refTypeSpecifier.getSymbolData().end();
+			for( std::size_t offset = 0; it != endIt ; ++it , ++offset )
 			{
 				if( not ExpressionTypeChecker::isTyped(
 						(*it).getTypeSpecifier(), bfArray->at(offset)) )
 				{
 					AVM_OS_WARN << "ExpressionTypeChecker::isClass :> ref< "
-							<< (*it).getTypeSpecifier()->strT() << " > =/= arg<"
+							<< (*it).getTypeSpecifier().strT() << " > =/= arg<"
 							<< str_indent( bfArray->at(offset) ) << " >"
 							<< std::endl;
 
@@ -261,28 +348,28 @@ bool ExpressionTypeChecker::isClass(
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
 		return( ExpressionTypeChecker::isTyped(refTypeSpecifier,
-				anExpr.to_ptr< BaseInstanceForm >()->getTypeSpecifier()) );
+				anExpr.to< BaseInstanceForm >().getTypeSpecifier()) );
 	}
 	else if( anExpr.is< ArrayBF >() )
 	{
 		ArrayBF * bfArray = anExpr.to_ptr< ArrayBF >();
 
-		if( refTypeSpecifier->getSymbolData().size() !=  bfArray->size() )
+		if( refTypeSpecifier.getSymbolData().size() !=  bfArray->size() )
 		{
 			return( false );
 		}
 
 		TableOfSymbol::const_iterator it =
-				refTypeSpecifier->getSymbolData().begin();
+				refTypeSpecifier.getSymbolData().begin();
 		TableOfSymbol::const_iterator endIt =
-				refTypeSpecifier->getSymbolData().end();
-		for( avm_size_t offset = 0; it != endIt ; ++it , ++offset )
+				refTypeSpecifier.getSymbolData().end();
+		for( std::size_t offset = 0; it != endIt ; ++it , ++offset )
 		{
 			if( not ExpressionTypeChecker::isTyped(
 					(*it).getTypeSpecifier(), bfArray->get(offset)) )
 			{
 				AVM_OS_WARN << "ExpressionTypeChecker::isClass :> ref< "
-						<< (*it).getTypeSpecifier()->strT()
+						<< (*it).getTypeSpecifier().strT()
 						<< " > =/=  dtype< " << bfArray->get(offset).str()
 						<< " >" << std::endl;
 				return( false );
@@ -296,14 +383,15 @@ bool ExpressionTypeChecker::isClass(
 
 
 bool ExpressionTypeChecker::isCollection(
-		ContainerTypeSpecifier * refTypeSpecifier, const BF & anExpr)
+		const ContainerTypeSpecifier & refTypeSpecifier, const BF & anExpr)
 {
 	if(  anExpr.is< ArrayBF >() )
 	{
 		ArrayBF * bArray = anExpr.to_ptr< ArrayBF >();
-		for( avm_size_t idx = 1 ; idx < bArray->size() ; ++idx )
+		for( std::size_t idx = 1 ; idx < bArray->size() ; ++idx )
 		{
-			if( not isTyped(refTypeSpecifier->getContentsTypeSpecifier(),
+			if( not ExpressionTypeChecker::isTyped(
+					refTypeSpecifier.getContentsTypeSpecifier(),
 					bArray->at(idx)) )
 			{
 				return( false );
@@ -314,9 +402,10 @@ bool ExpressionTypeChecker::isCollection(
 	else if(  anExpr.is< BuiltinContainer >() )
 	{
 		BuiltinContainer * bArray = anExpr.to_ptr< BuiltinContainer >();
-		for( avm_size_t idx = 1 ; idx < bArray->size() ; ++idx )
+		for( std::size_t idx = 1 ; idx < bArray->size() ; ++idx )
 		{
-			if( not isTyped(refTypeSpecifier->getContentsTypeSpecifier(),
+			if( not ExpressionTypeChecker::isTyped(
+					refTypeSpecifier.getContentsTypeSpecifier(),
 					bArray->at(idx)) )
 			{
 				return( false );
@@ -328,71 +417,136 @@ bool ExpressionTypeChecker::isCollection(
 	{
 		BuiltinArray * bArray = anExpr.to_ptr< BuiltinArray >();
 
-		if( refTypeSpecifier == bArray->getTypeSpecifier() )
+		if( ExpressionTypeChecker::isTyped(
+				refTypeSpecifier, bArray->getTypeSpecifier()) )
 		{
 			return( true );
 		}
-		else if( bArray->getTypeSpecifier()->isTypedArray() &&
-				(refTypeSpecifier->getContentsTypeSpecifier() == bArray->
-						getTypeSpecifier()->as< ContainerTypeSpecifier >()->
-						getContentsTypeSpecifier()) )
+		else if( bArray->getTypeSpecifier().isTypedArray() &&
+				(refTypeSpecifier.getContentsTypeSpecifier()
+				== bArray->getTypeSpecifier().as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier()) )
 		{
 			return( true );
 		}
 		else
 		{
 			AVM_OS_WARN << "ExpressionTypeChecker::isCollection :> ref< @ "
-					<< refTypeSpecifier << "->" << refTypeSpecifier->strT()
+					<< refTypeSpecifier.raw_address()
+					<< "->" << refTypeSpecifier.strT()
 					<< " > =/=  dtype< @ "
-					<< bArray->getTypeSpecifier()
-					<< "-> " << bArray->getTypeSpecifier()->strT()
+					<< bArray->getTypeSpecifier().raw_address()
+					<< "-> " << bArray->getTypeSpecifier().strT()
 					<< " >" << std::endl;
 
-//			bArray->getTypeSpecifier()->toStream(AVM_OS_WARN);
+//			bArray->getTypeSpecifier().toStream(AVM_OS_WARN);
 		}
 		return( ExpressionTypeChecker::weaklyTyped(
-				refTypeSpecifier->getContentsTypeSpecifier(),
+				refTypeSpecifier.getContentsTypeSpecifier(),
 				bArray->getTypeSpecifier()) );
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
 		return( ExpressionTypeChecker::weaklyTyped(
-				refTypeSpecifier->getContentsTypeSpecifier(),
-				anExpr.to_ptr< BaseInstanceForm >()->getTypeSpecifier()) );
+				refTypeSpecifier.getContentsTypeSpecifier(),
+				anExpr.to< BaseInstanceForm >().getTypeSpecifier()) );
 	}
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( OperatorManager::isContainerOperation(aCode->getOperator()) )
+		if( OperatorManager::isContainerOperation(aCode.getOperator()) )
 		{
 			return( ExpressionTypeChecker::isTyped(
-					refTypeSpecifier, aCode->first()) );
+					refTypeSpecifier, aCode.first()) );
 		}
-		if( OperatorManager::isContainerElementAccess(aCode->getOperator()) )
+		if( OperatorManager::isContainerElementAccess(aCode.getOperator()) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				BaseTypeSpecifier * bts = aCode->first().
-						to_ptr< BaseInstanceForm >()->getTypeSpecifier();
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
 
-				return( bts->hasTypeContainer() &&
+				return( bts.hasTypeContainer() &&
 						ExpressionTypeChecker::isTyped(refTypeSpecifier,
-								bts->as< ContainerTypeSpecifier >()->
-								getContentsTypeSpecifier()) );
-			}
-			else
-			{
-				return( false );
+							bts.as< ContainerTypeSpecifier >()
+								.getContentsTypeSpecifier()) );
 			}
 		}
-
-		else return( false );
 	}
 
-	else return( false );
+	return( false );
 }
 
+bool ExpressionTypeChecker::isCollectionOfTypedElement(
+		const BaseTypeSpecifier & refTypeSpecifier, const BF & anExpr)
+{
+	if(  anExpr.is< ArrayBF >() )
+	{
+		const BaseTypeSpecifier & bts =
+				anExpr.to< ArrayBF >().getTypeSpecifier();
+
+		return( bts.isnotNullref()
+				&& bts.hasTypeContainer()
+				&& ExpressionTypeChecker::isTyped(refTypeSpecifier,
+					bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier()) );
+	}
+	else if(  anExpr.is< BuiltinContainer >() )
+	{
+		BuiltinContainer * bArray = anExpr.to_ptr< BuiltinContainer >();
+
+		return( bArray->nonempty()
+				&& ExpressionTypeChecker::isCollectionOfTypedElement(
+						refTypeSpecifier, bArray->first()) );
+	}
+	else if( anExpr.is< BuiltinArray >() )
+	{
+		const BaseTypeSpecifier & bts =
+				anExpr.to< BuiltinArray >().getTypeSpecifier();
+
+		return( bts.isnotNullref()
+				&& bts.hasTypeContainer()
+				&& ExpressionTypeChecker::isTyped(refTypeSpecifier,
+					bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier()) );
+	}
+	else if( anExpr.is< BaseInstanceForm >() )
+	{
+		const BaseTypeSpecifier & bts =
+				anExpr.to< BaseInstanceForm >().getTypeSpecifier();
+
+		return( bts.hasTypeContainer()
+				&& ExpressionTypeChecker::isTyped(refTypeSpecifier,
+					bts.as< ContainerTypeSpecifier >()
+							.getContentsTypeSpecifier()) );
+	}
+	else if( anExpr.is< AvmCode >() )
+	{
+		const AvmCode & aCode = anExpr.to< AvmCode >();
+
+		if( OperatorManager::isContainerOperation(aCode.getOperator()) )
+		{
+			return( ExpressionTypeChecker::isCollectionOfTypedElement(
+					refTypeSpecifier, aCode.first()) );
+		}
+		if( OperatorManager::isContainerElementAccess(aCode.getOperator()) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
+
+				return( bts.hasTypeContainer()
+						&& ExpressionTypeChecker::isTyped(refTypeSpecifier,
+							bts.as< ContainerTypeSpecifier >()
+									.getContentsTypeSpecifier()) );
+			}
+		}
+	}
+
+	return( false );
+}
 
 bool ExpressionTypeChecker::isVector(const BF & anExpr)
 {
@@ -402,45 +556,44 @@ bool ExpressionTypeChecker::isVector(const BF & anExpr)
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
-		return( anExpr.to_ptr< BaseInstanceForm >()->
-				getTypeSpecifier()->hasTypeVector() );
+		return( anExpr.to< BaseInstanceForm >()
+				.getTypeSpecifier().hasTypeVector() );
 	}
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( OperatorManager::isContainerOperation(aCode->getOperator()) )
+		if( OperatorManager::isContainerOperation(aCode.getOperator()) )
 		{
-			return( ExpressionTypeChecker::isVector( aCode->first() ) );
+			return( ExpressionTypeChecker::isVector( aCode.first() ) );
 		}
-		else if( OperatorManager::isCtor( aCode->getOperator() ) )
+		else if( OperatorManager::isCtor( aCode.getOperator() ) )
 		{
-			return( aCode->first().is< BaseTypeSpecifier >() &&
-					aCode->first().to_ptr<
-							BaseTypeSpecifier >()->hasTypeVector() );
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to<
+							BaseTypeSpecifier >().hasTypeVector() );
 		}
-
-		else return( false );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
 bool ExpressionTypeChecker::isEnum(
-		EnumTypeSpecifier * refTypeSpecifier, const BF & anExpr)
+		const EnumTypeSpecifier & refTypeSpecifier, const BF & anExpr)
 {
 	if( anExpr.is< InstanceOfData >() )
 	{
-		if( refTypeSpecifier == anExpr.to_ptr< InstanceOfData >()->getTypeSpecifier() )
+		if( ExpressionTypeChecker::isTyped(refTypeSpecifier,
+				anExpr.to< InstanceOfData >().getTypeSpecifier()) )
 		{
 			return( true );
 		}
 		else
 		{
 			AVM_OS_WARN << "ExpressionTypeChecker::isEnum :> ref< @ "
-					<< refTypeSpecifier->strT() << " > =/=  dtype< @ "
-					<< anExpr.to_ptr< InstanceOfData >()->getTypeSpecifier()->strT()
+					<< refTypeSpecifier.strT() << " > =/=  dtype< @ "
+					<< anExpr.to< InstanceOfData >().getTypeSpecifier().strT()
 					<< " >" << std::endl;
 
 			return( false);
@@ -449,29 +602,29 @@ bool ExpressionTypeChecker::isEnum(
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
 		return( ExpressionTypeChecker::isTyped(refTypeSpecifier,
-				anExpr.to_ptr< BaseInstanceForm >()->getTypeSpecifier()) );
+				anExpr.to< BaseInstanceForm >().getTypeSpecifier()) );
 	}
 
 	else if( anExpr.isNumeric() )
 	{
-		return( refTypeSpecifier->hasSymbolDataWithValue(anExpr) );
+		return( refTypeSpecifier.hasSymbolDataWithValue(anExpr) );
 	}
 
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( OperatorManager::isContainerElementAccess(aCode->getOperator()) )
+		if( OperatorManager::isContainerElementAccess(aCode.getOperator()) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				BaseTypeSpecifier * bts = aCode->first().
-						to_ptr< BaseInstanceForm >()->getTypeSpecifier();
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
 
-				return( bts->hasTypeContainer() &&
+				return( bts.hasTypeContainer() &&
 						ExpressionTypeChecker::isTyped(refTypeSpecifier,
-								bts->as< ContainerTypeSpecifier >()->
-								getContentsTypeSpecifier()) );
+								bts.as< ContainerTypeSpecifier >()
+								.getContentsTypeSpecifier()) );
 			}
 		}
 	}
@@ -485,10 +638,10 @@ bool ExpressionTypeChecker::isEnum(const BF & anExpr)
 {
 	if( anExpr.is< BaseInstanceForm >() )
 	{
-		return( anExpr.to_ptr< BaseInstanceForm >()->isTypedEnum() );
+		return( anExpr.to< BaseInstanceForm >().isTypedEnum() );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
@@ -501,42 +654,41 @@ bool ExpressionTypeChecker::isCharacter(const BF & anExpr)
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
-		return( anExpr.to_ptr< BaseInstanceForm >()->isTypedCharacter() );
+		return( anExpr.to< BaseInstanceForm >().isTypedCharacter() );
 	}
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( aCode->hasInstruction() && (aCode->getInstruction()->
+		if( aCode.hasInstruction() && (aCode.getInstruction()->
 				getMainProcessor() == AVM_ARG_CHARACTER_CPU) )
 		{
 			return( true );
 		}
 
-		else if( OperatorManager::isCtor( aCode->getOperator() ) )
+		else if( OperatorManager::isCtor( aCode.getOperator() ) )
 		{
-			return( aCode->first().is< BaseTypeSpecifier >() &&
-					aCode->first().to_ptr< BaseTypeSpecifier >()->
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to< BaseTypeSpecifier >().
 							isTypedCharacter() );
 		}
-		else if( OperatorManager::isAssign( aCode->getOperator() ) )
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				return( aCode->first().to_ptr< BaseInstanceForm >()
-						->isTypedCharacter() );
+				return( aCode.first().to< BaseInstanceForm >()
+						.isTypedCharacter() );
 			}
-			else if( OperatorManager::isAssignBinary( aCode->getOperator() ) )
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
 			{
-				return( ExpressionTypeChecker::isCharacter(aCode->second()) );
+				return( ExpressionTypeChecker::isCharacter(aCode.second()) );
 			}
-			return( false );
 		}
-		else if( OperatorManager::isCharacter( aCode->getOperator() ) )
+		else if( OperatorManager::isCharacter( aCode.getOperator() ) )
 		{
-			for(AvmCode::iterator it = aCode->begin() ; it != aCode->end() ; ++it)
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( not ExpressionTypeChecker::isCharacter( *it ) )
+				if( not ExpressionTypeChecker::isCharacter( itOperand ) )
 				{
 					return( false );
 				}
@@ -544,26 +696,21 @@ bool ExpressionTypeChecker::isCharacter(const BF & anExpr)
 			return( true );
 		}
 		else if( OperatorManager::isContainerElementAccess(
-				aCode->getOperator() ) )
+				aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				BaseTypeSpecifier * bts = aCode->first().
-						to_ptr< BaseInstanceForm >()->getTypeSpecifier();
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
 
-				return( bts->hasTypeContainer() &&
-						bts->as< ContainerTypeSpecifier >()->
-						getContentsTypeSpecifier().isTypedCharacter() );
-			}
-			else
-			{
-				return( false );
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().isTypedCharacter() );
 			}
 		}
-		else return( false );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
@@ -575,41 +722,40 @@ bool ExpressionTypeChecker::isString(const BF & anExpr)
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
-		return( anExpr.to_ptr< BaseInstanceForm >()->isTypedString() );
+		return( anExpr.to< BaseInstanceForm >().isTypedString() );
 	}
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( aCode->hasInstruction() && (aCode->getInstruction()->
+		if( aCode.hasInstruction() && (aCode.getInstruction()->
 				getMainProcessor() == AVM_ARG_STRING_CPU) )
 		{
 			return( true );
 		}
 
-		else if( OperatorManager::isCtor( aCode->getOperator() ) )
+		else if( OperatorManager::isCtor( aCode.getOperator() ) )
 		{
-			return( aCode->first().is< BaseTypeSpecifier >() &&
-				aCode->first().to_ptr< BaseTypeSpecifier >()->isTypedString() );
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+				aCode.first().to< BaseTypeSpecifier >().isTypedString() );
 		}
-		else if( OperatorManager::isAssign( aCode->getOperator() ) )
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				return( aCode->first().to_ptr< BaseInstanceForm >()
-						->isTypedString() );
+				return( aCode.first().to< BaseInstanceForm >()
+						.isTypedString() );
 			}
-			else if( OperatorManager::isAssignBinary( aCode->getOperator() ) )
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
 			{
-				return( ExpressionTypeChecker::isString(aCode->second()) );
+				return( ExpressionTypeChecker::isString(aCode.second()) );
 			}
-			return( false );
 		}
-		else if( OperatorManager::isString( aCode->getOperator() ) )
+		else if( OperatorManager::isString( aCode.getOperator() ) )
 		{
-			for(AvmCode::iterator it = aCode->begin() ; it != aCode->end() ; ++it)
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( not ExpressionTypeChecker::isString( *it ) )
+				if( not ExpressionTypeChecker::isString( itOperand ) )
 				{
 					return( false );
 				}
@@ -617,26 +763,21 @@ bool ExpressionTypeChecker::isString(const BF & anExpr)
 			return( true );
 		}
 		else if( OperatorManager::isContainerElementAccess(
-				aCode->getOperator() ) )
+				aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				BaseTypeSpecifier * bts = aCode->first().
-						to_ptr< BaseInstanceForm >()->getTypeSpecifier();
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
 
-				return( bts->hasTypeContainer() &&
-						bts->as< ContainerTypeSpecifier >()->
-						getContentsTypeSpecifier().isTypedString() );
-			}
-			else
-			{
-				return( false );
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().isTypedString() );
 			}
 		}
-		else return( false );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
@@ -649,44 +790,44 @@ bool ExpressionTypeChecker::isBoolean(const BF & anExpr, bool stronglyTypedFlag)
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
-		return( anExpr.to_ptr< BaseInstanceForm >()->isTypedBoolean() );
+		return( anExpr.to< BaseInstanceForm >().isTypedBoolean() );
 	}
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( OperatorManager::isCtor( aCode->getOperator() ) )
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
 		{
-			return( aCode->first().is< BaseTypeSpecifier >() &&
-					aCode->first().to_ptr< BaseTypeSpecifier >()->
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to< BaseTypeSpecifier >().
 							isTypedBoolean() );
 		}
-		else if( OperatorManager::isAssign( aCode->getOperator() ) )
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				return(aCode->first().to_ptr< BaseInstanceForm >()
-						->isTypedBoolean() );
+				return(aCode.first().to< BaseInstanceForm >()
+						.isTypedBoolean() );
 			}
-			else if( OperatorManager::isAssignBinary( aCode->getOperator() ) )
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
 			{
-				return( ExpressionTypeChecker::isBoolean(aCode->second(),
+				return( ExpressionTypeChecker::isBoolean(aCode.second(),
 						stronglyTypedFlag) );
 			}
-			return( false );
 		}
-		else if( OperatorManager::isRelational( aCode->getOperator() ) )
+		else if( OperatorManager::isRelational( aCode.getOperator() )
+				|| OperatorManager::isQuantifier( aCode.getOperator() ) )
 		{
 			return( true );
 		}
 
-		else if( OperatorManager::isPropositional( aCode->getOperator() ) )
+		else if( OperatorManager::isPropositional( aCode.getOperator() ) )
 		{
 			if( stronglyTypedFlag )
 			{
-				for(AvmCode::iterator it = aCode->begin() ; it != aCode->end() ; ++it)
+				for( const auto & itOperand : aCode.getOperands() )
 				{
-					if( not ExpressionTypeChecker::isBoolean( *it ) )
+					if( not ExpressionTypeChecker::isBoolean( itOperand ) )
 					{
 						return( false );
 					}
@@ -696,26 +837,21 @@ bool ExpressionTypeChecker::isBoolean(const BF & anExpr, bool stronglyTypedFlag)
 		}
 
 		else if( OperatorManager::isContainerElementAccess(
-				aCode->getOperator() ) )
+				aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				BaseTypeSpecifier * bts = aCode->first().
-						to_ptr< BaseInstanceForm >()->getTypeSpecifier();
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
 
-				return( bts->hasTypeContainer() &&
-						bts->as< ContainerTypeSpecifier >()->
-						getContentsTypeSpecifier().isTypedBoolean() );
-			}
-			else
-			{
-				return( false );
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().isTypedBoolean() );
 			}
 		}
-		else return( false );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
@@ -727,67 +863,61 @@ bool ExpressionTypeChecker::isInteger(const BF & anExpr)
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
-		return( anExpr.to_ptr< BaseInstanceForm >()->weaklyTypedInteger() );
+		return( anExpr.to< BaseInstanceForm >().weaklyTypedInteger() );
 	}
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( OperatorManager::isCtor( aCode->getOperator() ) )
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
 		{
-			return( aCode->first().is< BaseTypeSpecifier >() &&
-					aCode->first().to_ptr< BaseTypeSpecifier >()->
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to< BaseTypeSpecifier >().
 							weaklyTypedInteger() );
 		}
-		else if( OperatorManager::isAssign( aCode->getOperator() ) )
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				return( aCode->first().to_ptr< BaseInstanceForm >()
-						->weaklyTypedInteger() );
+				return( aCode.first().to< BaseInstanceForm >()
+						.weaklyTypedInteger() );
 			}
-			else if( OperatorManager::isAssignBinary( aCode->getOperator() ) )
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
 			{
-				return( ExpressionTypeChecker::isInteger(aCode->second()) );
+				return( ExpressionTypeChecker::isInteger(aCode.second()) );
 			}
-			return( false );
 		}
-		else if( OperatorManager::isArithmetic( aCode->getOperator() ) )
+		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
 		{
-			for(AvmCode::iterator it = aCode->begin() ; it != aCode->end() ; ++it)
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( not ExpressionTypeChecker::isInteger( *it ) )
+				if( not ExpressionTypeChecker::isInteger( itOperand ) )
 				{
 					return( false );
 				}
 			}
 			return( true );
 		}
-		else if( OperatorManager::isCodomainInteger( aCode->getOperator() ) )
+		else if( OperatorManager::isCodomainInteger( aCode.getOperator() ) )
 		{
 			return( true );
 		}
 		else if( OperatorManager::isContainerElementAccess(
-				aCode->getOperator() ) )
+				aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				BaseTypeSpecifier * bts = aCode->first().
-						to_ptr< BaseInstanceForm >()->getTypeSpecifier();
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
 
-				return( bts->hasTypeContainer() &&
-						bts->as< ContainerTypeSpecifier >()->
-						getContentsTypeSpecifier().weaklyTypedInteger() );
-			}
-			else
-			{
-				return( false );
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().weaklyTypedInteger() );
 			}
 		}
-		else return( false );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
@@ -799,67 +929,61 @@ bool ExpressionTypeChecker::isRational(const BF & anExpr)
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
-		return( anExpr.to_ptr< BaseInstanceForm >()->weaklyTypedRational() );
+		return( anExpr.to< BaseInstanceForm >().weaklyTypedRational() );
 	}
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( OperatorManager::isCtor( aCode->getOperator() ) )
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
 		{
-			return( aCode->first().is< BaseTypeSpecifier >() &&
-					aCode->first().to_ptr< BaseTypeSpecifier >()->
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to< BaseTypeSpecifier >().
 							weaklyTypedRational() );
 		}
-		else if( OperatorManager::isAssign( aCode->getOperator() ) )
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				return( aCode->first().to_ptr< BaseInstanceForm >()
-						->weaklyTypedRational() );
+				return( aCode.first().to< BaseInstanceForm >()
+						.weaklyTypedRational() );
 			}
-			else if( OperatorManager::isAssignBinary( aCode->getOperator() ) )
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
 			{
-				return( ExpressionTypeChecker::isRational(aCode->second()) );
+				return( ExpressionTypeChecker::isRational(aCode.second()) );
 			}
-			return( false );
 		}
-		else if( OperatorManager::isArithmetic( aCode->getOperator() ) )
+		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
 		{
-			for(AvmCode::iterator it = aCode->begin() ; it != aCode->end() ; ++it)
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( not ExpressionTypeChecker::isRational( *it ) )
+				if( not ExpressionTypeChecker::isRational( itOperand ) )
 				{
 					return( false );
 				}
 			}
 			return( true );
 		}
-		else if( OperatorManager::isCodomainRational( aCode->getOperator() ) )
+		else if( OperatorManager::isCodomainRational( aCode.getOperator() ) )
 		{
 			return( true );
 		}
 		else if( OperatorManager::isContainerElementAccess(
-				aCode->getOperator() ) )
+				aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				BaseTypeSpecifier * bts = aCode->first().
-						to_ptr< BaseInstanceForm >()->getTypeSpecifier();
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
 
-				return( bts->hasTypeContainer() &&
-						bts->as< ContainerTypeSpecifier >()->
-						getContentsTypeSpecifier().weaklyTypedRational() );
-			}
-			else
-			{
-				return( false );
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().weaklyTypedRational() );
 			}
 		}
-		else return( false );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
@@ -871,67 +995,61 @@ bool ExpressionTypeChecker::isFloat(const BF & anExpr)
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
-		return( anExpr.to_ptr< BaseInstanceForm >()->weaklyTypedFloat() );
+		return( anExpr.to< BaseInstanceForm >().weaklyTypedFloat() );
 	}
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( OperatorManager::isCtor( aCode->getOperator() ) )
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
 		{
-			return( aCode->first().is< BaseTypeSpecifier >() &&
-					aCode->first().to_ptr< BaseTypeSpecifier >()->
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to< BaseTypeSpecifier >().
 							weaklyTypedFloat() );
 		}
-		else if( OperatorManager::isAssign( aCode->getOperator() ) )
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				return( aCode->first().to_ptr< BaseInstanceForm >()
-						->weaklyTypedFloat() );
+				return( aCode.first().to< BaseInstanceForm >()
+						.weaklyTypedFloat() );
 			}
-			else if( OperatorManager::isAssignBinary( aCode->getOperator() ) )
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
 			{
-				return( ExpressionTypeChecker::isFloat(aCode->second()) );
+				return( ExpressionTypeChecker::isFloat(aCode.second()) );
 			}
-			return( false );
 		}
-		else if( OperatorManager::isArithmetic( aCode->getOperator() ) )
+		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
 		{
-			for(AvmCode::iterator it = aCode->begin() ; it != aCode->end() ; ++it)
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( not ExpressionTypeChecker::isFloat( *it ) )
+				if( not ExpressionTypeChecker::isFloat( itOperand ) )
 				{
 					return( false );
 				}
 			}
 			return( true );
 		}
-		else if( OperatorManager::isCodomainFloat( aCode->getOperator() ) )
+		else if( OperatorManager::isCodomainFloat( aCode.getOperator() ) )
 		{
 			return( true );
 		}
 		else if( OperatorManager::isContainerElementAccess(
-				aCode->getOperator() ) )
+				aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				BaseTypeSpecifier * bts = aCode->first().
-						to_ptr< BaseInstanceForm >()->getTypeSpecifier();
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
 
-				return( bts->hasTypeContainer() &&
-						bts->as< ContainerTypeSpecifier >()->
-						getContentsTypeSpecifier().weaklyTypedFloat() );
-			}
-			else
-			{
-				return( false );
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().weaklyTypedFloat() );
 			}
 		}
-		else return( false );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
@@ -943,67 +1061,61 @@ bool ExpressionTypeChecker::isReal(const BF & anExpr)
 	}
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
-		return( anExpr.to_ptr< BaseInstanceForm >()->weaklyTypedReal() );
+		return( anExpr.to< BaseInstanceForm >().weaklyTypedReal() );
 	}
 	else if( anExpr.is< AvmCode >() )
 	{
-		AvmCode * aCode = anExpr.to_ptr< AvmCode >();
+		const AvmCode & aCode = anExpr.to< AvmCode >();
 
-		if( OperatorManager::isCtor( aCode->getOperator() ) )
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
 		{
-			return( aCode->first().is< BaseTypeSpecifier >() &&
-					aCode->first().to_ptr< BaseTypeSpecifier >()->
-							weaklyTypedReal() );
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to<
+							BaseTypeSpecifier >().weaklyTypedReal() );
 		}
-		else if( OperatorManager::isAssign( aCode->getOperator() ) )
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				return( aCode->first().to_ptr<
-						BaseInstanceForm >()->weaklyTypedReal() );
+				return( aCode.first().to<
+						BaseInstanceForm >().weaklyTypedReal() );
 			}
-			else if( OperatorManager::isAssignBinary( aCode->getOperator() ) )
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
 			{
-				return( ExpressionTypeChecker::isReal(aCode->second()) );
+				return( ExpressionTypeChecker::isReal(aCode.second()) );
 			}
-			return( false );
 		}
-		else if( OperatorManager::isArithmetic( aCode->getOperator() ) )
+		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
 		{
-			for(AvmCode::iterator it = aCode->begin() ; it != aCode->end() ; ++it)
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( not ExpressionTypeChecker::isReal( *it ) )
+				if( not ExpressionTypeChecker::isReal( itOperand ) )
 				{
 					return( false );
 				}
 			}
 			return( true );
 		}
-		else if( OperatorManager::isCodomainReal( aCode->getOperator() ) )
+		else if( OperatorManager::isCodomainReal( aCode.getOperator() ) )
 		{
 			return( true );
 		}
 		else if( OperatorManager::isContainerElementAccess(
-				aCode->getOperator() ) )
+				aCode.getOperator() ) )
 		{
-			if( aCode->first().is< BaseInstanceForm >() )
+			if( aCode.first().is< BaseInstanceForm >() )
 			{
-				BaseTypeSpecifier * bts = aCode->first().
-						to_ptr< BaseInstanceForm >()->getTypeSpecifier();
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
 
-				return( bts->hasTypeContainer() &&
-						bts->as< ContainerTypeSpecifier >()->
-						getContentsTypeSpecifier().weaklyTypedReal() );
-			}
-			else
-			{
-				return( false );
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().weaklyTypedReal() );
 			}
 		}
-		else return( false );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
@@ -1016,10 +1128,10 @@ bool ExpressionTypeChecker::isOperator(const BF & anExpr)
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
 		return( ExpressionTypeChecker::weaklyTyped(TypeManager::OPERATOR,
-				anExpr.to_ptr< BaseInstanceForm >()->getTypeSpecifier()) );
+				anExpr.to< BaseInstanceForm >().getTypeSpecifier()) );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
@@ -1033,45 +1145,499 @@ bool ExpressionTypeChecker::isAvmCode(const BF & anExpr)
 	else if( anExpr.is< BaseInstanceForm >() )
 	{
 		return( ExpressionTypeChecker::weaklyTyped(TypeManager::AVMCODE,
-				anExpr.to_ptr< BaseInstanceForm >()->getTypeSpecifier()) );
+				anExpr.to< BaseInstanceForm >().getTypeSpecifier()) );
 	}
 
-	else return( false );
+	return( false );
 }
 
 
+// CLOCK & TIME type checking
+//bool ExpressionTypeChecker::isClock(
+//		const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr)
+//{
+//	if( anExpr.isBuiltinValue() )
+//	{
+//		return( isTyped(typeSpecifier.getContentsTypeSpecifier(), anExpr) );
+//	}
+//	else if( anExpr.is< BaseInstanceForm >() )
+//	{
+//		return( anExpr.to< BaseInstanceForm >().isTypedClock() );
+//	}
+//	else if( anExpr.is< AvmCode >() )
+//	{
+//		const AvmCode & aCode = anExpr.to< AvmCode >();
+//
+//		if( OperatorManager::isCtor( aCode.getOperator() ) )
+//		{
+//			return( aCode.first().is< BaseTypeSpecifier >() &&
+//					aCode.first().to<
+//					BaseTypeSpecifier >().isTypedClock() );
+//		}
+//		else if( OperatorManager::isAssign( aCode.getOperator() ) )
+//		{
+//			if( aCode.first().is< BaseInstanceForm >() )
+//			{
+//				return( aCode.first().to<
+//						BaseInstanceForm >().isTypedClock() );
+//			}
+//			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
+//			{
+//				return( ExpressionTypeChecker::isClock(
+//						typeSpecifier, aCode.second()) );
+//			}
+//		}
+//		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
+//		{
+//			for( const auto & itOperand : aCode.getOperands() )
+//			{
+//				if( not ExpressionTypeChecker::isClock(
+//						typeSpecifier, itOperand ) )
+//				{
+//					return( false );
+//				}
+//			}
+//			return( true );
+//		}
+//		else if( OperatorManager::isContainerElementAccess(
+//				aCode.getOperator() ) )
+//		{
+//			if( aCode.first().is< BaseInstanceForm >() )
+//			{
+//				const BaseTypeSpecifier & bts = aCode.first().
+//						to< BaseInstanceForm >().getTypeSpecifier();
+//
+//				return( bts.hasTypeContainer() &&
+//						bts.as< ContainerTypeSpecifier >().
+//						getContentsTypeSpecifier().isTypedClock() );
+//			}
+//		}
+//	}
+//
+//	return( false );
+//}
+//
+//bool ExpressionTypeChecker::isTime(
+//		const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr)
+//{
+//	if( anExpr.isBuiltinValue() )
+//	{
+//		return( isTyped(typeSpecifier.getContentsTypeSpecifier(), anExpr) );
+//	}
+//	else if( anExpr.is< BaseInstanceForm >() )
+//	{
+//		return( anExpr.to< BaseInstanceForm >().isTypedTime() );
+//	}
+//	else if( anExpr.is< AvmCode >() )
+//	{
+//		const AvmCode & aCode = anExpr.to< AvmCode >();
+//
+//		if( OperatorManager::isCtor( aCode.getOperator() ) )
+//		{
+//			return( aCode.first().is< BaseTypeSpecifier >() &&
+//					aCode.first().to<
+//					BaseTypeSpecifier >().isTypedTime() );
+//		}
+//		else if( OperatorManager::isAssign( aCode.getOperator() ) )
+//		{
+//			if( aCode.first().is< BaseInstanceForm >() )
+//			{
+//				return( aCode.first().to<
+//						BaseInstanceForm >().isTypedTime() );
+//			}
+//			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
+//			{
+//				return( ExpressionTypeChecker::isTime(
+//						typeSpecifier, aCode.second()) );
+//			}
+//		}
+//		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
+//		{
+//			for( const auto & itOperand : aCode.getOperands() )
+//			{
+//				if( not ExpressionTypeChecker::isTime(
+//						typeSpecifier,  itOperand ) )
+//				{
+//					return( false );
+//				}
+//			}
+//			return( true );
+//		}
+//		else if( OperatorManager::isContainerElementAccess(
+//				aCode.getOperator() ) )
+//		{
+//			if( aCode.first().is< BaseInstanceForm >() )
+//			{
+//				const BaseTypeSpecifier & bts = aCode.first().
+//						to< BaseInstanceForm >().getTypeSpecifier();
+//
+//				return( bts.hasTypeContainer() &&
+//						bts.as< ContainerTypeSpecifier >().
+//						getContentsTypeSpecifier().isTypedTime() );
+//			}
+//		}
+//	}
+//
+//	return( false );
+//}
+
+bool ExpressionTypeChecker::isClockTime(
+		const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr)
+{
+	if( anExpr.isBuiltinValue() )
+	{
+		return( isTyped(typeSpecifier.getContentsTypeSpecifier(), anExpr) );
+	}
+	else if( anExpr.is< BaseInstanceForm >() )
+	{
+		return( anExpr.to< BaseInstanceForm >().hasTypedClockTime() );
+	}
+	else if( anExpr.is< AvmCode >() )
+	{
+		const AvmCode & aCode = anExpr.to< AvmCode >();
+
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
+		{
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to<
+							BaseTypeSpecifier >().hasTypedClockTime() );
+		}
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				return( aCode.first().to<
+						BaseInstanceForm >().hasTypedClockTime() );
+			}
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
+			{
+				return( ExpressionTypeChecker::isClockTime(
+						typeSpecifier, aCode.second()) );
+			}
+		}
+		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
+		{
+			for( const auto & itOperand : aCode.getOperands() )
+			{
+				if( ExpressionTypeChecker::isClockTime(typeSpecifier, itOperand ) )
+				{
+					continue;
+				}
+				else if( ExpressionTypeChecker::isTyped(
+						typeSpecifier.getContentsTypeSpecifier(), itOperand ) )
+				{
+					continue;
+				}
+				else
+				{
+					return( false );
+				}
+			}
+			return( true );
+		}
+		else if( OperatorManager::isContainerElementAccess(
+				aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
+
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().hasTypedClockTime() );
+			}
+		}
+	}
+
+	return( false );
+}
+
+
+
+bool ExpressionTypeChecker::isClockTime(const BF & anExpr)
+{
+	if( anExpr.is< BaseInstanceForm >() )
+	{
+		return( anExpr.to< BaseInstanceForm >().hasTypedClockTime() );
+	}
+	else if( anExpr.is< AvmCode >() )
+	{
+		const AvmCode & aCode = anExpr.to< AvmCode >();
+
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
+		{
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to< BaseTypeSpecifier >().hasTypedClockTime() );
+		}
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				return( aCode.first().to<
+						BaseInstanceForm >().hasTypedClockTime() );
+			}
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
+			{
+				return( ExpressionTypeChecker::isClockTime(aCode.second()) );
+			}
+		}
+		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
+		{
+			for( const auto & itOperand : aCode.getOperands() )
+			{
+				if( not ExpressionTypeChecker::isClockTime( itOperand ) )
+				{
+					return( false );
+				}
+			}
+			return( true );
+		}
+		else if( OperatorManager::isContainerElementAccess(
+				aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
+
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().hasTypedClockTime() );
+			}
+		}
+	}
+
+	return( false );
+}
+
+
+bool ExpressionTypeChecker::isContinuousTime(
+		const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr)
+{
+	if( anExpr.isBuiltinValue() )
+	{
+		return( isTyped(typeSpecifier.getContentsTypeSpecifier(), anExpr) );
+	}
+	else if( anExpr.is< BaseInstanceForm >() )
+	{
+		return( anExpr.to< BaseInstanceForm >().isTypedContinuousTime() );
+	}
+	else if( anExpr.is< AvmCode >() )
+	{
+		const AvmCode & aCode = anExpr.to< AvmCode >();
+
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
+		{
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to< BaseTypeSpecifier >().
+							isTypedContinuousTime() );
+		}
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				return( aCode.first().to< BaseInstanceForm >().
+								isTypedContinuousTime() );
+			}
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
+			{
+				return( ExpressionTypeChecker::isContinuousTime(
+						typeSpecifier, aCode.second()) );
+			}
+		}
+		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
+		{
+			for( const auto & itOperand : aCode.getOperands() )
+			{
+				if( not ExpressionTypeChecker::isContinuousTime(
+						typeSpecifier,  itOperand ) )
+				{
+					return( false );
+				}
+			}
+			return( true );
+		}
+		else if( OperatorManager::isContainerElementAccess(
+				aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
+
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().isTypedContinuousTime() );
+			}
+		}
+	}
+
+	return( false );
+}
+
+
+bool ExpressionTypeChecker::isDenseTime(
+		const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr)
+{
+	if( anExpr.isBuiltinValue() )
+	{
+		return( isTyped(typeSpecifier.getContentsTypeSpecifier(), anExpr) );
+	}
+	else if( anExpr.is< BaseInstanceForm >() )
+	{
+		return( anExpr.to< BaseInstanceForm >().isTypedDenseTime() );
+	}
+	else if( anExpr.is< AvmCode >() )
+	{
+		const AvmCode & aCode = anExpr.to< AvmCode >();
+
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
+		{
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to< BaseTypeSpecifier >().isTypedDenseTime() );
+		}
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				return( aCode.first().to< BaseInstanceForm >().isTypedDenseTime() );
+			}
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
+			{
+				return( ExpressionTypeChecker::isDenseTime(
+						typeSpecifier, aCode.second()) );
+			}
+		}
+		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
+		{
+			for( const auto & itOperand : aCode.getOperands() )
+			{
+				if( not ExpressionTypeChecker::isDenseTime(
+						typeSpecifier,  itOperand ) )
+				{
+					return( false );
+				}
+			}
+			return( true );
+		}
+		else if( OperatorManager::isContainerElementAccess(
+				aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
+
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().isTypedDenseTime() );
+			}
+		}
+	}
+
+	return( false );
+}
+
+bool ExpressionTypeChecker::isDiscreteTime(
+		const ContainerTypeSpecifier & typeSpecifier, const BF & anExpr)
+{
+	if( anExpr.isBuiltinValue() )
+	{
+		return( isTyped(typeSpecifier.getContentsTypeSpecifier(), anExpr) );
+	}
+	else if( anExpr.is< BaseInstanceForm >() )
+	{
+		return( anExpr.to< BaseInstanceForm >().isTypedDiscreteTime() );
+	}
+	else if( anExpr.is< AvmCode >() )
+	{
+		const AvmCode & aCode = anExpr.to< AvmCode >();
+
+		if( OperatorManager::isCtor( aCode.getOperator() ) )
+		{
+			return( aCode.first().is< BaseTypeSpecifier >() &&
+					aCode.first().to< BaseTypeSpecifier >().
+							isTypedDiscreteTime() );
+		}
+		else if( OperatorManager::isAssign( aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				return( aCode.first().to< BaseInstanceForm >().
+								isTypedDiscreteTime() );
+			}
+			else if( OperatorManager::isAssignBinary( aCode.getOperator() ) )
+			{
+				return( ExpressionTypeChecker::isDiscreteTime(
+						typeSpecifier, aCode.second()) );
+			}
+		}
+		else if( OperatorManager::isArithmetic( aCode.getOperator() ) )
+		{
+			for( const auto & itOperand : aCode.getOperands() )
+			{
+				if( not ExpressionTypeChecker::isDiscreteTime(
+						typeSpecifier,  itOperand ) )
+				{
+					return( false );
+				}
+			}
+			return( true );
+		}
+		else if( OperatorManager::isContainerElementAccess(
+				aCode.getOperator() ) )
+		{
+			if( aCode.first().is< BaseInstanceForm >() )
+			{
+				const BaseTypeSpecifier & bts = aCode.first().
+						to< BaseInstanceForm >().getTypeSpecifier();
+
+				return( bts.hasTypeContainer() &&
+						bts.as< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().isTypedDiscreteTime() );
+			}
+		}
+	}
+
+	return( false );
+}
+
+
+// CAST type checking
 bool ExpressionTypeChecker::isCtor(
-		BaseTypeSpecifier * refTypeSpecifier, AvmCode * aCode)
+		const BaseTypeSpecifier & refTypeSpecifier, const AvmCode & aCode)
 {
 	AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-		OperatorManager::isCtor( aCode->getOperator() ) )
+		OperatorManager::isCtor( aCode.getOperator() ) )
 			<< "Unexpected ctor< ? >( ? ) expression :> "
-			<< IGNORE_FIRST_TAB << aCode
+			<< IGNORE_FIRST_TAB << aCode.str()
 			<< SEND_EXIT;
 
-	return( aCode->first().is< BaseTypeSpecifier >() &&
+	return( aCode.first().is< BaseTypeSpecifier >() &&
 			ExpressionTypeChecker::weaklyTyped(refTypeSpecifier,
-					aCode->first().to_ptr< BaseTypeSpecifier >()) );
+					aCode.first().to< BaseTypeSpecifier >()) );
 }
 
 
 bool ExpressionTypeChecker::isNewfresh(
-		BaseTypeSpecifier * refTypeSpecifier, AvmCode * aCode)
+		const BaseTypeSpecifier & refTypeSpecifier, const AvmCode & aCode)
 {
 	AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-		OperatorManager::isNewfresh( aCode->getOperator() ) )
+		OperatorManager::isNewfresh( aCode.getOperator() ) )
 			<< "Unexpected newfresh( ? ) expression :> "
-			<< IGNORE_FIRST_TAB << aCode
+			<< IGNORE_FIRST_TAB << aCode.str()
 			<< SEND_EXIT;
 
-	return( aCode->first().is< BaseInstanceForm >() &&
+	return( aCode.first().is< BaseInstanceForm >() &&
 			ExpressionTypeChecker::weaklyTyped(refTypeSpecifier,
-				aCode->first().to_ptr< BaseInstanceForm >()->getTypeSpecifier()) );
+				aCode.first().to< BaseInstanceForm >().getTypeSpecifier()) );
 }
 
 
-bool ExpressionTypeChecker::isTyped(BaseTypeSpecifier * refTypeSpecifier,
-		BaseTypeSpecifier * aTypeSpecifier)
+static bool isPointerTyped(
+		const BaseTypeSpecifier * refTypeSpecifier,
+		const BaseTypeSpecifier * aTypeSpecifier)
 {
 	if( refTypeSpecifier == aTypeSpecifier )
 	{
@@ -1082,13 +1648,13 @@ bool ExpressionTypeChecker::isTyped(BaseTypeSpecifier * refTypeSpecifier,
 	{
 		if( refTypeSpecifier->is< TypeAliasSpecifier >() )
 		{
-			refTypeSpecifier = refTypeSpecifier->
-					to< TypeAliasSpecifier >()->targetTypeSpecifier();
+			refTypeSpecifier = & (refTypeSpecifier->
+					to< TypeAliasSpecifier >().targetTypeSpecifier() );
 		}
 		else if( refTypeSpecifier->is< IntervalTypeSpecifier >() )
 		{
 			refTypeSpecifier = refTypeSpecifier->
-					to< IntervalTypeSpecifier >()->getSupportTypeSpecifier();
+					to< IntervalTypeSpecifier >().getSupportTypeSpecifier();
 		}
 		else
 		{
@@ -1100,13 +1666,13 @@ bool ExpressionTypeChecker::isTyped(BaseTypeSpecifier * refTypeSpecifier,
 	{
 		if( aTypeSpecifier->is< TypeAliasSpecifier >() )
 		{
-			aTypeSpecifier = aTypeSpecifier->
-					to< TypeAliasSpecifier >()->targetTypeSpecifier();
+			aTypeSpecifier = & ( aTypeSpecifier->
+					to< TypeAliasSpecifier >().targetTypeSpecifier() );
 		}
 		else if( aTypeSpecifier->is< IntervalTypeSpecifier >() )
 		{
 			aTypeSpecifier = aTypeSpecifier->
-					to< IntervalTypeSpecifier >()->getSupportTypeSpecifier();
+					to< IntervalTypeSpecifier >().getSupportTypeSpecifier();
 		}
 		else
 		{
@@ -1130,20 +1696,29 @@ bool ExpressionTypeChecker::isTyped(BaseTypeSpecifier * refTypeSpecifier,
 
 
 
-bool ExpressionTypeChecker::isTyped(
-		BaseTypeSpecifier * refTypeSpecifier, const BF & arg)
+bool ExpressionTypeChecker::isTyped(const BaseTypeSpecifier & refTypeSpecifier,
+		const BaseTypeSpecifier & aTypeSpecifier)
 {
+	return( isPointerTyped((& refTypeSpecifier), (& aTypeSpecifier)) );
+}
+
+
+
+bool ExpressionTypeChecker::isTyped(
+		const BaseTypeSpecifier & aRefTypeSpecifier, const BF & arg)
+{
+	const BaseTypeSpecifier * ptrRefTypeSpecifier = (& aRefTypeSpecifier);
 	while( true )
 	{
-		if( refTypeSpecifier->is< TypeAliasSpecifier >() )
+		if( ptrRefTypeSpecifier->is< TypeAliasSpecifier >() )
 		{
-			refTypeSpecifier = refTypeSpecifier->
-					to< TypeAliasSpecifier >()->targetTypeSpecifier();
+			ptrRefTypeSpecifier = &( ptrRefTypeSpecifier->
+					to< TypeAliasSpecifier >().targetTypeSpecifier() );
 		}
-		else if( refTypeSpecifier->is< IntervalTypeSpecifier >() )
+		else if( ptrRefTypeSpecifier->is< IntervalTypeSpecifier >() )
 		{
-			refTypeSpecifier = refTypeSpecifier->
-					to< IntervalTypeSpecifier >()->getSupportTypeSpecifier();
+			ptrRefTypeSpecifier = ptrRefTypeSpecifier->
+					to< IntervalTypeSpecifier >().getSupportTypeSpecifier();
 		}
 		else
 		{
@@ -1151,34 +1726,36 @@ bool ExpressionTypeChecker::isTyped(
 		}
 	}
 
-	if( refTypeSpecifier->hasTypedClockTime() )
+	const BaseTypeSpecifier & refTypeSpecifier = (* ptrRefTypeSpecifier);
+
+	if( refTypeSpecifier.hasTypedClockTime() )
 	{
-		if( refTypeSpecifier->is< ContainerTypeSpecifier >() )
+		if( refTypeSpecifier.is< ContainerTypeSpecifier >() )
 		{
-			refTypeSpecifier = refTypeSpecifier->
-					to< ContainerTypeSpecifier >()->getContentsTypeSpecifier();
+			ptrRefTypeSpecifier = ptrRefTypeSpecifier->
+					to< ContainerTypeSpecifier >().getContentsTypeSpecifier();
 		}
 	}
 
 	if( arg.is< BaseInstanceForm >() )
 	{
 		return( ExpressionTypeChecker::weaklyTyped(refTypeSpecifier,
-				arg.to_ptr< BaseInstanceForm >()->getTypeSpecifier()) );
+				arg.to< BaseInstanceForm >().getTypeSpecifier()) );
 	}
 
 	else if( ExpressionTypeChecker::isCtor(arg) )
 	{
 		return( ExpressionTypeChecker::isCtor(
-				refTypeSpecifier, arg.to_ptr< AvmCode >() ) );
+				refTypeSpecifier, arg.to< AvmCode >() ) );
 	}
 
 	else if( ExpressionTypeChecker::isNewfresh(arg) )
 	{
 		return( ExpressionTypeChecker::isNewfresh(
-				refTypeSpecifier, arg.to_ptr< AvmCode >() ) );
+				refTypeSpecifier, arg.to< AvmCode >() ) );
 	}
 
-	switch( refTypeSpecifier->getTypeSpecifierKind() )
+	switch( refTypeSpecifier.getTypeSpecifierKind() )
 	{
 		case TYPE_BOOLEAN_SPECIFIER:
 		{
@@ -1204,18 +1781,21 @@ bool ExpressionTypeChecker::isTyped(
 
 		case TYPE_RATIONAL_SPECIFIER:
 		case TYPE_URATIONAL_SPECIFIER:
+		case TYPE_POS_RATIONAL_SPECIFIER:
 		{
 			return( ExpressionTypeChecker::isRational(arg) );
 		}
 
 		case TYPE_FLOAT_SPECIFIER:
 		case TYPE_UFLOAT_SPECIFIER:
+		case TYPE_POS_FLOAT_SPECIFIER:
 		{
 			return( ExpressionTypeChecker::isFloat(arg) );
 		}
 
 		case TYPE_REAL_SPECIFIER:
 		case TYPE_UREAL_SPECIFIER:
+		case TYPE_POS_REAL_SPECIFIER:
 		{
 			return( ExpressionTypeChecker::isReal(arg) );
 		}
@@ -1223,48 +1803,58 @@ bool ExpressionTypeChecker::isTyped(
 
 		case TYPE_INTERVAL_SPECIFIER:
 		{
-			return( ExpressionTypeChecker::isTyped( refTypeSpecifier->to<
-					IntervalTypeSpecifier >()->getSupportTypeSpecifier(), arg) );
+			return( ExpressionTypeChecker::isTyped(
+					refTypeSpecifier.to< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier(), arg) );
 		}
 
 
 		case TYPE_CLOCK_SPECIFIER:
 		{
-			return( ExpressionTypeChecker::isClock(arg) );
+			return( ExpressionTypeChecker::isClock(
+					refTypeSpecifier.to< ContainerTypeSpecifier >(), arg) );
 		}
 
 		case TYPE_TIME_SPECIFIER:
 		{
-			return( ExpressionTypeChecker::isTime(arg) );
+			return( ExpressionTypeChecker::isTime(
+					refTypeSpecifier.to< ContainerTypeSpecifier >(), arg) );
 		}
 		case TYPE_CONTINUOUS_TIME_SPECIFIER:
 		{
-			return( ExpressionTypeChecker::isCTime(arg) );
+			return( ExpressionTypeChecker::isContinuousTime(
+					refTypeSpecifier.to< ContainerTypeSpecifier >(), arg) );
+		}
+		case TYPE_DENSE_TIME_SPECIFIER:
+		{
+			return( ExpressionTypeChecker::isDenseTime(
+					refTypeSpecifier.to< ContainerTypeSpecifier >(), arg) );
 		}
 		case TYPE_DISCRETE_TIME_SPECIFIER:
 		{
-			return( ExpressionTypeChecker::isDTime(arg) );
+			return( ExpressionTypeChecker::isDiscreteTime(
+					refTypeSpecifier.to< ContainerTypeSpecifier >(), arg) );
 		}
 
 
 		case TYPE_MACHINE_SPECIFIER:
 		{
-			return( ExpressionTypeChecker::isMachine(arg) );
+			return( ExpressionTypeChecker::isMachine(refTypeSpecifier, arg) );
 		}
 
 		case TYPE_PORT_SPECIFIER:
 		{
-			return( ExpressionTypeChecker::isPort(arg) );
+			return( ExpressionTypeChecker::isPort(refTypeSpecifier, arg) );
 		}
 
 		case TYPE_BUFFER_SPECIFIER:
 		{
-			return( ExpressionTypeChecker::isBuffer(arg) );
+			return( ExpressionTypeChecker::isBuffer(refTypeSpecifier, arg) );
 		}
 
 		case TYPE_MESSAGE_SPECIFIER:
 		{
-			return( ExpressionTypeChecker::isMessage(arg) );
+			return( ExpressionTypeChecker::isMessage(refTypeSpecifier, arg) );
 		}
 
 
@@ -1281,19 +1871,19 @@ bool ExpressionTypeChecker::isTyped(
 		case TYPE_ENUM_SPECIFIER:
 		{
 			return( ExpressionTypeChecker::isEnum(
-					refTypeSpecifier->to< EnumTypeSpecifier >(), arg) );
+					refTypeSpecifier.to< EnumTypeSpecifier >(), arg) );
 		}
 
 		case TYPE_ARRAY_SPECIFIER:
 		{
 			return( ExpressionTypeChecker::isArray(
-					refTypeSpecifier->to< ContainerTypeSpecifier >(), arg) );
+					refTypeSpecifier.to< ContainerTypeSpecifier >(), arg) );
 		}
 
 		case TYPE_CLASS_SPECIFIER:
 		{
 			return( ExpressionTypeChecker::isClass(
-					refTypeSpecifier->to< ClassTypeSpecifier >(), arg) );
+					refTypeSpecifier.to< ClassTypeSpecifier >(), arg) );
 		}
 
 		case TYPE_UNIVERSAL_SPECIFIER:
@@ -1303,10 +1893,10 @@ bool ExpressionTypeChecker::isTyped(
 
 		default:
 		{
-			if( refTypeSpecifier->hasTypeCollection() )
+			if( refTypeSpecifier.hasTypeCollection() )
 			{
 				return( ExpressionTypeChecker::isCollection(
-						refTypeSpecifier->to< ContainerTypeSpecifier >(), arg) );
+						refTypeSpecifier.to< ContainerTypeSpecifier >(), arg) );
 			}
 
 			else if( arg.is< AvmCode >() )

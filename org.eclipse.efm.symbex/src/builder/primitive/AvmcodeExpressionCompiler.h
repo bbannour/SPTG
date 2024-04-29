@@ -18,6 +18,8 @@
 
 #include <builder/primitive/AbstractAvmcodeCompiler.h>
 
+#include <fml/expression/ExpressionConstructorImpl.h>
+
 
 namespace sep
 {
@@ -30,36 +32,47 @@ AVMCODE_COMPILER_EXPRESSION_OPTIMIZER_CLASS_HEADER("ARITHMETIC_LOGIC_CPU",
 	// UNARY RVALUE COMPILATION STEP
 	////////////////////////////////////////////////////////////////////////////
 
-	inline BFCode compileUnaryRvalue(COMPILE_CONTEXT * aCTX,
+	inline BF compileUnaryRvalue(COMPILE_CONTEXT * aCTX,
 			const BFCode & aCode, const TypeSpecifier & aType)
 	{
-		return( StatementConstructor::newCode( aCode->getOperator(),
+		return( ExpressionConstructorNative::newExpr( aCode->getOperator(),
 				compileArgRvalue(aCTX, aType, aCode->first()) ));
 
 	}
 
 	BFCode optimizeUnaryRvalue(COMPILE_CONTEXT * aCTX,
-			const BFCode & aCode, BaseTypeSpecifier * aType,
-			avm_arg_processor_t aProcessor, BaseTypeSpecifier * mainType);
+			const BFCode & aCode, const BaseTypeSpecifier & aType,
+			avm_arg_processor_t aProcessor, const BaseTypeSpecifier & mainType);
 
 
 	////////////////////////////////////////////////////////////////////////////
 	// BINARY RVALUE COMPILATION STEP
 	////////////////////////////////////////////////////////////////////////////
 
-	inline BFCode compileBinaryRvalue(
+	inline BF compileBinaryRvalue(
 			COMPILE_CONTEXT * aCTX, const BFCode & aCode,
 			const TypeSpecifier & aType1, const TypeSpecifier & aType2)
 	{
-		return( StatementConstructor::newCode( aCode->getOperator(),
-				compileArgRvalue(aCTX, aType1, aCode->first()),
-				compileArgRvalue(aCTX, aType2, aCode->second()) ));
+		if( aCode->getOperator()->hasOpCode(AVM_OPCODE_SEQ, AVM_OPCODE_NSEQ) )
+		{
+			// Pour eviter la simplification automatique des la compilation
+			// des comparaisons syntaxiques
+			return( AvmCodeFactory::newCode( aCode->getOperator(),
+					compileArgRvalue(aCTX, aType1, aCode->first()),
+					compileArgRvalue(aCTX, aType2, aCode->second()) ));
+		}
+		else
+		{
+			return( ExpressionConstructorNative::newExpr( aCode->getOperator(),
+					compileArgRvalue(aCTX, aType1, aCode->first()),
+					compileArgRvalue(aCTX, aType2, aCode->second()) ));
+		}
 	}
 
 	BFCode optimizeBinaryRvalue(
 			COMPILE_CONTEXT * aCTX, const BFCode & aCode,
-			BaseTypeSpecifier * aType1, BaseTypeSpecifier * aType2,
-			avm_arg_processor_t aProcessor, BaseTypeSpecifier * mainType);
+			const BaseTypeSpecifier & aType1, const BaseTypeSpecifier & aType2,
+			avm_arg_processor_t aProcessor, const BaseTypeSpecifier & mainType);
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -67,11 +80,11 @@ AVMCODE_COMPILER_EXPRESSION_OPTIMIZER_CLASS_HEADER("ARITHMETIC_LOGIC_CPU",
 	////////////////////////////////////////////////////////////////////////////
 
 	BFCode compileAssociativeRvalue(COMPILE_CONTEXT * aCTX,
-			const BFCode & aCode, BaseTypeSpecifier * aType);
+			const BFCode & aCode, const BaseTypeSpecifier & aType);
 
 	BFCode optimizeAssociativeRvalue(COMPILE_CONTEXT * aCTX,
-			const BFCode & aCode, BaseTypeSpecifier * aType,
-			avm_arg_processor_t aProcessor, BaseTypeSpecifier * mainType);
+			const BFCode & aCode, const BaseTypeSpecifier & aType,
+			avm_arg_processor_t aProcessor, const BaseTypeSpecifier & mainType);
 
 };
 
@@ -98,6 +111,9 @@ AVMCODE_COMPILER_EXPRESSION_OPTIMIZER_CLASS("BINARY_EXPRESSION#PREDICATE",
 
 AVMCODE_COMPILER_EXPRESSION_OPTIMIZER_CLASS("ASSOCIATIVE_EXPRESSION#PREDICATE",
 		AssociativePredicateExpression, AvmcodeExpressionALUCompiler)
+
+AVMCODE_COMPILER_EXPRESSION_OPTIMIZER_CLASS("QUANTIFIED_EXPRESSION#PREDICATE",
+		QuantifiedPredicateExpression, AvmcodeExpressionALUCompiler)
 
 
 AVMCODE_COMPILER_EXPRESSION_OPTIMIZER_CLASS("UNARY_EXPRESSION#BITWISE",

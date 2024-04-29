@@ -15,6 +15,10 @@
 
 #include "TracePoint.h"
 
+#include <collection/Bitset.h>
+
+#include <fml/common/ObjectElement.h>
+
 #include <fml/runtime/ExecutionConfiguration.h>
 #include <fml/runtime/ExecutionContext.h>
 #include <fml/runtime/RuntimeID.h>
@@ -25,26 +29,60 @@
 namespace sep
 {
 
+
+/**
+ * [RE]SET TracePoint ID
+ */
+void TraceSequence::resetTracePointID()
+{
+	for( auto & itPoint : points )
+	{
+		if( itPoint.is< TracePoint >() )
+		{
+			itPoint.to< TracePoint >().tpid = 0;
+		}
+		else if( itPoint.is< TraceSequence >() )
+		{
+			itPoint.to< TraceSequence >().resetTracePointID();
+		}
+	}
+}
+
+void TraceSequence::setTracePointID(std::size_t intialTPID)
+{
+	for( auto & itPoint : points )
+	{
+		if( itPoint.is< TracePoint >() )
+		{
+			itPoint.to< TracePoint >().tpid = intialTPID++;
+		}
+		else if( itPoint.is< TraceSequence >() )
+		{
+			itPoint.to< TraceSequence >().setTracePointID( intialTPID );
+		}
+	}
+}
+
+
+
 /**
  * Contains an Object
  * points
  */
-bool TraceSequence::containsObject(BaseCompiledForm  * anObject) const
+bool TraceSequence::containsObject(const ObjectElement  * anObject) const
 {
-	BFList::const_iterator itPoint = points.begin();
-	BFList::const_iterator endPoint = points.end();
-	for( ; itPoint != endPoint ; ++itPoint )
+	for( const auto & itPoint : points )
 	{
-		if( (*itPoint).is< TracePoint >() )
+		if( itPoint.is< TracePoint >() )
 		{
-			if( (*itPoint).to_ptr< TracePoint >()->object == anObject )
+			if( itPoint.to< TracePoint >().object == anObject )
 			{
 				return( true );
 			}
 		}
-		else if( (*itPoint).is< TraceSequence >() )
+		else if( itPoint.is< TraceSequence >() )
 		{
-			if( (*itPoint).to_ptr< TraceSequence >()->containsObject(anObject) )
+			if( itPoint.to< TraceSequence >().containsObject(anObject) )
 			{
 				return( true );
 			}
@@ -55,24 +93,22 @@ bool TraceSequence::containsObject(BaseCompiledForm  * anObject) const
 }
 
 
-bool TraceSequence::containsPoint(TracePoint * aPoint, BF & foundPoint) const
+bool TraceSequence::containsPoint(const TracePoint * aPoint, BF & foundPoint) const
 {
-	BFList::const_iterator itPoint = points.begin();
-	BFList::const_iterator endPoint = points.end();
-	for( ; itPoint != endPoint ; ++itPoint )
+	for( const auto & itPoint : points )
 	{
-		if( (*itPoint).is< TracePoint >() )
+		if( itPoint.is< TracePoint >() )
 		{
-			if( (*itPoint).to_ptr< TracePoint >()->isEQ(aPoint) )
+			if( itPoint.to< TracePoint >().isEQ(aPoint) )
 			{
-				foundPoint = (*itPoint);
+				foundPoint = itPoint;
 
 				return( true );
 			}
 		}
-		else if( (*itPoint).is< TraceSequence >() )
+		else if( itPoint.is< TraceSequence >() )
 		{
-			if( (*itPoint).to_ptr< TraceSequence >()->
+			if( itPoint.to< TraceSequence >().
 					containsPoint(aPoint, foundPoint) )
 			{
 				return( true );
@@ -83,22 +119,20 @@ bool TraceSequence::containsPoint(TracePoint * aPoint, BF & foundPoint) const
 	return( false  );
 }
 
-bool TraceSequence::containsPoint(TracePoint * aPoint, bool withValue) const
+bool TraceSequence::containsPoint(const TracePoint * aPoint, bool withValue) const
 {
-	BFList::const_iterator itPoint = points.begin();
-	BFList::const_iterator endPoint = points.end();
-	for( ; itPoint != endPoint ; ++itPoint )
+	for( const auto & itPoint : points )
 	{
-		if( (*itPoint).is< TracePoint >() )
+		if( itPoint.is< TracePoint >() )
 		{
-			if( (*itPoint).to_ptr< TracePoint >()->isEQ(aPoint, withValue) )
+			if( itPoint.to< TracePoint >().isEQ(aPoint, withValue) )
 			{
 				return( true );
 			}
 		}
-		else if( (*itPoint).is< TraceSequence >() )
+		else if( itPoint.is< TraceSequence >() )
 		{
-			if( (*itPoint).to_ptr< TraceSequence >()->
+			if( itPoint.to< TraceSequence >().
 					containsPoint(aPoint, withValue) )
 			{
 				return( true );
@@ -123,8 +157,8 @@ AVM_OPCODE TraceSequence::compare(const TraceSequence * otherTraceElt) const
 		BFList::const_iterator otherIt = otherTraceElt->points.begin();
 		BFList::const_iterator otherEndIt = otherTraceElt->points.end();
 
-		TracePoint * aTP = NULL;
-		TracePoint * otherTP = NULL;
+		TracePoint * aTP = nullptr;
+		TracePoint * otherTP = nullptr;
 
 		while( (it != endIt) && (otherIt != otherEndIt) )
 		{
@@ -166,7 +200,7 @@ AVM_OPCODE TraceSequence::compare(const TraceSequence * otherTraceElt) const
 				}
 				else if( (*otherIt).is< TraceSequence >() )
 				{
-					switch( (*it).to_ptr< TraceSequence >()->compare(
+					switch( (*it).to< TraceSequence >().compare(
 							(*otherIt).to_ptr< TraceSequence >() ) )
 					{
 						case AVM_OPCODE_EQ:
@@ -239,39 +273,37 @@ AVM_OPCODE TraceSequence::compare(const TraceSequence * otherTraceElt) const
 // LIFELINE API
 ////////////////////////////////////////////////////////////////////////////////
 
-avm_size_t TraceSequence::toLifeline(
+std::size_t TraceSequence::toLifeline(
 		TraceSequence & lifelineTrace, const RuntimeID & lifelineRID) const
 {
-	avm_size_t lifelineSize = 0;
+	std::size_t lifelineSize = 0;
 
-	TracePoint * currentTracePoint = NULL;
-	TracePoint * lifelineTimePoint = NULL;
+	TracePoint * currentTracePoint = nullptr;
+	TracePoint * lifelineTimePoint = nullptr;
 
 	BF bfTimePoint;
 
-	BFList::const_iterator itPoint = points.begin();
-	BFList::const_iterator endPoint = points.end();
-	for( ; itPoint != endPoint ; ++itPoint )
+	for( const auto & itPoint : points )
 	{
-		if( (*itPoint).is< TracePoint >() )
+		if( itPoint.is< TracePoint >() )
 		{
-			currentTracePoint = (*itPoint).to_ptr< TracePoint >();
+			currentTracePoint = itPoint.to_ptr< TracePoint >();
 
 			if( lifelineContains(lifelineRID, *currentTracePoint) )
 			{
-				if( lifelineTimePoint != NULL )
+				if( lifelineTimePoint != nullptr )
 				{
 					lifelineTrace.append( bfTimePoint );
 				}
 
-				lifelineTrace.append( *itPoint );
+				lifelineTrace.append( itPoint );
 				++lifelineSize;
 
-				lifelineTimePoint = NULL;
+				lifelineTimePoint = nullptr;
 			}
 			else if( currentTracePoint->isTime() )
 			{
-				if( lifelineTimePoint != NULL )
+				if( lifelineTimePoint != nullptr )
 				{
 					lifelineTimePoint->value = ExpressionConstructor::addExpr(
 							lifelineTimePoint->value, currentTracePoint->value);
@@ -283,10 +315,10 @@ avm_size_t TraceSequence::toLifeline(
 				}
 			}
 		}
-		else if( (*itPoint).is< TraceSequence >() )
+		else if( itPoint.is< TraceSequence >() )
 		{
-			lifelineSize += (*itPoint).to_ptr< TraceSequence >()
-					->toLifeline(lifelineTrace, lifelineRID);
+			lifelineSize += itPoint.to< TraceSequence >()
+					.toLifeline(lifelineTrace, lifelineRID);
 		}
 	}
 
@@ -301,8 +333,8 @@ bool TraceSequence::lifelineContains(
 	{
 		return( true );
 	}
-	else if( (aPoint.config != NULL)
-			&& lifelineRID.isAncestorOf( aPoint.config->getRuntimeID() ) )
+	else if( aPoint.config.isnotNullref()
+			&& lifelineRID.isAncestorOf( aPoint.config.getRuntimeID() ) )
 	{
 		return( true );
 	}
@@ -315,56 +347,105 @@ bool TraceSequence::lifelineContains(
 // SERIALIZATION API
 ////////////////////////////////////////////////////////////////////////////////
 
-void TraceSequence::toStream(OutStream & os) const
+
+void TraceSequence::toStream(OutStream & out, std::size_t printCount) const
 {
-	os << TAB << "trace#" << tid << "<size:" << points.size();
-	if( mEC != NULL )
+	out << TAB << "trace#" << tid << "< ";
+	if( printCount < points.size() )
 	{
-		os << ", ctx:" << mEC->getIdNumber();
+		out << "count: " << printCount << " of " << points.size();
 	}
-	os << "> { " << combinator->strOp() << EOL;
-
-//	os << INCR_INDENT;
-//	BFList::const_iterator endIt = points.end();
-//	for( BFList::const_iterator it = points.begin() ; it != endIt ; ++it )
-//	{
-//		os << (*it);
-//	}
-//	os << DECR_INDENT;
-
-	os << INCR_INDENT << points << DECR_INDENT;
-
-	os << TAB << "}" << EOL_FLUSH;
-}
-
-
-void TraceSequence::traceMinimum(OutStream & os) const
-{
-	os << TAB << "trace#" << tid << "<size:" << points.size();
-	if( mEC != NULL )
+	else
 	{
-		os << ", ctx:" << mEC->getIdNumber();
+		out << "size: " << points.size();
 	}
-	os << "> { " << combinator->strOp() << EOL_INCR_INDENT;
 
-	BFList::const_iterator endIt = points.end();
-	for( BFList::const_iterator it = points.begin() ; it != endIt ; ++it )
+	if( mEC != nullptr )
 	{
-		if( (*it).is< TracePoint >() )
+		out << ", ctx: " << mEC->getIdNumber();
+	}
+	out << " > { " << combinator->strOp() << EOL_INCR_INDENT;
+
+	for( const auto & itPoint : points )
+	{
+		if( printCount > 0 )
 		{
-			(*it).to_ptr< TracePoint >()->traceMinimum(os);
-		}
-		else if( (*it).is< TraceSequence >() )
-		{
-			(*it).to_ptr< TraceSequence >()->traceMinimum(os);
+			printCount = printCount - 1;
 		}
 		else
 		{
-			os << (*it);
+			out << TAB << "..." << EOL;
+			break;
+		}
+
+		if( itPoint.is< TracePoint >() )
+		{
+			itPoint.to< TracePoint >().toStream(out);
+		}
+		else if( itPoint.is< TraceSequence >() )
+		{
+			itPoint.to< TraceSequence >().toStream(out, printCount);
+		}
+		else
+		{
+			out << itPoint;
 		}
 	}
 
-	os << DECR_INDENT_TAB << "}" << EOL_FLUSH;
+	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
+}
+
+void TraceSequence::toStream(OutStream & out,
+		const Bitset & coverageBitSet, std::size_t printCount) const
+{
+	out << TAB << "trace#" << tid << "< ";
+	std::size_t uncCoveredCount = coverageBitSet.size() - coverageBitSet.count();
+	if( printCount < uncCoveredCount )
+	{
+		out << "count: " << printCount << " of " << uncCoveredCount;
+	}
+	else
+	{
+		out << "size: " << points.size();
+	}
+
+	if( mEC != nullptr )
+	{
+		out << ", ctx: " << mEC->getIdNumber();
+	}
+	out << " > { " << combinator->strOp() << EOL_INCR_INDENT;
+
+	for( const auto & itPoint : points )
+	{
+		if( itPoint.is< TracePoint >() )
+		{
+			const TracePoint & tracePoint = itPoint.to< TracePoint >();
+			if( not coverageBitSet[tracePoint.tpid] )
+			{
+				if( printCount > 0 )
+				{
+					printCount = printCount - 1;
+
+					tracePoint.toStream(out);
+				}
+				else
+				{
+					out << TAB << "..." << EOL;
+					break;
+				}
+			}
+		}
+		else if( itPoint.is< TraceSequence >() )
+		{
+			itPoint.to< TraceSequence >().toStream(out, printCount);
+		}
+		else
+		{
+			out << itPoint;
+		}
+	}
+
+	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
 }
 
 

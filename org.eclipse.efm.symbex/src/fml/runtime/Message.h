@@ -23,6 +23,8 @@
 #include <common/BF.h>
 
 #include <fml/executable/InstanceOfPort.h>
+#include <fml/executable/RoutingData.h>
+
 #include <fml/runtime/RuntimeID.h>
 
 
@@ -34,11 +36,10 @@ class Message;
 /**
  * TYPEDEF
  */
-typedef List< avm_size_t >  ListOfSizeT;
+typedef List< std::size_t >  ListOfSizeT;
 
 
-class MessageElement :
-		public Element,
+class MessageElement : public Element,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( MessageElement )
 {
 
@@ -50,8 +51,7 @@ protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	// The Message Identifier
-	avm_size_t mMID;
+	RoutingData mRoutingData;
 
 	// RID of sender
 	RuntimeID mSenderRID;
@@ -71,33 +71,10 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	MessageElement(const RuntimeID & aSenderRID, const BF & aPort)
+	MessageElement(const RuntimeID & aSenderRID, const BF & aPort,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
 	: Element( CLASS_KIND_T( Message ) ),
-	mMID( 0 ),
-	mSenderRID( aSenderRID ),
-	mReceiverRID( ),
-	mPort( aPort ),
-	mParameters( )
-	{
-		//!! NOTHING
-	}
-
-	MessageElement(avm_size_t aMID,
-			const RuntimeID & aSenderRID, const BF & aPort)
-	: Element( CLASS_KIND_T( Message ) ),
-	mMID( aMID ),
-	mSenderRID( aSenderRID ),
-	mReceiverRID( ),
-	mPort( aPort ),
-	mParameters( )
-	{
-		//!! NOTHING
-	}
-
-	MessageElement(const RuntimeID & aSenderRID,
-			const RuntimeID & aReceiverRID, const BF & aPort)
-	: Element( CLASS_KIND_T( Message ) ),
-	mMID( 0 ),
+	mRoutingData( ),
 	mSenderRID( aSenderRID ),
 	mReceiverRID( aReceiverRID ),
 	mPort( aPort ),
@@ -109,7 +86,7 @@ public:
 	MessageElement(const RuntimeID & aSenderRID,
 			const RuntimeID & aReceiverRID, InstanceOfPort * aPort)
 	: Element( CLASS_KIND_T( Message ) ),
-	mMID( 0 ),
+	mRoutingData( ),
 	mSenderRID( aSenderRID ),
 	mReceiverRID( aReceiverRID ),
 	mPort( INCR_BF( aPort ) ),
@@ -118,10 +95,10 @@ public:
 		//!! NOTHING
 	}
 
-	MessageElement(avm_size_t aMID, const RuntimeID & aSenderRID,
+	MessageElement(const RoutingData & aRoutingData, const RuntimeID & aSenderRID,
 			const RuntimeID & aReceiverRID, const BF & aPort)
 	: Element( CLASS_KIND_T( Message ) ),
-	mMID( aMID ),
+	mRoutingData( aRoutingData ),
 	mSenderRID( aSenderRID ),
 	mReceiverRID( aReceiverRID ),
 	mPort( aPort ),
@@ -136,7 +113,7 @@ public:
 	 */
 	MessageElement(const MessageElement & anElement)
 	: Element( anElement ),
-	mMID( anElement.mMID ),
+	mRoutingData( anElement.mRoutingData ),
 	mSenderRID( anElement.mSenderRID ),
 	mReceiverRID( anElement.mReceiverRID ),
 	mPort( anElement.mPort ),
@@ -154,12 +131,27 @@ public:
 		//!! NOTHING
 	}
 
+
+	/**
+	 * GETTER
+	 * The Message Identifier
+	 *
+	 */
+	inline std::size_t getMID() const
+	{
+		return( mRoutingData.valid() ? mRoutingData.getMID() : 0 );
+	}
+
+
+
 	/**
 	 * Serialization
 	 */
-	virtual std::string str() const;
+	virtual std::string str() const override;
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
+
+	virtual void toStreamValue(OutStream & out) const;
 
 };
 
@@ -181,6 +173,9 @@ public:
 	 */
 	typedef BFVector::const_iterator  const_iterator;
 
+	typedef MessageElement *          pointer_t;
+
+
 	/*
 	 * STATIC ATTRIBUTES
 	 */
@@ -197,21 +192,9 @@ public:
 		//!! NOTHING
 	}
 
-	Message(const RuntimeID & aSenderRID, const BF & aPort)
-	: base_this_type( new MessageElement(aSenderRID, aPort) )
-	{
-		//!! NOTHING
-	}
-
-	Message(avm_size_t aMID, const RuntimeID & aSenderRID, const BF & aPort)
-	: base_this_type( new MessageElement(aMID, aSenderRID, aPort) )
-	{
-		//!! NOTHING
-	}
-
-	Message(const RuntimeID & aSenderRID,
-			const RuntimeID & aReceiverRID, const BF & aPort)
-	: base_this_type( new MessageElement(aSenderRID, aReceiverRID, aPort) )
+	Message(const RuntimeID & aSenderRID, const BF & aPort,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+	: base_this_type( new MessageElement(aSenderRID, aPort, aReceiverRID) )
 	{
 		//!! NOTHING
 	}
@@ -223,9 +206,9 @@ public:
 		//!! NOTHING
 	}
 
-	Message(avm_size_t aMID, const RuntimeID & aSenderRID,
+	Message(const RoutingData & aRoutingData, const RuntimeID & aSenderRID,
 			const RuntimeID & aReceiverRID, const BF & aPort)
-	: base_this_type( new MessageElement(aMID, aSenderRID, aReceiverRID, aPort) )
+	: base_this_type( new MessageElement(aRoutingData, aSenderRID, aReceiverRID, aPort) )
 	{
 		//!! NOTHING
 	}
@@ -304,7 +287,7 @@ public:
 		return( base_this_type::mPTR->mParameters.nonempty() );
 	}
 
-	inline avm_size_t size() const
+	inline std::size_t size() const
 	{
 		return( base_this_type::mPTR->mParameters.size() );
 	}
@@ -315,7 +298,7 @@ public:
 		base_this_type::mPTR->mParameters.append( aParameter );
 	}
 
-	inline const BF & getParameter(avm_size_t offset) const
+	inline const BF & getParameter(std::size_t offset) const
 	{
 		return( base_this_type::mPTR->mParameters.get( offset ) );
 	}
@@ -324,27 +307,43 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * mMID
+	 * The Message Identifier
+	 *
 	 */
-	inline avm_size_t getMID() const
+	inline std::size_t getMID() const
 	{
-		return( base_this_type::mPTR->mMID );
+		return( base_this_type::mPTR->getMID() );
 	}
 
 
-	inline bool isMID(avm_size_t mid) const
+	inline bool isMID(std::size_t mid) const
 	{
-		return( base_this_type::mPTR->mMID == mid );
+		return( getMID() == mid );
 	}
 
 	inline bool isMID(const ListOfSizeT & ieMids) const
 	{
-		return( ieMids.contains(base_this_type::mPTR->mMID) );
+		return( ieMids.contains( getMID() ) );
 	}
 
-	inline void setMID(avm_size_t mid) const
+
+	/**
+	 * GETTER - SETTER
+	 * mRoutingData
+	 */
+	inline const RoutingData & getRoutingData() const
 	{
-		base_this_type::mPTR->mMID = mid;
+		return( base_this_type::mPTR->mRoutingData );
+	}
+
+	inline bool hasRoutingData() const
+	{
+		return( base_this_type::mPTR->mRoutingData.valid() );
+	}
+
+	inline void setRoutingData(const RoutingData & aRoutingData) const
+	{
+		base_this_type::mPTR->mRoutingData = aRoutingData;
 	}
 
 
@@ -360,6 +359,11 @@ public:
 	inline InstanceOfMachine * getSenderMachine() const
 	{
 		return( base_this_type::mPTR->mSenderRID.getInstance() );
+	}
+
+	inline RuntimeID getLifelineSenderRID() const
+	{
+		return( base_this_type::mPTR->mSenderRID.getLifeline() );
 	}
 
 
@@ -394,12 +398,12 @@ public:
 
 
 	// return TRUE for all ancestor of the concrete sender RID
-	inline bool isSenderMachine(InstanceOfMachine * anInstance) const
+	inline bool isSenderMachine(const InstanceOfMachine & anInstance) const
 	{
 		return( base_this_type::mPTR->mSenderRID.hasAsAncestor(anInstance) );
 	}
 
-	inline bool needSender(const RuntimeID & aRID)
+	inline bool needSender(const RuntimeID & aRID) const
 	{
 		return( base_this_type::mPTR->mSenderRID.invalid()
 				|| isSender(aRID) );
@@ -426,6 +430,12 @@ public:
 		return( base_this_type::mPTR->mReceiverRID.getInstance() );
 	}
 
+	inline RuntimeID getLifelineReceiverRID() const
+	{
+		return( base_this_type::mPTR->mReceiverRID.getLifeline() );
+	}
+
+
 	inline bool hasReceiverRID() const
 	{
 		return( base_this_type::mPTR->mReceiverRID.valid() );
@@ -444,7 +454,7 @@ public:
 
 
 	// return TRUE for all ancestor of the concrete sender RID
-	inline bool isReceiverMachine(InstanceOfMachine * anInstance) const
+	inline bool isReceiverMachine(const InstanceOfMachine & anInstance) const
 	{
 		return( base_this_type::mPTR->mReceiverRID.hasAsAncestor(anInstance) );
 	}
@@ -455,7 +465,7 @@ public:
 				|| isReceiver(aRID) );
 	}
 
-	inline void setReceiverRID(const RuntimeID & aRID)
+	inline void setReceiverRID(const RuntimeID & aRID) const
 	{
 		base_this_type::mPTR->mReceiverRID = aRID;
 	}
@@ -470,7 +480,12 @@ public:
 		return( base_this_type::mPTR->mPort );
 	}
 
-	inline InstanceOfPort * getPort() const
+	inline const InstanceOfPort & getPort() const
+	{
+		return( base_this_type::mPTR->mPort.as< InstanceOfPort >() );
+	}
+
+	inline InstanceOfPort * ptrPort() const
 	{
 		return( base_this_type::mPTR->mPort.as_ptr< InstanceOfPort >() );
 	}
@@ -509,25 +524,15 @@ public:
 		return( isReceiver(aReceiverRID) );
 	}
 
-	// case of MID
-	inline bool isCompatible(avm_size_t mid) const
-	{
-		return( isMID(mid) );
-	}
-
-	inline bool isCompatible(avm_size_t mid,
+	// case of MID & Receiver
+	inline bool isCompatible(std::size_t mid,
 			const RuntimeID & aReceiverRID) const
 	{
 		return( isMID(mid) && isReceiver(aReceiverRID) );
 	}
 
 
-	// case of Signal
-	inline bool isCompatible(InstanceOfPort * aSignal) const
-	{
-		return( isSignal(aSignal));
-	}
-
+	// case of Signal & Receiver
 	inline bool isCompatible(InstanceOfPort * aSignal,
 			const RuntimeID & aReceiverRID) const
 	{
@@ -565,16 +570,16 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline virtual std::string str() const
+	inline std::string str() const
 	{
-		return( (base_this_type::mPTR != NULL) ?
+		return( (base_this_type::mPTR != nullptr) ?
 				base_this_type::mPTR->str() : "Message<null>" );
 	}
 
 	inline virtual std::string toString(
 			const AvmIndent & indent = AVM_TAB_INDENT) const
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
 			StringOutStream oss(indent);
 
@@ -588,19 +593,31 @@ public:
 		}
 	}
 
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & out) const
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
-			base_this_type::mPTR->toStream(os);
+			base_this_type::mPTR->toStream(out);
 		}
 		else
 		{
-			os << "Message<null>" << std::flush;
+			out << "Message<null>" << std::flush;
 		}
 	}
 
-	void toFscn(OutStream & os) const;
+	inline void toStreamValue(OutStream & out) const
+	{
+		if( base_this_type::mPTR != nullptr )
+		{
+			base_this_type::mPTR->toStreamValue(out);
+		}
+		else
+		{
+			out << "Message<null>" << std::flush;
+		}
+	}
+
+	void toFscn(OutStream & out) const;
 
 };
 

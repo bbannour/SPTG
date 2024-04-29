@@ -18,8 +18,6 @@
 
 #include <fml/executable/BaseInstanceForm.h>
 
-#include <common/AvmPointer.h>
-
 #include <fml/lib/ITypeSpecifier.h>
 
 
@@ -32,6 +30,7 @@ class Buffer;
 
 class InstanceOfBuffer :
 		public BaseInstanceForm,
+		AVM_INJECT_STATIC_NULL_REFERENCE( InstanceOfBuffer ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( InstanceOfBuffer )
 {
 
@@ -44,7 +43,7 @@ protected:
 	 */
 	avm_type_specifier_kind_t mPolicySpecifierKind;
 
-	avm_size_t mCapacity;
+	std::size_t mCapacity;
 
 
 public:
@@ -52,10 +51,10 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	InstanceOfBuffer(BaseAvmProgram * aContainer,
-			Buffer * aBuffer, avm_offset_t anOffset);
+	InstanceOfBuffer(BaseAvmProgram & aContainer,
+			const Buffer & astBuffer, avm_offset_t anOffset);
 
-	InstanceOfBuffer(BaseAvmProgram * aContainer, Buffer * aCompiled,
+	InstanceOfBuffer(BaseAvmProgram & aContainer, const Buffer & astBuffer,
 			avm_offset_t anOffset, avm_type_specifier_kind_t aSpecifierKind,
 			long aCapacity);
 
@@ -78,12 +77,13 @@ public:
 	 * CONSTRUCTOR
 	 * for Alias
 	 */
-	InstanceOfBuffer(BaseAvmProgram * aContainer, InstanceOfBuffer * aTarget,
-			VectorOfInstanceOfMachine & aRelativeMachinePath)
+	InstanceOfBuffer(BaseAvmProgram * aContainer,
+			const InstanceOfBuffer & aTarget,
+			const VectorOfInstanceOfMachine & aRelativeMachinePath)
 	: BaseInstanceForm(CLASS_KIND_T( InstanceOfBuffer ),
 			aContainer, aTarget, aRelativeMachinePath),
-	mPolicySpecifierKind( aTarget->mPolicySpecifierKind ),
-	mCapacity( aTarget->mCapacity )
+	mPolicySpecifierKind( aTarget.mPolicySpecifierKind ),
+	mCapacity( aTarget.mCapacity )
 	{
 		//!! NOTHING
 	}
@@ -99,6 +99,13 @@ public:
 
 
 	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	static InstanceOfBuffer & nullref();
+
+
+	/**
 	 * GETTER - SETTER
 	 * mPolicySpecifierKind
 	 */
@@ -106,6 +113,20 @@ public:
 	{
 		return( mPolicySpecifierKind );
 	}
+
+
+	inline bool hasDeterministicPolicy() const
+	{
+		return( (mPolicySpecifierKind != TYPE_SET_SPECIFIER)
+				&& (mPolicySpecifierKind != TYPE_MULTISET_SPECIFIER) );
+	}
+
+	inline bool hasNonDeterministicPolicy() const
+	{
+		return( (mPolicySpecifierKind == TYPE_SET_SPECIFIER)
+				|| (mPolicySpecifierKind == TYPE_MULTISET_SPECIFIER) );
+	}
+
 
 	inline void setPolicySpecifierKind(avm_type_specifier_kind_t aSpecifierKind)
 	{
@@ -117,7 +138,7 @@ public:
 	 * GETTER - SETTER
 	 * mCapacity
 	 */
-	inline avm_size_t capacity() const
+	inline std::size_t getCapacity() const
 	{
 		return( mCapacity );
 	}
@@ -146,9 +167,12 @@ public:
 	/**
 	 * Serialization
 	 */
-	void strHeader(OutStream & out) const;
+	virtual void strHeader(OutStream & out) const override;
 
-	void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
+
+	static void toStream(OutStream & out,
+			const ListOfInstanceOfBuffer & ieBuffers);
 
 };
 

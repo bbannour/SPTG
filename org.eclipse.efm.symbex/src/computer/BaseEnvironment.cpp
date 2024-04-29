@@ -52,7 +52,7 @@ namespace sep
 /**
  * INDEX FOR NEW SYMBOLIC PARAMETER
  */
-avm_uint32_t BaseEnvironment::NEW_PARAM_OFFSET = 0;
+std::uint32_t BaseEnvironment::NEW_PARAM_OFFSET = 0;
 
 
 /**
@@ -97,7 +97,7 @@ void BaseEnvironment::toStream(OutStream & os) const
 	inEC->traceDefault(os << NEW_LTRIM_INDENT(os));
 
 	os << END_INDENT << TAB << "inED : ";
-	inED->toStream(os << NEW_LTRIM_INDENT(os));
+	inED.toStream(os << NEW_LTRIM_INDENT(os));
 
 	os << END_INDENT << TAB << "inFORM : " << inFORM.str() << EOL;
 	os << TAB << "inCODE : " << inCODE.str() << EOL;
@@ -112,7 +112,7 @@ void BaseEnvironment::toStream(OutStream & os) const
 ////////////////////////////////////////////////////////////////////////////////
 
 InstanceOfData * BaseEnvironment::create(const RuntimeID & aRID,
-		BaseTypeSpecifier * aTypeSpecifier, InstanceOfData * lvalue)
+		const BaseTypeSpecifier & aTypeSpecifier, const InstanceOfData & lvalue)
 {
 	/*
 	 * préfixage de l'UFI de la constante symbolique
@@ -123,22 +123,68 @@ InstanceOfData * BaseEnvironment::create(const RuntimeID & aRID,
 
 //AVM_IF_DEBUG_FLAG( LOADING )
 //	ossUfi << aRID.getInstance()->getFullyQualifiedNameID()
-//			<< lvalue->getAstFullyQualifiedNameID().substr(
-//					aRID.getExecutable()->getFullyQualifiedNameID().size());
+//			<< lvalue.getAstFullyQualifiedNameID().substr(
+//					aRID.refExecutable().getFullyQualifiedNameID().size());
 //_AVM_ELSE_
-	ossUfi << "pid#" << aRID.getRid() << ":" << lvalue->getNameID();
-	ossId  << lvalue->getNameID();
+	ossUfi << "param::"; // << NamedElement::NAME_ID_SEPARATOR << "newfresh::";
+	if( getConfiguration().isNewfreshParameterNameBasedPID() )
+	{
+		ossUfi << aRID.strPid() << ":";
+	}
+//	else
+//	{
+//		ossUfi << aRID.getInstance()->getLocationID() << ":";
+//	}
+	ossUfi << lvalue.getLocationID(); // lvalue.getNameID();
+
+	ossId << lvalue.getNameID();
 //AVM_ENDIF_DEBUG_FLAG( LOADING )
 
-	avm_uint32_t instNumber = lvalue->instanciationCountIncr();
-	ossUfi << "#" << instNumber;
-	ossId  << "#" << instNumber;
+	if( getConfiguration().isNewfreshParameterExperimentalHeightBasedUID() )
+	{
+		if( inEC != nullptr )
+		{
+
+//			const std::uint32_t heightNumber = 1 + inEC->getHeight();
+//!@! On suppose qu'on a un state< start > et non state< initial > !
+			const std::uint32_t heightNumber = inEC->getHeight();
+
+//			ossUfi << getConfiguration().getNameIdSeparator() << "H_" << heightNumber;
+//			ossId << getConfiguration().getNameIdSeparator()  << "H_" << heightNumber;
+			ossUfi << getConfiguration().getNameIdSeparator() << heightNumber;
+			ossId << getConfiguration().getNameIdSeparator()  << heightNumber;
+		}
+		else if( const_cast< InstanceOfData & >(lvalue).instanciationCountIncr() == 0 )
+		{
+			ossUfi << getConfiguration().getNameIdSeparator() << 0;
+			ossId << getConfiguration().getNameIdSeparator()  << 0;
+		}
+		else
+		{
+			AVM_OS_FATAL_ERROR_EXIT
+					<< "BaseEnvironment::create with "
+						"NewfreshParameterExperimentalHeightBasedUID enable :> "
+						"Unexpected an instance << "
+					<< str_header( lvalue )	<< " >> without an ExecutionContext "
+						"for the required heightNumber >> !!!"
+					<< SEND_EXIT;
+		}
+	}
+	else
+	{
+		const std::uint32_t instNumber =
+				const_cast< InstanceOfData & >(lvalue).instanciationCountIncr();
+
+		ossUfi << getConfiguration().getNameIdSeparator() << instNumber;
+		ossId  << getConfiguration().getNameIdSeparator() << instNumber;
+	}
 
 	InstanceOfData * theSymbolicParam = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			aRID.getExecutable(), lvalue->getAstElement(),
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			aRID.getExecutable(), lvalue.getAstElement(),
 			aTypeSpecifier, ossUfi.str(), 0,
 			Modifier::PARAMETER_PUBLIC_FINAL_STATIC_MODIFIER );
+
 	theSymbolicParam->setCreatorContainerRID( aRID );
 	theSymbolicParam->setNameID( ossId.str() );
 
@@ -147,8 +193,8 @@ InstanceOfData * BaseEnvironment::create(const RuntimeID & aRID,
 
 
 BF BaseEnvironment::evalInitial(
-		APExecutionData & anED, const RuntimeID & aRID,
-		InstanceOfData * lvalue, const BF & anInitialValue)
+		ExecutionData & anED, const RuntimeID & aRID,
+		const InstanceOfData & lvalue, const BF & anInitialValue)
 {
 	if( anInitialValue.invalid() )
 	{
@@ -157,9 +203,13 @@ BF BaseEnvironment::evalInitial(
 
 	else if( anInitialValue.is< InstanceOfData >() )
 	{
-		if( anInitialValue.isTEQ(ExecutableLib::MACHINE_SELF) )
+		if( anInitialValue.isTEQ(ExecutableLib::MACHINE_THIS) )
 		{
 			return( aRID );
+		}
+		if( anInitialValue.isTEQ(ExecutableLib::MACHINE_SELF) )
+		{
+			return( aRID.getComponentSelf() );
 		}
 		else if( anInitialValue.isTEQ(ExecutableLib::MACHINE_PARENT) )
 		{
@@ -183,8 +233,8 @@ BF BaseEnvironment::evalInitial(
 	{
 		ArrayBF * anInitialBuiltinArray = anInitialValue.to_ptr< ArrayBF >();
 
-		avm_size_t aSize = anInitialBuiltinArray->size();
-		for( avm_size_t offset = 0 ; offset < aSize ; ++offset )
+		std::size_t aSize = anInitialBuiltinArray->size();
+		for( std::size_t offset = 0 ; offset < aSize ; ++offset )
 		{
 			BF & valOffset = anInitialBuiltinArray->at(offset);
 
@@ -204,8 +254,8 @@ BF BaseEnvironment::evalInitial(
 		BuiltinContainer * anInitialBuiltinContainer =
 				anInitialValue.to_ptr< BuiltinContainer >();
 
-		avm_size_t aSize = anInitialBuiltinContainer->size();
-		for( avm_size_t offset = 0 ; offset < aSize ; ++offset )
+		std::size_t aSize = anInitialBuiltinContainer->size();
+		for( std::size_t offset = 0 ; offset < aSize ; ++offset )
 		{
 			BF valOffset = anInitialBuiltinContainer->at(offset);
 
@@ -218,32 +268,33 @@ BF BaseEnvironment::evalInitial(
 	return( anInitialValue );
 }
 
-BF BaseEnvironment::createInitial(APExecutionData & anED,
-		const RuntimeID & aRID, InstanceOfData * lvalue)
+BF BaseEnvironment::createInitial(ExecutionData & anED,
+		const RuntimeID & aRID, const InstanceOfData & lvalue)
 {
-	BF theInitialValue = lvalue->getValue();
+	BF theInitialValue = lvalue.getValue();
 
-	if( lvalue->getModifier().hasNatureMacro() )
+	if( lvalue.getModifier().hasNatureMacro() )
 	{
 		AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( theInitialValue )
 				<< "BaseEnvironment::createInitial:> "
 					"Unexpected an instance macro << "
-				<< lvalue->getFullyQualifiedNameID() << " >>  without initial value !!!"
+				<< lvalue.getFullyQualifiedNameID()
+				<< " >> without initial value !!!"
 				<< SEND_EXIT;
 
 		return( theInitialValue );
 	}
-	else if( lvalue->getModifier().hasNatureReference() )
+	else if( lvalue.getModifier().hasNatureReference() )
 	{
 		if( theInitialValue.is< InstanceOfData >() )
 		{
-			InstanceOfData * theInitialInstance =
-					theInitialValue.to_ptr< InstanceOfData >();
+			const InstanceOfData & theInitialInstance =
+					theInitialValue.to< InstanceOfData >();
 
-			if( theInitialInstance->getModifier().hasFeatureMutable() )
+			if( theInitialInstance.getModifier().hasFeatureMutable() )
 			{
-				if( ExpressionTypeChecker::weaklyTyped(lvalue->getTypeSpecifier(),
-						theInitialInstance->getTypeSpecifier()))
+				if( ExpressionTypeChecker::weaklyTyped(lvalue.getTypeSpecifier(),
+						theInitialInstance.getTypeSpecifier()))
 				{
 					return( theInitialValue );
 				}
@@ -276,34 +327,34 @@ BF BaseEnvironment::createInitial(APExecutionData & anED,
 
 	else if( theInitialValue.is< InstanceOfData >() )
 	{
-		InstanceOfData * theInitialInstance =
-				theInitialValue.to_ptr< InstanceOfData >();
+		InstanceOfData & theInitialInstance =
+				theInitialValue.to< InstanceOfData >();
 
-		if( theInitialInstance->getModifier().
+		if( theInitialInstance.getModifier().
 					hasModifierPublicFinalStaticParameter() )
 		{
-			if( ExpressionTypeChecker::weaklyTyped(lvalue->getTypeSpecifier(),
-					theInitialInstance->getTypeSpecifier()))
+			if( ExpressionTypeChecker::weaklyTyped(lvalue.getTypeSpecifier(),
+					theInitialInstance.getTypeSpecifier()))
 			{
 				return( theInitialValue );
 			}
 		}
-		else if( theInitialInstance->hasValue() )
+		else if( theInitialInstance.hasValue() )
 		{
-			theInitialValue = theInitialInstance->getValue();
+			theInitialValue = theInitialInstance.getValue();
 		}
-		else if( theInitialInstance->getModifier().hasFeatureMutable() )
+		else if( theInitialInstance.getModifier().hasFeatureMutable() )
 		{
 			theInitialValue = getRvalue(anED, aRID, theInitialInstance);
 			if( theInitialValue.invalid() )
 			{
 				theInitialValue = createInitial(anED, aRID, theInitialInstance);
 
-				theInitialInstance->setValue(theInitialValue);
+				theInitialInstance.setValue(theInitialValue);
 			}
 
-			if( ExpressionTypeChecker::weaklyTyped(lvalue->getTypeSpecifier(),
-					theInitialInstance->getTypeSpecifier()))
+			if( ExpressionTypeChecker::weaklyTyped(lvalue.getTypeSpecifier(),
+					theInitialInstance.getTypeSpecifier()))
 			{
 				return( theInitialValue );
 			}
@@ -313,20 +364,16 @@ BF BaseEnvironment::createInitial(APExecutionData & anED,
 	theInitialValue = evalInitial(anED, aRID, lvalue, theInitialValue);
 
 
-	if( lvalue->hasTypeSpecifier() )
+	if( lvalue.hasTypeSpecifier() )
 	{
-		BaseTypeSpecifier * aTypeSpecifier = lvalue->getTypeSpecifier();
-		if( aTypeSpecifier->is< TypeAliasSpecifier >() )
-		{
-			aTypeSpecifier = aTypeSpecifier->to< TypeAliasSpecifier >()->
-					targetTypeSpecifier();
-		}
+		const BaseTypeSpecifier & aTypeSpecifier =
+				lvalue.getTypeSpecifier().referedTypeSpecifier();
 
-		if( aTypeSpecifier->isTypedArray() )
+		if( aTypeSpecifier.isTypedArray() )
 		{
-			ContainerTypeSpecifier * containerT =
-					aTypeSpecifier->as< ContainerTypeSpecifier >();
-			avm_size_t sizeT = containerT->size();
+			const ContainerTypeSpecifier & containerT =
+					aTypeSpecifier.as< ContainerTypeSpecifier >();
+			std::size_t sizeT = containerT.size();
 
 			if( theInitialValue.valid() )
 			{
@@ -344,8 +391,8 @@ BF BaseEnvironment::createInitial(APExecutionData & anED,
 			{
 				ArrayBF * arrayValue = new ArrayBF(aTypeSpecifier, sizeT);
 
-				TableOfSymbol::iterator it = lvalue->getAttribute()->begin();
-				for( avm_size_t idx = 0 ; idx < sizeT ; ++idx , ++it )
+				TableOfSymbol::iterator it = lvalue.getAttribute()->begin();
+				for( std::size_t idx = 0 ; idx < sizeT ; ++idx , ++it )
 				{
 					arrayValue->set(idx, createInitial(anED, aRID, (*it)));
 				}
@@ -354,21 +401,21 @@ BF BaseEnvironment::createInitial(APExecutionData & anED,
 			}
 		}
 
-		else if( aTypeSpecifier->hasTypeCollection() )
+		else if( aTypeSpecifier.hasTypeCollection() )
 		{
 			BuiltinContainer * containerValue = BuiltinContainer::create(
-					aTypeSpecifier->as< ContainerTypeSpecifier >() );
+					aTypeSpecifier.as< ContainerTypeSpecifier >() );
 
 			if( theInitialValue.valid() )
 			{
 				if( theInitialValue.is< BuiltinArray >() )
 				{
-					BuiltinArray * theInitialBuiltinArray =
-							theInitialValue.to_ptr< BuiltinArray >();
+					const BuiltinArray & theInitialBuiltinArray =
+							theInitialValue.to< BuiltinArray >();
 
 					containerValue->copy( theInitialBuiltinArray,
 							std::min(containerValue->capacity(),
-									theInitialBuiltinArray->size()) );
+									theInitialBuiltinArray.size()) );
 				}
 				else
 				{
@@ -379,9 +426,9 @@ BF BaseEnvironment::createInitial(APExecutionData & anED,
 			return( BF(containerValue) );
 		}
 
-		else if( aTypeSpecifier->isTypedClass() )
+		else if( aTypeSpecifier.isTypedClass() )
 		{
-			avm_size_t sizeT = aTypeSpecifier->size();
+			std::size_t sizeT = aTypeSpecifier.size();
 
 			if( theInitialValue.valid() )
 			{
@@ -400,8 +447,8 @@ BF BaseEnvironment::createInitial(APExecutionData & anED,
 			{
 				ArrayBF * arrayValue = new ArrayBF(aTypeSpecifier, sizeT);
 
-				TableOfSymbol::iterator it = lvalue->getAttribute()->begin();
-				for( avm_size_t idx = 0 ; idx < sizeT ; ++idx , ++it )
+				TableOfSymbol::iterator it = lvalue.getAttribute()->begin();
+				for( std::size_t idx = 0 ; idx < sizeT ; ++idx , ++it )
 				{
 					arrayValue->set(idx, createInitial(anED, aRID, (*it)));
 				}
@@ -410,30 +457,30 @@ BF BaseEnvironment::createInitial(APExecutionData & anED,
 			}
 		}
 
-		else //if( aTypeSpecifier->isTypedSimple() )
+		else //if( aTypeSpecifier.isTypedSimple() )
 		{
 			if( theInitialValue.valid() )
 			{
 				return( theInitialValue );
 			}
 
-//			else if( aTypeSpecifier->isTypedString() )
+//			else if( aTypeSpecifier.isTypedString() )
 //			{
 //				return( ExpressionConstructor::newString("") );
 //			}
-			else if( aTypeSpecifier->isTypedMachine() )
+			else if( aTypeSpecifier.isTypedMachine() )
 			{
 				return( RuntimeLib::RID_NIL );
 			}
-			else if( aTypeSpecifier->isTypedChannel() )
+			else if( aTypeSpecifier.isTypedChannel() )
 			{
 				return( ExecutableLib::CHANNEL_NIL );
 			}
-			else if( aTypeSpecifier->isTypedPort() )
+			else if( aTypeSpecifier.isTypedPort() )
 			{
 				return( ExecutableLib::PORT_NIL );
 			}
-			else if( aTypeSpecifier->isTypedBuffer() )
+			else if( aTypeSpecifier.isTypedBuffer() )
 			{
 				return( ExecutableLib::BUFFER_NIL );
 			}
@@ -447,7 +494,8 @@ BF BaseEnvironment::createInitial(APExecutionData & anED,
 	{
 		AVM_OS_FATAL_ERROR_EXIT
 				<< "BaseEnvironment::createInitial:> Unexpected an instance << "
-				<< lvalue->getFullyQualifiedNameID() << " >>  without typeSpecifier !!!"
+				<< lvalue.getFullyQualifiedNameID()
+				<< " >> without typeSpecifier !!!"
 				<< SEND_EXIT;
 
 		return( BF::REF_NULL );
@@ -457,19 +505,19 @@ BF BaseEnvironment::createInitial(APExecutionData & anED,
 
 
 BF BaseEnvironment::createInitial(
-		APExecutionData & anED, const RuntimeID & aRID,
-		InstanceOfData * lvalue, BuiltinArray * initialArray)
+		ExecutionData & anED, const RuntimeID & aRID,
+		const InstanceOfData & lvalue, BuiltinArray * initialArray)
 {
-	avm_size_t sizeT = lvalue->getTypeSpecifier()->size();
+	std::size_t sizeT = lvalue.getTypeSpecifier().size();
 
 	ArrayBF * bfValue = new ArrayBF(
 			( initialArray->hasTypeSpecifier() ?
 					initialArray->getTypeSpecifier() :
-					lvalue->getTypeSpecifier() ), sizeT);
+					lvalue.getTypeSpecifier() ), sizeT);
 
 	if( ExpressionTypeChecker::isFinalSymbolicCompositeSymbol(initialArray) )
 	{
-		avm_size_t idx = initialArray->size();
+		std::size_t idx = initialArray->size();
 
 		if( idx <= sizeT )
 		{
@@ -478,7 +526,7 @@ BF BaseEnvironment::createInitial(
 			for( ; idx < sizeT ; ++idx )
 			{
 				bfValue->set(idx, createInitial(anED, aRID,
-						lvalue->getAttribute()->at(idx)));
+						lvalue.getAttribute()->at(idx)));
 			}
 		}
 		else
@@ -488,16 +536,16 @@ BF BaseEnvironment::createInitial(
 	}
 	else //if( initialArray->is< ArrayBF >() )
 	{
-		ArrayBF * bfInitialArray = initialArray->to< ArrayBF >();
+		ArrayBF * bfInitialArray = initialArray->to_ptr< ArrayBF >();
 
-		avm_size_t initSizeT = bfInitialArray->size();
+		std::size_t initSizeT = bfInitialArray->size();
 
 		if( initSizeT > sizeT )
 		{
 			initSizeT = sizeT;
 		}
 
-		for( avm_size_t idx = 0 ; idx < initSizeT ; ++idx )
+		for( std::size_t idx = 0 ; idx < initSizeT ; ++idx )
 		{
 			if( ExpressionTypeChecker::isFinalSymbolicSymbol(
 					bfInitialArray->at(idx)) )
@@ -507,14 +555,14 @@ BF BaseEnvironment::createInitial(
 			else
 			{
 				bfValue->set(idx, createInitial(anED, aRID,
-						lvalue->getAttribute()->at(idx)));
+						lvalue.getAttribute()->at(idx)));
 			}
 		}
 
-		for( avm_size_t idx = initSizeT ; idx < sizeT ; ++idx )
+		for( std::size_t idx = initSizeT ; idx < sizeT ; ++idx )
 		{
 			bfValue->set(idx, createInitial(anED, aRID,
-					lvalue->getAttribute()->at(idx)));
+					lvalue.getAttribute()->at(idx)));
 		}
 	}
 
@@ -523,53 +571,49 @@ BF BaseEnvironment::createInitial(
 
 
 BF BaseEnvironment::createNewFreshParam(const RuntimeID & aRID,
-		BaseTypeSpecifier * aTypeSpecifier,
-		InstanceOfData * lvalue, BFList & paramList)
+		const BaseTypeSpecifier & theTypeSpecifier,
+		const InstanceOfData & lvalue, BFCollection & paramList)
 {
-	if( aTypeSpecifier != NULL )
+	if( theTypeSpecifier.isnotNullref() )
 	{
-		if( aTypeSpecifier->is< TypeAliasSpecifier >() )
-		{
-			aTypeSpecifier->to< TypeAliasSpecifier >()->targetTypeSpecifier();
-		}
+		const BaseTypeSpecifier & aTypeSpecifier =
+				theTypeSpecifier.referedTypeSpecifier();
 
-		if( aTypeSpecifier->isTypedArray() )
+		if( aTypeSpecifier.isTypedArray() )
 		{
-			ContainerTypeSpecifier * containerT =
-					aTypeSpecifier->as< ContainerTypeSpecifier >();
-			avm_size_t sizeT = containerT->size();
+			const ContainerTypeSpecifier & containerT =
+					aTypeSpecifier.as< ContainerTypeSpecifier >();
+			std::size_t sizeT = containerT.size();
 
 			ArrayBF * arrayValue = new ArrayBF(containerT, sizeT);
 
-			TableOfSymbol::iterator it = lvalue->getAttribute()->begin();
-			for( avm_size_t idx = 0 ; idx < sizeT ; ++idx , ++it )
+			TableOfSymbol::iterator it = lvalue.getAttribute()->begin();
+			for( std::size_t idx = 0 ; (idx < sizeT) ; ++idx , ++it )
 			{
-				arrayValue->set(idx,
-						createNewFreshParam(aRID, (*it), paramList));
+				arrayValue->set(idx, createNewFreshParam(aRID, (*it), paramList));
 			}
 
 			return( BF(arrayValue) );
 		}
 
 		//TODO
-		else if( aTypeSpecifier->hasTypeCollection() )
+		else if( aTypeSpecifier.hasTypeCollection() )
 		{
 			BuiltinContainer * containerValue = BuiltinContainer::create(
-					aTypeSpecifier->as< ContainerTypeSpecifier >());
+					aTypeSpecifier.as< ContainerTypeSpecifier >());
 
 			return( BF(containerValue) );
 		}
 
-		else if( aTypeSpecifier->isTypedClass() )
+		else if( aTypeSpecifier.isTypedClass() )
 		{
-			ClassTypeSpecifier * classType =
-					aTypeSpecifier->as< ClassTypeSpecifier >();
-			avm_size_t sizeT = classType->size();
+			std::size_t sizeT =
+					aTypeSpecifier.as< ClassTypeSpecifier >().size();
 
 			ArrayBF * arrayValue = new ArrayBF(aTypeSpecifier, sizeT);
 
-			TableOfSymbol::iterator it = lvalue->getAttribute()->begin();
-			for( avm_size_t idx = 0 ; idx < sizeT ; ++idx , ++it )
+			TableOfSymbol::iterator it = lvalue.getAttribute()->begin();
+			for( std::size_t idx = 0 ; idx < sizeT ; ++idx , ++it )
 			{
 				arrayValue->set(idx,
 						createNewFreshParam(aRID, (*it), paramList));
@@ -578,20 +622,20 @@ BF BaseEnvironment::createNewFreshParam(const RuntimeID & aRID,
 			return( BF(arrayValue) );
 		}
 
-		else //if( aTypeSpecifier->isTypedSimple() )
+		else //if( aTypeSpecifier.isTypedSimple() )
 		{
-//			if( aTypeSpecifier->isTypedString() )
+//			if( aTypeSpecifier.isTypedString() )
 //			{
 //				return( ExpressionConstructor::newString("") );
 //			}
 //			else
-//				if( aTypeSpecifier->isTypedMachine() )
+//				if( aTypeSpecifier.isTypedMachine() )
 //			{
 //				return( RuntimeLib::RID_NIL );
 //			}
 //			else
 			{
-				BF aNewFreshParam( create(aRID, aTypeSpecifier, lvalue) );
+				BF aNewFreshParam( create(aRID, theTypeSpecifier, lvalue) );
 
 				paramList.append( aNewFreshParam );
 
@@ -603,7 +647,8 @@ BF BaseEnvironment::createNewFreshParam(const RuntimeID & aRID,
 	{
 		AVM_OS_FATAL_ERROR_EXIT
 				<< "getInitialValue:> Unexpected an instance << "
-				<< lvalue->getFullyQualifiedNameID() << " >>  without typeSpecifier !!!"
+				<< lvalue.getFullyQualifiedNameID()
+				<< " >> without typeSpecifier !!!"
 				<< SEND_EXIT;
 
 		return( BF::REF_NULL );
@@ -613,19 +658,53 @@ BF BaseEnvironment::createNewFreshParam(const RuntimeID & aRID,
 }
 
 
+void BaseEnvironment::createNewFreshParam(
+		const RuntimeID & aPRID, const InstanceOfPort & port,
+		BFCollection & newfreshList, BFCollection & paramList)
+{
+	for( const auto & param : port.getParameters() )
+	{
+		if( param.is< BaseTypeSpecifier >() )
+		{
+//			newfreshList.append(
+//					createNewFreshParam(aPRID,
+//							param.to_ptr< BaseTypeSpecifier >(), aVar, paramList) );
+		}
+		else if( param.is< InstanceOfData >() )
+		{
+			const InstanceOfData & aVar = param.to< InstanceOfData >();
+
+			newfreshList.append(
+					createNewFreshParam(aPRID,
+							aVar.getTypeSpecifier(), aVar, paramList) );
+		}
+
+	}
+}
+
+
 Symbol BaseEnvironment::create(
 		const RuntimeID & aRID, const std::string & paramID,
 		const TypeSpecifier & aTypeSpecifier, const BF & aValue)
 {
 	std::ostringstream ossUfi;
 
-	ossUfi << "pid#" << aRID.getRid()
-			<< ":" << paramID << "#" << ++NEW_PARAM_OFFSET;
+	if( getConfiguration().isNewfreshParameterNameBasedPID() )
+	{
+		ossUfi << aRID.strPid() << ":" << paramID
+				<< getConfiguration().getNameIdSeparator() << ++NEW_PARAM_OFFSET;
+	}
+	else
+	{
+		ossUfi << aRID.getInstance()->getFullyQualifiedNameID()
+				<< "." << paramID
+				<< getConfiguration().getNameIdSeparator() << ++NEW_PARAM_OFFSET;
+	}
 
 	Symbol theSymbolicParam( new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			aRID.getExecutable(), NULL, aTypeSpecifier, ossUfi.str(), 0,
-			Modifier::PARAMETER_PUBLIC_FINAL_STATIC_MODIFIER) );
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			aRID.getExecutable(), Variable::nullref(), aTypeSpecifier,
+			ossUfi.str(), 0, Modifier::PARAMETER_PUBLIC_FINAL_STATIC_MODIFIER) );
 
 	theSymbolicParam.setCreatorContainerRID( aRID );
 	theSymbolicParam.setNameID( ossUfi.str() );
@@ -638,95 +717,104 @@ Symbol BaseEnvironment::create(
 
 
 
-Symbol BaseEnvironment::create4ArrayAccess(APExecutionData & apED,
+Symbol BaseEnvironment::create4ArrayAccess(ExecutionData & apED,
 		const RuntimeID & aRID, const BF & arrayValue,
-		InstanceOfData * lvalueOfIndex)
+		const InstanceOfData & lvalueOfIndex)
 {
-	std::ostringstream ossUFI;
-	std::ostringstream ossID;
+	std::ostringstream ossUfi;
+	std::ostringstream ossId;
 
-	ossUFI << "pid#" << aRID.getRid() << ":";
-	ossUFI << lvalueOfIndex->getContainer()->
-			getData().rawAt(lvalueOfIndex->getOffset())->getAstNameID();
-	ossUFI << "#" << ++NEW_PARAM_OFFSET;
-	// lvalueOfIndex->incrInstanciationCount();
-	ossID << ossUFI.str();
+	ossId << lvalueOfIndex.getContainer()->getVariables().rawAt(
+			lvalueOfIndex.getOffset() )->getNameID()
+		<< getConfiguration().getNameIdSeparator() << ++NEW_PARAM_OFFSET;
+
+	if( getConfiguration().isNewfreshParameterNameBasedPID() )
+	{
+		ossUfi << aRID.strPid() << ":" << ossId.str();
+	}
+	else
+	{
+		ossUfi << aRID.getInstance()->getFullyQualifiedNameID() << "."
+				<< ossId.str();
+	}
+// lvalueOfIndex.incrInstanciationCount();
+//	ossId << ossUfi.str();
 
 	Symbol newParam;
 	TableOfSymbol aRelativeDataPath;
 
-	TableOfSymbol::iterator itEnd = lvalueOfIndex->getDataPath()->end();
-	TableOfSymbol::iterator it = lvalueOfIndex->getDataPath()->begin();
+	TableOfSymbol::iterator itEnd = lvalueOfIndex.getDataPath()->end();
+	TableOfSymbol::iterator it = lvalueOfIndex.getDataPath()->begin();
 
-	switch( lvalueOfIndex->getPointerNature() )
+	switch( lvalueOfIndex.getPointerNature() )
 	{
-		case IPointerDataNature::POINTER_UFI_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_UFI_OFFSET_NATURE:
 		{
 			for( ; it != itEnd ; ++it )
 			{
-				ossUFI << "[" << (*it).getOffset() << "]";
-				ossID  << "[" << (*it).getOffset() << "]";
+				ossUfi << "[" << (*it).getOffset() << "]";
+				ossId  << "[" << (*it).getOffset() << "]";
 			}
 
 			newParam = new InstanceOfData(
-					lvalueOfIndex->getPointerNature(), aRID.getExecutable(),
-					lvalueOfIndex, *(lvalueOfIndex->getDataPath()) );
+					lvalueOfIndex.getPointerNature(), aRID.getExecutable(),
+					lvalueOfIndex, *(lvalueOfIndex.getDataPath()) );
 
 			break;
 		}
 
-		case IPointerDataNature::POINTER_UFI_RUNTIME_NATURE:
+		case IPointerVariableNature::POINTER_UFI_RUNTIME_NATURE:
 		{
 			// NO +1 for << this >> which is the root of the path
-			avm_size_t pathLength = lvalueOfIndex->getDataPath()->size();
-			avm_size_t * theOffsetPath = lvalueOfIndex->getOffsetPath();
+			std::size_t pathLength = lvalueOfIndex.getDataPath()->size();
+			std::size_t * theOffsetPath = lvalueOfIndex.getOffsetPath();
 
-			for( avm_size_t k = 1 ; k < pathLength ; ++k )
+			for( std::size_t k = 1 ; k < pathLength ; ++k )
 			{
-				ossUFI << "[" << theOffsetPath[k] << "]";
-				ossID  << "[" << theOffsetPath[k] << "]";
+				ossUfi << "[" << theOffsetPath[k] << "]";
+				ossId  << "[" << theOffsetPath[k] << "]";
 			}
 
 			newParam = new InstanceOfData(
-					lvalueOfIndex->getPointerNature(), aRID.getExecutable(),
-					lvalueOfIndex, *(lvalueOfIndex->getDataPath()) );
+					lvalueOfIndex.getPointerNature(), aRID.getExecutable(),
+					lvalueOfIndex, *(lvalueOfIndex.getDataPath()) );
 
 			break;
 		}
-		case IPointerDataNature::POINTER_UFI_MIXED_NATURE:
+		case IPointerVariableNature::POINTER_UFI_MIXED_NATURE:
 		{
 			Symbol symbolicIndex;
 			for( ; it != itEnd ; ++it )
 			{
 				switch( (*it).getPointerNature() )
 				{
-					case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
 					{
 						symbolicIndex = new InstanceOfData(
-								IPointerDataNature::
+								IPointerVariableNature::
 										POINTER_FIELD_ARRAY_OFFSET_NATURE,
 								(*it).getContainer(), (*it).getAstElement(),
 								(*it).getTypeSpecifier(), (*it).getOffset() );
 
-						ossUFI << "." << symbolicIndex.str();
-						ossID  << "." << symbolicIndex.str();
+						ossUfi << "." << symbolicIndex.str();
+						ossId  << "." << symbolicIndex.str();
 
 						break;
 					}
-					case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 					{
 						symbolicIndex = new InstanceOfData(
-								IPointerDataNature::
+								IPointerVariableNature::
 										POINTER_FIELD_ARRAY_OFFSET_NATURE,
 								(*it).getContainer(), (*it).getAstElement(),
 								(*it).getTypeSpecifier(), (*it).getOffset() );
 
-						ossUFI << "[" << symbolicIndex.str() << "]";
-						ossID  << "[" << symbolicIndex.str() << "]";
+						ossUfi << "[" << symbolicIndex.str() << "]";
+						ossId  << "[" << symbolicIndex.str() << "]";
 
 						break;
 					}
-					case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 					{
 						EvaluationEnvironment eENV(*this, apED, aRID);
 						if( eENV.eval((*it).getValue()) )
@@ -738,7 +826,7 @@ Symbol BaseEnvironment::create4ArrayAccess(APExecutionData & apED,
 							AVM_OS_FATAL_ERROR_EXIT
 									<< "Failed to eval ARRAY index << "
 									<< (*it).strValue() << " >> in variable << "
-									<< lvalueOfIndex->str()
+									<< lvalueOfIndex.str()
 									<< " >> for initializing a VVT !!!"
 									<< SEND_EXIT;
 
@@ -748,7 +836,7 @@ Symbol BaseEnvironment::create4ArrayAccess(APExecutionData & apED,
 						if( eENV.outVAL.isNumeric() )
 						{
 							symbolicIndex = new InstanceOfData(
-									IPointerDataNature::
+									IPointerVariableNature::
 											POINTER_FIELD_ARRAY_OFFSET_NATURE,
 									(*it).getContainer(), (*it).getAstElement(),
 									(*it).getTypeSpecifier(),
@@ -757,7 +845,7 @@ Symbol BaseEnvironment::create4ArrayAccess(APExecutionData & apED,
 						else
 						{
 							symbolicIndex = new InstanceOfData(
-									IPointerDataNature::
+									IPointerVariableNature::
 											POINTER_FIELD_ARRAY_INDEX_NATURE,
 									(*it).getContainer(), (*it).getAstElement(),
 									(*it).getTypeSpecifier(), 0 );
@@ -767,8 +855,8 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , DATA )
 	AVM_OS_TRACE << "indexArray:> " << eENV.outVAL.toString() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , DATA )
 
-						ossUFI << "[" << eENV.outVAL.str() << "]";
-						ossID  << "[" << eENV.outVAL.str() << "]";
+						ossUfi << "[" << eENV.outVAL.str() << "]";
+						ossId  << "[" << eENV.outVAL.str() << "]";
 
 						break;
 					}
@@ -787,7 +875,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , DATA )
 				aRelativeDataPath.append(symbolicIndex);
 			}
 
-			newParam = new InstanceOfData(lvalueOfIndex->getPointerNature(),
+			newParam = new InstanceOfData(lvalueOfIndex.getPointerNature(),
 					aRID.getExecutable(), lvalueOfIndex, aRelativeDataPath);
 
 			break;
@@ -799,7 +887,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , DATA )
 					<< "SymbolicParameterFactory::create4ArrayAccess:> "
 						"Unexpected POINTER NATURE "
 						"for the instance of index :>\n"
-					<< lvalueOfIndex->toString( AVM_TAB1_INDENT )
+					<< lvalueOfIndex.toString( AVM_TAB1_INDENT )
 					<< SEND_EXIT;
 
 			return( Symbol::REF_NULL );
@@ -807,7 +895,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , DATA )
 	}
 
 	newParam.setValue( arrayValue );
-	newParam.updateFullyQualifiedNameID( ossUFI.str() , ossID.str() );
+	newParam.updateFullyQualifiedNameID( ossUfi.str() , ossId.str() );
 
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , DATA )
@@ -833,21 +921,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , DATA )
  *******************************************************************************
  */
 
-bool BaseEnvironment::isAssigned(const APExecutionData & apED,
-		const RuntimeID & aRID, InstanceOfData * lvalue)
+bool BaseEnvironment::isAssigned(const ExecutionData & apED,
+		const RuntimeID & aRID, const InstanceOfData & lvalue)
 {
-	if( lvalue->hasRuntimeContainerRID() )
+	if( lvalue.hasRuntimeContainerRID() )
 	{
-		return( apED->isAssigned(
-				lvalue->getRuntimeContainerRID(), lvalue->getOffset()) );
+		return( apED.isAssigned(
+				lvalue.getRuntimeContainerRID(), lvalue.getOffset()) );
 	}
 	else
 	{
 		RuntimeID aDataRID;
 
-		if( getRuntimeForm(apED, aRID, lvalue, aDataRID) )
+		if( getRuntimeForm(apED, aRID,
+				const_cast< const InstanceOfData & >(lvalue), aDataRID) )
 		{
-			return( apED->isAssigned(aDataRID, lvalue->getOffset()) );
+			return( apED.isAssigned(aDataRID, lvalue.getOffset()) );
 		}
 	}
 
@@ -862,31 +951,33 @@ bool BaseEnvironment::isAssigned(const APExecutionData & apED,
  *******************************************************************************
  */
 bool BaseEnvironment::getRuntimeForm(
-		const APExecutionData & apED, const RuntimeID & aRID,
-		InstanceOfData * lvalue, RuntimeID & aDataRID)
+		const ExecutionData & apED, const RuntimeID & aRID,
+		const InstanceOfData & lvalue, RuntimeID & aDataRID)
 {
 	aDataRID = aRID;
 
-//	if( lvalue->hasRuntimeContainerRID() )
+//	if( lvalue.hasRuntimeContainerRID() )
 //	{
-//		aDataRID = lvalue->getRuntimeContainerRID();
+//		aDataRID = lvalue.getRuntimeContainerRID();
 //
 //		return( true );
 //	}
 //	else
-	if( lvalue->isAlias() )
+	if( lvalue.isAlias() )
 	{
-		if( lvalue->hasAliasTarget() &&
-				lvalue->getAliasTarget()->hasRuntimeContainerRID() )
+		if( lvalue.hasAliasTarget() &&
+				lvalue.getAliasTarget()->hasRuntimeContainerRID() )
 		{
-			lvalue->setRuntimeContainerRID( aDataRID =
-					lvalue->getAliasTarget()->getRuntimeContainerRID() );
+			InstanceOfData & wrlvalue = const_cast< InstanceOfData & >(lvalue);
+
+			aDataRID = wrlvalue.getAliasTarget()->getRuntimeContainerRID();
+			wrlvalue.setRuntimeContainerRID( aDataRID );
 
 			return( true );
 		}
 
 		ArrayOfInstanceOfMachine::iterator it =
-				lvalue->getMachinePath()->begin();
+				lvalue.getMachinePath()->begin();
 
 		// SEARCH of the RUNTIME FORM container
 		// where this INSTANCE of variable was declared
@@ -901,23 +992,23 @@ bool BaseEnvironment::getRuntimeForm(
 		{
 			// Use of Alias PATH to find the INSTANCE of variable
 			ArrayOfInstanceOfMachine::iterator itEnd =
-					lvalue->getMachinePath()->end();
+					lvalue.getMachinePath()->end();
 			for( ; it != itEnd ; ++it )
 			{
-				aDataRID = apED->getRuntimeFormChild(aDataRID, (*it));
+				aDataRID = apED.getRuntimeFormChild(aDataRID, (*it));
 			}
 
 //			AVM_OS_ASSERT_FATAL_ERROR_EXIT( aDataRID.getVariable(
-//				lvalue->getOffset() )->isAstElement( lvalue->getAstElement() ) )
+//				lvalue.getOffset() )->isAstElement( lvalue.getAstElement() ) )
 //					<< "Assign error " << aDataRID.getExecutable()
-//							->getData(lvalue->getOffset())->getFullyQualifiedNameID()
-//					<< " != " << lvalue->getFullyQualifiedNameID() << " !!!"
+//						->getData(lvalue.getOffset())->getFullyQualifiedNameID()
+//					<< " != " << lvalue.getFullyQualifiedNameID() << " !!!"
 //					<< SEND_EXIT;
 //
 //AVM_IF_DEBUG_FLAG( DATA )
 //	AVM_OS_TRACE << INCR_INDENT_TAB << "begin BaseEnvironment::getRvalue\n";
-//	lvalue->toStream(AVM_OS_TRACE);
-//	apED->getRuntime(aDataRID).toStream(AVM_OS_TRACE);
+//	lvalue.toStream(AVM_OS_TRACE);
+//	apED.getRuntime(aDataRID).toStream(AVM_OS_TRACE);
 //
 //	rvalue->toStream(AVM_OS_TRACE);
 //	AVM_OS_TRACE << TAB_DECR_INDENT << "end BaseEnvironment::getRvalue\n";
@@ -929,7 +1020,7 @@ bool BaseEnvironment::getRuntimeForm(
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Access error : Unfound Runtime Data Container for << "
-					<< lvalue->getFullyQualifiedNameID() << " >> !!!"
+					<< lvalue.getFullyQualifiedNameID() << " >> !!!"
 					<< SEND_EXIT;
 		}
 	}
@@ -942,7 +1033,7 @@ bool BaseEnvironment::getRuntimeForm(
 		// SEARCH of the RUNTIME FORM container
 		// where this INSTANCE of variable was declared
 		while( aDataRID.valid() &&
-				(aDataRID.getExecutable() != lvalue->getContainer()) )
+				(aDataRID.getExecutable() != lvalue.getContainer()) )
 		{
 			aDataRID = aDataRID.getPRID();
 		}
@@ -950,16 +1041,17 @@ bool BaseEnvironment::getRuntimeForm(
 		if( aDataRID.valid() )
 		{
 //			AVM_OS_ASSERT_FATAL_ERROR_EXIT( aDataRID.getVariable(
-//				lvalue->getOffset() )->isAstElement( lvalue->getAstElement() ) )
+//				lvalue.getOffset() )->isAstElement( lvalue.getAstElement() ) )
 //					<< "Assign error "
-//					<< aDataRID.getVariable(lvalue->getOffset())->getFullyQualifiedNameID()
-//					<< " != " << lvalue->getFullyQualifiedNameID() << " !!!"
+//					<< aDataRID.getVariable(
+//							lvalue.getOffset() )->getFullyQualifiedNameID()
+//					<< " != " << lvalue.getFullyQualifiedNameID() << " !!!"
 //					<< SEND_EXIT;
 //
 //AVM_IF_DEBUG_FLAG( DATA )
 //	AVM_OS_TRACE << INCR_INDENT_TAB << "begin BaseEnvironment::getRvalue\n";
-//	lvalue->toStream(AVM_OS_TRACE);
-//	apED->getRuntime(aDataRID).toStream(AVM_OS_TRACE);
+//	lvalue.toStream(AVM_OS_TRACE);
+//	apED.getRuntime(aDataRID).toStream(AVM_OS_TRACE);
 //
 //	rvalue->toStream(AVM_OS_TRACE);
 //	AVM_OS_TRACE << TAB_DECR_INDENT << "end BaseEnvironment::getRvalue\n";
@@ -981,18 +1073,18 @@ bool BaseEnvironment::getRuntimeForm(
 }
 
 
-bool BaseEnvironment::getRuntimeForm(const APExecutionData & apED,
-		InstanceOfData * lvalue, LocalRuntime & aLocalRuntime)
+bool BaseEnvironment::getRuntimeForm(const ExecutionData & apED,
+		const InstanceOfData & lvalue, LocalRuntime & aLocalRuntime)
 {
-	if( apED->hasLocalRuntimeStack() )
+	if( apED.hasLocalRuntimeStack() )
 	{
 		StackOfLocalRuntime::
-		reverse_iterator it = apED->getLocalRuntimes()->rbegin();
+		reverse_iterator it = apED.getLocalRuntimes()->rbegin();
 		StackOfLocalRuntime::
-		reverse_iterator itEnd = apED->getLocalRuntimes()->rend();
+		reverse_iterator itEnd = apED.getLocalRuntimes()->rend();
 		for( ; it != itEnd ; ++it )
 		{
-			if( (*it).getProgram() == lvalue->getContainer() )
+			if( (*it).getProgram() == lvalue.getContainer() )
 			{
 				aLocalRuntime = (*it) ;
 
@@ -1003,10 +1095,11 @@ bool BaseEnvironment::getRuntimeForm(const APExecutionData & apED,
 		if( aLocalRuntime.valid() )
 		{
 //			AVM_OS_ASSERT_FATAL_ERROR_EXIT( aLocalRuntime.getProgram()->getData(
-//				lvalue->getOffset())->isAstElement( lvalue->getAstElement() ) )
+//				lvalue.getOffset())->isAstElement( lvalue.getAstElement() ) )
 //					<< "Assign error "
-//					<< aLocalRuntime.getProgram()->getData(lvalue->getOffset())->getFullyQualifiedNameID()
-//					<< " != " + lvalue->getFullyQualifiedNameID() << " !!!"
+//					<< aLocalRuntime.getProgram()->getData(
+//							lvalue.getOffset() )->getFullyQualifiedNameID()
+//					<< " != " + lvalue.getFullyQualifiedNameID() << " !!!"
 //					<< SEND_EXIT;
 
 			return( true );
@@ -1020,23 +1113,23 @@ bool BaseEnvironment::getRuntimeForm(const APExecutionData & apED,
 /**
  * Generate numeric offset for array access using symbolic expression
  */
-avm_size_t BaseEnvironment::genNumericOffset(
-		APExecutionData & apED, const RuntimeID & aRID,
+std::size_t BaseEnvironment::genNumericOffset(
+		ExecutionData & apED, const RuntimeID & aRID,
 		const Symbol & lvSymbolicOffset, const BF & rvEvaluatedOffset,
-		avm_size_t offsetMin, avm_size_t offsetMax)
+		std::size_t offsetMin, std::size_t offsetMax)
 {
-	avm_size_t offset = AVM_NUMERIC_MAX_SIZE_T;
+	std::size_t offset = AVM_NUMERIC_MAX_SIZE_T;
 
 	BF offsetExpr;
 
 	Bitset unusedOffsetBitset( offsetMax + 1 , true );
 
-	avm_size_t idx = offsetMin;
+	std::size_t idx = offsetMin;
 
 	if( rvEvaluatedOffset.is< InstanceOfData >() )
 	{
-		offsetExpr = getRvalue( apED, apED->getParametersRID(),
-				rvEvaluatedOffset.to_ptr< InstanceOfData >() );
+		offsetExpr = getRvalue( apED, apED.getParametersRID(),
+				rvEvaluatedOffset.to< InstanceOfData >() );
 
 		if( offsetExpr.isUInteger() &&
 			((offset = offsetExpr.toInteger()) <= offsetMax) )
@@ -1048,7 +1141,7 @@ avm_size_t BaseEnvironment::genNumericOffset(
 //					<< lvSymbolicOffset.strValue() << " |=> "
 //					<< no_indent( rvEvaluatedOffset ) << " |-> "
 //					<< offsetExpr.str() << "\n with constraint:> \n"
-//					<< apED->getPathCondition().wrapStr() << " !!!"
+//					<< apED.getPathCondition().wrapStr() << " !!!"
 //					<< std::endl;
 
 			if( PathConditionProcessor::addPathCondition(apED,
@@ -1064,7 +1157,7 @@ avm_size_t BaseEnvironment::genNumericOffset(
 //						<< lvSymbolicOffset.strValue() << " |=> "
 //						<< no_indent( rvEvaluatedOffset ) << " |-> "
 //						<< offset << "\n with constraint:> \n"
-//						<< apED->getPathCondition().wrapStr() << " !!!"
+//						<< apED.getPathCondition().wrapStr() << " !!!"
 //						<< std::endl << std::endl;
 			}
 		}
@@ -1111,7 +1204,7 @@ avm_size_t BaseEnvironment::genNumericOffset(
 //							<< lvSymbolicOffset.strValue() << " |=> "
 //							<< no_indent( rvEvaluatedOffset ) << " |-> "
 //							<< offset << "\n with constraint:> \n"
-//							<< apED->getPathCondition().wrapStr() << " !!!"
+//							<< apED.getPathCondition().wrapStr() << " !!!"
 //							<< std::endl;
 
 					break;
@@ -1124,20 +1217,20 @@ avm_size_t BaseEnvironment::genNumericOffset(
 	{
 		if( lvSymbolicOffset.getValue().is< InstanceOfData >() )
 		{
-			InstanceOfData * lvIndex =
+			const InstanceOfData * lvIndex =
 					lvSymbolicOffset.getValue().to_ptr< InstanceOfData >();
 
 			if( lvIndex->getModifier().hasFeatureMutable() )
 			{
 				if( lvIndex->getModifier().hasNatureReference() )
 				{
-					lvIndex = getRvalue(apED, aRID, lvIndex).
+					lvIndex = getRvalue(apED, aRID, (* lvIndex)).
 							to_ptr< InstanceOfData >();
 				}
 
 				if( lvIndex->getModifier().anyNatureReferenceMacro() )
 				{
-					setRvalue(apED, aRID, lvIndex, offsetExpr);
+					setRvalue(apED, aRID, (* lvIndex), offsetExpr);
 				}
 			}
 
@@ -1146,7 +1239,8 @@ avm_size_t BaseEnvironment::genNumericOffset(
 				lvIndex = rvEvaluatedOffset.to_ptr< InstanceOfData >();
 				if( not lvIndex->hasValue() )
 				{
-					setRvalue(apED, apED->getParametersRID(), lvIndex, offsetExpr);
+					setRvalue(apED,
+							apED.getParametersRID(), (* lvIndex), offsetExpr);
 
 //					AVM_OS_INFO << "BaseEnvironment::genNumericOffset:> "
 //								"SAVE NUMERIC<RANDOM> ARRAY INDEX in [ "
@@ -1155,7 +1249,7 @@ avm_size_t BaseEnvironment::genNumericOffset(
 //							<< lvSymbolicOffset.strValue() << " |=> "
 //							<< no_indent( rvEvaluatedOffset ) << " |-> "
 //							<< offset << "\n with constraint:> \n"
-//							<< apED->getPathCondition().wrapStr() << " !!!"
+//							<< apED.getPathCondition().wrapStr() << " !!!"
 //							<< std::endl << std::endl;
 				}
 			}
@@ -1173,7 +1267,7 @@ avm_size_t BaseEnvironment::genNumericOffset(
 			<< " , " << offsetMax << " ]\n for the expression: "
 			<< lvSymbolicOffset.strValue() << " |=> "
 			<< no_indent( rvEvaluatedOffset ) << "\n with constraint:> \n"
-			<< apED->getPathCondition().wrapStr() << " !!!"
+			<< apED.getPathCondition().wrapStr() << " !!!"
 			<< SEND_EXIT;
 
 	return( AVM_NUMERIC_MAX_SIZE_T );
@@ -1187,19 +1281,19 @@ avm_size_t BaseEnvironment::genNumericOffset(
  *******************************************************************************
  */
 BF & BaseEnvironment::getRvalue(
-		APExecutionData & apED, const RuntimeID & aRID,
-		InstanceOfData * lvUFI, BF & rvalue, const Symbol & offsetValue)
+		ExecutionData & apED, const RuntimeID & aRID,
+		const InstanceOfData & lvUFI, BF & rvalue, const Symbol & offsetValue)
 {
 	switch( offsetValue.getPointerNature() )
 	{
-		case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-		case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
-		case IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
-		case IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
 		{
 			return( rvalue.at( offsetValue.getOffset() ) );
 		}
-		case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 		{
 			EvaluationEnvironment eENV(*this, apED, aRID);
 			if( eENV.evalOffset(offsetValue.getValue()) )
@@ -1211,7 +1305,7 @@ BF & BaseEnvironment::getRvalue(
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Failed to eval ARRAY index << "
 						<< offsetValue.strValue() << " >> in UFI << "
-						<< lvUFI->str() << " >> for reading in VVT !!!"
+						<< lvUFI.str() << " >> for reading in VVT !!!"
 						<< SEND_EXIT;
 
 				return( BF::REF_NULL );
@@ -1224,14 +1318,14 @@ BF & BaseEnvironment::getRvalue(
 					static_cast< avm_integer_t >(rvalue.size()) )
 						<< "Failed to read in VVT with index << "
 						<< offsetValue.strValue() << " >> using UFI << "
-						<< lvUFI->str() << " >> !!!"
+						<< lvUFI.str() << " >> !!!"
 						<< SEND_EXIT;
 
 				return( rvalue.at( eENV.outVAL.toInteger() ) );
 			}
 			else if( rvalue.size() > 0 )
 			{
-				avm_size_t offset = genNumericOffset( apED, aRID,
+				std::size_t offset = genNumericOffset( apED, aRID,
 						offsetValue, eENV.outVAL, 0, (rvalue.size() - 1) );
 
 				if( offset != AVM_NUMERIC_MAX_SIZE_T )
@@ -1247,7 +1341,7 @@ BF & BaseEnvironment::getRvalue(
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "BaseEnvironment::getRvalue:> "
-							"Unexpected variable << " << lvUFI->str()
+							"Unexpected variable << " << lvUFI.str()
 						<< " >> with empty rvalue << " << rvalue.str()
 						<< " >> for the instance of data :>\n"
 						<< offsetValue.toString( AVM_TAB1_INDENT )
@@ -1261,7 +1355,7 @@ BF & BaseEnvironment::getRvalue(
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "BaseEnvironment::getRvalue:> "
 						"Unexpected POINTER NATURE in UFI << "
-					<< lvUFI->str() << " >> for the instance of data :>\n"
+					<< lvUFI.str() << " >> for the instance of data :>\n"
 					<< offsetValue.toString( AVM_TAB1_INDENT )
 					<< SEND_EXIT;
 
@@ -1271,22 +1365,22 @@ BF & BaseEnvironment::getRvalue(
 }
 
 
-BF & BaseEnvironment::getRvalue(APExecutionData & apED,
-		const RuntimeID & aRID, InstanceOfData * lvalue)
+BF & BaseEnvironment::getRvalue(ExecutionData & apED,
+		const RuntimeID & aRID, const InstanceOfData & lvalue)
 {
-	TableOfData * aDataTable = NULL;
+	TableOfData * aDataTable = nullptr;
 
-	if( lvalue->hasRuntimeContainerRID() )
+	if( lvalue.hasRuntimeContainerRID() )
 	{
-		aDataTable = apED->getRuntime(
-				lvalue->getRuntimeContainerRID()).getDataTable();
+		aDataTable = apED.getRuntime(
+				lvalue.getRuntimeContainerRID()).getDataTable();
 	}
 	else
 	{
 		RuntimeID aDataRID;
 		if( getRuntimeForm(apED, aRID, lvalue, aDataRID) )
 		{
-			aDataTable = apED->getRuntime(aDataRID).getDataTable();
+			aDataTable = apED.getRuntime(aDataRID).getDataTable();
 		}
 		else
 		{
@@ -1309,24 +1403,24 @@ BF & BaseEnvironment::getRvalue(APExecutionData & apED,
 		}
 	}
 
-	switch( lvalue->getPointerNature() )
+	switch( lvalue.getPointerNature() )
 	{
-		case IPointerDataNature::POINTER_STANDARD_NATURE:
-		case IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
-		case IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_STANDARD_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
 		{
-			return( aDataTable->at( lvalue->getOffset() ) );
+			return( aDataTable->at( lvalue.getOffset() ) );
 		}
-		case IPointerDataNature::POINTER_UFI_OFFSET_NATURE:
-		case IPointerDataNature::POINTER_UFI_RUNTIME_NATURE:
+		case IPointerVariableNature::POINTER_UFI_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_UFI_RUNTIME_NATURE:
 		{
-			BF rvalue = aDataTable->at( lvalue->getOffset() );
+			BF rvalue = aDataTable->at( lvalue.getOffset() );
 
 			// NO +1 for << this >> which is the root of the path
-			avm_size_t pathLength = lvalue->getDataPath()->size();
-			avm_size_t * theOffsetPath = lvalue->getOffsetPath();
+			std::size_t pathLength = lvalue.getDataPath()->size();
+			std::size_t * theOffsetPath = lvalue.getOffsetPath();
 
-			for( avm_size_t k = 1 ; k < pathLength ; ++k )
+			for( std::size_t k = 1 ; k < pathLength ; ++k )
 			{
 				if( rvalue.is< BuiltinCollection >() )
 				{
@@ -1353,12 +1447,12 @@ BF & BaseEnvironment::getRvalue(APExecutionData & apED,
 				return( *value );
 			}
 		}
-		case IPointerDataNature::POINTER_UFI_MIXED_NATURE:
+		case IPointerVariableNature::POINTER_UFI_MIXED_NATURE:
 		{
-			BF rvalue = aDataTable->at( lvalue->getOffset() );
+			BF rvalue = aDataTable->at( lvalue.getOffset() );
 
-			TableOfSymbol::iterator it = lvalue->getDataPath()->begin();
-			TableOfSymbol::iterator itEnd = lvalue->getDataPath()->pred_end();
+			TableOfSymbol::iterator it = lvalue.getDataPath()->begin();
+			TableOfSymbol::iterator itEnd = lvalue.getDataPath()->pred_end();
 
 			bool isSymbolicAccess = false;
 
@@ -1388,7 +1482,7 @@ BF & BaseEnvironment::getRvalue(APExecutionData & apED,
 			if( isSymbolicAccess )
 			{
 				BF * value = new BF( create4ArrayAccess(apED, aRID,
-						aDataTable->at( lvalue->getOffset() ),
+						aDataTable->at( lvalue.getOffset() ),
 						lvalue) );
 
 				return( *value );
@@ -1418,19 +1512,19 @@ BF & BaseEnvironment::getRvalue(APExecutionData & apED,
  * writable rvalue for an lvalue
  */
 BF & BaseEnvironment::getWvalue(
-		APExecutionData & apED, const RuntimeID & aRID,
+		ExecutionData & apED, const RuntimeID & aRID,
 		ArrayBF * rvArray, const Symbol & lvalue)
 {
 	switch( lvalue.getPointerNature() )
 	{
-		case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-		case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
-		case IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
-		case IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
 		{
 			return( rvArray->getWritable( lvalue.getOffset() ));
 		}
-		case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 		{
 			EvaluationEnvironment eENV(*this, apED, aRID);
 			if( eENV.evalOffset(lvalue.getValue()) )
@@ -1485,19 +1579,19 @@ BF & BaseEnvironment::getWvalue(
 
 
 BF & BaseEnvironment::getWvalue(
-		APExecutionData & apED, const RuntimeID & aRID,
+		ExecutionData & apED, const RuntimeID & aRID,
 		BuiltinContainer * rvArray, const Symbol & lvalue)
 {
 	switch( lvalue.getPointerNature() )
 	{
-		case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-		case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
-		case IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
-		case IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
 		{
 			return( rvArray->getWritable( lvalue.getOffset() ));
 		}
-		case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 		{
 			EvaluationEnvironment eENV(*this, apED, aRID);
 			if( eENV.evalOffset(lvalue.getValue()) )
@@ -1552,15 +1646,15 @@ BF & BaseEnvironment::getWvalue(
 
 
 
-BF & BaseEnvironment::getWvalue(APExecutionData & apED,
-		const RuntimeID & aRID, InstanceOfData * lvalue)
+BF & BaseEnvironment::getWvalue(ExecutionData & apED,
+		const RuntimeID & aRID, const InstanceOfData & lvalue)
 {
-	TableOfData * aDataTable = NULL;
+	TableOfData * aDataTable = nullptr;
 
-	if( lvalue->hasRuntimeContainerRID() )
+	if( lvalue.hasRuntimeContainerRID() )
 	{
 		aDataTable = apED.getWritableRuntime(
-				lvalue->getRuntimeContainerRID() ).getWritableDataTable();
+				lvalue.getRuntimeContainerRID() ).getWritableDataTable();
 	}
 	else
 	{
@@ -1592,24 +1686,24 @@ BF & BaseEnvironment::getWvalue(APExecutionData & apED,
 		}
 	}
 
-	switch( lvalue->getPointerNature() )
+	switch( lvalue.getPointerNature() )
 	{
-		case IPointerDataNature::POINTER_STANDARD_NATURE:
-		case IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
-		case IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_STANDARD_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
 		{
-			return( aDataTable->getWritable( lvalue->getOffset() ) );
+			return( aDataTable->getWritable( lvalue.getOffset() ) );
 		}
-		case IPointerDataNature::POINTER_UFI_OFFSET_NATURE:
-		case IPointerDataNature::POINTER_UFI_RUNTIME_NATURE:
+		case IPointerVariableNature::POINTER_UFI_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_UFI_RUNTIME_NATURE:
 		{
-			BF rvalue = aDataTable->getWritable( lvalue->getOffset() );
+			BF rvalue = aDataTable->getWritable( lvalue.getOffset() );
 
 			// NO +1 for << this >> which is the root of the path
-			avm_size_t pathLength = lvalue->getDataPath()->size();
-			avm_size_t * theOffsetPath = lvalue->getOffsetPath();
+			std::size_t pathLength = lvalue.getDataPath()->size();
+			std::size_t * theOffsetPath = lvalue.getOffsetPath();
 
-			for( avm_size_t k = 1 ; k < pathLength ; ++k )
+			for( std::size_t k = 1 ; k < pathLength ; ++k )
 			{
 				if( rvalue.is< BuiltinCollection >() )
 				{
@@ -1637,12 +1731,12 @@ BF & BaseEnvironment::getWvalue(APExecutionData & apED,
 				return( BF::REF_NULL );
 			}
 		}
-		case IPointerDataNature::POINTER_UFI_MIXED_NATURE:
+		case IPointerVariableNature::POINTER_UFI_MIXED_NATURE:
 		{
-			BF rvalue = aDataTable->getWritable( lvalue->getOffset() );
+			BF rvalue = aDataTable->getWritable( lvalue.getOffset() );
 
-			TableOfSymbol::iterator it = lvalue->getDataPath()->begin();
-			TableOfSymbol::iterator itEnd = lvalue->getDataPath()->pred_end();
+			TableOfSymbol::iterator it = lvalue.getDataPath()->begin();
+			TableOfSymbol::iterator itEnd = lvalue.getDataPath()->pred_end();
 
 			for( ; it != itEnd ; ++it )
 			{
@@ -1710,18 +1804,18 @@ BF & BaseEnvironment::getWvalue(APExecutionData & apED,
  *******************************************************************************
  */
 
-bool BaseEnvironment::setRvalue(APExecutionData & apED,
-		InstanceOfData * lvalue, const BF & rvalue)
+bool BaseEnvironment::setRvalue(ExecutionData & apED,
+		const InstanceOfData & lvalue, const BF & rvalue)
 {
-	if( lvalue->hasRuntimeContainerRID() )
+	if( lvalue.hasRuntimeContainerRID() )
 	{
 		return( writeData(apED,
-				lvalue->getRuntimeContainerRID(), lvalue, rvalue) );
+				lvalue.getRuntimeContainerRID(), lvalue, rvalue) );
 	}
 	else
 	{
 		RuntimeID aDataRID;
-		if( getRuntimeForm(apED, apED->mRID, lvalue, aDataRID) )
+		if( getRuntimeForm(apED, apED.getRID(), lvalue, aDataRID) )
 		{
 			return( writeData(apED, aDataRID, lvalue, rvalue) );
 		}
@@ -1739,7 +1833,7 @@ bool BaseEnvironment::setRvalue(APExecutionData & apED,
 							"data table for the instance of data:\n\t"
 						<< str_header( lvalue )
 						<< "\nin the runtime context: "
-						<< str_header( apED->mRID )
+						<< str_header( apED.getRID() )
 						<< SEND_EXIT;
 			}
 		}
@@ -1749,25 +1843,25 @@ bool BaseEnvironment::setRvalue(APExecutionData & apED,
 }
 
 
-bool BaseEnvironment::invokeOnWriteRoutine(APExecutionData & apED,
-		const RuntimeID & aRID, InstanceOfData * lvalue, const BF & rvalue)
+bool BaseEnvironment::invokeOnWriteRoutine(ExecutionData & apED,
+		const RuntimeID & aRID, const InstanceOfData & lvalue, const BF & rvalue)
 {
-	if( lvalue->hasOnWriteRoutine() )
+	if( lvalue.hasOnWriteRoutine() )
 	{
 		ExecutionEnvironment tmpENV(*this, apED, aRID, BFCode::REF_NULL);
 		if( not PRIMITIVE_PROCESSOR.invokeRoutine(
-				tmpENV, lvalue->getOnWriteRoutine(), rvalue) )
+				tmpENV, lvalue.getOnWriteRoutine(), rvalue) )
 		{
 			return( false );
 		}
 
 		if( tmpENV.outEDS.nonempty() )
 		{
-			const RuntimeID & saveRID = apED->mRID;
+			RuntimeID saveRID = apED.getRID();
 
 			tmpENV.outEDS.pop_last_to( apED );
 
-			apED->mRID = saveRID;
+			apED.setRID( saveRID );
 
 			if( tmpENV.outEDS.nonempty() )
 			{
@@ -1793,29 +1887,29 @@ bool BaseEnvironment::invokeOnWriteRoutine(APExecutionData & apED,
  * setData
  */
 bool BaseEnvironment::setData(
-		APExecutionData & apED, const RuntimeID & aRID,
-		InstanceOfData * lvalue, const BF & rvalue)
+		ExecutionData & apED, const RuntimeID & aRID,
+		const InstanceOfData & lvalue, const BF & rvalue)
 {
-	apED.getWritableRuntime( aRID ).makeWritableDataTable();
+	RuntimeForm & aRuntime = apED.getWritableRuntime( aRID );
+	aRuntime.makeWritableDataTable();
 
-	switch( lvalue->getPointerNature() )
+	switch( lvalue.getPointerNature() )
 	{
-		case IPointerDataNature::POINTER_STANDARD_NATURE:
-		case IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
-		case IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_STANDARD_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
 		{
-			apED->getRuntime(aRID).setData(lvalue->getOffset(), rvalue);
+			aRuntime.assign(lvalue.getOffset(), rvalue);
 
 			break;
 		}
-		case IPointerDataNature::POINTER_UFI_OFFSET_NATURE:
-		case IPointerDataNature::POINTER_UFI_RUNTIME_NATURE:
+		case IPointerVariableNature::POINTER_UFI_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_UFI_RUNTIME_NATURE:
 		{
-			BF rvContainer = apED->getRuntime(aRID).
-					getWritableData( lvalue->getOffset() );
+			BF rvContainer = aRuntime.getWritableData( lvalue.getOffset() );
 
-//			TableOfSymbol::iterator it = lvalue->getDataPath()->begin();
-//			TableOfSymbol::iterator itEnd = lvalue->getDataPath()->pred_end();
+//			TableOfSymbol::iterator it = lvalue.getDataPath()->begin();
+//			TableOfSymbol::iterator itEnd = lvalue.getDataPath()->pred_end();
 //			for( ; it != itEnd ; ++it )
 //			{
 //				rvContainer.moveAtWritable( (*it)->getOffset() );
@@ -1823,10 +1917,10 @@ bool BaseEnvironment::setData(
 //			rvContainer->set((*it)->getOffset(), rvalue);
 
 			// NO +1 for << this >> which is the root of the path
-			avm_size_t pathLength = lvalue->getDataPath()->size();
-			avm_size_t * theOffsetPath = lvalue->getOffsetPath();
+			std::size_t pathLength = lvalue.getDataPath()->size();
+			std::size_t * theOffsetPath = lvalue.getOffsetPath();
 
-			for( avm_size_t k = 1 ; k < pathLength ; ++k )
+			for( std::size_t k = 1 ; k < pathLength ; ++k )
 			{
 				rvContainer.moveAtWritable( theOffsetPath[k] );
 			}
@@ -1835,25 +1929,24 @@ bool BaseEnvironment::setData(
 
 			break;
 		}
-		case IPointerDataNature::POINTER_UFI_MIXED_NATURE:
+		case IPointerVariableNature::POINTER_UFI_MIXED_NATURE:
 		{
-			BF rvContainer = apED->getRuntime(aRID).
-					getWritableData( lvalue->getOffset() );
+			BF rvContainer = aRuntime.getWritableData( lvalue.getOffset() );
 
-			TableOfSymbol::iterator it = lvalue->getDataPath()->begin();
-			TableOfSymbol::iterator itEnd = lvalue->getDataPath()->pred_end();
+			TableOfSymbol::iterator it = lvalue.getDataPath()->begin();
+			TableOfSymbol::iterator itEnd = lvalue.getDataPath()->pred_end();
 			for( ; it != itEnd ; ++it )
 			{
 				switch( (*it).getPointerNature() )
 				{
-					case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-					case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 					{
 						rvContainer.moveAtWritable( (*it).getOffset() );
 
 						break;
 					}
-					case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 					{
 						EvaluationEnvironment eENV(*this, apED);
 						if( eENV.evalOffset( (*it).getValue() ) )
@@ -1879,7 +1972,7 @@ bool BaseEnvironment::setData(
 								static_cast< avm_integer_t >(rvContainer.size()) )
 									<< "Failed to write in ARRAY with index << "
 									<< eENV.outVAL.toInteger()
-									<< " >> in variable << " << lvalue->str()
+									<< " >> in variable << " << lvalue.str()
 									<< " >> for writing in VVT !!!"
 									<< SEND_EXIT;
 
@@ -1890,7 +1983,7 @@ bool BaseEnvironment::setData(
 
 						else
 						{
-							avm_size_t offset = genNumericOffset(
+							std::size_t offset = genNumericOffset(
 									apED, aRID, (*it), eENV.outVAL, 0,
 									(rvContainer.size() - 1) );
 
@@ -1929,16 +2022,16 @@ bool BaseEnvironment::setData(
 
 			switch( (*it).getPointerNature() )
 			{
-				case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-				case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
-				case IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
-				case IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
 				{
 					rvContainer.set((*it).getOffset(), rvalue);
 
 					break;
 				}
-				case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 				{
 					EvaluationEnvironment eENV(*this, apED);
 					if( eENV.evalOffset((*it).getValue()) )
@@ -1962,7 +2055,7 @@ bool BaseEnvironment::setData(
 							eENV.outVAL.toInteger(),
 							static_cast< avm_integer_t >(rvContainer.size()) )
 								<< "Failed to access to an ARRAY with index << "
-								<< lvalue->strValue()
+								<< lvalue.strValue()
 								<< " >> for writing in VVT !!!"
 								<< SEND_EXIT;
 
@@ -1973,7 +2066,7 @@ bool BaseEnvironment::setData(
 
 					else
 					{
-						avm_size_t offset = genNumericOffset(apED, aRID, (*it),
+						std::size_t offset = genNumericOffset(apED, aRID, (*it),
 								eENV.outVAL, 0, (rvContainer.size() - 1) );
 
 						if( offset != AVM_NUMERIC_MAX_SIZE_T )
@@ -2023,7 +2116,8 @@ bool BaseEnvironment::setData(
 		}
 	}
 
-	apED->mwsetAssigned(aRID, lvalue->getOffset(), true);
+	apED.setAssigned(aRID, lvalue.getOffset());
+//	aRuntime.setAssigned( lvalue.getOffset() );
 
 	return( true );
 }
@@ -2033,14 +2127,14 @@ bool BaseEnvironment::setData(
  * setLocalRuntime
  */
 bool BaseEnvironment::setLocalRuntime(
-		APExecutionData & apED, LocalRuntime & aLocalRuntime,
-		InstanceOfData * lvalue, const BF & rvalue)
+		ExecutionData & apED, LocalRuntime & aLocalRuntime,
+		const InstanceOfData & lvalue, const BF & rvalue)
 {
 	apED.makeModifiableLocalRuntime( aLocalRuntime );
 
 	// TODO what to do with monitor in this case
 
-	aLocalRuntime.setData(lvalue->getOffset(), rvalue);
+	aLocalRuntime.setData(lvalue.getOffset(), rvalue);
 
 	return( true );
 }
@@ -2049,7 +2143,7 @@ bool BaseEnvironment::setLocalRuntime(
 /**
  * TOOLS
  */
-BFCode BaseEnvironment::searchTraceIO(const BF & aTrace, AvmCode * ioFormula)
+BFCode BaseEnvironment::searchTraceIO(const BF & aTrace)
 {
 	if( aTrace.valid() )
 	{
@@ -2057,11 +2151,9 @@ BFCode BaseEnvironment::searchTraceIO(const BF & aTrace, AvmCode * ioFormula)
 
 		if( aTrace.is< AvmCode >() )
 		{
-			AvmCode::iterator it = aTrace.to_ptr< AvmCode >()->begin();
-			AvmCode::iterator itEnd = aTrace.to_ptr< AvmCode >()->end();
-			for(  ; it != itEnd ; ++it )
+			for( const auto & itOperand : aTrace.to< AvmCode >().getOperands() )
 			{
-				ioTrace = searchTraceIO((*it), ioFormula);
+				ioTrace = searchTraceIO(itOperand);
 				if( ioTrace.valid() )
 				{
 					return( ioTrace );
@@ -2070,27 +2162,155 @@ BFCode BaseEnvironment::searchTraceIO(const BF & aTrace, AvmCode * ioFormula)
 		}
 		else if( aTrace.is< ExecutionConfiguration >() )
 		{
-			const BF & ioAtomicTrace =
-					aTrace.to_ptr< ExecutionConfiguration >()->getCode();
+			const ExecutionConfiguration & execConf =
+					aTrace.to< ExecutionConfiguration >();
 
-			if( ioAtomicTrace.is< AvmCode >() )
+			if( execConf.isAvmCode() )
 			{
-				ioTrace = ioAtomicTrace.bfCode();
+				ioTrace = execConf.getAvmCode();
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
-	AVM_OS_TRACE
-			<< "ioTrace    : " << ioTrace.str()	<< std::endl
-			<< "ioFormula  : " << ioFormula->str()<< std::endl << std::endl;
+	AVM_OS_TRACE << std::endl
+			<< "Is ioTrace : " << ioTrace.str() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+
+				if( StatementTypeChecker::isCommunication(ioTrace) )
+				{
+					return( ioTrace );
+				}
+				else
+				{
+					return( BFCode::REF_NULL );
+				}
+			}
+		}
+	}
+
+	return( BFCode::REF_NULL );
+}
+
+
+BFCode BaseEnvironment::searchTraceIO(
+		const BF & aTrace, const AvmCode & ioFormula)
+{
+	if( aTrace.valid() )
+	{
+		BFCode ioTrace;
+
+		if( aTrace.is< AvmCode >() )
+		{
+			for( const auto & itOperand : aTrace.to< AvmCode >().getOperands() )
+			{
+				ioTrace = searchTraceIO(itOperand, ioFormula);
+				if( ioTrace.valid() )
+				{
+					return( ioTrace );
+				}
+			}
+		}
+		else if( aTrace.is< ExecutionConfiguration >() )
+		{
+			const ExecutionConfiguration & execConf =
+					aTrace.to< ExecutionConfiguration >();
+
+			if( execConf.isAvmCode() )
+			{
+				ioTrace = execConf.getAvmCode();
+
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+	AVM_OS_TRACE << std::endl
+			<< "ioFormula  : " << ioFormula.str()<< std::endl
+			<< "Is ioTrace : " << ioTrace.str() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
 
 				if( ioTrace->sameOperator( ioFormula ) &&
-					(ioTrace->size() >= ioFormula->size()) )
+					(ioTrace->size() >= ioFormula.size()) )
 				{
 					BaseInstanceForm * ioTraceInstance =
 							ioTrace->first().as_ptr< BaseInstanceForm >();
 
 					BaseInstanceForm * ioFormulaInstance =
-							ioFormula->first().as_ptr< BaseInstanceForm >();
+							ioFormula.first().as_ptr< BaseInstanceForm >();
+
+					if( ioTraceInstance->equals(ioFormulaInstance) )
+					{
+						if( ioFormulaInstance->isAlias() )
+						{
+							const InstanceOfMachine * anInstanceMachine =
+									ioFormulaInstance->getMachinePath()->last();
+
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+	AVM_OS_TRACE << "Is instance: " << execConf.getRuntimeID().getFullyQualifiedNameID() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+
+							if( not execConf.getRuntimeID()
+									.hasAsAncestor(* anInstanceMachine) )
+							{
+								return( BFCode::REF_NULL );
+							}
+						}
+
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+	AVM_OS_TRACE << "Found match: YES !!!" << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+
+						return( ioTrace );
+					}
+				}
+				else
+				{
+					return( BFCode::REF_NULL );
+				}
+			}
+		}
+	}
+
+	return( BFCode::REF_NULL );
+}
+
+
+BFCode BaseEnvironment::searchTraceIO(const BF & aTrace,
+		const RuntimeID & ctxRID, const AvmCode & ioFormula)
+{
+	if( aTrace.valid() )
+	{
+		BFCode ioTrace;
+
+		if( aTrace.is< AvmCode >() )
+		{
+			for( const auto & itOperand : aTrace.to< AvmCode >().getOperands() )
+			{
+				ioTrace = searchTraceIO(itOperand, ctxRID, ioFormula);
+				if( ioTrace.valid() )
+				{
+					return( ioTrace );
+				}
+			}
+		}
+		else if( aTrace.is< ExecutionConfiguration >() )
+		{
+			const ExecutionConfiguration & execConf =
+					aTrace.to< ExecutionConfiguration >();
+
+			if( execConf.getRuntimeID().hasAsAncestor(ctxRID)
+				&& execConf.isAvmCode() )
+			{
+				ioTrace = execConf.getAvmCode();
+
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+	AVM_OS_TRACE
+			<< "ioTrace    : " << ioTrace.str()	<< std::endl
+			<< "ioFormula  : " << ioFormula.str()<< std::endl << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+
+				if( ioTrace->sameOperator( ioFormula ) &&
+					(ioTrace->size() >= ioFormula.size()) )
+				{
+					BaseInstanceForm * ioTraceInstance =
+							ioTrace->first().as_ptr< BaseInstanceForm >();
+
+					BaseInstanceForm * ioFormulaInstance =
+							ioFormula.first().as_ptr< BaseInstanceForm >();
 
 					if( ioTraceInstance->equals(ioFormulaInstance) )
 					{
@@ -2112,6 +2332,50 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
 	return( BFCode::REF_NULL );
 }
 
+
+const ExecutionConfiguration & BaseEnvironment::searchTraceIOExecConf(const BF & aTrace)
+{
+	if( aTrace.valid() )
+	{
+		if( aTrace.is< AvmCode >() )
+		{
+			for( const auto & itOperand : aTrace.to< AvmCode >().getOperands() )
+			{
+				const ExecutionConfiguration & ioExecConf = searchTraceIOExecConf(itOperand);
+				if( ioExecConf.isnotNullref() )
+				{
+					return( ioExecConf );
+				}
+			}
+		}
+		else if( aTrace.is< ExecutionConfiguration >() )
+		{
+			const ExecutionConfiguration & execConf =
+					aTrace.to< ExecutionConfiguration >();
+
+			if( execConf.isAvmCode() )
+			{
+				const AvmCode & ioTrace = execConf.toAvmCode();
+
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+	AVM_OS_TRACE << std::endl
+			<< "Is ioTrace : " << ioTrace.str() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PORT )
+
+				if( StatementTypeChecker::isCommunication(ioTrace) )
+				{
+					return( execConf );
+				}
+				else
+				{
+					return( ExecutionConfiguration::nullref() );
+				}
+			}
+		}
+	}
+
+	return( ExecutionConfiguration::nullref() );
+}
 
 
 

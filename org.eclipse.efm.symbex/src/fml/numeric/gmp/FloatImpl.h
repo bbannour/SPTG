@@ -124,7 +124,7 @@ public:
 
 #ifdef _AVM_NEED_INT64_T_OVERLOADS_
 
-	// avm_integer_t  i.e.  avm_int64_t
+	// avm_integer_t  i.e.  std::int64_t
 	Float(avm_integer_t aValue)
 	: Number( CLASS_KIND_T( Float ) ),
 	ThisNumberClass( RawValueType( static_cast< long >(aValue) ) )
@@ -132,7 +132,7 @@ public:
 		//!! NOTHING
 	}
 
-	// avm_uinteger_t  i.e.  avm_uint64_t
+	// avm_uinteger_t  i.e.  std::uint64_t
 	Float(avm_uinteger_t aValue)
 	: Number( CLASS_KIND_T( Float ) ),
 	ThisNumberClass( RawValueType( static_cast< unsigned long >(aValue) ) )
@@ -157,7 +157,7 @@ public:
 
 #else
 
-	// avm_integer_t  i.e.  avm_int64_t
+	// avm_integer_t  i.e.  std::int64_t
 	Float(avm_integer_t aValue)
 	: Number( CLASS_KIND_T( Float ) ),
 	ThisNumberClass( RawValueType(aValue) )
@@ -165,7 +165,7 @@ public:
 		//!! NOTHING
 	}
 
-	// avm_uinteger_t  i.e.  avm_uint64_t
+	// avm_uinteger_t  i.e.  std::uint64_t
 	Float(avm_uinteger_t aValue)
 	: Number( CLASS_KIND_T( Float ) ),
 	ThisNumberClass( RawValueType(aValue) )
@@ -222,22 +222,22 @@ public:
 	/**
 	 * BASICS TESTS
 	 */
-	virtual inline int sign() const
+	inline virtual int sign() const override
 	{
 		return( mpf_sgn(ThisNumberClass::mValue.get_mpf_t()) );
 	}
 
-	virtual inline bool isZero() const
+	inline virtual bool isZero() const override
 	{
 		return( sign() == 0 );
 	}
 
-	virtual inline bool isOne() const
+	inline virtual bool isOne() const override
 	{
 		return( mpf_cmp_si(ThisNumberClass::mValue.get_mpf_t(), 1) == 0 );
 	}
 
-	virtual inline bool isNegativeOne() const
+	inline virtual bool isNegativeOne() const override
 	{
 		return( mpf_cmp_si(ThisNumberClass::mValue.get_mpf_t(), -1) == 0 );
 	}
@@ -256,39 +256,45 @@ public:
 	(mpf_cmp_ui(MPF_VAL.get_mpf_t(), SUP) <= 0)
 
 
-	inline virtual bool isInt32() const
+	inline virtual bool isInt32() const override
 	{
-		return( MPF_IS_INTEGER(ThisNumberClass::mValue,
-				AVM_NUMERIC_MIN_INT32, AVM_NUMERIC_MAX_INT32) );
+//		return( MPF_IS_INTEGER(ThisNumberClass::mValue,
+//				INT32_MIN, INT32_MAX) );
+
+		return( ThisNumberClass::mValue.fits_sint_p() ) ;
 	}
 
-	inline virtual avm_int32_t toInt32() const
+	inline virtual std::int32_t toInt32() const override
 	{
-		return( static_cast< avm_int32_t >(
+		return( static_cast< std::int32_t >(
 				ThisNumberClass::mValue.get_si() ) );
 	}
 
 
-	inline virtual bool isInt64() const
+	inline virtual bool isInt64() const override
 	{
-		return( MPF_IS_INTEGER(ThisNumberClass::mValue,
-				AVM_NUMERIC_MIN_INT64, AVM_NUMERIC_MAX_INT64) );
+//		return( MPF_IS_INTEGER(ThisNumberClass::mValue,
+//				INT64_MIN, INT64_MAX) );
+
+		return( ThisNumberClass::mValue.fits_slong_p() ) ;
 	}
 
-	inline virtual avm_int64_t toInt64() const
+	inline virtual std::int64_t toInt64() const override
 	{
-		return( static_cast< avm_int64_t >(
+		return( static_cast< std::int64_t >(
 				ThisNumberClass::mValue.get_si() ) );
 	}
 
 
-	inline virtual bool isInteger() const
+	inline virtual bool isInteger() const override
 	{
-		return( MPF_IS_INTEGER(ThisNumberClass::mValue,
-				AVM_NUMERIC_MIN_INTEGER, AVM_NUMERIC_MAX_INTEGER) );
+//		return( MPF_IS_INTEGER(ThisNumberClass::mValue,
+//				AVM_NUMERIC_MIN_INTEGER, AVM_NUMERIC_MAX_INTEGER) );
+
+		return( ThisNumberClass::mValue.fits_slong_p() ) ;
 	}
 
-	inline virtual avm_integer_t toInteger() const
+	inline virtual avm_integer_t toInteger() const override
 	{
 		return( static_cast< avm_integer_t >(
 				ThisNumberClass::mValue.get_si() ) );
@@ -297,60 +303,64 @@ public:
 
 	inline virtual bool isPosInteger() const
 	{
-		return( MPF_IS_POSITIVE_INTEGER(
-				ThisNumberClass::mValue, AVM_NUMERIC_MAX_UINTEGER) );
+//		return( MPF_IS_POSITIVE_INTEGER(
+//				ThisNumberClass::mValue, AVM_NUMERIC_MAX_UINTEGER) );
+
+		return( ThisNumberClass::mValue.fits_ulong_p() ) ;
 	}
 
 
-	inline virtual bool isUInteger() const
+	inline virtual bool isUInteger() const override
 	{
-		return( MPF_IS_POSITIVE_INTEGER(
-				ThisNumberClass::mValue, AVM_NUMERIC_MAX_UINTEGER) );
+//		return( MPF_IS_POSITIVE_INTEGER(
+//				ThisNumberClass::mValue, AVM_NUMERIC_MAX_UINTEGER) );
+
+		return( ThisNumberClass::mValue.fits_ulong_p() ) ;
 	}
 
-	inline virtual avm_uinteger_t toUInteger() const
+	inline virtual avm_uinteger_t toUInteger() const override
 	{
 		return( static_cast< avm_uinteger_t >(
 				ThisNumberClass::mValue.get_ui() ) );
 	}
 
 
-	inline virtual bool isRational() const
+	inline virtual bool isRational() const override
 	{
 		return( true );
 	}
 
-	virtual avm_integer_t toDenominator() const
+	virtual avm_integer_t toDenominator() const override
 	{
 		return( static_cast< avm_integer_t >(
 				mpq_class(ThisNumberClass::mValue).get_den().get_si() ) );
 	}
 
-	virtual avm_integer_t toNumerator() const
+	virtual avm_integer_t toNumerator() const override
 	{
 		return( static_cast< avm_integer_t >(
 				mpq_class(ThisNumberClass::mValue).get_num().get_si() ) );
 	}
 
 
-	inline virtual bool isFloat() const
+	inline virtual bool isFloat() const override
 	{
 		return( true );
 	}
 
-	inline virtual avm_float_t toFloat() const
+	inline virtual avm_float_t toFloat() const override
 	{
 		return( static_cast< avm_float_t >(
 				ThisNumberClass::mValue.get_d() ) );
 	}
 
 
-	inline virtual bool isReal() const
+	inline virtual bool isReal() const override
 	{
 		return( true );
 	}
 
-	inline virtual avm_real_t toReal() const
+	inline virtual avm_real_t toReal() const override
 	{
 		return( static_cast< avm_real_t >(
 				ThisNumberClass::mValue.get_d() ) );
@@ -380,20 +390,20 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const
+	virtual void toStream(OutStream & os) const override
 	{
 		os << TAB << OS_FLOAT_PRECISION << mValue;
 		AVM_DEBUG_REF_COUNTER(os);
 		os << EOL_FLUSH;
 	}
 
-	virtual std::string str() const
+	virtual std::string str() const override
 	{
 		return( OSS() /*<< OS_REAL_PRECISION*/ << mValue );
 	}
 
 	inline virtual std::string strNum(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const override
 	{
 		return( OSS() << std::fixed
 				<< std::setprecision( precision ) << mValue );

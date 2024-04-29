@@ -18,7 +18,7 @@
 
 #include <base/SmartPointer.h>
 
-
+#include <common/AvmObject.h>
 #include <common/BF.h>
 
 #include <printer/OutStream.h>
@@ -28,7 +28,7 @@ namespace sep
 {
 
 
-template< class T , class Tdestructor >
+template< class T , class Tdestructor = DestroyObjectPolicy >
 class AvmPointer  :  public SmartPointer< T , Tdestructor >
 {
 
@@ -42,13 +42,12 @@ private:
 protected:
 	typedef       T    value_type;
 
-	typedef       T &  reference;
-	typedef const T &  const_reference;
+	typedef       T &  reference_t;
+	typedef const T &  const_reference_t;
 
 
-	typedef       T *  pointer;
-	typedef const T *  const_pointer;
-
+	typedef       T *  pointer_t;
+	typedef const T *  const_pointer_t;
 
 
 public:
@@ -62,7 +61,7 @@ public:
 		//!!! NOTHING
 	}
 
-	explicit AvmPointer(pointer ptr)
+	explicit AvmPointer(pointer_t ptr)
 	: base_this_type( ptr )
 	{
 		//!!! NOTHING
@@ -91,7 +90,7 @@ public:
 	/**
 	 * CAST
 	 */
-	inline operator pointer () const
+	inline operator pointer_t () const
 	{
 		return( base_this_type::mPTR );
 	}
@@ -106,7 +105,7 @@ public:
 	/**
 	 * OPERATORS
 	 */
-	inline pointer operator-> () const
+	inline pointer_t operator-> () const
 	{
 		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( base_this_type::mPTR )
 				<< "raw_pointer in AvmPointer !!!"
@@ -119,7 +118,7 @@ public:
 	/**
 	 * ASSIGNMENT
 	 */
-	inline AvmPointer & operator=(pointer aPtr)
+	inline AvmPointer & operator=(pointer_t aPtr)
 	{
 		if( base_this_type::mPTR != aPtr )
 		{
@@ -147,8 +146,8 @@ public:
 
 		if( base_this_type::mPTR != other.raw_pointer() )
 		{
-			base_this_type::release_acquire( const_cast<pointer>(
-					static_cast< pointer >(other.raw_pointer()) ) );
+			base_this_type::release_acquire( const_cast<pointer_t>(
+					static_cast< pointer_t >(other.raw_pointer()) ) );
 		}
 		return( *this );
 	}
@@ -159,7 +158,7 @@ public:
 	 * OPERATOR
 	 */
 
-	inline bool operator==(const_pointer aPtr) const
+	inline bool operator==(const_pointer_t aPtr) const
 	{
 		return( base_this_type::mPTR == aPtr );
 	}
@@ -181,7 +180,7 @@ public:
 	}
 
 
-	inline bool operator!=(const_pointer aPtr) const
+	inline bool operator!=(const_pointer_t aPtr) const
 	{
 		return( base_this_type::mPTR != aPtr );
 	}
@@ -207,7 +206,7 @@ public:
 	/**
 	 * COMPARISON
 	 */
-	inline bool isEQ(const_pointer aPtr) const
+	inline bool isEQ(const_pointer_t aPtr) const
 	{
 		return( base_this_type::mPTR == aPtr );
 	}
@@ -218,7 +217,7 @@ public:
 	}
 
 
-	inline bool isNEQ(const_pointer aPtr) const
+	inline bool isNEQ(const_pointer_t aPtr) const
 	{
 		return( base_this_type::mPTR != aPtr );
 	}
@@ -234,7 +233,7 @@ public:
 	 */
 	inline void toStream(OutStream & os) const
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
 			base_this_type::mPTR->toStream(os);
 		}
@@ -268,84 +267,8 @@ template< class T , class Tdestructor >
 AvmPointer< T , Tdestructor >  AvmPointer< T , Tdestructor >::REF_NULL;
 
 
-#define AP_REF_NULL(ClassName)  AP##ClassName::REF_NULL
-
-
 #define AVM_DEFINE_AP_CLASS(ClassName)   \
 		typedef AvmPointer< ClassName , DestroyObjectPolicy > AP##ClassName;
-
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-//
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-
-#define INCR_BF(A)   \
-		sep::BF( sep::incrReferenceCount(A) )
-
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-//// TYPE DEFINITION for SMART POINTER.
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-
-//template< class T >
-//class AvmCloneableClass
-//{
-//
-//public:
-//	/**
-//	 * DESTRUCTOR
-//	 */
-//	virtual ~AvmCloneableClass()
-//	{
-//		//!! NOTHING
-//	}
-//
-//	virtual T * clone() const
-//	{
-//		return( new T(*this) );
-//	}
-//};
-
-
-#define AVM_DECLARE_CLONABLE_CLASS(ClassName)  \
-public:                                        \
-	virtual ClassName * clone() const          \
-	{ return( new ClassName(*this) ); }        \
-private:
-
-
-
-//template< class T >
-//class AvmUncloneableClass
-//{
-//
-//public:
-//	/**
-//	 * DESTRUCTOR
-//	 */
-//	virtual ~AvmUncloneableClass()
-//	{
-//		//!! NOTHING
-//	}
-//
-//	virtual T * clone() const
-//	{
-//		return( const_cast< T * >(this) );
-//	}
-//};
-
-
-#define AVM_DECLARE_UNCLONABLE_CLASS(ClassName)     \
-public:                                             \
-	virtual ClassName * clone() const               \
-	{ return( const_cast< ClassName * >(this) ); }  \
-private:
 
 
 } /* namespace sep */

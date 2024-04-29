@@ -31,22 +31,22 @@ namespace sep
  * List of all RUNTIME Executable Element
  */
 void ExecutableQuery::getRuntimeExecutable(InstanceOfMachine * aMachine,
-		Collection< ExecutableForm * > & listOfExecutable)
+		Collection< const ExecutableForm * > & listOfExecutable)
 {
-	listOfExecutable.add_union( aMachine->getExecutable() );
+	listOfExecutable.add_unique( aMachine->getExecutable() );
 
 	TableOfSymbol::const_iterator it;
 	TableOfSymbol::const_iterator itEnd;
 
-	it = aMachine->getExecutable()->instance_model_begin();
-	itEnd = aMachine->getExecutable()->instance_model_end();
+	it = aMachine->refExecutable().instance_model_begin();
+	itEnd = aMachine->refExecutable().instance_model_end();
 	for( ; it != itEnd ; ++it )
 	{
 		getRuntimeExecutable((*it).rawMachine(), listOfExecutable);
 	}
 
-	it = aMachine->getExecutable()->instance_static_begin();
-	itEnd = aMachine->getExecutable()->instance_static_end();
+	it = aMachine->refExecutable().instance_static_begin();
+	itEnd = aMachine->refExecutable().instance_static_end();
 	for( ; it != itEnd ; ++it )
 	{
 		getRuntimeExecutable((*it).rawMachine(), listOfExecutable);
@@ -60,15 +60,13 @@ void ExecutableQuery::getRuntimeExecutable(InstanceOfMachine * aMachine,
  * AvmTransition
  */
 const BF & ExecutableQuery::getTransitionByAstElement(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		const BF & foundTransition =
-				(itExec)->getTransitionByAstElement(astElement);
+			itExec.to< ExecutableForm >().getTransitionByAstElement(astElement);
 		if( foundTransition.valid() )
 		{
 			return( foundTransition );
@@ -83,12 +81,10 @@ const BF & ExecutableQuery::getTransition(
 		const std::string & aFullyQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const BF & foundTransition =
-				(itExec)->getTransition(aFullyQualifiedNameID);
+		const BF & foundTransition = itExec.to< ExecutableForm >().
+				getTransition(aFullyQualifiedNameID, true);
 
 		if( foundTransition.valid() )
 		{
@@ -104,11 +100,10 @@ const BF & ExecutableQuery::getTransitionByNameID(
 		const std::string & aNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const BF & foundTransition = (itExec)->getTransitionByNameID( aNameID );
+		const BF & foundTransition =
+				itExec.to< ExecutableForm >().getTransitionByNameID( aNameID );
 		if( foundTransition.valid() )
 		{
 			return( foundTransition );
@@ -118,16 +113,15 @@ const BF & ExecutableQuery::getTransitionByNameID(
 	return( BF::REF_NULL );
 }
 
+
 const BF & ExecutableQuery::getTransitionByQualifiedNameID(
 		const std::string & aQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const BF & foundTransition =
-				(itExec)->getTransitionByQualifiedNameID(aQualifiedNameID);
+		const BF & foundTransition = itExec.to< ExecutableForm >().
+				getTransitionByQualifiedNameID(aQualifiedNameID);
 
 		if( foundTransition.valid() )
 		{
@@ -136,6 +130,77 @@ const BF & ExecutableQuery::getTransitionByQualifiedNameID(
 	}
 
 	return( BF::REF_NULL );
+}
+
+
+std::size_t ExecutableQuery::getTransitionByID(
+		const ExecutableForm & anExecutable,
+		const std::string & anID, BFList & listofTransition) const
+{
+	std::string::size_type pos = anID.find('.');
+
+	const BF & foundTransition = (pos == std::string::npos)
+			? anExecutable.getTransitionByNameID( anID )
+			: getTransition( NamedElement::makeFullyQualifiedNameID(
+					anExecutable.getFullyQualifiedNameID(), anID, false) );
+
+	if( foundTransition.valid() )
+	{
+		listofTransition.append(foundTransition);
+
+		return( listofTransition.size() );
+	}
+	else
+	{
+		return( getTransitionByREGEX(
+			NamedElement::makeFullyRegexQualifiedNameID(
+				anExecutable.getFullyQualifiedNameID(), anID, false),
+				listofTransition) );
+	}
+}
+
+// REGEX
+std::size_t ExecutableQuery::getTransitionByREGEX(
+		const std::string & aRedexID, BFList & listofTransition) const
+{
+	std::size_t count = 0;
+
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		count += itExec.to< ExecutableForm >().getTransition().
+				getByQualifiedNameREGEX(aRedexID, listofTransition);
+	}
+
+	return count;
+}
+
+
+std::size_t ExecutableQuery::getTransitionByNameREGEX(
+		const ExecutableForm & anExecutable,
+		const std::string & aRedexID, BFList & listofTransition) const
+{
+	std::size_t count = anExecutable.getTransition().
+			getByNameREGEX(aRedexID, listofTransition);
+
+	for( const auto & itModel : anExecutable.getInstanceStatic() )
+	{
+		if( itModel.ptrExecutable() != (& anExecutable) )
+		{
+			count += getTransitionByNameREGEX(
+					itModel.getExecutable(), aRedexID, listofTransition );
+		}
+	}
+
+	for( const auto & itModel : anExecutable.getInstanceDynamic() )
+	{
+		if( itModel.ptrExecutable() != (& anExecutable) )
+		{
+			count += getTransitionByNameREGEX(
+					itModel.getExecutable(), aRedexID, listofTransition );
+		}
+	}
+
+	return count;
 }
 
 
@@ -147,11 +212,10 @@ const BF & ExecutableQuery::getProgram(
 		const std::string & aFullyQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const BF & foundProgram = (itExec)->getProgram(aFullyQualifiedNameID);
+		const BF & foundProgram =
+				itExec.to< ExecutableForm >().getProgram(aFullyQualifiedNameID);
 
 		if( foundProgram.valid() )
 		{
@@ -173,20 +237,18 @@ const BF & ExecutableQuery::getExecutableOrProgram(
 		const std::string & aFullyQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		if( NamedElement::compareLocation(
-				itExec->getFullyQualifiedNameID(), aFullyQualifiedNameID) )
+		if( itExec.to< ExecutableForm >().isLocationID(aFullyQualifiedNameID) )
 		{
-			return( (*itExec) );
+			return( itExec );
 		}
 		else
 		{
 			{
 				const BF & foundTransition =
-						itExec->getTransition(aFullyQualifiedNameID);
+						itExec.to< ExecutableForm >().
+						getTransition(aFullyQualifiedNameID);
 
 				if( foundTransition.valid() )
 				{
@@ -195,7 +257,8 @@ const BF & ExecutableQuery::getExecutableOrProgram(
 			}
 			{
 				const BF & foundProgram =
-						itExec->getProgram(aFullyQualifiedNameID);
+						itExec.to< ExecutableForm >().
+						getProgram(aFullyQualifiedNameID);
 
 				if( foundProgram.valid() )
 				{
@@ -211,22 +274,21 @@ const BF & ExecutableQuery::getExecutableOrProgram(
 
 // Getter by AST-Element
 const BF & ExecutableQuery::getExecutableOrProgram(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		if( itExec->isAstElement( astElement ) )
+		if( itExec.to< ExecutableForm >().isAstElement( astElement ) )
 		{
-			return( (*itExec) );
+			return( itExec );
 		}
 		else
 		{
 			{
 				const BF & foundTransition =
-						itExec->getTransitionByAstElement(astElement);
+						itExec.to< ExecutableForm >().
+						getTransitionByAstElement(astElement);
 
 				if( foundTransition.valid() )
 				{
@@ -235,7 +297,8 @@ const BF & ExecutableQuery::getExecutableOrProgram(
 			}
 			{
 				const BF & foundProgram =
-						itExec->getProgramByAstElement(astElement);
+						itExec.to< ExecutableForm >().
+						getProgramByAstElement(astElement);
 				if( foundProgram.valid() )
 				{
 					return( foundProgram );
@@ -256,12 +319,11 @@ const Symbol & ExecutableQuery::getBuffer(
 		const std::string & aFullyQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		const Symbol & foundElement =
-				(itExec)->getBuffer().getByFQNameID( aFullyQualifiedNameID );
+				itExec.to< ExecutableForm >().getBuffer().
+				getByFQNameID(aFullyQualifiedNameID, true);
 
 		if( foundElement.valid() )
 		{
@@ -276,12 +338,10 @@ const Symbol & ExecutableQuery::getBufferByNameID(
 		const std::string & aNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		const Symbol & foundElement =
-				(itExec)->getBuffer().getByNameID( aNameID );
+				itExec.to< ExecutableForm >().getBuffer().getByNameID( aNameID );
 
 		if( foundElement.valid() )
 		{
@@ -296,12 +356,10 @@ const Symbol & ExecutableQuery::getBufferByQualifiedNameID(
 		const std::string & aQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const Symbol & foundElement =
-				(itExec)->getBuffer().getByQualifiedNameID(aQualifiedNameID);
+		const Symbol & foundElement = itExec.to< ExecutableForm >().
+				getBuffer().getByQualifiedNameID(aQualifiedNameID);
 
 		if( foundElement.valid() )
 		{
@@ -313,15 +371,13 @@ const Symbol & ExecutableQuery::getBufferByQualifiedNameID(
 }
 
 const Symbol & ExecutableQuery::getBufferByAstElement(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const Symbol & foundElement =
-				(itExec)->getBuffer().getByAstElement(astElement);
+		const Symbol & foundElement = itExec.to< ExecutableForm >().
+				getBuffer().getByAstElement(astElement);
 
 		if( foundElement.valid() )
 		{
@@ -339,16 +395,14 @@ const Symbol & ExecutableQuery::getBufferByAstElement(
  * SEARCH
  * InstanceOfData
  */
-const BF & ExecutableQuery::getDataByNameID(const std::string & aNameID) const
+const BF & ExecutableQuery::getVariableByNameID(const std::string & aNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		{
-			const BF & foundElement =
-					(itExec)->getAllData().getByNameID( aNameID );
+			const BF & foundElement = itExec.to< ExecutableForm >().
+					getAllVariables().getByNameID( aNameID );
 
 			if( foundElement.valid() )
 			{
@@ -356,8 +410,8 @@ const BF & ExecutableQuery::getDataByNameID(const std::string & aNameID) const
 			}
 		}
 		{
-			const BF & foundElement =
-					(itExec)->getConstData().getByNameID( aNameID );
+			const BF & foundElement = itExec.to< ExecutableForm >().
+					getConstVariable().getByNameID( aNameID );
 
 			if( foundElement.valid() )
 			{
@@ -369,17 +423,34 @@ const BF & ExecutableQuery::getDataByNameID(const std::string & aNameID) const
 	return( BF::REF_NULL );
 }
 
-const BF & ExecutableQuery::getDataByQualifiedNameID(
+std::size_t ExecutableQuery::getVariableByNameID(
+		const std::string & aNameID, BFList & listofVariable) const
+{
+	std::size_t count = 0;
+
+	// REVERSE because machines are insert after children
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		count += itExec.to< ExecutableForm >().getAllVariables().
+				getByNameID(aNameID, listofVariable);
+
+		count += itExec.to< ExecutableForm >().getConstVariable().
+				getByNameID(aNameID, listofVariable);
+	}
+
+	return( count );
+}
+
+
+const BF & ExecutableQuery::getVariableByQualifiedNameID(
 		const std::string & aQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		{
-			const BF & foundElement = (itExec)->getAllData().
-					getByQualifiedNameID(aQualifiedNameID);
+			const BF & foundElement = itExec.to< ExecutableForm >().
+					getAllVariables().getByQualifiedNameID(aQualifiedNameID);
 
 			if( foundElement.valid() )
 			{
@@ -387,8 +458,8 @@ const BF & ExecutableQuery::getDataByQualifiedNameID(
 			}
 		}
 		{
-			const BF & foundElement = (itExec)->getConstData().
-					getByQualifiedNameID(aQualifiedNameID);
+			const BF & foundElement = itExec.to< ExecutableForm >().
+					getConstVariable().getByQualifiedNameID(aQualifiedNameID);
 
 			if( foundElement.valid() )
 			{
@@ -400,18 +471,34 @@ const BF & ExecutableQuery::getDataByQualifiedNameID(
 	return( BF::REF_NULL );
 }
 
+std::size_t ExecutableQuery::getVariableByQualifiedNameID(
+		const std::string & aQualifiedNameID, BFList & listofVariable) const
+{
+	std::size_t count = 0;
 
-const BF & ExecutableQuery::getData(
+	// REVERSE because machines are insert after children
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		count += itExec.to< ExecutableForm >().getAllVariables().
+					getByQualifiedNameID(aQualifiedNameID, listofVariable);
+
+		count += itExec.to< ExecutableForm >().getConstVariable().
+					getByQualifiedNameID(aQualifiedNameID, listofVariable);
+	}
+
+	return( count );
+}
+
+
+const BF & ExecutableQuery::getVariable(
 		const std::string & aFullyQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		{
-			const BF & foundElement =
-				(itExec)->getAllData().getByFQNameID( aFullyQualifiedNameID );
+			const BF & foundElement = itExec.to< ExecutableForm >().
+					getAllVariables().getByFQNameID(aFullyQualifiedNameID, true);
 
 			if( foundElement.valid() )
 			{
@@ -419,8 +506,8 @@ const BF & ExecutableQuery::getData(
 			}
 		}
 		{
-			const BF & foundElement =
-				(itExec)->getConstData().getByFQNameID( aFullyQualifiedNameID );
+			const BF & foundElement = itExec.to< ExecutableForm >().
+					getConstVariable().getByFQNameID(aFullyQualifiedNameID, true);
 
 			if( foundElement.valid() )
 			{
@@ -433,17 +520,15 @@ const BF & ExecutableQuery::getData(
 }
 
 
-const BF & ExecutableQuery::getDataByAstElement(
-		const ObjectElement * astElement) const
+const BF & ExecutableQuery::getVariableByAstElement(
+		const ObjectElement & astElement) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		{
-			const BF & foundElement =
-					(itExec)->getAllData().getByAstElement(astElement);
+			const BF & foundElement = itExec.to< ExecutableForm >().
+					getAllVariables().getByAstElement(astElement);
 
 			if( foundElement.valid() )
 			{
@@ -451,8 +536,8 @@ const BF & ExecutableQuery::getDataByAstElement(
 			}
 		}
 		{
-			const BF & foundElement =
-					(itExec)->getConstData().getByAstElement(astElement);
+			const BF & foundElement = itExec.to< ExecutableForm >().
+					getConstVariable().getByAstElement(astElement);
 
 			if( foundElement.valid() )
 			{
@@ -462,23 +547,86 @@ const BF & ExecutableQuery::getDataByAstElement(
 	}
 
 	return( BF::REF_NULL );
+}
+
+
+// REGEX
+std::size_t ExecutableQuery::getVariableByREGEX(
+		const std::string & aRedexID, BFList & listofVariable) const
+{
+	std::size_t count = 0;
+
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		count += itExec.to< ExecutableForm >().getAllVariables().
+				getByQualifiedNameREGEX(aRedexID, listofVariable);
+	}
+
+	return count;
+}
+
+
+std::size_t ExecutableQuery::getVariableByNameREGEX(
+		const ExecutableForm & anExecutable,
+		const std::string & aRedexID, BFList & listofVariable) const
+{
+	std::size_t count = anExecutable.getAllVariables().
+			getByNameREGEX(aRedexID, listofVariable);
+
+	for( const auto & itModel : anExecutable.getInstanceStatic() )
+	{
+		if( itModel.ptrExecutable() != (& anExecutable) )
+		{
+			count += getVariableByNameREGEX(
+					itModel.getExecutable(), aRedexID, listofVariable );
+		}
+	}
+
+	for( const auto & itModel : anExecutable.getInstanceDynamic() )
+	{
+		if( itModel.ptrExecutable() != (& anExecutable) )
+		{
+			count += getVariableByNameREGEX(
+					itModel.getExecutable(), aRedexID, listofVariable );
+		}
+	}
+
+	return count;
 }
 
 
 /**
  * SEARCH
  * Symbol as InstanceOfPort
- * by ID
+ * by Name ID
  */
+const Symbol & ExecutableQuery::getPortByNameID(
+		const std::string & aNameID) const
+{
+	// REVERSE because machines are insert after children
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		const Symbol & foundElement =
+				itExec.to< ExecutableForm >().getPort().getByNameID(aNameID);
+
+		if( foundElement.valid() )
+		{
+			return( foundElement );
+		}
+	}
+
+	return( Symbol::REF_NULL );
+}
+
+
 const Symbol & ExecutableQuery::getPortByNameID(const std::string & aNameID,
 		Modifier::DIRECTION_KIND ioDirection) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const Symbol & foundElement = (itExec)->getPort().getByNameID(aNameID);
+		const Symbol & foundElement =
+				itExec.to< ExecutableForm >().getPort().getByNameID(aNameID);
 
 		if( foundElement.valid()
 			&& foundElement.getModifier().isDirectionKind(ioDirection) )
@@ -491,39 +639,31 @@ const Symbol & ExecutableQuery::getPortByNameID(const std::string & aNameID,
 }
 
 
-const Symbol & ExecutableQuery::getPortByNameID(
-		const std::string & aNameID) const
+std::size_t ExecutableQuery::getPortByNameID(
+		const std::string & aNameID, ListOfSymbol & listofPort) const
 {
-	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
-	{
-		const Symbol & foundElement = (itExec)->getPort().getByNameID(aNameID);
+	std::size_t count = 0;
 
-		if( foundElement.valid() )
-		{
-			return( foundElement );
-		}
+	// REVERSE because machines are insert after children
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		count += itExec.to< ExecutableForm >().getPort().getByNameID(aNameID, listofPort);
 	}
 
-	return( Symbol::REF_NULL );
+	return( count );
 }
 
 
-
-avm_size_t ExecutableQuery::getPortByNameID(
+std::size_t ExecutableQuery::getPortByNameID(
 		const std::string & aNameID, ListOfSymbol & listofPort,
 		Modifier::DIRECTION_KIND ioDirection, bool isStrongly) const
 {
-	avm_size_t count = 0;
+	std::size_t count = 0;
 
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		count += (itExec)->getPort().getByNameID(aNameID, listofPort);
+		count += itExec.to< ExecutableForm >().getPort().getByNameID(aNameID, listofPort);
 	}
 
 	ListOfSymbol::iterator itPort  = listofPort.begin();
@@ -546,39 +686,38 @@ avm_size_t ExecutableQuery::getPortByNameID(
 }
 
 
-avm_size_t ExecutableQuery::getPortByNameID(
-		const std::string & aNameID, ListOfSymbol & listofPort) const
-{
-	avm_size_t count = 0;
-
-	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
-	{
-		count += (itExec)->getPort().getByNameID(aNameID, listofPort);
-	}
-
-	return( count );
-}
-
-
 /**
  * SEARCH
  * Symbol as InstanceOfPort
  * by [ [ FULLY ] QUALIFIED ] NAME ID
  */
 const Symbol & ExecutableQuery::getPortByQualifiedNameID(
+		const std::string & aQualifiedNameID) const
+{
+	// REVERSE because machines are insert after children
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		const Symbol & foundElement = itExec.to< ExecutableForm >().
+				getPort().getByQualifiedNameID(aQualifiedNameID);
+
+		if( foundElement.valid() )
+		{
+			return( foundElement );
+		}
+	}
+
+	return( Symbol::REF_NULL );
+}
+
+const Symbol & ExecutableQuery::getPortByQualifiedNameID(
 		const std::string & aQualifiedNameID,
 		Modifier::DIRECTION_KIND ioDirection, bool isStrongly) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const Symbol & foundElement =
-				(itExec)->getPort().getByQualifiedNameID(aQualifiedNameID);
+		const Symbol & foundElement = itExec.to< ExecutableForm >().
+				getPort().getByQualifiedNameID(aQualifiedNameID);
 
 		if( foundElement.valid()
 			&& foundElement.getModifier().
@@ -592,18 +731,32 @@ const Symbol & ExecutableQuery::getPortByQualifiedNameID(
 }
 
 
-avm_size_t ExecutableQuery::getPortByQualifiedNameID(
+std::size_t ExecutableQuery::getPortByQualifiedNameID(
+		const std::string & aQualifiedNameID, ListOfSymbol & listofPort) const
+{
+	std::size_t count = 0;
+
+	// REVERSE because machines are insert after children
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		count += itExec.to< ExecutableForm >().getPort().
+				getByQualifiedNameID(aQualifiedNameID, listofPort);
+	}
+
+	return( count );
+}
+
+
+std::size_t ExecutableQuery::getPortByQualifiedNameID(
 		const std::string & aQualifiedNameID, ListOfSymbol & listofPort,
 		Modifier::DIRECTION_KIND ioDirection, bool isStrongly) const
 {
-	avm_size_t count = 0;
+	std::size_t count = 0;
 
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		count += (itExec)->getPort().
+		count += itExec.to< ExecutableForm >().getPort().
 				getByQualifiedNameID(aQualifiedNameID, listofPort);
 	}
 
@@ -621,25 +774,6 @@ avm_size_t ExecutableQuery::getPortByQualifiedNameID(
 		}
 	}
 
-
-	return( count );
-}
-
-
-avm_size_t ExecutableQuery::getPortByQualifiedNameID(
-		const std::string & aQualifiedNameID, ListOfSymbol & listofPort) const
-{
-	avm_size_t count = 0;
-
-	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
-	{
-		count += (itExec)->getPort().
-				getByQualifiedNameID(aQualifiedNameID, listofPort);
-	}
-
 	return( count );
 }
 
@@ -648,12 +782,10 @@ const Symbol & ExecutableQuery::getPort(
 		const std::string & aFullyQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const Symbol & foundElement =
-				(itExec)->getPort().getByFQNameID( aFullyQualifiedNameID );
+		const Symbol & foundElement = itExec.to< ExecutableForm >().
+				getPort().getByFQNameID(aFullyQualifiedNameID, true);
 
 		if( foundElement.valid() )
 		{
@@ -667,11 +799,11 @@ const Symbol & ExecutableQuery::getPort(
 const Symbol & ExecutableQuery::getSemPort(const ExecutableForm * anExecutable,
 		const std::string & aFullyQualifiedNameID)
 {
-	for( ; anExecutable != NULL ;
+	for( ; anExecutable != nullptr ;
 			anExecutable = anExecutable->getExecutableContainer() )
 	{
-		const Symbol & foundElement =
-				anExecutable->getPort().getByFQNameID( aFullyQualifiedNameID );
+		const Symbol & foundElement = anExecutable->getPort().
+				getByFQNameID(aFullyQualifiedNameID, true);
 		if( foundElement.valid() )
 		{
 			return foundElement;
@@ -683,15 +815,14 @@ const Symbol & ExecutableQuery::getSemPort(const ExecutableForm * anExecutable,
 
 
 const Symbol & ExecutableQuery::getPortByAstElement(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		const Symbol & foundElement =
-				(itExec)->getPort().getByAstElement(astElement);
+				itExec.to< ExecutableForm >().
+				getPort().getByAstElement(astElement);
 
 		if( foundElement.valid() )
 		{
@@ -704,9 +835,9 @@ const Symbol & ExecutableQuery::getPortByAstElement(
 
 
 const Symbol & ExecutableQuery::getSemPortByAstElement(
-		const ExecutableForm * anExecutable, const ObjectElement * astElement)
+		const ExecutableForm * anExecutable, const ObjectElement & astElement)
 {
-	for( ; anExecutable != NULL ;
+	for( ; anExecutable != nullptr ;
 			anExecutable = anExecutable->getExecutableContainer() )
 	{
 		const Symbol & foundElement =
@@ -721,20 +852,65 @@ const Symbol & ExecutableQuery::getSemPortByAstElement(
 }
 
 
+// REGEX
+std::size_t ExecutableQuery::getPortByREGEX(
+		const std::string & aRedexID, ListOfSymbol & listofPort) const
+{
+	std::size_t count = 0;
+
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		count += itExec.to< ExecutableForm >().getPort().
+				getByQualifiedNameREGEX(aRedexID, listofPort);
+	}
+
+	return count;
+}
+
+
+std::size_t ExecutableQuery::getPortByNameREGEX(
+		const ExecutableForm & anExecutable,
+		const std::string & aRedexID, ListOfSymbol & listofPort) const
+{
+	std::size_t count = anExecutable.getPort().
+			getByNameREGEX(aRedexID, listofPort);
+
+	for( const auto & itModel : anExecutable.getInstanceStatic() )
+	{
+		if( itModel.ptrExecutable() != (& anExecutable) )
+		{
+			count += getPortByNameREGEX(
+					itModel.getExecutable(), aRedexID, listofPort );
+		}
+	}
+
+	for( const auto & itModel : anExecutable.getInstanceDynamic() )
+	{
+		if( itModel.ptrExecutable() != (& anExecutable) )
+		{
+			count += getPortByNameREGEX(
+					itModel.getExecutable(), aRedexID, listofPort );
+		}
+	}
+
+	return count;
+}
+
+
+
 /**
  * SEARCH
  * InstanceOfChannel
  */
 const Symbol & ExecutableQuery::getChannel(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		const Symbol & foundElement =
-				(itExec)->getChannel().getByAstElement(astElement);
+				itExec.to< ExecutableForm >().
+				getChannel().getByAstElement(astElement);
 
 		if( foundElement.valid() )
 		{
@@ -761,12 +937,11 @@ const Symbol & ExecutableQuery::getMachine(
 	}
 
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const Symbol & foundElement = (itExec)->getInstanceByDesign(
-				aDesign ).getByFQNameID( aFullyQualifiedNameID );
+		const Symbol & foundElement =
+				itExec.to< ExecutableForm >().getInstanceByDesign(
+				aDesign ).getByFQNameID(aFullyQualifiedNameID, true);
 
 		if( foundElement.valid() )
 		{
@@ -781,12 +956,10 @@ const Symbol & ExecutableQuery::getMachineByNameID(
 		Specifier::DESIGN_KIND aDesign, const std::string & aNamleID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const Symbol & foundElement =
-				(itExec)->getInstanceByDesign(aDesign).getByNameID(aNamleID);
+		const Symbol & foundElement = itExec.to< ExecutableForm >().
+				getInstanceByDesign(aDesign).getByNameID(aNamleID);
 
 		if( foundElement.valid() )
 		{
@@ -796,18 +969,33 @@ const Symbol & ExecutableQuery::getMachineByNameID(
 
 	return( Symbol::REF_NULL );
 }
+
+std::size_t ExecutableQuery::getMachineByNameID(
+		Specifier::DESIGN_KIND aDesign, const std::string & aNamleID,
+		ListOfSymbol & listofMachine) const
+{
+	std::size_t count = 0;
+
+	// REVERSE because machines are insert after children
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		count += itExec.to< ExecutableForm >().getInstanceByDesign(aDesign).
+				getByNameID(aNamleID, listofMachine);
+	}
+
+	return( count );
+}
+
 
 const Symbol & ExecutableQuery::getMachineByQualifiedNameID(
 		Specifier::DESIGN_KIND aDesign,
 		const std::string & aQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const Symbol & foundElement = (itExec)->getInstanceByDesign(aDesign).
-				getByQualifiedNameID(aQualifiedNameID);
+		const Symbol & foundElement = itExec.to< ExecutableForm >().
+			getInstanceByDesign(aDesign).getByQualifiedNameID(aQualifiedNameID);
 
 		if( foundElement.valid() )
 		{
@@ -818,26 +1006,42 @@ const Symbol & ExecutableQuery::getMachineByQualifiedNameID(
 	return( Symbol::REF_NULL );
 }
 
+std::size_t ExecutableQuery::getMachineByQualifiedNameID(
+		Specifier::DESIGN_KIND aDesign,
+		const std::string & aQualifiedNameID,
+		ListOfSymbol & listofMachine) const
+{
+	std::size_t count = 0;
+
+	// REVERSE because machines are insert after children
+	for( const auto & itExec : getSystem().getExecutables() )
+	{
+		count += itExec.to< ExecutableForm >().getInstanceByDesign(aDesign).
+				getByQualifiedNameID(aQualifiedNameID, listofMachine);
+	}
+
+	return( count );
+}
+
+
 
 InstanceOfMachine * ExecutableQuery::rawMachineByNameID(
 		Specifier::DESIGN_KIND aDesign, const std::string & aNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		InstanceOfMachine * foundElement =
-				(itExec)->getInstanceByDesign(
+				itExec.to< ExecutableForm >().getInstanceByDesign(
 						aDesign ).getByNameID(aNameID).rawMachine();
 
-		if( foundElement != NULL )
+		if( foundElement != nullptr )
 		{
 			return( foundElement );
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 InstanceOfMachine * ExecutableQuery::rawMachineByQualifiedNameID(
@@ -845,25 +1049,24 @@ InstanceOfMachine * ExecutableQuery::rawMachineByQualifiedNameID(
 		const std::string & aQualifiedNameID) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		InstanceOfMachine * foundElement = (itExec)->getInstanceByDesign(
-				aDesign ).getByQualifiedNameID(aQualifiedNameID).rawMachine();
+		InstanceOfMachine * foundElement =
+				itExec.to< ExecutableForm >().getInstanceByDesign( aDesign ).
+				getByQualifiedNameID(aQualifiedNameID).rawMachine();
 
-		if( foundElement != NULL )
+		if( foundElement != nullptr )
 		{
 			return( foundElement );
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
 const Symbol & ExecutableQuery::getMachineByAstElement(
-		Specifier::DESIGN_KIND aDesign, const ObjectElement * astElement) const
+		Specifier::DESIGN_KIND aDesign, const ObjectElement & astElement) const
 {
 	if( getSystem().rawSystemInstance()->isAstElement( astElement ) )
 	{
@@ -871,12 +1074,10 @@ const Symbol & ExecutableQuery::getMachineByAstElement(
 	}
 
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
-		const Symbol & foundElement =
-			(itExec)->getInstanceByDesign(aDesign).getByAstElement(astElement);
+		const Symbol & foundElement = itExec.to< ExecutableForm >().
+				getInstanceByDesign(aDesign).getByAstElement(astElement);
 
 		if( foundElement.valid() )
 		{
@@ -902,7 +1103,7 @@ const BF & ExecutableQuery::searchMachine(
 		std::string mid = aQualifiedNameID.substr(0, pos);
 		std::string obj = aQualifiedNameID.substr(pos + 2);
 
-		InstanceOfMachine * mainMachine = NULL;
+		InstanceOfMachine * mainMachine = nullptr;
 
 		if( mid.find('.') == std::string::npos )
 		{
@@ -913,11 +1114,11 @@ const BF & ExecutableQuery::searchMachine(
 			mainMachine = rawMachineByQualifiedNameID(aDesign, mid);
 		}
 
-		if( mainMachine != NULL )
+		if( mainMachine != nullptr )
 		{
 			if( obj != "[*]" )
 			{
-				const BF & machine = mainMachine->getExecutable()->
+				const BF & machine = mainMachine->refExecutable().
 						getInstanceByDesign( aDesign ).getByNameID( obj );
 				if( machine.valid() )
 				{
@@ -966,15 +1167,13 @@ const BF & ExecutableQuery::searchMachine(
  * for Machine Instance Model
  */
 const Symbol & ExecutableQuery::getInstanceModel(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		const Symbol & foundElement =
-				(itExec)->getByAstInstanceModel( astElement );
+			itExec.to< ExecutableForm >().getByAstInstanceModel( astElement );
 
 		if( foundElement.valid() )
 		{
@@ -987,9 +1186,9 @@ const Symbol & ExecutableQuery::getInstanceModel(
 
 const Symbol & ExecutableQuery::getSemInstanceModel(
 		const ExecutableForm * anExecutable,
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
-	for( ; anExecutable != NULL ;
+	for( ; anExecutable != nullptr ;
 			anExecutable = anExecutable->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
@@ -1009,15 +1208,13 @@ const Symbol & ExecutableQuery::getSemInstanceModel(
  * for Machine Instance Static
  */
 const Symbol & ExecutableQuery::getInstanceStatic(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		const Symbol & foundElement =
-				(itExec)->getByAstInstanceStatic( astElement );
+			itExec.to< ExecutableForm >().getByAstInstanceStatic( astElement );
 
 		if( foundElement.valid() )
 		{
@@ -1030,9 +1227,9 @@ const Symbol & ExecutableQuery::getInstanceStatic(
 
 const Symbol & ExecutableQuery::getSemInstanceStatic(
 		const ExecutableForm * anExecutable,
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
-	for( ; anExecutable != NULL ;
+	for( ; anExecutable != nullptr ;
 			anExecutable = anExecutable->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
@@ -1052,15 +1249,13 @@ const Symbol & ExecutableQuery::getSemInstanceStatic(
  * for Machine Instance Dynamic
  */
 const Symbol & ExecutableQuery::getInstanceDynamic(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	// REVERSE because machines are insert after children
-	const_exec_iterator itExec  = getSystem().getExecutables().begin();
-	const_exec_iterator endExec  = getSystem().getExecutables().end();
-	for( ; itExec != endExec ; ++itExec )
+	for( const auto & itExec : getSystem().getExecutables() )
 	{
 		const Symbol & foundElement =
-				(itExec)->getByAstInstanceDynamic( astElement );
+			itExec.to< ExecutableForm >().getByAstInstanceDynamic( astElement );
 
 		if( foundElement.valid() )
 		{
@@ -1073,9 +1268,9 @@ const Symbol & ExecutableQuery::getInstanceDynamic(
 
 const Symbol & ExecutableQuery::getSemInstanceDynamic(
 		const ExecutableForm * anExecutable,
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
-	for( ; anExecutable != NULL ; anExecutable = anExecutable->getExecutableContainer() )
+	for( ; anExecutable != nullptr ; anExecutable = anExecutable->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
 				anExecutable->getByAstInstanceDynamic( astElement );
@@ -1094,7 +1289,7 @@ const Symbol & ExecutableQuery::getSemInstanceDynamic(
  * any Instance
  */
 const BF & ExecutableQuery::getInstanceByAstElement(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	if( getSystem().rawSystemInstance()->isAstElement( astElement ) )
 	{
@@ -1102,7 +1297,7 @@ const BF & ExecutableQuery::getInstanceByAstElement(
 	}
 
 	{
-		const BF & foundElement = getDataByAstElement(astElement);
+		const BF & foundElement = getVariableByAstElement(astElement);
 		if( foundElement.valid() )
 		{
 			return( foundElement );

@@ -20,6 +20,3 @@ target_include_directories (parser PUBLIC ..) # FIXME : explicit the dependenci
 # Target include directories (external)
 target_include_directories (parser PUBLIC ${ANTLR_INCLUDE_DIR} ${ANTLR3C_INCLUDE_DIR})
 
-
-add_dependencies(parser rescan_cvc4)
-add_dependencies(parser rescan_antlr2)

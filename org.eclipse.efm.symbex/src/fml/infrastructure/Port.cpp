@@ -19,6 +19,8 @@
 #include <fml/infrastructure/Machine.h>
 #include <fml/infrastructure/PropertyPart.h>
 
+#include <fml/expression/ExpressionTypeChecker.h>
+
 #include <fml/type/TypeManager.h>
 
 
@@ -38,9 +40,9 @@ mModel( ),
 mComPointNature( aNature ),
 mComposite( false ),
 
-mContents( new PropertyPart(this, "contents") ),
+mParameterPart( new PropertyPart(this, "contents") ),
 
-mRoutingChannel( NULL )
+mRoutingChannel( nullptr )
 {
 	//!! NOTHING
 }
@@ -48,12 +50,12 @@ mRoutingChannel( NULL )
 
 Port::Port(Channel * aChannel,
 		const Modifier & aModifier, const BF & portPattern)
-: PropertyElement(CLASS_KIND_T( Port ), aChannel, portPattern.to_ref< Port >()),
+: PropertyElement(CLASS_KIND_T( Port ), aChannel, portPattern.to< Port >()),
 mModel( portPattern ),
-mComPointNature( portPattern.to_ptr< Port >()->mComPointNature ),
+mComPointNature( portPattern.to< Port >().mComPointNature ),
 mComposite( false ),
 
-mContents( new PropertyPart(this, "contents") ),
+mParameterPart( new PropertyPart(this, "contents") ),
 
 mRoutingChannel( aChannel )
 {
@@ -62,12 +64,31 @@ mRoutingChannel( aChannel )
 
 
 /**
- * GETTER
- * mContents
+ * CONSTRUCTOR
+ * Binding
  */
-bool Port::hasContents() const
+Port::Port(Machine * aContainer, const std::string & aNameID,
+		IComPoint::ENUM_IO_NATURE aNature, const Modifier & aModifier)
+: PropertyElement( CLASS_KIND_T( Port ), aContainer , aModifier , aNameID ),
+mModel( ),
+mComPointNature( aNature ),
+mComposite( false ),
+
+mParameterPart( new PropertyPart(this, "contents") ),
+
+mRoutingChannel( nullptr )
 {
-	return( (mContents != NULL) && mContents->nonempty() );
+	//!! NOTHING
+}
+
+
+/**
+ * GETTER
+ * mParameterPart
+ */
+PropertyPart & Port::getParameterPart() const
+{
+	return( *mParameterPart );
 }
 
 
@@ -77,27 +98,70 @@ bool Port::hasContents() const
  */
 const TableOfVariable & Port::getParameters() const
 {
-	return( mContents->getVariables() );
+	return( mParameterPart->getVariables() );
 }
 
-avm_size_t Port::getParametersCount() const
+std::size_t Port::getParametersCount() const
 {
-	return( mContents->getVariables().size() );
+	return( mParameterPart->getVariables().size() );
 }
 
 avm_offset_t Port::getParameterOffset(const std::string & label) const
 {
-	return( mContents->getVariables().getOffsetByNameID(label) );
+	return( mParameterPart->getVariables().getOffsetByNameID(label) );
 }
 
 void Port::appendParameter(const BF & aParam)
 {
-	mContents->appendVariable( aParam );
+	mParameterPart->appendVariable( aParam );
 }
 
 void Port::saveParameter(Variable * aParam)
 {
-	mContents->saveOwnedVariable( aParam );
+	mParameterPart->saveOwnedVariable( aParam );
+}
+
+void Port::setParameters(const TableOfVariable & paramVars)
+{
+	mParameterPart->appendVariable(paramVars);
+}
+
+// Raw parameter
+void Port::appendParameter(const TypeSpecifier& aType,
+		const std::string paramNameID, const BF & defaultValue)
+{
+	saveParameter( new Variable(this,
+			Modifier::PROPERTY_PARAMETER_MODIFIER,
+			aType, paramNameID, defaultValue) );
+}
+
+// Signature Comparison
+bool Port::sameSignature(const Port & aPort) const
+{
+	if( getParametersCount() != aPort.getParametersCount() ) {
+		return false;
+	}
+	else if( mParameterPart->hasVariable() )
+	{
+		TableOfVariable::const_raw_iterator it =
+				mParameterPart->getVariables().begin();
+		TableOfVariable::const_raw_iterator endIt =
+				mParameterPart->getVariables().end();
+
+		TableOfVariable::const_raw_iterator itOther =
+				aPort.mParameterPart->getVariables().begin();
+
+		for( ; it != endIt ; ++it , ++itOther )
+		{
+				if( not ExpressionTypeChecker::isTyped
+					(it->getTypeSpecifier(), itOther->getTypeSpecifier()) )
+				{
+					return false;
+				}
+		}
+	}
+
+	return true;
 }
 
 
@@ -105,14 +169,14 @@ void Port::saveParameter(Variable * aParam)
  * GETTER
  * the container
  */
-Machine * Port::getContainerMachine()
+Machine * Port::getContainerMachine() const
 {
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( getContainer()->is< Machine >() )
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( isContainerMachine() )
 			<< "Invalid << Port Container >> Type <"
 			<< getContainer()->classKindName() << "> Cast !!!"
 			<< SEND_EXIT;
 
-	return( getContainer()->to< Machine >() );
+	return( getContainer()->to_ptr< Machine >() );
 }
 
 
@@ -126,17 +190,22 @@ void Port::toStream(OutStream & out) const
 
 	if( hasSignalModel() )
 	{
-		out << "< " << getSignalModel()->getNameID() << " >";
+		out << "< " << getSignalModel().getNameID() << " >";
 	}
 
 	out << " " << getNameID();
 
-	if( mContents->hasVariable() )
+	if( hasReallyUnrestrictedName() )
+	{
+		out << " \"" << getUnrestrictedName() << "\"";
+	}
+
+	if( mParameterPart->hasVariable() )
 	{
 		TableOfVariable::const_raw_iterator it =
-				mContents->getVariables().begin();
+				mParameterPart->getVariables().begin();
 		TableOfVariable::const_raw_iterator endIt =
-				mContents->getVariables().end();
+				mParameterPart->getVariables().end();
 
 		out << "(";
 		for( std::string sep = "" ; it != endIt ; ++it )

@@ -36,13 +36,13 @@ namespace sep
 ////////////////////////////////////////////////////////////////////////////////
 
 BFCode AvmcodeExpressionALUCompiler::optimizeUnaryRvalue(COMPILE_CONTEXT * aCTX,
-		const BFCode & aCode, BaseTypeSpecifier * aType,
-		avm_arg_processor_t aProcessor, BaseTypeSpecifier * mainType)
+		const BFCode & aCode, const BaseTypeSpecifier & aType,
+		avm_arg_processor_t aProcessor, const BaseTypeSpecifier & mainType)
 {
 	AvmInstruction * argsInstruction = aCode->genInstruction();
 
 	optimizeArgExpression(aCTX, aCode, 0);
-	argsInstruction->at(0).dtype = aType;
+	argsInstruction->at(0).dtype = (& aType);
 	setArgcodeRValue(aCTX, argsInstruction->at(0), aCode->first(), false);
 
 	argsInstruction->computeMainBytecode(
@@ -50,7 +50,19 @@ BFCode AvmcodeExpressionALUCompiler::optimizeUnaryRvalue(COMPILE_CONTEXT * aCTX,
 			/*processor*/ aProcessor,
 			/*operation*/ AVM_ARG_SEVAL_RVALUE,
 			/*operand  */ AVM_ARG_EXPRESSION_KIND,
-			/*dtype    */ mainType);
+			/*dtype    */ (& mainType) );
+
+	// set operation on string
+	if( (argsInstruction->at(0).operand == AVM_ARG_STRING_KIND)
+		|| argsInstruction->at(0).dtype->isTypedString() )
+	{
+		argsInstruction->setMainBytecode(
+				/*context  */ AVM_ARG_RETURN_CTX,
+				/*processor*/ AVM_ARG_STRING_CPU,
+				/*operation*/ AVM_ARG_SEVAL_RVALUE,
+				/*operand  */ AVM_ARG_EXPRESSION_KIND,
+				/*dtype    */ mainType );
+	}
 
 	return( aCode );
 }
@@ -62,17 +74,17 @@ BFCode AvmcodeExpressionALUCompiler::optimizeUnaryRvalue(COMPILE_CONTEXT * aCTX,
 
 BFCode AvmcodeExpressionALUCompiler::optimizeBinaryRvalue(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode,
-		BaseTypeSpecifier * aType1, BaseTypeSpecifier * aType2,
-		avm_arg_processor_t aProcessor, BaseTypeSpecifier * mainType)
+		const BaseTypeSpecifier & aType1, const BaseTypeSpecifier & aType2,
+		avm_arg_processor_t aProcessor, const BaseTypeSpecifier & mainType)
 {
 	AvmInstruction * argsInstruction = aCode->genInstruction();
 
 	optimizeArgExpression(aCTX, aCode, 0);
-	argsInstruction->at(0).dtype = aType1;
+	argsInstruction->at(0).dtype = (& aType1);
 	setArgcodeRValue(aCTX, argsInstruction->at(0), aCode->first(), false);
 
 	optimizeArgExpression(aCTX, aCode, 1);
-	argsInstruction->at(1).dtype = aType2;
+	argsInstruction->at(1).dtype = (& aType2);
 	setArgcodeRValue(aCTX, argsInstruction->at(1), aCode->second(), false);
 
 	argsInstruction->computeMainBytecode(
@@ -80,11 +92,13 @@ BFCode AvmcodeExpressionALUCompiler::optimizeBinaryRvalue(
 			/*processor*/ aProcessor,
 			/*operation*/ AVM_ARG_SEVAL_RVALUE,
 			/*operand  */ AVM_ARG_EXPRESSION_KIND,
-			/*dtype    */ mainType);
+			/*dtype    */ (& mainType) );
 
 	// set operation on string
-	if( (argsInstruction->at(0).operand == AVM_ARG_STRING_KIND) &&
-			(argsInstruction->at(1).operand == AVM_ARG_STRING_KIND) )
+	if( ((argsInstruction->at(0).operand == AVM_ARG_STRING_KIND)
+			|| argsInstruction->at(0).dtype->isTypedString())
+		&& ((argsInstruction->at(1).operand == AVM_ARG_STRING_KIND)
+			|| argsInstruction->at(1).dtype->isTypedString()) )
 	{
 		argsInstruction->setMainBytecode(
 				/*context  */ AVM_ARG_RETURN_CTX,
@@ -103,28 +117,26 @@ BFCode AvmcodeExpressionALUCompiler::optimizeBinaryRvalue(
 ////////////////////////////////////////////////////////////////////////////////
 
 BFCode AvmcodeExpressionALUCompiler::compileAssociativeRvalue(
-		COMPILE_CONTEXT * aCTX, const BFCode & aCode, BaseTypeSpecifier * aType)
+	COMPILE_CONTEXT * aCTX, const BFCode & aCode,
+	const BaseTypeSpecifier & aType)
 {
-	Operator * mainOperator = aCode->getOperator();
+	const Operator * mainOperator = aCode->getOperator();
 	BFCode newCode( mainOperator );
 
 	BF arg;
-	AvmCode * pCode;
 
 	aCTX = aCTX->clone(aType);
 
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
-	for( ; itArg != itEndArg ; ++itArg )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, itOperand);
 
 		if( arg.invalid() )
 		{
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< expression > compilation error << "
-					<< (*itArg).str() << " >>" << std::endl << std::endl;
+					<< itOperand.str() << " >>" << std::endl << std::endl;
 
 			newCode->append( arg );
 			continue;
@@ -132,12 +144,12 @@ BFCode AvmcodeExpressionALUCompiler::compileAssociativeRvalue(
 
 		if( arg.is< AvmCode >() )
 		{
-			pCode = arg.to_ptr< AvmCode >();
+			const AvmCode & argCode = arg.to< AvmCode >();
 
-			if( pCode->isOperator( mainOperator ) &&
+			if( argCode.isOperator( mainOperator ) &&
 				mainOperator->isAssociative() )
 			{
-				newCode->append( pCode->getArgs() );
+				newCode->append( argCode.getOperands() );
 			}
 			else
 			{
@@ -154,34 +166,31 @@ BFCode AvmcodeExpressionALUCompiler::compileAssociativeRvalue(
 }
 
 BFCode AvmcodeExpressionALUCompiler::optimizeAssociativeRvalue(
-		COMPILE_CONTEXT * aCTX, const BFCode & aCode, BaseTypeSpecifier * aType,
-		avm_arg_processor_t aProcessor, BaseTypeSpecifier * mainType)
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode,
+		const BaseTypeSpecifier & aType, avm_arg_processor_t aProcessor,
+		const BaseTypeSpecifier & mainType)
 {
-	Operator * mainOperator = aCode->getOperator();
+	const Operator * mainOperator = aCode->getOperator();
 	BFCode newCode( mainOperator );
 
 	BF arg;
-	AvmCode * pCode;
-
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
 
 	AvmInstruction * argsInstruction = newCode->newEmptyInstruction();
 
 	Vector< AvmBytecode > vectorOfArgOpcode;
 
-	avm_size_t stringArgCount = 0;
+	std::size_t stringArgCount = 0;
 
-	for( ; itArg != itEndArg ; ++itArg )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, itOperand);
 
 		if( arg.invalid() )
 		{
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< expression > optimization error << "
-					<< (*itArg).str() << " >>" << std::endl << std::endl;
+					<< itOperand.str() << " >>" << std::endl << std::endl;
 
 			newCode->append( arg );
 			continue;
@@ -189,29 +198,29 @@ BFCode AvmcodeExpressionALUCompiler::optimizeAssociativeRvalue(
 
 		if( arg.is< AvmCode >() )
 		{
-			pCode = arg.to_ptr< AvmCode >();
+			const AvmCode & argCode = arg.to< AvmCode >();
 
-			if( pCode->isOperator( mainOperator ) &&
+			if( argCode.isOperator( mainOperator ) &&
 				mainOperator->isAssociative() )
 			{
-				newCode->append( pCode->getArgs() );
+				newCode->append( argCode.getOperands() );
 
 				vectorOfArgOpcode.append(
-						pCode->getInstruction()->getBytecode(), pCode->size());
+						argCode.getInstruction()->getBytecode(), argCode.size());
 			}
 			else
 			{
 				newCode->append( arg );
 
-				if( pCode->hasInstruction() )
+				if( argCode.hasInstruction() )
 				{
-					vectorOfArgOpcode.append( argcodeOfExpression(aCTX, pCode) );
+					vectorOfArgOpcode.append( argcodeOfExpression(aCTX, argCode) );
 				}
 				else
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected expression without argcode << "
-							<< pCode->strDebug() << " >> !!!"
+							<< argCode.strDebug() << " >> !!!"
 							<< SEND_EXIT;
 
 					vectorOfArgOpcode.append( AvmBytecode(AVM_ARG_ARGUMENT_CTX,
@@ -230,7 +239,8 @@ BFCode AvmcodeExpressionALUCompiler::optimizeAssociativeRvalue(
 			vectorOfArgOpcode.append( argOpcode );
 		}
 
-		if( vectorOfArgOpcode.back().operand == AVM_ARG_STRING_KIND )
+		if( (vectorOfArgOpcode.back().operand == AVM_ARG_STRING_KIND)
+			|| vectorOfArgOpcode.back().dtype->isTypedString() )
 		{
 			stringArgCount += 1;
 		}
@@ -359,7 +369,7 @@ BF AvmcodeAssociativeArithmeticExpressionALUCompiler::optimizeExpression(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void compareStructure(BaseAvmProgram * aProgram,	AvmCode * expandCode,
-		Operator * op, const Symbol & arg1, const Symbol & arg2)
+		const Operator * op, const Symbol & arg1, const Symbol & arg2)
 {
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 //	AVM_OS_TRACE << "compareStructure:> " << std::endl;
@@ -394,7 +404,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 		for( ; it != itEnd ; ++it )
 		{
 			argAlias = new InstanceOfData(argOther.getPointerNature(),
-					argOther.getContainer(), argOther.rawData(),
+					argOther.getContainer(), argOther.variable(),
 					*(argOther.getDataPath()), (*it));
 
 			aQualifiedNameID = (*it).getFullyQualifiedNameID().substr(
@@ -405,46 +415,45 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 							<< '.' << aQualifiedNameID,
 					OSS() << argOther.getNameID()  << '.' << aQualifiedNameID );
 
-			aProgram->appendDataAlias(argAlias);
+			aProgram->appendVariableAlias(argAlias);
 
 			compareStructure(aProgram, expandCode, op, (*it) , argAlias);
 		}
 	}
 
-	else if( arg1.isTypedStructure() )
+	else if( arg1.referedTypeSpecifier().isTypedStructure() )
 	{
 		Symbol arg1Alias;
 		Symbol arg2Alias;
 		std::string id;
 
-		ClassTypeSpecifier * structT =
-				arg1.getTypeSpecifier()->as< ClassTypeSpecifier >();
-		TableOfSymbol::const_iterator it = structT->getSymbolData().begin();
-		TableOfSymbol::const_iterator itEnd = structT->getSymbolData().end();
-		for( ; it != itEnd ; ++it )
+		const ClassTypeSpecifier & structT =
+				arg1.referedTypeSpecifier().to< ClassTypeSpecifier >();
+
+		for( const auto & itSymbol : structT.getSymbolData() )
 		{
-			id = (*it).getNameID();
+			id = itSymbol.getNameID();
 
 			arg1Alias = new InstanceOfData(arg1.getPointerNature(),
-					arg1.getContainer(), arg1.rawData(),
-					*(arg1.getDataPath()), (*it));
+					arg1.getContainer(), arg1.variable(),
+					*(arg1.getDataPath()), itSymbol);
 
 			arg1Alias.updateFullyQualifiedNameID(
 					( OSS() << arg1.getFullyQualifiedNameID() << '.' << id ),
 					( OSS() << arg1.getNameID()  << '.' << id ) );
 
-			aProgram->appendDataAlias(arg1Alias);
+			aProgram->appendVariableAlias(arg1Alias);
 
 
 			arg2Alias = new InstanceOfData(arg2.getPointerNature(),
-					arg2.getContainer(), arg2.rawData(),
-					*(arg2.getDataPath()), (*it));
+					arg2.getContainer(), arg2.variable(),
+					*(arg2.getDataPath()), itSymbol);
 
 			arg2Alias.updateFullyQualifiedNameID(
 					( OSS() << arg2.getFullyQualifiedNameID() << '.' << id ),
 					( OSS() << arg2.getNameID()  << '.' << id ) );
 
-			aProgram->appendDataAlias(arg2Alias);
+			aProgram->appendVariableAlias(arg2Alias);
 
 			compareStructure(aProgram, expandCode, op, arg1Alias , arg2Alias);
 		}
@@ -457,7 +466,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 		if( arg1.isFieldClassAttributePointer() ||
 			arg1.isFieldArrayOffsetPointer() )
 		{
-			atomCode->append( INCR_BF( arg1.getAliasTarget() ) );
+			atomCode->append( INCR_BF(
+					const_cast< BaseInstanceForm * >(arg1.getAliasTarget()) ));
 		}
 		else
 		{
@@ -467,7 +477,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 		if( arg2.isFieldClassAttributePointer() ||
 			arg2.isFieldArrayOffsetPointer() )
 		{
-			atomCode->append( INCR_BF( arg2.getAliasTarget() ) );
+			atomCode->append( INCR_BF(
+					const_cast< BaseInstanceForm * >(arg2.getAliasTarget()) ));
 		}
 		else
 		{
@@ -480,7 +491,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 
 
 static void compareStructure(BaseAvmProgram * aProgram, AvmCode * expandCode,
-		Operator * op, const Symbol & arg1, const BF & arg2)
+		const Operator * op, const Symbol & arg1, const BF & arg2)
 {
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 //	AVM_OS_TRACE << "compareStructure:> " << std::endl;
@@ -495,7 +506,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 	if( arg1.hasAttribute() && arg2.is< ArrayBF >())
 	{
 		ArrayBF * arg2Array = arg2.to_ptr< ArrayBF >();
-		avm_size_t offset = 0;
+		std::size_t offset = 0;
 
 		TableOfSymbol::const_iterator it = arg1.getAttribute()->begin();
 		TableOfSymbol::const_iterator itEnd = arg1.getAttribute()->end();
@@ -506,31 +517,33 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 		}
 	}
 
-	else if( arg1.isTypedStructure() && arg2.is< ArrayBF >() )
+	else if( arg1.referedTypeSpecifier().isTypedStructure()
+			&& arg2.is< ArrayBF >() )
 	{
 		ArrayBF * arg2Array = arg2.to_ptr< ArrayBF >();
-		avm_size_t offset = 0;
+		std::size_t offset = 0;
 
 		Symbol arg1Alias;
 		std::string id;
 
-		ClassTypeSpecifier * structT =
-				arg1.getTypeSpecifier()->as< ClassTypeSpecifier >();
-		TableOfSymbol::const_iterator it = structT->getSymbolData().begin();
-		TableOfSymbol::const_iterator itEnd = structT->getSymbolData().end();
+		const ClassTypeSpecifier & structT =
+				arg1.referedTypeSpecifier().to< ClassTypeSpecifier >();
+
+		TableOfSymbol::const_iterator it = structT.getSymbolData().begin();
+		TableOfSymbol::const_iterator itEnd = structT.getSymbolData().end();
 		for( ; (it != itEnd) && (offset < arg2Array->size()) ; ++it , ++offset )
 		{
 			id = (*it).getNameID();
 
 			arg1Alias = new InstanceOfData(arg1.getPointerNature(),
-					arg1.getContainer(), arg1.rawData(),
+					arg1.getContainer(), arg1.variable(),
 					*(arg1.getDataPath()), (*it));
 
 			arg1Alias.updateFullyQualifiedNameID(
 					( OSS() << arg1.getFullyQualifiedNameID() << '.' << id ),
 					( OSS() << arg1.getNameID()  << '.' << id ) );
 
-			aProgram->appendDataAlias(arg1Alias);
+			aProgram->appendVariableAlias(arg1Alias);
 
 			compareStructure(aProgram, expandCode, op,
 					arg1Alias, arg2Array->at(offset));
@@ -544,7 +557,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 		if( arg1.isFieldClassAttributePointer() ||
 			arg1.isFieldArrayOffsetPointer() )
 		{
-			atomCode->append( INCR_BF( arg1.getAliasTarget() ) );
+			atomCode->append( INCR_BF(
+				const_cast< BaseInstanceForm * >(arg1.getAliasTarget()) ));
 		}
 		else
 		{
@@ -561,33 +575,76 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 BF AvmcodeRelationalExpressionCompiler::compileExpression(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	BFCode compileCode = compileBinaryRvalue(aCTX, aCode,
+	BF compileCode = compileBinaryRvalue(aCTX, aCode,
 			TypeManager::UNIVERSAL, TypeManager::UNIVERSAL);
 
-	if( compileCode->first().is< InstanceOfData >() )
+	if( compileCode.is< AvmCode >() )
 	{
-		Symbol arg1( compileCode->first() );
+		const AvmCode & compileAvmCode = compileCode.to< AvmCode >();
 
-		if( aCTX->isNeedTypeChecking() )
+		if( compileAvmCode.first().is< InstanceOfData >() )
 		{
-			checkArgType(aCTX, arg1.getTypeSpecifier(), compileCode->second());
-		}
+			Symbol arg1( compileAvmCode.first() );
 
-		if( arg1.hasTypeArrayOrStructure() )
-		{
-			if( compileCode->second().is< InstanceOfData >() )
+			if( aCTX->isNeedTypeChecking() )
 			{
-				Symbol arg2( compileCode->second() );
+				checkArgType(aCTX,
+						arg1.getTypeSpecifier(),
+						compileAvmCode.second());
+			}
 
-				if( arg1.getTypeSpecifier() == arg2.getTypeSpecifier() )
+			const BaseTypeSpecifier & arg1Type = arg1.referedTypeSpecifier();
+
+			if( arg1Type.hasTypeArrayOrStructure() )
+			{
+				if( compileAvmCode.second().is< InstanceOfData >() )
 				{
+					Symbol arg2( compileAvmCode.second() );
+
+					if( arg1Type.isTEQ( arg2.referedTypeSpecifier() ) )
+					{
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 	AVM_OS_TRACE << "AvmcodeRelationalExpressionCompiler:>\n"
 			<< "\t" << str_header( arg1 ) << std::endl
 			<< "\t" << str_header( arg2 ) << std::endl;
 
 	AVM_OS_TRACE << "Comparison of data structure << "
-			<< compileCode->str() << " >> " << std::endl;
+			<< compileAvmCode.str() << " >> " << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+
+						BFCode expandCode(
+								aCode->isOpCode( AVM_OPCODE_NEQ ) ?
+										OperatorManager::OPERATOR_OR :
+										OperatorManager::OPERATOR_AND );
+
+						compareStructure(aCTX->mCompileCtx, expandCode,
+								aCode->getOperator(), arg1, arg2);
+
+						if( expandCode->hasOneOperand() )
+						{
+							compileCode = expandCode->first();
+						}
+						else
+						{
+							compileCode = expandCode;
+						}
+
+AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+	AVM_OS_TRACE << "AvmcodeRelationalExpressionCompiler:result>\n"
+			<< compileCode.str() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+					}
+				}
+
+				else if( compileAvmCode.second().is< ArrayBF >() )
+				{
+AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+	AVM_OS_TRACE << "AvmcodeRelationalExpressionCompiler:>\n"
+			<< "\t" << str_header( arg1 ) << std::endl
+			<< "\t" << compileAvmCode.second().str() << std::endl;
+
+	AVM_OS_TRACE << "Comparison of data structre << "
+			<< compileAvmCode.str() << " >> " << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 
 					BFCode expandCode(
@@ -596,9 +653,9 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 									OperatorManager::OPERATOR_AND );
 
 					compareStructure(aCTX->mCompileCtx, expandCode,
-							aCode->getOperator(), arg1, arg2);
+						aCode->getOperator(), arg1, compileAvmCode.second());
 
-					if( expandCode->singleton() && expandCode.is< AvmCode >() )
+					if( expandCode->hasOneOperand() )
 					{
 						compileCode = expandCode->first();
 					}
@@ -613,50 +670,16 @@ AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 				}
 			}
-
-			else if( compileCode->second().is< ArrayBF >() )
+		}
+		else if( compileAvmCode.second().is< InstanceOfData >() )
+		{
+			if( aCTX->isNeedTypeChecking() )
 			{
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
-	AVM_OS_TRACE << "AvmcodeRelationalExpressionCompiler:>\n"
-			<< "\t" << str_header( arg1 ) << std::endl
-			<< "\t" << compileCode->second().str() << std::endl;
-
-	AVM_OS_TRACE << "Comparison of data structre << "
-			<< compileCode->str() << " >> " << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
-
-				BFCode expandCode(
-						aCode->isOpCode( AVM_OPCODE_NEQ ) ?
-								OperatorManager::OPERATOR_OR :
-								OperatorManager::OPERATOR_AND );
-
-				compareStructure(aCTX->mCompileCtx, expandCode,
-						aCode->getOperator(), arg1, compileCode->second());
-
-				if( expandCode->singleton() && expandCode.is< AvmCode >() )
-				{
-					compileCode = expandCode->first();
-				}
-				else
-				{
-					compileCode = expandCode;
-				}
-
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
-	AVM_OS_TRACE << "AvmcodeRelationalExpressionCompiler:result>\n"
-			<< compileCode.str() << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+				checkArgType(aCTX,
+						compileAvmCode.second().to< InstanceOfData >()
+						.getTypeSpecifier(), compileAvmCode.first());
 			}
 		}
-	}
-	else if( compileCode->second().is< InstanceOfData >() )
-	{
-		if( aCTX->isNeedTypeChecking() )
-		{
-			checkArgType(aCTX, compileCode->second().to_ptr<
-				InstanceOfData >()->getTypeSpecifier(), compileCode->first());
-		}
-
 	}
 
 	return( compileCode );
@@ -669,12 +692,12 @@ BF AvmcodeRelationalExpressionCompiler::optimizeExpression(
 	avm_arg_processor_t processor = AVM_ARG_ARITHMETIC_LOGIC_CPU;
 
 	if( aCode->first().is< InstanceOfData >() &&
-		aCode->first().to_ptr< InstanceOfData >()->hasTypeArrayOrStructure() )
+		aCode->first().to< InstanceOfData >().hasTypeArrayOrStructure() )
 	{
 		processor = AVM_ARG_ARRAY_RVALUE_CPU;
 	}
 	else if( aCode->second().is< InstanceOfData >() &&
-			aCode->second().to_ptr< InstanceOfData >()->hasTypeArrayOrStructure() )
+			aCode->second().to< InstanceOfData >().hasTypeArrayOrStructure() )
 	{
 		processor = AVM_ARG_ARRAY_RVALUE_CPU;
 	}
@@ -745,6 +768,114 @@ BF AvmcodeAssociativePredicateExpressionCompiler::optimizeExpression(
 {
 	return( optimizeAssociativeRvalue(aCTX, aCode, TypeManager::BOOLEAN,
 			AVM_ARG_ARITHMETIC_LOGIC_CPU, TypeManager::BOOLEAN) );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// AVMCODE PREDICATE EXPRESSION COMPILATION
+////////////////////////////////////////////////////////////////////////////////
+
+BF AvmcodeQuantifiedPredicateExpressionCompiler::compileExpression(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	BFCode newCode( aCode->getOperator() );
+
+	BF aCompiledType;
+
+	std::size_t offset = 0;
+	for( const auto & itOperand : aCode.getOperands() )
+	{
+		if( itOperand.is< Variable >() )
+		{
+			const Variable & boundVariable = itOperand.to< Variable >();
+
+			aCompiledType = compileArgRvalue(aCTX, boundVariable.getType());
+			if( not aCompiledType.is< BaseTypeSpecifier >() )
+			{
+				getCompilerTable().incrErrorCount();
+				aCTX->errorContext( AVM_OS_WARN )
+						<< "AvmCode< quantified expression > :> "
+							"Unexpected <<" << str_indent( aCompiledType )
+						<< " >> as a type specifier of bound  variable :"
+						<< IGNORE_FIRST_TAB << itOperand
+						<< std::endl;
+
+				return( aCode );
+			}
+
+			const BaseTypeSpecifier & aCompiledTypeSpecifier =
+					aCompiledType.as< BaseTypeSpecifier >();
+
+			Symbol boundSymbol( new InstanceOfData(
+					IPointerVariableNature::POINTER_STANDARD_NATURE,
+					aCTX->mCompileCtx, boundVariable,
+					aCompiledTypeSpecifier, offset++ ) );
+			newCode->append( boundSymbol );
+
+			aCTX->mCompileCtx->appendVariableAlias( boundSymbol );
+		}
+		else if( itOperand.is< AvmCode >() )
+		{
+			BF arg = compileArgRvalue(
+					aCTX->clone(TypeManager::BOOLEAN), itOperand);
+
+			if( arg.invalid() )
+			{
+				getCompilerTable().incrErrorCount();
+				aCTX->errorContext( AVM_OS_WARN )
+						<< "AvmCode< quantified expression > compilation error << "
+						<< itOperand.str() << " >>" << std::endl << std::endl;
+			}
+
+			newCode->append( arg );
+
+			break;
+		}
+		else
+		{
+			getCompilerTable().incrErrorCount();
+			aCTX->errorContext( AVM_OS_WARN )
+					<< "AvmCode< quantified expression > compilation error << "
+					<< itOperand.str() << " >>" << std::endl << std::endl;
+
+			newCode->append( itOperand );
+		}
+	}
+
+	return( newCode );
+}
+
+
+BF AvmcodeQuantifiedPredicateExpressionCompiler::optimizeExpression(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	AvmInstruction * argsInstruction = aCode->genInstruction();
+
+	std::size_t endVarOfsset = aCode->getOperands().size() - 1;
+	for( std::size_t offset = 0 ; offset < endVarOfsset ; ++offset )
+	{
+		const InstanceOfData & boundVariable =
+				aCode->operand(offset).as< InstanceOfData >();
+
+		argsInstruction->set(offset,
+				/*context  */ AVM_ARG_STANDARD_CTX,
+				/*processor*/ AVM_ARG_NOP_CPU,
+				/*operation*/ AVM_ARG_NOP_VALUE,
+				/*operand  */ AVM_ARG_DATA_KIND,
+				/*type     */ boundVariable.getTypeSpecifier() );
+	}
+
+	optimizeArgExpression(aCTX, aCode, endVarOfsset);
+	argsInstruction->at(endVarOfsset).dtype = TypeManager::BOOLEAN;
+	setArgcodeRValue(aCTX, argsInstruction->at(endVarOfsset), aCode->last());
+
+	argsInstruction->setMainBytecode(
+			/*context  */ AVM_ARG_RETURN_CTX,
+			/*processor*/ AVM_ARG_ARITHMETIC_LOGIC_CPU,
+			/*operation*/ AVM_ARG_SEVAL_RVALUE,
+			/*operand  */ AVM_ARG_EXPRESSION_KIND,
+			/*dtype    */ TypeManager::BOOLEAN.rawType() );
+
+	return( aCode );
 }
 
 
@@ -855,7 +986,7 @@ BF AvmcodeBinaryStringExpressionCompiler::optimizeExpression(
 BF AvmcodeAssociativeStringExpressionCompiler::compileExpression(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	Operator * mainOperator = aCode->getOperator();
+	const Operator * mainOperator = aCode->getOperator();
 	BFCode newCode( mainOperator );
 
 	BF arg;
@@ -863,11 +994,9 @@ BF AvmcodeAssociativeStringExpressionCompiler::compileExpression(
 
 	aCTX = aCTX->clone(TypeManager::STRING);
 
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
-	for( ; itArg != itEndArg ; ++itArg )
+	for( const auto & itOperand : aCode->getOperands() )
 	{
-		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, itOperand);
 
 		if( arg.valid() )
 		{
@@ -883,7 +1012,7 @@ BF AvmcodeAssociativeStringExpressionCompiler::compileExpression(
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< expression > compilation error << "
-					<< (*itArg).str() << " >>" << std::endl << std::endl;
+					<< itOperand.str() << " >>" << std::endl << std::endl;
 
 			newCode->append( arg );
 			continue;
@@ -896,7 +1025,7 @@ BF AvmcodeAssociativeStringExpressionCompiler::compileExpression(
 			if( pCode->isOperator( mainOperator ) &&
 				mainOperator->isAssociative() )
 			{
-				newCode->append( pCode->getArgs() );
+				newCode->append( pCode->getOperands() );
 			}
 			else
 			{
@@ -916,29 +1045,25 @@ BF AvmcodeAssociativeStringExpressionCompiler::compileExpression(
 BF AvmcodeAssociativeStringExpressionCompiler::optimizeExpression(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	Operator * mainOperator = aCode->getOperator();
+	const Operator * mainOperator = aCode->getOperator();
 	BFCode newCode( mainOperator );
 
 	BF arg;
-	AvmCode * pCode;
-
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
 
 	AvmInstruction * argsInstruction = newCode->newEmptyInstruction();
 
 	Vector< AvmBytecode > vectorOfArgOpcode;
 
-	for( ; itArg != itEndArg ; ++itArg )
+	for( const auto & itOperand : aCode->getOperands() )
 	{
-		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, itOperand);
 
 		if( arg.invalid() )
 		{
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< expression > optimization error << "
-					<< (*itArg).str() << " >>" << std::endl << std::endl;
+					<< itOperand.str() << " >>" << std::endl << std::endl;
 
 			newCode->append( arg );
 			continue;
@@ -946,29 +1071,29 @@ BF AvmcodeAssociativeStringExpressionCompiler::optimizeExpression(
 
 		if( arg.is< AvmCode >() )
 		{
-			pCode = arg.to_ptr< AvmCode >();
+			const AvmCode & argCode = arg.to< AvmCode >();
 
-			if( pCode->isOperator( mainOperator ) &&
+			if( argCode.isOperator( mainOperator ) &&
 				mainOperator->isAssociative() )
 			{
-				newCode->append( pCode->getArgs() );
+				newCode->append( argCode.getOperands() );
 
 				vectorOfArgOpcode.append(
-						pCode->getInstruction()->getBytecode(), pCode->size());
+						argCode.getInstruction()->getBytecode(), argCode.size());
 			}
 			else
 			{
 				newCode->append( arg );
 
-				if( pCode->hasInstruction() )
+				if( argCode.hasInstruction() )
 				{
-					vectorOfArgOpcode.append( argcodeOfExpression(aCTX, pCode) );
+					vectorOfArgOpcode.append( argcodeOfExpression(aCTX, argCode) );
 				}
 				else
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected expression without argcode << "
-							<< pCode->strDebug() << " >> !!!"
+							<< argCode.strDebug() << " >> !!!"
 							<< SEND_EXIT;
 
 					vectorOfArgOpcode.append( AvmBytecode(AVM_ARG_ARGUMENT_CTX,
@@ -1001,13 +1126,12 @@ BF AvmcodeAssociativeStringExpressionCompiler::optimizeExpression(
 			/*processor*/ AVM_ARG_STRING_CPU,
 			/*operation*/ AVM_ARG_SEVAL_RVALUE,
 			/*operand  */ AVM_ARG_EXPRESSION_KIND,
-			/*dtype    */ TypeManager::STRING );
+			/*dtype    */ TypeManager::STRING.rawType() );
 
 	argsInstruction->computeBytecode( false , vectorOfArgOpcode );
 
 	return( newCode );
 }
-
 
 
 } /* namespace sep */

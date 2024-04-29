@@ -54,17 +54,17 @@ TracePoint::TracePoint(ENUM_TRACE_POINT::TRACE_NATURE aNature,
 : Element( CLASS_KIND_T( TracePoint ) ),
 tpid( 0 ),
 
-EC( ExecutionContext::_NULL_ ),
-config( NULL ),
+EC( ExecutionContext::nullref() ),
+config( ExecutionConfiguration::nullref() ),
 
 nature( aNature ),
 op( anOP ),
 
 RID( ),
 
-machine( NULL ),
+machine( nullptr ),
 
-object ( NULL ),
+object ( nullptr ),
 any_object( false ),
 
 value( aValue )
@@ -74,13 +74,63 @@ value( aValue )
 
 
 TracePoint::TracePoint(ENUM_TRACE_POINT::TRACE_NATURE aNature,
-		AVM_OPCODE anOP, InstanceOfMachine * aMachine,
-		ObjectElement * anObject, const BF & aValue)
+		AVM_OPCODE anOP, bool isAnyObject)
 : Element( CLASS_KIND_T( TracePoint ) ),
 tpid( 0 ),
 
-EC( ExecutionContext::_NULL_ ),
-config( NULL ),
+EC( ExecutionContext::nullref() ),
+config( ExecutionConfiguration::nullref() ),
+
+nature( aNature ),
+op( anOP ),
+
+RID( ),
+
+machine( nullptr ),
+
+object ( nullptr ),
+any_object( isAnyObject ),
+
+value( BF::REF_NULL )
+{
+	//!! NOTHING
+}
+
+
+TracePoint::TracePoint(ENUM_TRACE_POINT::TRACE_NATURE aNature,
+		AVM_OPCODE anOP, const InstanceOfMachine * aMachine,
+		const ObjectElement * anObject, const BF & aValue)
+: Element( CLASS_KIND_T( TracePoint ) ),
+tpid( 0 ),
+
+EC( ExecutionContext::nullref() ),
+config( ExecutionConfiguration::nullref() ),
+
+nature( aNature ),
+op( anOP ),
+
+RID( ),
+
+machine( aMachine ),
+
+object( anObject ),
+any_object( false ),
+
+value( aValue )
+{
+	//!! NOTHING
+}
+
+
+TracePoint::TracePoint(const ExecutionContext & anEC,
+		ENUM_TRACE_POINT::TRACE_NATURE aNature,
+		AVM_OPCODE anOP, const InstanceOfMachine * aMachine,
+		const ObjectElement * anObject, const BF & aValue)
+: Element( CLASS_KIND_T( TracePoint ) ),
+tpid( 0 ),
+
+EC( anEC ),
+config( ExecutionConfiguration::nullref() ),
 
 nature( aNature ),
 op( anOP ),
@@ -100,12 +150,12 @@ value( aValue )
 
 TracePoint::TracePoint(ENUM_TRACE_POINT::TRACE_NATURE aNature,
 		AVM_OPCODE anOP, const RuntimeID & aRID,
-		ObjectElement * anObject, const BF & aValue)
+		const ObjectElement * anObject, const BF & aValue)
 : Element( CLASS_KIND_T( TracePoint ) ),
 tpid( 0 ),
 
-EC( ExecutionContext::_NULL_ ),
-config( NULL ),
+EC( ExecutionContext::nullref() ),
+config( ExecutionConfiguration::nullref() ),
 
 nature( aNature ),
 op( anOP ),
@@ -125,6 +175,33 @@ value( aValue )
 
 /**
  * CONSTRUCTOR
+ * Other
+ */
+TracePoint::TracePoint(const ExecutionContext & anEC,
+		ENUM_TRACE_POINT::TRACE_NATURE aNature,
+		AVM_OPCODE anOP, const BF & aValue)
+: Element( CLASS_KIND_T( TracePoint ) ),
+tpid( 0 ),
+
+EC( anEC ),
+config( ExecutionConfiguration::nullref() ),
+
+nature( aNature ),
+op( anOP ),
+
+RID( ),
+
+machine( nullptr ),
+
+object ( nullptr ),
+any_object( false ),
+
+value( aValue )
+{
+	//!! NOTHING
+}
+/**
+ * CONSTRUCTOR
  * for Meta point
  * TRACE_COMMENT_NATURE
  * TRACE_SEPARATOR_NATURE
@@ -136,14 +213,14 @@ TracePoint::TracePoint(ENUM_TRACE_POINT::TRACE_NATURE aNature,
 : Element( CLASS_KIND_T( TracePoint ) ),
 tpid( 0 ),
 
-EC( ExecutionContext::_NULL_ ),
-config( NULL ),
+EC( ExecutionContext::nullref() ),
+config( ExecutionConfiguration::nullref() ),
 nature( aNature ),
 op( AVM_OPCODE_NULL ),
 
-machine( NULL ),
+machine( nullptr ),
 
-object ( NULL ),
+object ( nullptr ),
 any_object( false ),
 
 value( ExpressionConstructor::newString(strSeparator) )
@@ -158,13 +235,13 @@ TracePoint::TracePoint(const ExecutionContext & anEC,
 tpid( 0 ),
 
 EC( anEC ),
-config( NULL ),
+config( ExecutionConfiguration::nullref() ),
 nature( aNature ),
 op( AVM_OPCODE_NULL ),
 
-machine( NULL ),
+machine( nullptr ),
 
-object ( NULL ),
+object ( nullptr ),
 any_object( false ),
 
 value( ExpressionConstructor::newString(strSeparator) )
@@ -179,17 +256,17 @@ value( ExpressionConstructor::newString(strSeparator) )
 
 void TracePoint::updateRID(const ExecutionData & anED)
 {
-	if( RID.valid() || ((object == NULL) && (machine == NULL)))
+	if( RID.valid() || ((object == nullptr) && (machine == nullptr)))
 	{
 		return;
 	}
 
-	else if( object != NULL )
+	else if( object != nullptr )
 	{
 		if( object->is< InstanceOfMachine >() )
 		{
-			if( object->to< InstanceOfMachine >()->
-					getExecutable()->hasSingleRuntimeInstance() )
+			if( object->to_ptr< InstanceOfMachine >()->
+					refExecutable().hasSingleRuntimeInstance() )
 			{
 				RID = anED.getRuntimeID( object->to< InstanceOfMachine >() );
 			}
@@ -197,42 +274,43 @@ void TracePoint::updateRID(const ExecutionData & anED)
 
 		else if( object->is< BaseAvmProgram >() )
 		{
-			if( object->to< BaseAvmProgram >()->
-					getExecutable()->hasSingleRuntimeInstance() )
+			if( object->to_ptr< BaseAvmProgram >()->
+					refExecutable().hasSingleRuntimeInstance() )
 			{
 				RID = anED.getRuntimeID(
-						object->to< BaseAvmProgram >()->getExecutable() );
+						object->to_ptr< BaseAvmProgram >()->refExecutable() );
 			}
 		}
 
-		else if( machine != NULL )
+		else if( machine != nullptr )
 		{
-			if( machine->getExecutable()->hasSingleRuntimeInstance() )
+			if( machine->refExecutable().hasSingleRuntimeInstance() )
 			{
-				RID = anED.getRuntimeID( machine );
+				RID = anED.getRuntimeID( *machine );
 			}
 		}
 
 		else if( object->is< BaseInstanceForm >() &&
-				object->to< BaseInstanceForm >()->hasRuntimeContainerRID() )
+				object->to_ptr< BaseInstanceForm >()->hasRuntimeContainerRID() )
 		{
-			RID = object->to< BaseInstanceForm >()->getRuntimeContainerRID();
+			RID = object->to_ptr< BaseInstanceForm >()->getRuntimeContainerRID();
 		}
 	}
 
-	else if( machine != NULL )
+	else if( machine != nullptr )
 	{
-		if( machine->getExecutable()->hasSingleRuntimeInstance() )
+		if( machine->refExecutable().hasSingleRuntimeInstance() )
 		{
-			RID = anED.getRuntimeID( machine );
+			RID = anED.getRuntimeID( *machine );
 		}
 	}
 
 	else
 	{
-		ExecutableForm * anExecutable = getExecutable();
+		const ExecutableForm & anExecutable = getExecutable();
 
-		if( (anExecutable != NULL) && anExecutable->hasSingleRuntimeInstance() )
+		if( anExecutable.isnotNullref()
+			&& anExecutable.hasSingleRuntimeInstance() )
 		{
 			RID = anED.getRuntimeID( anExecutable );
 
@@ -245,31 +323,175 @@ void TracePoint::updateRID(const ExecutionData & anED)
 }
 
 
-void TracePoint::updateMachine(
-		const Configuration & aConfiguration,
-		const std::string & aQualifiedNameID)
+bool TracePoint::isValidPoint()
+{
+	if( (machine != nullptr) && (object != nullptr) )
+	{
+		ObjectElement * container = object->getContainer();
+		for( ; container != nullptr ; container = container->getContainer() )
+		{
+			if( container == machine->getExecutable() )
+			{
+				return( true );
+			}
+		}
+		return( false );
+	}
+
+	return( object != nullptr  );
+}
+
+
+std::size_t TracePoint::updateMachine(const Configuration & aConfiguration,
+		const std::string & aQualifiedNameID, ListOfSymbol & listofMachine)
 {
 	ExecutableQuery XQuery( aConfiguration );
 
-	if( aQualifiedNameID.find('.') == std::string::npos )
+	std::size_t count = XQuery.getMachineByID(
+			Specifier::DESIGN_INSTANCE_KIND, aQualifiedNameID, listofMachine);
+	if( count == 0 )
 	{
-		machine = XQuery.getMachineByNameID(
-				Specifier::DESIGN_INSTANCE_KIND, aQualifiedNameID).rawMachine();
-		if( machine == NULL )
+		count = XQuery.getMachineByID(
+				Specifier::DESIGN_MODEL_KIND, aQualifiedNameID, listofMachine);
+	}
+
+	if( count == 1 )
+	{
+		machine = listofMachine.first().rawMachine();
+
+		if( machine->refExecutable().hasSingleRuntimeInstance() )
 		{
-			machine = XQuery.getMachineByNameID(
-				Specifier::DESIGN_MODEL_KIND, aQualifiedNameID).rawMachine();
+			RID = aConfiguration.getMainExecutionData().getRuntimeID( *machine );
 		}
+	}
+	else if( count == 0 )
+	{
+		RID = aConfiguration.getMainExecutionData()
+				.getRuntimeIDByQualifiedNameID(aQualifiedNameID);
+
+		if( RID.valid() )
+		{
+			machine = RID.getInstance();
+
+			ExecutableForm * executableContainer =
+					machine->getExecutable()->getExecutableContainer();
+
+			if( executableContainer != nullptr )
+			{
+				const Symbol & symbol = executableContainer->getInstanceStatic()
+						.getByFQNameID( machine->getFullyQualifiedNameID() );
+
+				if( symbol.valid() )
+				{
+					listofMachine.append( symbol );
+
+					count = 1;
+				}
+			}
+			else
+			{
+				const Symbol & symbol = XQuery.getMachine(
+						Specifier::DESIGN_INSTANCE_KIND,
+						machine->getFullyQualifiedNameID());
+
+				if( symbol.valid() )
+				{
+					listofMachine.append( symbol );
+
+					count = 1;
+				}
+			}
+		}
+	}
+
+	return( count );
+}
+
+std::size_t TracePoint::updateMachine(
+		const Configuration & aConfiguration,
+		const std::string & aQualifiedNameID,
+		std::string & objectID, ListOfSymbol & listofMachine)
+{
+	std::string::size_type pos = aQualifiedNameID.find("->");
+	if( pos != std::string::npos )
+	{
+		objectID = aQualifiedNameID.substr(pos + 2);
+
+		return( updateMachine(aConfiguration,
+				aQualifiedNameID.substr(0, pos), listofMachine) );
+	}
+	else if( ((pos = aQualifiedNameID.find(":" )) != std::string::npos)
+		  || ((pos = aQualifiedNameID.find(".{")) != std::string::npos)
+		  || ((pos = aQualifiedNameID.find(".[")) != std::string::npos)
+		  || ((pos = aQualifiedNameID.find_last_of('.' )) != std::string::npos) )
+	{
+		objectID = aQualifiedNameID.substr(pos + 1);
+
+		return( updateMachine(aConfiguration,
+				aQualifiedNameID.substr(0, pos), listofMachine) );
 	}
 	else
 	{
-		machine = XQuery.getMachineByQualifiedNameID(
-				Specifier::DESIGN_INSTANCE_KIND, aQualifiedNameID).rawMachine();
-		if( machine == NULL )
+		objectID = aQualifiedNameID;
+
+		return 0;
+	}
+}
+
+
+bool TracePoint::isRegexPoint(std::string & objectID, AVM_OPCODE & op)
+{
+	const std::size_t aSize = objectID.size();
+	if( aSize >= 4 )
+	{
+		if( (objectID[0] == '{') && (objectID[aSize - 1] == '}') )
 		{
-			machine = XQuery.getMachineByQualifiedNameID(
-				Specifier::DESIGN_MODEL_KIND, aQualifiedNameID).rawMachine();
+			objectID = objectID.substr(1, aSize - 2);
+
+			op = AVM_OPCODE_OR;
+
+			return true;
 		}
+		else if( (objectID[0] == '[') && (objectID[aSize - 1] == ']') )
+		{
+			objectID = objectID.substr(1, aSize - 2);
+
+
+			op = AVM_OPCODE_AND;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void TracePoint::configureComposite(BFList listofObject,
+		std::size_t aSize, AVM_OPCODE regexOpcode, AVM_OPCODE opcode)
+{
+	if( aSize == 1 )
+	{
+		this->object = listofObject.first().to_ptr< ObjectElement >();
+	}
+	else if( aSize >= 2 )
+	{
+		ArrayBF * anArray = new ArrayBF(TypeManager::UNIVERSAL, aSize);
+
+		TracePoint * newTracePoint = nullptr;
+		aSize = 0;
+		for( const auto & it : listofObject )
+		{
+			anArray->set(aSize++, BF(newTracePoint = new TracePoint( this )));
+
+			newTracePoint->op = opcode;
+			newTracePoint->object = it.to_ptr< ObjectElement >();
+
+		}
+
+		this->value = anArray;
+
+		this->nature = ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE;
+		this->op = regexOpcode;
 	}
 }
 
@@ -326,6 +548,12 @@ bool TracePoint::configurePort(
 
 		return( true );
 	}
+
+	ExecutableQuery XQuery( aConfiguration );
+
+	ListOfSymbol listofPort;
+	std::string objectID;
+	AVM_OPCODE regexOpcode;
 
 	// RENDEZ-VOUS COMMUNICATION PROTOCOL
 	if( aQualifiedNameID == "rdv" )
@@ -405,36 +633,83 @@ bool TracePoint::configurePort(
 
 		return( true );
 	}
-
-	ExecutableQuery XQuery( aConfiguration );
-
-	ListOfSymbol listofPort;
-
-	std::string::size_type pos = aQualifiedNameID.find("->");
-
-	if( pos != std::string::npos )
+	else if( isRegexPoint(objectID = aQualifiedNameID, regexOpcode) )
 	{
-		std::string mid = aQualifiedNameID.substr(0, pos);
-		std::string obj = aQualifiedNameID.substr(pos + 2);
+		std::size_t count = XQuery.getPortByREGEX(objectID, listofPort);
 
-		updateMachine(aConfiguration, mid);
+		if( count > 0 )
+		{
+			configurePort(op, listofPort, otherTracePoint);
 
-		if( obj == "[*]" )
+			return( true );
+		}
+
+		return( false );
+	}
+
+	Modifier::DIRECTION_KIND portDirection;
+	switch( op )
+	{
+		case AVM_OPCODE_INPUT:
+		case AVM_OPCODE_INPUT_ENV:
+		case AVM_OPCODE_INPUT_RDV:
+			portDirection = Modifier::DIRECTION_INPUT_KIND;
+			break;
+
+		case AVM_OPCODE_OUTPUT:
+		case AVM_OPCODE_OUTPUT_ENV:
+		case AVM_OPCODE_OUTPUT_RDV:
+			portDirection = Modifier::DIRECTION_OUTPUT_KIND;
+			break;
+
+		default:
+			portDirection = Modifier::DIRECTION_UNDEFINED_KIND;
+			break;
+	}
+
+	ListOfSymbol listofMachine;
+	if( updateMachine(aConfiguration,
+			aQualifiedNameID, objectID, listofMachine) > 0 )
+	{
+		if( objectID.empty() || (objectID == "[*]") )
 		{
 			any_object = true;
 
 			return( true );
 		}
-
-		if( machine != NULL )
+		else if( isRegexPoint(objectID, regexOpcode) )
 		{
+			std::size_t count = XQuery.getPortByNameREGEX(
+					machine->refExecutable(), objectID, listofPort);
+
+			if( count > 0 )
+			{
+				configurePort(op, listofPort, otherTracePoint);
+
+				return( true );
+			}
+
+			return( false );
+		}
+
+		const ExecutionData & anED = aConfiguration.getMainExecutionData();
+
+		do
+		{
+			machine = listofMachine.pop_first().rawMachine();
+			if( machine->refExecutable().hasSingleRuntimeInstance() )
+			{
+				RID = anED.getRuntimeID( *machine );
+			}
+
 			ExecutableForm * containerExecutable = machine->getExecutable();
 
-			while( containerExecutable != NULL )
+			while( containerExecutable != nullptr )
 			{
-				object = containerExecutable->getPort().getByNameID(obj).rawPort();
+				object = XQuery.getPortByID(
+						(* containerExecutable), objectID ).rawPort();
 
-				if( object == NULL )
+				if( object == nullptr )
 				{
 					containerExecutable =
 							containerExecutable->getExecutableContainer();
@@ -445,229 +720,39 @@ bool TracePoint::configurePort(
 				}
 			}
 		}
-		else
-		{
-			switch( op )
-			{
-				case AVM_OPCODE_INPUT:
-				case AVM_OPCODE_INPUT_ENV:
-				case AVM_OPCODE_INPUT_RDV:
-				{
-					if( XQuery.getPortByNameID(obj, listofPort,
-							Modifier::DIRECTION_INPUT_KIND, false) )
-					{
-						object = NULL;
-
-						ListOfSymbol::iterator itPort = listofPort.begin();
-						ListOfSymbol::iterator endPort = listofPort.end();
-						for( ; itPort != endPort ; ++itPort )
-						{
-							if( (*itPort).getModifier().isDirectionInput() )
-							{
-								object = (*itPort).rawPort();
-								break;
-							}
-							else if( (object == NULL)
-								&& (*itPort).getModifier().isDirectionInout() )
-							{
-								object = (*itPort).rawPort();
-							}
-						}
-					}
-
-					break;
-				}
-
-				case AVM_OPCODE_OUTPUT:
-				case AVM_OPCODE_OUTPUT_ENV:
-				case AVM_OPCODE_OUTPUT_RDV:
-				{
-					if( XQuery.getPortByNameID(obj, listofPort,
-							Modifier::DIRECTION_OUTPUT_KIND, false) )
-					{
-						object = NULL;
-
-						ListOfSymbol::iterator itPort = listofPort.begin();
-						ListOfSymbol::iterator endPort = listofPort.end();
-						for( ; itPort != endPort ; ++itPort )
-						{
-							if( (*itPort).getModifier().isDirectionOutput() )
-							{
-								object = (*itPort).rawPort();
-								break;
-							}
-							else if( (object == NULL)
-								&& (*itPort).getModifier().isDirectionInout() )
-							{
-								object = (*itPort).rawPort();
-							}
-						}
-					}
-
-					break;
-				}
-
-				default:
-				{
-					XQuery.getPortByNameID(obj, listofPort);
-
-					configurePort(op, listofPort, otherTracePoint);
-
-					break;
-				}
-			}
-
-		}
+		while( listofMachine.nonempty() && (object == nullptr) );
 	}
 
-	else if( aQualifiedNameID.find('.') == std::string::npos )
+	else if( portDirection != Modifier::DIRECTION_UNDEFINED_KIND )
 	{
-		switch( op )
+		if( XQuery.getPortByID(aQualifiedNameID,
+				listofPort, portDirection, false) > 0 )
 		{
-			case AVM_OPCODE_INPUT:
-			case AVM_OPCODE_INPUT_ENV:
-			case AVM_OPCODE_INPUT_RDV:
+			object = nullptr;
+
+			for( const auto & itPort : listofPort )
 			{
-				if( XQuery.getPortByQualifiedNameID(aQualifiedNameID,
-						listofPort, Modifier::DIRECTION_INPUT_KIND, false) )
+				if( itPort.getModifier().isDirectionKind(portDirection) )
 				{
-					object = NULL;
-
-					ListOfSymbol::iterator itPort = listofPort.begin();
-					ListOfSymbol::iterator endPort = listofPort.end();
-					for( ; itPort != endPort ; ++itPort )
-					{
-						if( (*itPort).getModifier().isDirectionInput() )
-						{
-							object = (*itPort).rawPort();
-							break;
-						}
-						else if( (object == NULL)
-							&& (*itPort).getModifier().isDirectionInout() )
-						{
-							object = (*itPort).rawPort();
-						}
-					}
+					object = itPort.rawPort();
+					break;
 				}
-
-				break;
-			}
-
-			case AVM_OPCODE_OUTPUT:
-			case AVM_OPCODE_OUTPUT_ENV:
-			case AVM_OPCODE_OUTPUT_RDV:
-			{
-				if( XQuery.getPortByQualifiedNameID(aQualifiedNameID,
-						listofPort, Modifier::DIRECTION_OUTPUT_KIND, false) )
+				else if( (object == nullptr)
+					&& itPort.getModifier().isDirectionInout() )
 				{
-					object = NULL;
-
-					ListOfSymbol::iterator itPort = listofPort.begin();
-					ListOfSymbol::iterator endPort = listofPort.end();
-					for( ; itPort != endPort ; ++itPort )
-					{
-						if( (*itPort).getModifier().isDirectionOutput() )
-						{
-							object = (*itPort).rawPort();
-							break;
-						}
-						else if( (object == NULL)
-							&& (*itPort).getModifier().isDirectionInout() )
-						{
-							object = (*itPort).rawPort();
-						}
-					}
+					object = itPort.rawPort();
 				}
-
-				break;
-			}
-
-			default:
-			{
-				XQuery.getPortByQualifiedNameID(aQualifiedNameID, listofPort);
-
-				configurePort(op, listofPort, otherTracePoint);
-
-				break;
 			}
 		}
 	}
-
 	else
 	{
-		switch( op )
-		{
-			case AVM_OPCODE_INPUT:
-			case AVM_OPCODE_INPUT_ENV:
-			case AVM_OPCODE_INPUT_RDV:
-			{
-				if( XQuery.getPortByNameID(aQualifiedNameID,
-						listofPort,Modifier::DIRECTION_INPUT_KIND, false) )
-				{
-					object = NULL;
+		XQuery.getPortByID(aQualifiedNameID, listofPort);
 
-					ListOfSymbol::iterator itPort = listofPort.begin();
-					ListOfSymbol::iterator endPort = listofPort.end();
-					for( ; itPort != endPort ; ++itPort )
-					{
-						if( (*itPort).getModifier().isDirectionInput() )
-						{
-							object = (*itPort).rawPort();
-							break;
-						}
-						else if( (object == NULL)
-								&& (*itPort).getModifier().isDirectionInout() )
-						{
-							object = (*itPort).rawPort();
-						}
-					}
-				}
-
-				break;
-			}
-
-			case AVM_OPCODE_OUTPUT:
-			case AVM_OPCODE_OUTPUT_ENV:
-			case AVM_OPCODE_OUTPUT_RDV:
-			{
-				if( XQuery.getPortByNameID(
-						aQualifiedNameID, listofPort,
-						Modifier::DIRECTION_OUTPUT_KIND, false) )
-				{
-					object = NULL;
-
-					ListOfSymbol::iterator itPort = listofPort.begin();
-					ListOfSymbol::iterator endPort = listofPort.end();
-					for( ; itPort != endPort ; ++itPort )
-					{
-						if( (*itPort).getModifier().isDirectionOutput() )
-						{
-							object = (*itPort).rawPort();
-							break;
-						}
-						else if( (object == NULL)
-							&& (*itPort).getModifier().isDirectionInout() )
-						{
-							object = (*itPort).rawPort();
-						}
-					}
-				}
-
-				break;
-			}
-
-			default:
-			{
-				XQuery.getPortByNameID(aQualifiedNameID, listofPort);
-
-				configurePort(op, listofPort, otherTracePoint);
-
-				break;
-			}
-		}
+		configurePort(op, listofPort, otherTracePoint);
 	}
 
-	return( object != NULL );
+	return( isValidPoint()  );
 }
 
 void TracePoint::configurePort(AVM_OPCODE opCom,
@@ -697,31 +782,77 @@ bool TracePoint::configureTransition(
 {
 	ExecutableQuery XQuery( aConfiguration );
 
-	std::string::size_type pos = aQualifiedNameID.find("->");
+	std::string objectID;
+	ListOfSymbol listofMachine;
+	AVM_OPCODE regexOpcode;
 
-	if( pos != std::string::npos )
+	if( updateMachine(aConfiguration,
+			aQualifiedNameID, objectID, listofMachine) > 0 )
 	{
-		std::string mid = aQualifiedNameID.substr(0, pos);
-		std::string obj = aQualifiedNameID.substr(pos + 2);
+		const ExecutionData & anED = aConfiguration.getMainExecutionData();
 
-		updateMachine(aConfiguration, mid);
-
-		if( obj == "[*]" )
+		machine = listofMachine.first().rawMachine();
+		if( RID.invalid()
+			&& machine->refExecutable().hasSingleRuntimeInstance() )
 		{
+			RID = anED.getRuntimeID( *machine );
+		}
+
+		if( objectID.empty() || (objectID == "[*]") )
+		{
+
 			any_object = true;
 
 			return( true );
 		}
+		else if( isRegexPoint(objectID, regexOpcode) )
+		{
+			BFList listofObject;
 
-		if( machine != NULL )
-		{
-			object = machine->getExecutable()->getTransitionByNameID(
-					obj ).to_ptr< ObjectElement >();
+			std::size_t count = XQuery.getTransitionByNameREGEX(
+					machine->refExecutable(), objectID, listofObject);
+
+			if( count > 0 )
+			{
+				configureComposite(listofObject, count,
+						regexOpcode, AVM_OPCODE_INVOKE_TRANSITION);
+
+				return( true );
+			}
+
+			return( false );
 		}
-		else
+
+		do
 		{
-			object = XQuery.getTransitionByNameID(
-					obj ).to_ptr< ObjectElement >();
+			machine = listofMachine.pop_first().rawMachine();
+			if( RID.invalid()
+				&& machine->refExecutable().hasSingleRuntimeInstance() )
+			{
+				RID = anED.getRuntimeID( *machine );
+			}
+
+			BFList listofTransition;
+
+			std::size_t count = XQuery.getTransitionByID( machine->refExecutable(),
+					objectID, listofTransition );
+			if( count == 1 )
+			{
+				object = listofTransition.first().to_ptr< ObjectElement >();
+			}
+		}
+		while( listofMachine.nonempty() && (object == nullptr) );
+
+		if( object == nullptr )
+		{
+			object = XQuery.getTransitionByID(
+					objectID ).to_ptr< ObjectElement >();
+
+//			if( (machine != null)
+//				&& machine->refExecutable().hasSingleRuntimeInstance() )
+//			{
+//				machine = nullptr;
+//			}
 		}
 	}
 
@@ -732,127 +863,144 @@ bool TracePoint::configureTransition(
 		return( true );
 	}
 
-	else if( aQualifiedNameID.find('.') == std::string::npos )
+	else if( isRegexPoint(objectID = aQualifiedNameID, regexOpcode) )
 	{
-		object = XQuery.getTransitionByNameID(
-				aQualifiedNameID ).to_ptr< ObjectElement >();
+		BFList listofObject;
+
+		std::size_t count = XQuery.getTransitionByREGEX(objectID, listofObject);
+
+		if( count > 0 )
+		{
+			configureComposite(listofObject, count,
+					regexOpcode, AVM_OPCODE_INVOKE_TRANSITION);
+
+			return( true );
+		}
+
+		return( false );
 	}
+
 	else
 	{
-		object = XQuery.getTransitionByQualifiedNameID(
+		object = XQuery.getTransitionByID(
 				aQualifiedNameID ).to_ptr< ObjectElement >();
 	}
 
-	return( object != NULL );
+	return( isValidPoint()  );
 }
 
 
 bool TracePoint::configureRoutine(const Configuration & aConfiguration,
 		const std::string & aQualifiedNameID)
 {
-	std::string::size_type pos = aQualifiedNameID.find("->");
-
-	if( pos != std::string::npos )
+	std::string objectID;
+	ListOfSymbol listofMachine;
+	if( updateMachine(aConfiguration,
+			aQualifiedNameID, objectID, listofMachine) > 0 )
 	{
-		std::string mid = aQualifiedNameID.substr(0, pos);
-		std::string obj = aQualifiedNameID.substr(pos + 2);
-
-		updateMachine(aConfiguration, mid);
-
-		if( obj == "[*]" )
+		if( objectID.empty() || (objectID == "[*]") )
 		{
 			any_object = true;
 
 			return( true );
 		}
 
-		if( machine != NULL )
-		{
-			ExecutableForm * anExec = machine->getExecutable();
+		const ExecutionData & anED = aConfiguration.getMainExecutionData();
 
-			if( obj == "init" )
+		do
+		{
+			machine = listofMachine.pop_first().rawMachine();
+
+			const ExecutableForm & anExec = machine->refExecutable();
+
+			if( RID.invalid() && anExec.hasSingleRuntimeInstance() )
+			{
+				RID = anED.getRuntimeID( *machine );
+			}
+
+			if( objectID == "init" )
 			{
 				op = AVM_OPCODE_INIT;
-				object = &( anExec->getOnInitRoutine() );
+				object = &( anExec.getOnInitRoutine() );
 			}
-			else if( obj == "final" )
+			else if( objectID == "final" )
 			{
 				op = AVM_OPCODE_FINAL;
-				object = &( anExec->getOnFinalRoutine() );
+				object = &( anExec.getOnFinalRoutine() );
 			}
 
-			else if( obj == "start" )
+			else if( objectID == "start" )
 			{
 				op = AVM_OPCODE_START;
-				object = &( anExec->getOnStartRoutine() );
+				object = &( anExec.getOnStartRoutine() );
 			}
-			else if( obj == "stop" )
+			else if( objectID == "stop" )
 			{
 				op = AVM_OPCODE_STOP;
-				object = &( anExec->getOnStopRoutine() );
+				object = &( anExec.getOnStopRoutine() );
 			}
 
-			else if( obj == "ienable" )
+			else if( objectID == "ienable" )
 			{
 				op = AVM_OPCODE_IENABLE_INVOKE;
-				object = &( anExec->getOnIEnableRoutine() );
+				object = &( anExec.getOnIEnableRoutine() );
 			}
-			else if( obj == "enable" )
+			else if( objectID == "enable" )
 			{
 				op = AVM_OPCODE_ENABLE_INVOKE;
-				object = &( anExec->getOnEnableRoutine() );
+				object = &( anExec.getOnEnableRoutine() );
 			}
 
-			else if( obj == "idisable" )
+			else if( objectID == "idisable" )
 			{
 				op = AVM_OPCODE_IDISABLE_INVOKE;
-				object = &( anExec->getOnIDisableRoutine() );
+				object = &( anExec.getOnIDisableRoutine() );
 			}
-			else if( obj == "disable" )
+			else if( objectID == "disable" )
 			{
 				op = AVM_OPCODE_DISABLE_INVOKE;
-				object = &( anExec->getOnDisableRoutine() );
+				object = &( anExec.getOnDisableRoutine() );
 			}
-			else if( obj == "iabort" )
+			else if( objectID == "iabort" )
 			{
 				op = AVM_OPCODE_IABORT_INVOKE;
-				object = &( anExec->getOnIAbortRoutine() );
+				object = &( anExec.getOnIAbortRoutine() );
 			}
-			else if( obj == "abort" )
+			else if( objectID == "abort" )
 			{
 				op = AVM_OPCODE_ABORT_INVOKE;
-				object = &( anExec->getOnAbortRoutine() );
+				object = &( anExec.getOnAbortRoutine() );
 			}
 
-			else if( obj == "irun" )
+			else if( objectID == "irun" )
 			{
 				op = AVM_OPCODE_IRUN;
-				object = &( anExec->getOnIRunRoutine() );
+				object = &( anExec.getOnIRunRoutine() );
 			}
-			else if( obj == "run" )
+			else if( objectID == "run" )
 			{
 				op = AVM_OPCODE_RUN;
-				object = &( anExec->getOnRunRoutine() );
+				object = &( anExec.getOnRunRoutine() );
 			}
-			else if( obj == "rtc" )
+			else if( objectID == "rtc" )
 			{
 				op = AVM_OPCODE_RTC;
-				object = &( anExec->getOnRtcRoutine() );
+				object = &( anExec.getOnRtcRoutine() );
 			}
 
-			else if( obj == "schedule" )
+			else if( objectID == "schedule" )
 			{
 				op = AVM_OPCODE_SCHEDULE_INVOKE;
-				object = &( anExec->getOnScheduleRoutine() );
+				object = &( anExec.getOnScheduleRoutine() );
 			}
-			else if( obj == "concurrency" )
+			else if( objectID == "concurrency" )
 			{
 				op = AVM_OPCODE_SCHEDULE_INVOKE;
-				object = &( anExec->getOnConcurrencyRoutine() );
+				object = &( anExec.getOnConcurrencyRoutine() );
 			}
 		}
+		while( listofMachine.nonempty() && (object == nullptr) );
 	}
-
 	else if( aQualifiedNameID == "[*]" )
 	{
 		any_object = true;
@@ -860,114 +1008,121 @@ bool TracePoint::configureRoutine(const Configuration & aConfiguration,
 		return( true );
 	}
 
-	return( object != NULL );
+	return( object != nullptr );
 }
 
 
-bool TracePoint::configureRunnable(const Configuration & aConfiguration,
+bool TracePoint::configureRunnable(
+		const Configuration & aConfiguration,
 		const std::string & aQualifiedNameID)
 {
-	std::string::size_type pos = aQualifiedNameID.find("->");
-
-	if( pos != std::string::npos )
+	std::string objectID;
+	ListOfSymbol listofMachine;
+	if( updateMachine(aConfiguration,
+			aQualifiedNameID, objectID, listofMachine) > 0 )
 	{
-		std::string mid = aQualifiedNameID.substr(0, pos);
-		std::string obj = aQualifiedNameID.substr(pos + 2);
-
-		updateMachine(aConfiguration, mid);
-
-		if( obj == "[*]" )
+		if( objectID.empty() || (objectID == "[*]") )
 		{
 			any_object = true;
 
 			return( true );
 		}
 
-		if( machine != NULL )
-		{
-			ExecutableForm * anExec = machine->getExecutable();
+		const ExecutionData & anED = aConfiguration.getMainExecutionData();
 
-			if( obj == "init" )
+		do
+		{
+			machine = listofMachine.pop_first().rawMachine();
+
+			const ExecutableForm & anExec = machine->refExecutable();
+
+			if( RID.invalid() && anExec.hasSingleRuntimeInstance() )
+			{
+				RID = anED.getRuntimeID( *machine );
+			}
+
+			if( objectID == "init" )
 			{
 				op = AVM_OPCODE_INIT;
-				object = &( anExec->getOnInitRoutine() );
+				object = &( anExec.getOnInitRoutine() );
 			}
-			else if( obj == "final" )
+			else if( objectID == "final" )
 			{
 				op = AVM_OPCODE_FINAL;
-				object = &( anExec->getOnFinalRoutine() );
+				object = &( anExec.getOnFinalRoutine() );
 			}
 
-			else if( obj == "start" )
+			else if( objectID == "start" )
 			{
 				op = AVM_OPCODE_START;
-				object = &( anExec->getOnStartRoutine() );
+				object = &( anExec.getOnStartRoutine() );
 			}
-			else if( obj == "stop" )
+			else if( objectID == "stop" )
 			{
 				op = AVM_OPCODE_STOP;
-				object = &( anExec->getOnStopRoutine() );
+				object = &( anExec.getOnStopRoutine() );
 			}
 
-			else if( obj == "ienable" )
+			else if( objectID == "ienable" )
 			{
 				op = AVM_OPCODE_IENABLE_INVOKE;
-				object = &( anExec->getOnIEnableRoutine() );
+				object = &( anExec.getOnIEnableRoutine() );
 			}
-			else if( obj == "enable" )
+			else if( objectID == "enable" )
 			{
 				op = AVM_OPCODE_ENABLE_INVOKE;
-				object = &( anExec->getOnEnableRoutine() );
+				object = &( anExec.getOnEnableRoutine() );
 			}
 
-			else if( obj == "idisable" )
+			else if( objectID == "idisable" )
 			{
 				op = AVM_OPCODE_IDISABLE_INVOKE;
-				object = &( anExec->getOnIDisableRoutine() );
+				object = &( anExec.getOnIDisableRoutine() );
 			}
-			else if( obj == "disable" )
+			else if( objectID == "disable" )
 			{
 				op = AVM_OPCODE_DISABLE_INVOKE;
-				object = &( anExec->getOnDisableRoutine() );
+				object = &( anExec.getOnDisableRoutine() );
 			}
-			else if( obj == "iabort" )
+			else if( objectID == "iabort" )
 			{
 				op = AVM_OPCODE_IABORT_INVOKE;
-				object = &( anExec->getOnIAbortRoutine() );
+				object = &( anExec.getOnIAbortRoutine() );
 			}
-			else if( obj == "abort" )
+			else if( objectID == "abort" )
 			{
 				op = AVM_OPCODE_ABORT_INVOKE;
-				object = &( anExec->getOnAbortRoutine() );
+				object = &( anExec.getOnAbortRoutine() );
 			}
 
-			else if( obj == "irun" )
+			else if( objectID == "irun" )
 			{
 				op = AVM_OPCODE_IRUN;
-				object = &( anExec->getOnIRunRoutine() );
+				object = &( anExec.getOnIRunRoutine() );
 			}
-			else if( obj == "run" )
+			else if( objectID == "run" )
 			{
 				op = AVM_OPCODE_RUN;
-				object = &( anExec->getOnRunRoutine() );
+				object = &( anExec.getOnRunRoutine() );
 			}
-			else if( obj == "rtc" )
+			else if( objectID == "rtc" )
 			{
 				op = AVM_OPCODE_RTC;
-				object = &( anExec->getOnRtcRoutine() );
+				object = &( anExec.getOnRtcRoutine() );
 			}
 
-			else if( obj == "schedule" )
+			else if( objectID == "schedule" )
 			{
 				op = AVM_OPCODE_SCHEDULE_INVOKE;
-				object = &( anExec->getOnScheduleRoutine() );
+				object = &( anExec.getOnScheduleRoutine() );
 			}
-			else if( obj == "concurrency" )
+			else if( objectID == "concurrency" )
 			{
 				op = AVM_OPCODE_SCHEDULE_INVOKE;
-				object = &( anExec->getOnConcurrencyRoutine() );
+				object = &( anExec.getOnConcurrencyRoutine() );
 			}
 		}
+		while( listofMachine.nonempty() && (object == nullptr) );
 	}
 
 	else if( aQualifiedNameID == "[*]" )
@@ -977,7 +1132,7 @@ bool TracePoint::configureRunnable(const Configuration & aConfiguration,
 		return( true );
 	}
 
-	return( object != NULL );
+	return( object != nullptr );
 }
 
 
@@ -985,47 +1140,76 @@ bool TracePoint::configureMachine(
 		const Configuration & aConfiguration,
 		const std::string & aQualifiedNameID)
 {
-	std::string::size_type pos = aQualifiedNameID.find("->");
-
-	if( pos != std::string::npos )
+	std::string objectID;
+	ListOfSymbol listofMachine;
+	if( updateMachine(aConfiguration,
+			aQualifiedNameID, objectID, listofMachine) > 0 )
 	{
-		std::string mid = aQualifiedNameID.substr(0, pos);
-		std::string obj = aQualifiedNameID.substr(pos + 2);
-
-		updateMachine(aConfiguration, mid);
-
-		if( obj == "[*]" )
+		if( objectID.empty() || (objectID == "[*]") )
 		{
 			any_object = true;
 
 			return( true );
 		}
 
-		if( machine != NULL )
+		ExecutableQuery XQuery( aConfiguration );
+
+		const ExecutionData & anED = aConfiguration.getMainExecutionData();
+
+		do
 		{
+			machine = listofMachine.pop_first().rawMachine();
+			if( RID.invalid()
+				&& machine->refExecutable().hasSingleRuntimeInstance() )
+			{
+				RID = anED.getRuntimeID( *machine );
+			}
+
 			ExecutableForm * containerExecutable = machine->getExecutable();
 
-			while( containerExecutable != NULL )
+			while( containerExecutable != nullptr )
 			{
-				object = containerExecutable->getPort().getByNameID(obj).rawPort();
+				object = XQuery.getMachineByID((* containerExecutable),
+						Specifier::DESIGN_INSTANCE_KIND, objectID).rawMachine();
 
-				if( object == NULL )
+				if( object == nullptr )
 				{
 					containerExecutable =
 							containerExecutable->getExecutableContainer();
 				}
 				else
 				{
+					if( machine->refExecutable().hasSingleRuntimeInstance() )
+					{
+						machine = object->to_ptr< InstanceOfMachine >();
+
+						if( machine->refExecutable().hasSingleRuntimeInstance() )
+						{
+							RID = anED.getRuntimeID( *machine );
+						}
+					}
+
 					break;
 				}
 			}
 		}
-		else
+		while( listofMachine.nonempty() && (object == nullptr) );
+
+		if( object == nullptr )
 		{
 			ExecutableQuery XQuery( aConfiguration );
 
+			std::string machineID = aQualifiedNameID;
+			StringTools::replace(machineID, "->", ".");
+
 			object = machine = XQuery.getMachineByQualifiedNameID(
-				Specifier::DESIGN_INSTANCE_KIND, mid + "." + obj).rawMachine();
+				Specifier::DESIGN_INSTANCE_KIND, machineID).rawMachine();
+
+			if( (machine != nullptr)
+				&& machine->refExecutable().hasSingleRuntimeInstance() )
+			{
+				RID = anED.getRuntimeID( *machine );
+			}
 		}
 	}
 
@@ -1038,44 +1222,77 @@ bool TracePoint::configureMachine(
 
 	else
 	{
-		updateMachine(aConfiguration, aQualifiedNameID);
+		ListOfSymbol listofMachine;
+		updateMachine(aConfiguration, aQualifiedNameID, listofMachine);
 
 		object = machine;
 	}
 
-	return( object != NULL );
+	return( object != nullptr );
 }
 
 
 bool TracePoint::configureVariable(
 		const Configuration & aConfiguration,
-		const std::string & aQualifiedNameID)
+		const std::string & aQualifiedNameID,
+		ListOfTracePoint & otherTracePoint)
 {
 	ExecutableQuery XQuery( aConfiguration );
 
-	std::string::size_type pos = aQualifiedNameID.find("->");
+	BFList listofVariable;
+	AVM_OPCODE regexOpcode;
 
-	if( pos != std::string::npos )
+	std::string objectID;
+	ListOfSymbol listofMachine;
+	if( updateMachine(aConfiguration,
+			aQualifiedNameID, objectID, listofMachine) > 0 )
 	{
-		std::string mid = aQualifiedNameID.substr(0, pos);
-		std::string obj = aQualifiedNameID.substr(pos + 2);
-
-		updateMachine(aConfiguration, mid);
-
-		if( obj == "[*]" )
+		if( objectID.empty() || (objectID == "[*]") )
 		{
 			any_object = true;
 
 			return( true );
 		}
+		else if( isRegexPoint(objectID, regexOpcode) )
+		{
+			std::size_t count = XQuery.getVariableByNameREGEX(
+					machine->refExecutable(), objectID, listofVariable);
 
-		if( machine != NULL )
-		{
-			object = machine->getExecutable()->getData().rawByNameID( obj );
+			if( count > 0 )
+			{
+				configureVariable(listofVariable, otherTracePoint);
+
+				return( true );
+			}
+
+			return( false );
 		}
-		else
+
+		const ExecutionData & anED = aConfiguration.getMainExecutionData();
+
+		do
 		{
-			object = XQuery.getDataByNameID( obj ).to_ptr< InstanceOfData >();
+			machine = listofMachine.pop_first().rawMachine();
+			if( RID.invalid()
+				&& machine->refExecutable().hasSingleRuntimeInstance() )
+			{
+				RID = anED.getRuntimeID( *machine );
+			}
+
+			object = XQuery.getVariableByID( machine->refExecutable(),
+					objectID ).to_ptr< InstanceOfData >();
+		}
+		while( listofMachine.nonempty() && (object == nullptr) );
+
+		if( object == nullptr )
+		{
+			object = XQuery.getVariableByID(objectID).to_ptr< InstanceOfData >();
+
+//			if( (machine != null)
+//					&& machine->refExecutable().hasSingleRuntimeInstance() )
+//			{
+//				machine = nullptr;
+//			}
 		}
 	}
 
@@ -1085,20 +1302,51 @@ bool TracePoint::configureVariable(
 
 		return( true );
 	}
-
-	else if( aQualifiedNameID.find('.') == std::string::npos )
+	else if( isRegexPoint(objectID = aQualifiedNameID, regexOpcode) )
 	{
-		object = XQuery.getDataByNameID(
-				aQualifiedNameID ).to_ptr< InstanceOfData >();
+		std::size_t count = XQuery.getVariableByREGEX(objectID, listofVariable);
+
+		if( count > 0 )
+		{
+			configureVariable(listofVariable, otherTracePoint);
+
+			return( true );
+		}
+
+		return( false );
 	}
+
 	else
 	{
-		object = XQuery.getDataByQualifiedNameID(
-				aQualifiedNameID ).to_ptr< InstanceOfData >();
+		XQuery.getVariableByID(aQualifiedNameID, listofVariable);
+
+		configureVariable(listofVariable, otherTracePoint);
 	}
 
-	return( object != NULL );
+	return( isValidPoint()  );
 }
+
+
+void TracePoint::configureVariable(
+		BFList & listofVariable, ListOfTracePoint & otherTracePoint)
+{
+	if( listofVariable.nonempty() )
+	{
+		object = listofVariable.front().to_ptr< InstanceOfData >();
+		listofVariable.pop_front();
+	}
+
+	while( listofVariable.nonempty() )
+	{
+		TracePoint * newTracePoint = new TracePoint( this );
+		newTracePoint->object =
+				listofVariable.front().to_ptr< InstanceOfData >();
+		listofVariable.pop_front();
+
+		otherTracePoint.append( newTracePoint );
+	}
+}
+
 
 
 bool TracePoint::configureBuffer(
@@ -1107,30 +1355,43 @@ bool TracePoint::configureBuffer(
 {
 	ExecutableQuery XQuery( aConfiguration );
 
-	std::string::size_type pos = aQualifiedNameID.find("->");
-
-	if( pos != std::string::npos )
+	std::string objectID;
+	ListOfSymbol listofMachine;
+	if( updateMachine(aConfiguration,
+			aQualifiedNameID, objectID, listofMachine) > 0 )
 	{
-		std::string mid = aQualifiedNameID.substr(0, pos);
-		std::string obj = aQualifiedNameID.substr(pos + 2);
-
-		updateMachine(aConfiguration, mid);
-
-		if( obj == "[*]" )
+		if( objectID.empty() || (objectID == "[*]") )
 		{
 			any_object = true;
 
 			return( true );
 		}
 
-		if( machine != NULL )
+		const ExecutionData & anED = aConfiguration.getMainExecutionData();
+
+		do
 		{
-			object = machine->getExecutable()
-					->getBuffer().getByNameID(obj).rawBuffer();
+			machine = listofMachine.pop_first().rawMachine();
+			if( RID.invalid()
+				&& machine->refExecutable().hasSingleRuntimeInstance() )
+			{
+				RID = anED.getRuntimeID( *machine );
+			}
+
+			object = XQuery.getBufferByID(
+					machine->refExecutable(), objectID ).rawBuffer();
 		}
-		else
+		while( listofMachine.nonempty() && (object == nullptr) );
+
+		if( object == nullptr )
 		{
-			object = XQuery.getBufferByNameID( obj ).rawBuffer();
+			object = XQuery.getBufferByID( objectID ).rawBuffer();
+
+//			if( (machine != null)
+//					&& machine->refExecutable().hasSingleRuntimeInstance() )
+//			{
+//				machine = nullptr;
+//			}
 		}
 	}
 
@@ -1141,19 +1402,24 @@ bool TracePoint::configureBuffer(
 		return( true );
 	}
 
-	else if( aQualifiedNameID.find('.') == std::string::npos )
-	{
-		object = XQuery.getBufferByNameID( aQualifiedNameID ).rawBuffer();
-	}
 	else
 	{
-		object = XQuery.getBufferByQualifiedNameID(
-				aQualifiedNameID ).rawBuffer();
+		object = XQuery.getBufferByID( aQualifiedNameID ).rawBuffer();
 	}
 
-	return( object != NULL );
+	return( isValidPoint()  );
 }
 
+
+/**
+ * TEST
+ * nature / op
+ */
+bool TracePoint::isComposite() const
+{
+	return( (nature == ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE)
+			&& value.is< ArrayBF >() );
+}
 
 
 /**
@@ -1247,6 +1513,9 @@ AVM_OPCODE TracePoint::to_op(AVM_OPCODE op)
 		case AVM_OPCODE_SCHEDULE_INVOKE:
 
 		case AVM_OPCODE_DEFER_INVOKE:
+
+		case AVM_OPCODE_TRACE:
+		case AVM_OPCODE_DEBUG:
 		{
 			return( op );
 		}
@@ -1325,6 +1594,11 @@ std::string  TracePoint::to_string(AVM_OPCODE op)
 
 		case AVM_OPCODE_NOP               : return( "nop"   );
 
+		case AVM_OPCODE_INFORMAL          : return( "informal" );
+
+		case AVM_OPCODE_TRACE             : return( "@trace" );
+		case AVM_OPCODE_DEBUG             : return( "@debug" );
+
 		case AVM_OPCODE_NULL              : return( "<?op>" );
 
 		default                           : return( "trace#op<unknown>" );
@@ -1336,12 +1610,12 @@ std::string  TracePoint::to_string(AVM_OPCODE op)
 void TracePoint::updateNatureOpcodeRID()
 {
 	if( (nature == ENUM_TRACE_POINT::TRACE_UNDEFINED_NATURE)
-		&& (object != NULL) )
+		&& (object != nullptr) )
 	{
 		if( object->is< InstanceOfPort >() )
 		{
 			nature = ENUM_TRACE_POINT::to_nature(
-					object->to< InstanceOfPort >()->getComPointNature() );
+					object->to_ptr< InstanceOfPort >()->getComPointNature() );
 		}
 		else if( object->is< InstanceOfData >() )
 		{
@@ -1351,7 +1625,7 @@ void TracePoint::updateNatureOpcodeRID()
 	else if( (nature == ENUM_TRACE_POINT::TRACE_MACHINE_NATURE)
 			&& object->is< InstanceOfMachine >() )
 	{
-		InstanceOfMachine * machine = object->to< InstanceOfMachine >();
+		const InstanceOfMachine * machine = object->to_ptr< InstanceOfMachine >();
 
 		if( machine->getSpecifier().isFamilyComponentState() )
 		{
@@ -1364,16 +1638,16 @@ void TracePoint::updateNatureOpcodeRID()
 	}
 
 
-	if( config != NULL )
+	if( config.isnotNullref() )
 	{
-		if( (op == AVM_OPCODE_NULL) && config->isAvmCode() )
+		if( (op == AVM_OPCODE_NULL) && config.isAvmCode() )
 		{
-			op = to_op( config->getOptimizedOpCode() );
+			op = to_op( config.getOptimizedOpCode() );
 		}
 
 		if( RID.invalid() )
 		{
-			RID = config->getRuntimeID();
+			RID = config.getRuntimeID();
 		}
 	}
 }
@@ -1384,37 +1658,37 @@ void TracePoint::updateNatureOpcodeRID()
  * machine
  * object
  */
-ExecutableForm * TracePoint::getExecutable() const
+const ExecutableForm & TracePoint::getExecutable() const
 {
-	if( object != NULL )
+	if( object != nullptr )
 	{
 		if( object->is< InstanceOfMachine >() )
 		{
-			return( object->to< InstanceOfMachine >()->getExecutable() );
+			return( object->to_ptr< InstanceOfMachine >()->refExecutable() );
 		}
 
 		else if( object->is< BaseAvmProgram >() )
 		{
-			return( object->to< BaseAvmProgram >()->getExecutable() );
+			return( object->to_ptr< BaseAvmProgram >()->refExecutable() );
 		}
 
-		else if( machine != NULL )
+		else if( machine != nullptr )
 		{
-			return( machine->getExecutable() );
+			return( machine->refExecutable() );
 		}
 		else if( object->is< BaseInstanceForm >() )
 		{
-			return( object->to< BaseInstanceForm >()->
-					getContainer()->getExecutable() );
+			return( object->to_ptr< BaseInstanceForm >()->
+					getContainer()->refExecutable() );
 		}
 	}
 
-	else if( machine != NULL )
+	else if( machine != nullptr )
 	{
-		return( machine->getExecutable() );
+		return( machine->refExecutable() );
 	}
 
-	return( NULL );
+	return( ExecutableForm::nullref() );
 }
 
 
@@ -1423,13 +1697,13 @@ ExecutableForm * TracePoint::getExecutable() const
  * value
  * vector of value
  */
-void TracePoint::newArrayValue(avm_size_t aSize)
+void TracePoint::newArrayValue(std::size_t aSize)
 {
 	value = new ArrayBF(TypeManager::UNIVERSAL, aSize);
 }
 
 
-const BF & TracePoint::val(avm_size_t offset) const
+const BF & TracePoint::val(std::size_t offset) const
 {
 	if( value.invalid() )
 	{
@@ -1437,15 +1711,15 @@ const BF & TracePoint::val(avm_size_t offset) const
 	}
 	else if( value.is< ArrayBF >() )
 	{
-		if( offset < value.to_ptr< ArrayBF >()->size() )
+		if( offset < value.to< ArrayBF >().size() )
 		{
-			return( value.to_ptr< ArrayBF >()->at( offset ) );
+			return( value.to< ArrayBF >().at( offset ) );
 		}
 		else
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Out of range ( offset:" << offset
-					<< " >= size:" << value.to_ptr< ArrayBF >()->size()
+					<< " >= size:" << value.to< ArrayBF >().size()
 					<< " ) in read-access on array value of TracePoint !!!"
 					<< std::endl
 					<< to_stream( this )
@@ -1470,7 +1744,7 @@ const BF & TracePoint::val(avm_size_t offset) const
 }
 
 
-void TracePoint::val(avm_size_t offset, const BF & arg)
+void TracePoint::val(std::size_t offset, const BF & arg)
 {
 	if( value.invalid() )
 	{
@@ -1478,7 +1752,7 @@ void TracePoint::val(avm_size_t offset, const BF & arg)
 	}
 	else if( value.is< ArrayBF >() )
 	{
-		if( offset < value.to_ptr< ArrayBF >()->size() )
+		if( offset < value.to< ArrayBF >().size() )
 		{
 			value.to_ptr< ArrayBF >()->set( offset, arg );
 		}
@@ -1486,7 +1760,7 @@ void TracePoint::val(avm_size_t offset, const BF & arg)
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Out of range ( offset:" << offset
-					<< " >= size:" << value.to_ptr< ArrayBF >()->size()
+					<< " >= size:" << value.to< ArrayBF >().size()
 					<< " ) in write-access on array value of TracePoint !!!"
 					<< std::endl
 					<< to_stream( this )
@@ -1506,7 +1780,7 @@ void TracePoint::val(avm_size_t offset, const BF & arg)
 }
 
 
-avm_size_t TracePoint::valCount() const
+std::size_t TracePoint::valCount() const
 {
 	if( value.invalid() )
 	{
@@ -1515,7 +1789,7 @@ avm_size_t TracePoint::valCount() const
 	}
 	else if( value.is< ArrayBF >() )
 	{
-		return( value.to_ptr< ArrayBF >()->size() );
+		return( value.to< ArrayBF >().size() );
 	}
 	else
 	{
@@ -1530,20 +1804,34 @@ avm_size_t TracePoint::valCount() const
 
 std::string TracePoint::strUID() const
 {
-	if( machine != NULL )
+	if( object != nullptr )
 	{
-		if( object != NULL )
+		if( (machine != nullptr) && (machine != object) )
 		{
 			return( OSS() << "tpid#" << tpid << "->"
 					<< machine->getQualifiedNameID() << "->"
-					<< object->getNameID() );
+					<< object->relativeQualifiedNameID(machine->refExecutable()) );
 		}
-	}
+		else if( RID.valid() )
+		{
+			if( RID.getInstance() != object )
+			{
+				return( OSS() << "tpid#" << tpid << "->"
+						<< RID.getQualifiedNameID() << "->"
+						<< object->relativeQualifiedNameID(RID.refExecutable()) );
+			}
+			else
+			{
+				return( OSS() << "tpid#" << tpid << "->"
+						<< RID.getQualifiedNameID() );
 
-	if( object != NULL )
-	{
-		return( OSS() << "tpid#" << tpid << "->"
-				<< object->getQualifiedNameID() );
+			}
+		}
+		else
+		{
+			return( OSS() << "tpid#" << tpid << "->"
+					<< object->getQualifiedNameID() );
+		}
 	}
 	else
 	{
@@ -1552,41 +1840,58 @@ std::string TracePoint::strUID() const
 }
 
 
-void TracePoint::formatValueStream(OutStream & os) const
+void TracePoint::formatValueStream(OutStream & out) const
 {
 	if( value.invalid() )
 	{
-//		value.toStream( os );
-//		os << "TracePoint::value<null>";
+//		value.toStream( out );
+//		out << "TracePoint::value<null>";
 	}
 	else if( object->is< InstanceOfData >() )
 	{
-		object->to< InstanceOfData >()->formatStream(os, value);
+		object->to_ptr< InstanceOfData >()->formatStream(out, value);
 	}
 	else if( object->is< InstanceOfPort >() )
 	{
-		object->to< InstanceOfPort >()->formatStream(os, value);
+		object->to_ptr< InstanceOfPort >()->formatStream(out, value);
 	}
 
-	os << std::flush;
+	else if( value.is< ArrayBF >() )
+	{
+		const ArrayBF & arrayValue = value.as< ArrayBF >();
+
+		for( std::size_t offset = 0 ; offset < arrayValue.size() ; ++offset )
+		{
+			out << arrayValue[offset].str();
+		}
+	}
+	else
+	{
+		out << value.str();
+	}
+
+	out << std::flush;
 }
 
 
-void TracePoint::toStream(OutStream & os) const
+void TracePoint::toStream(OutStream & out) const
 {
-	os << TAB;
+	out << TAB;
 
-	if( RID.valid() )
+//AVM_IF_DEBUG_ENABLED_OR( tpid > 0 )
+
+	out << strID() << " ";
+
+//AVM_ENDIF_DEBUG_ENABLED
+
+	if( RID.valid() && (nature != ENUM_TRACE_POINT::TRACE_MACHINE_NATURE) )
 	{
-		os << "(+)";
+//		out << "(+)";
+		out << RID.strUniqId() << " ";
 	}
 
-	if( tpid > 0 )
-	{
-		os << strID() << " ";
-	}
+	const std::string strNature = ENUM_TRACE_POINT::to_string(nature);
 
-	os << ENUM_TRACE_POINT::to_string(nature);
 	switch( nature )
 	{
 		case ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE:
@@ -1612,12 +1917,29 @@ void TracePoint::toStream(OutStream & os) const
 		case ENUM_TRACE_POINT::TRACE_NODE_CONDITION_NATURE_LEAF:
 		case ENUM_TRACE_POINT::TRACE_NODE_TIMED_CONDITION_NATURE:
 		case ENUM_TRACE_POINT::TRACE_NODE_TIMED_CONDITION_NATURE_LEAF:
-
 		case ENUM_TRACE_POINT::TRACE_STATE_NATURE:
 		case ENUM_TRACE_POINT::TRACE_STATEMACHINE_NATURE:
+		{
+			out << strNature << ":" << to_string(op) << " ";
+			break;
+		}
+
 		case ENUM_TRACE_POINT::TRACE_MACHINE_NATURE:
 		{
-			os << ":" << to_string(op) << " ";
+			if( RID.valid() && (machine == object)
+				&& (RID.getInstance() == machine) )
+
+			{
+				out << strNature
+					<< ( (op != AVM_OPCODE_RUN) ? ":" + to_string(op) : "" )
+					<< " " << RID.getQualifiedNameID();
+			}
+			else if( RID.valid() )
+			{
+				out << RID.strUniqId() << " "
+					<< strNature << ":" << to_string(op);
+			}
+
 			break;
 		}
 
@@ -1625,6 +1947,11 @@ void TracePoint::toStream(OutStream & os) const
 		case ENUM_TRACE_POINT::TRACE_ROUTINE_NATURE:
 
 		case ENUM_TRACE_POINT::TRACE_RUNNABLE_NATURE:
+
+		case ENUM_TRACE_POINT::TRACE_EXECUTION_INFORMATION_NATURE:
+
+		case ENUM_TRACE_POINT::TRACE_META_TRACE_NATURE:
+		case ENUM_TRACE_POINT::TRACE_META_DEBUG_NATURE:
 
 		case ENUM_TRACE_POINT::TRACE_STEP_HEADER_NATURE:
 		case ENUM_TRACE_POINT::TRACE_STEP_BEGIN_NATURE:
@@ -1640,240 +1967,87 @@ void TracePoint::toStream(OutStream & os) const
 		case ENUM_TRACE_POINT::TRACE_UNDEFINED_NATURE:
 		default:
 		{
-			os << " ";
+			if( (machine != nullptr)
+				|| (object == nullptr)
+				|| ( (object != nullptr)
+					&& (not StringTools::startsWith(
+						object->getFullyQualifiedNameID(), strNature))) )
+			{
+				out << strNature << " ";
+			}
 			break;
 		}
 	}
 
-	if( machine != NULL )
+	if( machine != nullptr )
 	{
 		if( machine->getSpecifier().isDesignModel() )
 		{
-			os << "<model>" << machine->getFullyQualifiedNameID();
+			out << "<model>" << machine->getFullyQualifiedNameID();
 		}
-		else if(RID.valid()  )
+		else if( RID.valid() && (RID.getInstance() != machine) )
 		{
-			os << RID.getFullyQualifiedNameID();
-		}
-		else
-		{
-			os << machine->getFullyQualifiedNameID();
+			out << machine->getFullyQualifiedNameID();
 		}
 
-		if( (object != NULL) && (object != machine) )
+		if( (object != nullptr) && (object != machine) )
 		{
-			os << "->" << object->getNameID();
+			out << object->relativeQualifiedNameID( machine->refExecutable() );
 		}
 		else if( any_object )
 		{
-			os << "->[*]";
+			out << "[*]";
 		}
 	}
-	else if( object != NULL )
+	else if( object != nullptr )
 	{
-		os << object->getFullyQualifiedNameID();
+		if( RID.valid() && (RID.getInstance() != object) )
+		{
+			out << RID.getQualifiedNameID() << "->"
+				<< object->relativeQualifiedNameID(RID.refExecutable());
+		}
+		else
+		{
+			out << object->getFullyQualifiedNameID();
+		}
 	}
 	else if( any_object )
 	{
-		os << "[*]";
+		out << "[*]";
 	}
 
 	if( value.is< ArrayBF >() )
 	{
 		if( nature != ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE )
 		{
-			os << value.str();
+			out << value.str();
 		}
 		else
 		{
-			os << "{" << EOL_INCR_INDENT;
+			out << "{" << EOL_INCR_INDENT;
 
 			ArrayBF * valArray = value.to_ptr< ArrayBF >();
-			avm_size_t endOffset = valArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = valArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
-				valArray->at(offset).toStream(os);
+				valArray->at(offset).toStream(out);
 			}
 
-			os << DECR_INDENT_TAB << "}";
+			out << DECR_INDENT_TAB << "}";
 		}
 	}
 	else if( value.valid() )
 	{
-		os << "[ " << value.str() << " ]";
+		out << "[ " << value.str() << " ]";
 	}
 
 
-AVM_IF_DEBUG_LEVEL_FLAG_AND( MEDIUM , COMPUTING , EC.isnotNull() )
-	os << EOL_TAB;
-	EC.traceMinimum(os);
+AVM_IF_DEBUG_LEVEL_FLAG_AND( MEDIUM , COMPUTING , EC.isnotNullref() )
+	out << EOL_TAB;
+	EC.traceMinimum(out);
 AVM_ENDIF_DEBUG_LEVEL_FLAG_AND( MEDIUM , COMPUTING )
 
-	os << EOL_FLUSH;
-}
-
-
-void TracePoint::traceMinimum(OutStream & os) const
-{
-	os << TAB;
-
-	if( RID.valid() )
-	{
-		os << "(+)";
-	}
-
-	if( tpid > 0 )
-	{
-		os << strID() << " ";
-	}
-
-	switch( nature )
-	{
-		case ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE:
-		{
-			os << to_string(op) << " ";
-			break;
-		}
-
-		case ENUM_TRACE_POINT::TRACE_COM_NATURE:
-		case ENUM_TRACE_POINT::TRACE_CHANNEL_NATURE:
-		case ENUM_TRACE_POINT::TRACE_MESSAGE_NATURE:
-		case ENUM_TRACE_POINT::TRACE_PORT_NATURE:
-		case ENUM_TRACE_POINT::TRACE_SIGNAL_NATURE:
-		case ENUM_TRACE_POINT::TRACE_TIME_NATURE:
-		case ENUM_TRACE_POINT::TRACE_BUFFER_NATURE:
-
-		case ENUM_TRACE_POINT::TRACE_FORMULA_NATURE:
-		case ENUM_TRACE_POINT::TRACE_CONDITION_NATURE:
-		case ENUM_TRACE_POINT::TRACE_DECISION_NATURE:
-
-		case ENUM_TRACE_POINT::TRACE_PATH_CONDITION_NATURE:
-		case ENUM_TRACE_POINT::TRACE_PATH_CONDITION_NATURE_LEAF:
-		case ENUM_TRACE_POINT::TRACE_PATH_TIMED_CONDITION_NATURE:
-		case ENUM_TRACE_POINT::TRACE_PATH_TIMED_CONDITION_NATURE_LEAF:
-
-		case ENUM_TRACE_POINT::TRACE_NODE_CONDITION_NATURE:
-		case ENUM_TRACE_POINT::TRACE_NODE_CONDITION_NATURE_LEAF:
-		case ENUM_TRACE_POINT::TRACE_NODE_TIMED_CONDITION_NATURE:
-		case ENUM_TRACE_POINT::TRACE_NODE_TIMED_CONDITION_NATURE_LEAF:
-
-		case ENUM_TRACE_POINT::TRACE_STATE_NATURE:
-		case ENUM_TRACE_POINT::TRACE_STATEMACHINE_NATURE:
-		case ENUM_TRACE_POINT::TRACE_MACHINE_NATURE:
-		{
-			os << ENUM_TRACE_POINT::to_string(nature)
-					<< ":" << to_string(op) << " ";
-			break;
-		}
-
-		case ENUM_TRACE_POINT::TRACE_VARIABLE_NATURE:
-		{
-			os << "var<" << to_string(op) << "> ";
-			break;
-		}
-
-
-		case ENUM_TRACE_POINT::TRACE_TRANSITION_NATURE:
-		case ENUM_TRACE_POINT::TRACE_ROUTINE_NATURE:
-
-		case ENUM_TRACE_POINT::TRACE_RUNNABLE_NATURE:
-
-		case ENUM_TRACE_POINT::TRACE_STEP_HEADER_NATURE:
-		case ENUM_TRACE_POINT::TRACE_STEP_BEGIN_NATURE:
-		case ENUM_TRACE_POINT::TRACE_STEP_END_NATURE:
-
-		case ENUM_TRACE_POINT::TRACE_INIT_HEADER_NATURE:
-		case ENUM_TRACE_POINT::TRACE_INIT_BEGIN_NATURE:
-		case ENUM_TRACE_POINT::TRACE_INIT_END_NATURE:
-
-		case ENUM_TRACE_POINT::TRACE_COMMENT_NATURE:
-		case ENUM_TRACE_POINT::TRACE_SEPARATOR_NATURE:
-		case ENUM_TRACE_POINT::TRACE_NEWLINE_NATURE:
-		case ENUM_TRACE_POINT::TRACE_UNDEFINED_NATURE:
-		default:
-		{
-			break;
-		}
-	}
-
-	if( machine != NULL )
-	{
-		if( machine->getSpecifier().isDesignModel() )
-		{
-			os << "<model>" << machine->getFullyQualifiedNameID();
-		}
-		else if( RID.valid() )
-		{
-			os << RID.getFullyQualifiedNameID();
-		}
-		else
-		{
-			os << machine->getFullyQualifiedNameID();
-		}
-
-		if( (object != NULL) && (object != machine) )
-		{
-			os << "->" << object->getNameID();
-		}
-		else if( any_object )
-		{
-			os << "->[*]";
-		}
-	}
-	else if( object != NULL )
-	{
-		os << object->getFullyQualifiedNameID();
-	}
-	else if( any_object )
-	{
-		os << "[*]";
-	}
-
-
-	if( isCom() && value.is< ArrayBF >() )
-	{
-		os << value.str();
-	}
-	else if( value.is< ArrayBF >() )
-	{
-		os << "{";
-		if( nature == ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE )
-		{
-			os << AVM_STR_INDENT;
-		}
-
-		ArrayBF * valArray = value.to_ptr< ArrayBF >();
-		avm_size_t endOffset = valArray->size();
-		for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
-		{
-			if( valArray->at(offset).is< TracePoint >() )
-			{
-				valArray->at(offset).to_ptr< TracePoint >()->traceMinimum(os);
-			}
-			else
-			{
-				os << " " << valArray->at(offset).str();
-			}
-		}
-
-		if( nature == ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE )
-		{
-			os << END_INDENT;
-		}
-		os << " }";
-	}
-	else if( value.valid() )
-	{
-		os << "[ " << value.str() << " ]";
-	}
-
-
-AVM_IF_DEBUG_LEVEL_FLAG_AND( MEDIUM , COMPUTING , EC.isnotNull() )
-	os << EOL_TAB;
-	EC.traceMinimum(os);
-AVM_ENDIF_DEBUG_LEVEL_FLAG_AND( MEDIUM , COMPUTING )
-
-	os << EOL_FLUSH;
+	out << EOL_FLUSH;
 }
 
 

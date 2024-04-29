@@ -25,6 +25,9 @@ namespace sep
 {
 
 class AvmCode;
+
+class BuiltinArray;
+
 class BFCode;
 
 class Operator;
@@ -117,12 +120,12 @@ public:
 		return( getValue().toInteger() );
 	}
 
-	inline avm_int32_t getInt32Value() const
+	inline std::int32_t getInt32Value() const
 	{
 		return( getValue().toInt32() );
 	}
 
-	inline avm_int64_t getInt64Value() const
+	inline std::int64_t getInt64Value() const
 	{
 		return( getValue().toInt64() );
 	}
@@ -195,12 +198,12 @@ public:
 	bool hasArrayValue() const;
 
 
-	inline std::string toStringValue(avm_size_t offset) const
+	inline std::string toStringValue(std::size_t offset) const
 	{
 		return( toStringValue(getBuiltinArrayValue(), offset) );
 	}
 
-	std::string toStringValue(BuiltinArray * anArray, avm_size_t offset) const;
+	std::string toStringValue(BuiltinArray * anArray, std::size_t offset) const;
 
 
 	/**
@@ -210,7 +213,7 @@ public:
 	{
 		if( aValue.is< String >() )
 		{
-			return( aValue.to_ptr< String >()->getValue() );
+			return( aValue.to< String >().getValue() );
 		}
 
 		return( aValue.str() );

@@ -54,7 +54,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 	{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << GUARD >> :> ctx: "
-			<< ENV.mARG->outED->mRID.str() << EOL
+			<< ENV.mARG->outED.getRID().str() << EOL
 			<< TAB << "condition: " << ENV.inCODE->str()
 			<< " |=> " << ENV.mARG->at(0).str() << EOL_FLUSH;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
@@ -67,9 +67,9 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 		{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << GUARD >> :> ctx: "
-			<< ENV.mARG->outED->mRID.str() << EOL
+			<< ENV.mARG->outED.getRID().str() << EOL
 			<< TAB << "       PC: "
-			<< ENV.mARG->outED->getAllPathCondition().str() << EOL
+			<< ENV.mARG->outED.getAllPathCondition().str() << EOL
 			<< TAB << "condition: " << ENV.inCODE->str() << EOL
 			<< TAB << "       |=> " << ENV.mARG->at(0).str()
 			<< EOL_FLUSH;
@@ -103,7 +103,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 	{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << GUARD >> :> ctx: "
-			<< ENV.mARG->outED->mRID.str() << EOL
+			<< ENV.mARG->outED.getRID().str() << EOL
 			<< TAB << "condition: " << ENV.inCODE->str()
 			<< " |=> " << ENV.mARG->at(0).str() << EOL_FLUSH;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
@@ -116,9 +116,9 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 		{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << TGUARD >> :> ctx: "
-			<< ENV.mARG->outED->mRID.str() << EOL
+			<< ENV.mARG->outED.getRID().str() << EOL
 			<< TAB << "       PC: "
-			<< ENV.mARG->outED->getAllPathCondition().str() << EOL
+			<< ENV.mARG->outED.getAllPathCondition().str() << EOL
 			<< TAB << "condition: " << ENV.inCODE->str() << EOL
 			<< TAB << "       |=> " << ENV.mARG->at(0).str()
 			<< EOL_FLUSH;
@@ -151,7 +151,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 	{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << EVENT >> : "
-			<< ENV.mARG->outED->mRID.strUniqId() << " , "
+			<< ENV.mARG->outED.getRID().strUniqId() << " , "
 			<< ENV.inCODE->first().str()  << " |=> "
 			<< ENV.mARG->at(0).str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
@@ -160,7 +160,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 	{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNKNOWN SATISFIABILITY OF << EVENT >> : "
-			<< ENV.mARG->outED->mRID.strUniqId() << " , "
+			<< ENV.mARG->outED.getRID().strUniqId() << " , "
 			<< ENV.inCODE->first().str()  << " |=> "
 			<< ENV.mARG->at(0).str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
@@ -198,7 +198,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 		{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << CHECK#SAT >> :> ctx: "
-			<< ENV.mARG->outED->mRID.str() << EOL
+			<< ENV.mARG->outED.getRID().str() << EOL
 			<< TAB << "condition: " << ENV.inCODE->str()
 			<< " |=> " << ENV.mARG->at(0).str()
 			<< EOL_FLUSH;
@@ -215,9 +215,9 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 		{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << CHECK#SAT >> :> ctx: "
-			<< ENV.mARG->outED->mRID.str() << EOL
+			<< ENV.mARG->outED.getRID().str() << EOL
 			<< TAB << "       PC: "
-			<< ENV.mARG->outED->getAllPathCondition().str() << EOL
+			<< ENV.mARG->outED.getAllPathCondition().str() << EOL
 			<< TAB << "condition: " << ENV.inCODE->str() << EOL
 			<< TAB << "       |=> " << ENV.mARG->at(0).str()
 			<< EOL_FLUSH;
@@ -237,9 +237,9 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 	{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << CHECK#SAT >> :> ctx: "
-			<< ENV.mARG->outED->mRID.str() << EOL
+			<< ENV.mARG->outED.getRID().str() << EOL
 			<< TAB << "       PC: "
-			<< ENV.mARG->outED->getAllPathCondition().str() << EOL
+			<< ENV.mARG->outED.getAllPathCondition().str() << EOL
 			<< TAB << "condition: " << ENV.inCODE->str() << EOL
 			<< TAB << "       |=> " << ENV.mARG->at(0).str()
 			<< EOL_FLUSH;

@@ -22,7 +22,6 @@
 #include <fml/expression/AvmCode.h>
 #include <fml/builtin/String.h>
 
-#include <computer/instruction/AvmBytecode.h>
 
 #include <fml/operator/Operator.h>
 #include <fml/operator/OperatorLib.h>
@@ -44,22 +43,17 @@ public:
 	/**
 	 * STATEMENT EXPRESSION
 	 */
-	inline static BFCode newCode()
-	{
-		return( BFCode( new AvmCode() ) );
-	}
-
-	inline static BFCode newCode(Operator * anOperator)
+	inline static BFCode newCode(const Operator * anOperator)
 	{
 		return( BFCode( new AvmCode(anOperator) ) );
 	}
 
-	inline static BFCode newCode(Operator * anOperator, const BF & arg)
+	inline static BFCode newCode(const Operator * anOperator, const BF & arg)
 	{
 		return( BFCode( new AvmCode( anOperator, arg) ) );
 	}
 
-	inline static BFCode newOptiNopCode(Operator * anOperator,
+	inline static BFCode newOptiNopCode(const Operator * anOperator,
 			const BF & arg, avm_arg_operand_t operand)
 	{
 		AvmCode * aCode = new AvmCode( anOperator, arg);
@@ -70,14 +64,14 @@ public:
 
 
 
-	inline static BFCode newCode(Operator * anOperator,
+	inline static BFCode newCode(const Operator * anOperator,
 			const BF & arg1, const BF & arg2)
 	{
 		return( BFCode( new AvmCode(anOperator, arg1, arg2) ) );
 	}
 
 
-	inline static BFCode xnewCode(Operator * anOperator,
+	inline static BFCode xnewCode(const Operator * anOperator,
 			const BFCode & aCode1, const BFCode & aCode2)
 	{
 		if( aCode1.invalid() )
@@ -96,14 +90,15 @@ public:
 
 
 
-	inline static BFCode newCodeFlat(Operator * anOperator, const BFCode & aCode)
+	inline static BFCode newCodeFlat(
+			const Operator * anOperator, const BFCode & aCode)
 	{
 		BFCode newCode( anOperator );
 
-		if( anOperator->isWeakAssociative() &&
-				(aCode->getOperator() == anOperator) )
+		if( anOperator->isWeakAssociative()
+			&& (aCode->getOperator() == anOperator) )
 		{
-			newCode->append( aCode->getArgs() );
+			newCode->append( aCode->getOperands() );
 		}
 		else
 		{
@@ -113,15 +108,15 @@ public:
 		return newCode;
 	}
 
-	inline static BFCode newCodeFlat(Operator * anOperator,
+	inline static BFCode newCodeFlat(const Operator * anOperator,
 			const BFCode & aCode, const BF & arg)
 	{
 		BFCode newCode( anOperator );
 
-		if( anOperator->isWeakAssociative() &&
-				(aCode->getOperator() == anOperator) )
+		if( anOperator->isWeakAssociative()
+			&& (aCode->getOperator() == anOperator) )
 		{
-			newCode->append( aCode->getArgs() );
+			newCode->append( aCode->getOperands() );
 		}
 		else
 		{
@@ -133,15 +128,15 @@ public:
 		return newCode;
 	}
 
-	inline static BFCode newCodeFlat(Operator * anOperator,
+	inline static BFCode newCodeFlat(const Operator * anOperator,
 			const BF & arg, const BFCode & aCode)
 	{
 		BFCode newCode( anOperator , arg );
 
-		if( anOperator->isWeakAssociative() &&
-				(aCode->getOperator() == anOperator) )
+		if( anOperator->isWeakAssociative()
+			&& (aCode->getOperator() == anOperator) )
 		{
-			newCode->append( aCode->getArgs() );
+			newCode->append( aCode->getOperands() );
 		}
 		else
 		{
@@ -151,7 +146,7 @@ public:
 		return newCode;
 	}
 
-	inline static BFCode newCodeFlat(Operator * anOperator,
+	inline static BFCode newCodeFlat(const Operator * anOperator,
 			const BFCode & aCode1, const BFCode & aCode2)
 	{
 		if( anOperator->isWeakAssociative() )
@@ -160,7 +155,7 @@ public:
 
 			if( aCode1->getOperator() == anOperator )
 			{
-				newCode->append( aCode1->getArgs() );
+				newCode->append( aCode1->getOperands() );
 			}
 			else
 			{
@@ -169,7 +164,7 @@ public:
 
 			if( aCode2->getOperator() == anOperator )
 			{
-				newCode->append( aCode2->getArgs() );
+				newCode->append( aCode2->getOperands() );
 			}
 			else
 			{
@@ -185,7 +180,7 @@ public:
 	}
 
 
-	inline static BFCode xnewCodeFlat(Operator * anOperator,
+	inline static BFCode xnewCodeFlat(const Operator * anOperator,
 			const BFCode & aCode1, const BFCode & aCode2)
 	{
 		if( aCode1.invalid() )
@@ -203,7 +198,7 @@ public:
 	}
 
 
-	inline static BFCode newCodeFlat(Operator * anOperator,
+	inline static BFCode newCodeFlat(const Operator * anOperator,
 			const BF & arg1, const BF & arg2)
 	{
 		if( arg1.is< AvmCode >() )
@@ -227,7 +222,7 @@ public:
 		}
 	}
 
-	inline static BFCode newCodeFlat(Operator * anOperator,
+	inline static BFCode newCodeFlat(const Operator * anOperator,
 			const BFCode & aCode1, const BFCode & aCode2, const BFCode & aCode3)
 	{
 		if( anOperator->isWeakAssociative() )
@@ -236,7 +231,7 @@ public:
 
 			if( aCode1->getOperator() == anOperator )
 			{
-				newCode->append( aCode1->getArgs() );
+				newCode->append( aCode1->getOperands() );
 			}
 			else
 			{
@@ -245,7 +240,7 @@ public:
 
 			if( aCode2->getOperator() == anOperator )
 			{
-				newCode->append( aCode2->getArgs() );
+				newCode->append( aCode2->getOperands() );
 			}
 			else
 			{
@@ -254,7 +249,7 @@ public:
 
 			if( aCode3->getOperator() == anOperator )
 			{
-				newCode->append( aCode3->getArgs() );
+				newCode->append( aCode3->getOperands() );
 			}
 			else
 			{
@@ -270,7 +265,7 @@ public:
 	}
 
 
-	inline static BFCode xnewCodeFlat(Operator * anOperator,
+	inline static BFCode xnewCodeFlat(const Operator * anOperator,
 			const BFCode & aCode1, const BFCode & aCode2, const BFCode & aCode3)
 	{
 		if( aCode1.invalid() )
@@ -310,15 +305,15 @@ public:
 	}
 
 
-	inline static BFCode newCodeFlatMiddle(Operator * anOperator,
+	inline static BFCode newCodeFlatMiddle(const Operator * anOperator,
 			const BFCode & aCode1, const BFCode & aCode2, const BFCode & aCode3)
 	{
-		if( anOperator->isWeakAssociative() &&
-				(aCode2->getOperator() == anOperator) )
+		if( anOperator->isWeakAssociative()
+			&& (aCode2->getOperator() == anOperator) )
 		{
 			BFCode newCode( anOperator , aCode1 );
 
-			newCode->append( aCode2->getArgs() );
+			newCode->append( aCode2->getOperands() );
 
 			newCode->append( aCode3 );
 
@@ -331,69 +326,101 @@ public:
 	}
 
 
-	inline static BFCode newCode(Operator * anOperator,
+	inline static BFCode newCode(const Operator * anOperator,
 			const BF & arg1, const BF & arg2, const BF & arg3)
 	{
 		return( BFCode( new AvmCode(anOperator, arg1, arg2, arg3) ) );
 	}
 
-	inline static BFCode newCode(Operator * anOperator,
+	inline static BFCode newCode(const Operator * anOperator,
 			const BF & arg1, const BF & arg2, const BF & arg3, const BF & arg4)
 	{
 		return( BFCode( new AvmCode(anOperator, arg1, arg2, arg3, arg4) ) );
 	}
 
-	inline static BFCode newCode(Operator * anOperator, const BF & arg1,
+	inline static BFCode newCode(const Operator * anOperator, const BF & arg1,
 			const BF & arg2, const BF & arg3, const BF & arg4, const BF & arg5)
 	{
 		return( BFCode( new AvmCode(anOperator, arg1, arg2, arg3, arg4, arg5) ) );
 	}
 
 
-	inline static BFCode newCode(Operator * anOperator,
-			const BFCodeList & listOfArg)
+	inline static BFCode newCode(const Operator * anOperator,
+			const BFCodeList & operands)
 	{
 		BFCode aCode( new AvmCode(anOperator) );
-		aCode->append(listOfArg);
+		aCode->append(operands);
 
 		return( aCode );
 	}
 
 
-	inline static BFCode newCode(Operator * anOperator,
-			const BF & arg, const BFCodeList & listOfArg)
+	inline static BFCode newCode(const Operator * anOperator,
+			const BF & arg, const BFCodeList & operands)
 	{
 		BFCode aCode( new AvmCode(anOperator, arg) );
-		aCode->append(listOfArg);
+		aCode->append(operands);
 
 		return( aCode );
 	}
 
 
-	inline static BFCode newCode(Operator * anOperator,
-			const AvmCode::this_container_type & listOfArg)
+	inline static BFCode newCode(const Operator * anOperator,
+			const AvmCode::OperandCollectionT & operands)
 	{
 		BFCode aCode( new AvmCode(anOperator) );
-		aCode->append(listOfArg);
+		aCode->append(operands);
 
 		return( aCode );
 	}
 
-	inline static BFCode newCode(Operator * anOperator,
-			const BF & arg, const AvmCode::this_container_type & listOfArg)
+	inline static BFCode newCodeFlat(const Operator * anOperator,
+			const AvmCode::OperandCollectionT & operands)
+	{
+		BFCode aCode( new AvmCode(anOperator) );
+
+		for( const auto & operand : operands )
+		{
+			if( anOperator->isWeakAssociative()
+				&& operand.is< AvmCode >()
+				&& (operand.to< AvmCode >().getOperator() == anOperator) )
+			{
+				aCode->append( operand.to< AvmCode >().getOperands() );
+			}
+			else
+			{
+				aCode->append( operand );
+			}
+
+		}
+
+		return( aCode );
+	}
+
+	inline static BFCode newCode(const Operator * anOperator,
+			const BF & arg, const AvmCode::OperandCollectionT & operands)
 	{
 		BFCode aCode( new AvmCode(anOperator, arg) );
-		aCode->append(listOfArg);
+		aCode->append(operands);
 
 		return( aCode );
 	}
 
 
-	inline static BFCode newCodeTail(Operator * anOperator,
-			const AvmCode::this_container_type & listOfArg)
+	inline static BFCode newCodeTail(const Operator * anOperator,
+			const AvmCode::OperandCollectionT & operands)
 	{
 		BFCode aCode( new AvmCode(anOperator) );
-		aCode->appendTail(listOfArg);
+		aCode->appendTail(operands);
+
+		return( aCode );
+	}
+
+	inline static BFCode newCodeTail(const Operator * anOperator,
+			const BF & arg, const AvmCode::OperandCollectionT & operands)
+	{
+		BFCode aCode( new AvmCode(anOperator, arg) );
+		aCode->appendTail(operands);
 
 		return( aCode );
 	}
@@ -428,10 +455,10 @@ public:
 	 * METHODS
 	 * contains subCode with a specific operator
 	 */
-	static bool contains(ExecutableForm * anExecutable,
+	static bool contains(const ExecutableForm & anExecutable,
 			const BFCode & aCode, AVM_OPCODE anOpcode);
 
-	static bool contains(ExecutableForm * anExecutable,
+	static bool contains(const ExecutableForm & anExecutable,
 			const BFCode & aCode, AVM_OPCODE anOpcode1, AVM_OPCODE anOpcode2);
 
 };

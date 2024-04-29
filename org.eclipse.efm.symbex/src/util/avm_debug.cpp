@@ -15,6 +15,8 @@
 
 #include "avm_debug.h"
 
+#include <sstream>
+
 #include <util/avm_string.h>
 
 
@@ -26,7 +28,7 @@ namespace sep {
  * AVM DEBUG LEVEL
  ***************************************************************************
  */
-unsigned short  _AVM_DEBUG_LEVEL_ = AVM_DEBUG_ZERO_LEVEL;
+std::uint16_t  _AVM_DEBUG_LEVEL_ = AVM_DEBUG_ZERO_LEVEL;
 
 
 /**
@@ -35,7 +37,6 @@ unsigned short  _AVM_DEBUG_LEVEL_ = AVM_DEBUG_ZERO_LEVEL;
  ***************************************************************************
  */
 std::size_t  _AVM_DEBUG_FLAG_ = AVM_DEBUG_NOTHING_FLAG;
-
 
 
 /**
@@ -232,13 +233,17 @@ void avm_setDebugFlag(std::string strDebugFlag)
 
 	SET_DEBUG_FLAG( FULLY_QUALIFIED_NAME_ID )
 
+	SET_DEBUG_FLAG( ALL_NAME_ID             )
 
 	SET_DEBUG_FLAG( CAS                     )
 
 	SET_DEBUG_FLAG( REDUNDANCE              )
 
 
+	SET_DEBUG_FLAG( MEMORY_ALLOCATION       )
 	SET_DEBUG_FLAG( REFERENCE_COUNTING      )
+	SET_DEBUG_FLAG( MEMORY_DEALLOCATION     )
+	SET_DEBUG_FLAG( MEMORY_MANAGEMENT       )
 
 	// God Mode
 	SET_DEBUG_FLAG( ALL                     )
@@ -430,8 +435,6 @@ std::string avm_strDebugFlag(const std::string & sep)
 
 		// Process Stage: Processing, Filtering, ... ...
 
-		STR_DEBUG_FLAG( ALL_PROCESS_STAGE       )
-
 		STR_DEBUG_FLAG( QUEUE                   )
 		STR_DEBUG_FLAG( QUEUING                 )
 
@@ -513,20 +516,24 @@ std::string avm_strDebugFlag(const std::string & sep)
 		// ... Process Stage: Processing, Filtering, ...
 		else
 		{
-			STR_DEBUG_GROUP( PROCESSING         )
+			STR_DEBUG_GROUP( ALL_PROCESS_STAGE      )
 			else
 			{
-				STR_DEBUG_FLAG( PRE_PROCESSING  )
+				STR_DEBUG_GROUP( PROCESSING         )
+				else
+				{
+					STR_DEBUG_FLAG( PRE_PROCESSING  )
 
-				STR_DEBUG_FLAG( POST_PROCESSING )
-			}
+					STR_DEBUG_FLAG( POST_PROCESSING )
+				}
 
-			STR_DEBUG_GROUP( FILTERING          )
-			else
-			{
-				STR_DEBUG_FLAG( PRE_FILTERING   )
+				STR_DEBUG_GROUP( FILTERING          )
+				else
+				{
+					STR_DEBUG_FLAG( PRE_FILTERING   )
 
-				STR_DEBUG_FLAG( POST_FILTERING  )
+					STR_DEBUG_FLAG( POST_FILTERING  )
+				}
 			}
 		}
 

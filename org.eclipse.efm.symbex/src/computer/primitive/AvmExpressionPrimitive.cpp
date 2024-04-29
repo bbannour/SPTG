@@ -35,7 +35,7 @@ bool AvmPrimitive_EvalExpressionALU::seval(EvaluationEnvironment & ENV)
 {
 	AvmCode * inCODE = ENV.inCODE;
 
-	Operator * inOperator = inCODE->getOperator();
+	const Operator * inOperator = inCODE->getOperator();
 
 	switch( inCODE->size() )
 	{
@@ -83,10 +83,10 @@ bool AvmPrimitive_EvalExpressionALU::seval(EvaluationEnvironment & ENV)
 		{
 			BFVector outVALs;
 
-			AvmCode::const_iterator itArg  = inCODE->begin();
-			AvmCode::const_iterator endArg = inCODE->end();
+			AvmCode::const_iterator itOperand  = inCODE->begin();
+			AvmCode::const_iterator endOperand = inCODE->end();
 
-			if( ENV.seval( *itArg ) )
+			if( ENV.seval( *itOperand ) )
 			{
 				outVALs.append( ENV.outVAL );
 			}
@@ -94,9 +94,9 @@ bool AvmPrimitive_EvalExpressionALU::seval(EvaluationEnvironment & ENV)
 			{
 				return( false );
 			}
-			for( ++itArg ; itArg != endArg ; ++itArg )
+			for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 			{
-				if( ENV.sevalChained( *itArg ) )
+				if( ENV.sevalChained( *itOperand ) )
 				{
 					outVALs.append( ENV.outVAL );
 				}

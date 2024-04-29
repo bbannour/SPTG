@@ -22,7 +22,7 @@
 #include <util/avm_numeric.h>
 #include <collection/List.h>
 
-#include <fam/api/AbstractProcessorUnit.h>
+#include  <famcore/api/AbstractProcessorUnit.h>
 
 #include <sew/SymbexControllerUnitManager.h>
 
@@ -77,7 +77,7 @@ public:
 	 * Default
 	 */
 	SymbexControllerRequestManager(SymbexDispatcher & aSymbexDispatcher,
-			WObject * wfParameterObject,
+			const WObject * wfParameterObject,
 			SymbexControllerUnitManager & aCentralControllerUnit)
 	: SymbexJob(aSymbexDispatcher, wfParameterObject, aCentralControllerUnit),
 	SymbexControllerRequestStatus( REQUEST_UNDEFINED_STATUS ),
@@ -115,7 +115,7 @@ public:
 	/**
 	 * Thread main Run Method
 	 */
-	virtual void operator()()
+	virtual void operator()() override
 	{
 		//!! NOTHING
 	}
@@ -158,7 +158,7 @@ public:
 	{
 		enableRequest( REQUEST_STOP_STATUS );
 
-		mRequestStopListener.add_union( aRequestor );
+		mRequestStopListener.add_unique( aRequestor );
 	}
 
 
@@ -200,7 +200,7 @@ public:
 	{
 		enableRequest( REQUEST_RELEASE_STATUS );
 
-		mRequestReleaseListener.add_union( aRequestor );
+		mRequestReleaseListener.add_unique( aRequestor );
 	}
 
 
@@ -239,7 +239,7 @@ public:
 	{
 		enableRequest( REQUEST_RESET_STATUS );
 
-		mRequestResetListener.add_union( aRequestor );
+		mRequestResetListener.add_unique( aRequestor );
 	}
 
 
@@ -278,7 +278,7 @@ public:
 	{
 		enableRequest( REQUEST_RESTART_STATUS );
 
-		mRequestRestartListener.add_union( aRequestor );
+		mRequestRestartListener.add_unique( aRequestor );
 	}
 
 
@@ -317,7 +317,7 @@ public:
 	{
 		enableRequest( REQUEST_CONTINUE_STATUS );
 
-		mRequestContinueListener.add_union( aRequestor );
+		mRequestContinueListener.add_unique( aRequestor );
 	}
 
 
@@ -355,7 +355,7 @@ public:
 	{
 		enableRequest( REQUEST_REQUEUE_WAITING_STATUS );
 
-		mRequestRequeueWaitingListener.add_union( aRequestor );
+		mRequestRequeueWaitingListener.add_unique( aRequestor );
 	}
 
 
@@ -394,7 +394,7 @@ public:
 	{
 		enableRequest( REQUEST_REQUEUE_RESERVE_STATUS );
 
-		mRequestRequeueReserveListener.add_union( aRequestor );
+		mRequestRequeueReserveListener.add_unique( aRequestor );
 	}
 
 
@@ -432,7 +432,7 @@ public:
 	{
 		enableRequest( REQUEST_HEURISTIC_STATUS );
 
-		mRequestHeuristicListener.add_union( aRequestor );
+		mRequestHeuristicListener.add_unique( aRequestor );
 	}
 
 
@@ -469,7 +469,7 @@ public:
 	{
 		enableRequest( REQUEST_GOAL_ACHIEVED_STATUS );
 
-		mRequestGoalAchievedListener.add_union( aRequestor );
+		mRequestGoalAchievedListener.add_unique( aRequestor );
 	}
 
 

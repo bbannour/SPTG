@@ -55,19 +55,19 @@ namespace sep
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-template< class EpressionCtr >
+template< class EpressionCtor >
 class CommonExpressionConstructorImpl
 {
 
 public:
 	inline static BF seqExpr(const BF & arg0, const BF & arg1)
 	{
-		return( EpressionCtr::newBoolean( arg0.isEQ(arg1) ) );
+		return( EpressionCtor::newBoolean( arg0.isEQ(arg1) ) );
 	}
 
 	inline static BF nseqExpr(const BF & arg0, const BF & arg1)
 	{
-		return( EpressionCtr::newBoolean( arg0.isNEQ(arg1) ) );
+		return( EpressionCtor::newBoolean( arg0.isNEQ(arg1) ) );
 	}
 
 
@@ -75,7 +75,7 @@ public:
 	// OPERATOR EXPRESSION
 	////////////////////////////////////////////////////////////////////////////
 
-	inline static BF newExpr(Operator * anOperator, const BF & arg)
+	inline static BF newExpr(const Operator * anOperator, const BF & arg)
 	{
 		switch( anOperator->getAvmOpCode() )
 		{
@@ -91,12 +91,12 @@ public:
 
 			case AVM_OPCODE_NOT:
 			{
-				return( EpressionCtr::notExpr(arg) );
+				return( EpressionCtor::notExpr(arg) );
 			}
 
 			case AVM_OPCODE_UMINUS:
 			{
-				return( EpressionCtr::uminusExpr(arg) );
+				return( EpressionCtor::uminusExpr(arg) );
 			}
 
 			default:
@@ -107,84 +107,94 @@ public:
 	}
 
 	inline static BF newExpr(
-			Operator * anOperator, const BF & arg1, const BF & arg2)
+			const Operator * anOperator, const BF & arg1, const BF & arg2)
 	{
 		switch( anOperator->getAvmOpCode() )
 		{
 			case AVM_OPCODE_AND:
 			{
-				return( EpressionCtr::andExpr(arg1, arg2) );
+				return( EpressionCtor::andExpr(arg1, arg2) );
 			}
 			case AVM_OPCODE_OR:
 			{
-				return( EpressionCtr::orExpr(arg1, arg2) );
+				return( EpressionCtor::orExpr(arg1, arg2) );
 			}
 
-			case AVM_OPCODE_EXIST:
+			case AVM_OPCODE_IMPLIES:
 			{
-				return( EpressionCtr::existExpr(arg1, arg2) );
+				return( EpressionCtor::impliesExpr(arg1, arg2) );
+			}
+
+			case AVM_OPCODE_EXISTS:
+			{
+				return( EpressionCtor::existsExpr(arg1, arg2) );
 			}
 			case AVM_OPCODE_FORALL:
 			{
-				return( EpressionCtr::forallExpr(arg1, arg2) );
+				return( EpressionCtor::forallExpr(arg1, arg2) );
 			}
 
 			case AVM_OPCODE_EQ:
 			{
-				return( EpressionCtr::eqExpr(arg1, arg2) );
+				return( EpressionCtor::eqExpr(arg1, arg2) );
 			}
 			case AVM_OPCODE_NEQ:
 			{
-				return( EpressionCtr::neqExpr(arg1, arg2) );
+				return( EpressionCtor::neqExpr(arg1, arg2) );
 			}
 
 			case AVM_OPCODE_SEQ:
 			{
-				return( EpressionCtr::seqExpr(arg1, arg2) );
+				return( EpressionCtor::seqExpr(arg1, arg2) );
 			}
 			case AVM_OPCODE_NSEQ:
 			{
-				return( EpressionCtr::nseqExpr(arg1, arg2) );
+				return( EpressionCtor::nseqExpr(arg1, arg2) );
 			}
 
 			case AVM_OPCODE_LT:
 			{
-				return( EpressionCtr::ltExpr(arg1, arg2) );
+				return( EpressionCtor::ltExpr(arg1, arg2) );
 			}
 			case AVM_OPCODE_LTE:
 			{
-				return( EpressionCtr::lteExpr(arg1, arg2) );
+				return( EpressionCtor::lteExpr(arg1, arg2) );
 			}
 			case AVM_OPCODE_GT:
 			{
-				return( EpressionCtr::gtExpr(arg1, arg2) );
+				return( EpressionCtor::gtExpr(arg1, arg2) );
 			}
 			case AVM_OPCODE_GTE:
 			{
-				return( EpressionCtr::gteExpr(arg1, arg2) );
+				return( EpressionCtor::gteExpr(arg1, arg2) );
 			}
 
 			case AVM_OPCODE_PLUS:
 			{
-				return( EpressionCtr::addExpr(arg1, arg2) );
+				return( EpressionCtor::addExpr(arg1, arg2) );
 			}
 			case AVM_OPCODE_MINUS:
 			{
-				return( EpressionCtr::minusExpr(arg1, arg2) );
+				return( EpressionCtor::minusExpr(arg1, arg2) );
 			}
 
 			case AVM_OPCODE_MULT:
 			{
-				return( EpressionCtr::multExpr(arg1, arg2) );
+				return( EpressionCtor::multExpr(arg1, arg2) );
 			}
 			case AVM_OPCODE_POW:
 			{
-				return( EpressionCtr::powExpr(arg1, arg2) );
+				return( EpressionCtor::powExpr(arg1, arg2) );
 			}
 
 			case AVM_OPCODE_DIV:
 			{
-				return( EpressionCtr::divExpr(arg1, arg2) );
+				return( EpressionCtor::divExpr(arg1, arg2) );
+			}
+
+			case AVM_OPCODE_MOD:
+			{
+				return( EpressionCtor::modExpr(arg1, arg2) );
 			}
 
 			default:
@@ -195,32 +205,32 @@ public:
 	}
 
 
-	inline static BF newExpr(Operator * anOperator,
-			const AvmCode::this_container_type & listOfArg)
+	inline static BF newExpr(const Operator * anOperator,
+			const AvmCode::OperandCollectionT & operands)
 	{
 		switch( anOperator->getAvmOpCode() )
 		{
 			case AVM_OPCODE_AND:
 			{
-				return( EpressionCtr::andExpr(listOfArg) );
+				return( EpressionCtor::andExpr(operands) );
 			}
 			case AVM_OPCODE_OR:
 			{
-				return( EpressionCtr::orExpr(listOfArg) );
+				return( EpressionCtor::orExpr(operands) );
 			}
 
 			case AVM_OPCODE_PLUS:
 			{
-				return( EpressionCtr::addExpr(listOfArg) );
+				return( EpressionCtor::addExpr(operands) );
 			}
 			case AVM_OPCODE_MULT:
 			{
-				return( EpressionCtr::multExpr(listOfArg) );
+				return( EpressionCtor::multExpr(operands) );
 			}
 
 			default:
 			{
-				return( AvmCodeFactory::newCode(anOperator, listOfArg) );
+				return( AvmCodeFactory::newCode(anOperator, operands) );
 			}
 		}
 	}
@@ -238,7 +248,7 @@ public:
 			{
 				BF res = arg;
 				res.makeWritable();
-				res.to_ptr< Integer >()->addExpr(val);
+				res.to< Integer >().addExpr(val);
 				return( res );
 			}
 
@@ -246,7 +256,7 @@ public:
 			{
 				BF res = arg;
 				res.makeWritable();
-				res.to_ptr< Rational >()->addExpr(val);
+				res.to< Rational >().addExpr(val);
 				return( res );
 			}
 
@@ -254,14 +264,14 @@ public:
 			{
 				BF res = arg;
 				res.makeWritable();
-				res.to_ptr< Float >()->addExpr(val);
+				res.to< Float >().addExpr(val);
 				return( res );
 			}
 
 			default:
 			{
-				return( EpressionCtr::addExpr(arg,
-						EpressionCtr::newInteger(val)) );
+				return( EpressionCtor::addExpr(arg,
+						EpressionCtor::newInteger(val)) );
 			}
 		}
 	}
@@ -274,7 +284,7 @@ public:
 			{
 				BF res = arg;
 				res.makeWritable();
-				res.to_ptr< Integer >()->set_pow(val);
+				res.to< Integer >().set_pow(val);
 				return( res );
 			}
 
@@ -282,7 +292,7 @@ public:
 			{
 				BF res = arg;
 				res.makeWritable();
-				res.to_ptr< Rational >()->set_pow(val);
+				res.to< Rational >().set_pow(val);
 				return( res );
 			}
 
@@ -290,14 +300,14 @@ public:
 			{
 				BF res = arg;
 				res.makeWritable();
-				res.to_ptr< Float >()->set_pow(val);
+				res.to< Float >().set_pow(val);
 				return( res );
 			}
 
 			default:
 			{
-				return( EpressionCtr::powExpr(arg,
-						EpressionCtr::newUInteger(val)) );
+				return( EpressionCtor::powExpr(arg,
+						EpressionCtor::newUInteger(val)) );
 			}
 		}
 	}
@@ -383,6 +393,12 @@ public:
 
 			default: return( BF( new Integer(aValue) ) );
 		}
+	}
+
+	inline static BF newUInteger(
+			avm_uinteger_t aValue, avm_uinteger_t anExponent)
+	{
+		return( BF( new Integer(aValue, anExponent) ) );
 	}
 
 	inline static BF newInteger(const std::string & aValue)
@@ -574,7 +590,7 @@ public:
 
 	static BF andExpr(const BF & arg0, const BF & arg1);
 
-	static BF andExpr(const AvmCode::this_container_type & listOfArg);
+	static BF andExpr(const AvmCode::OperandCollectionT & operands);
 
 	////////////////////////////////////////////////////////////////////////////
 	// OR EXPRESSION
@@ -582,21 +598,27 @@ public:
 
 	static BF orExpr(const BF & arg0, const BF & arg1);
 
-	static BF orExpr(const AvmCode::this_container_type & listOfArg);
+	static BF orExpr(const AvmCode::OperandCollectionT & operands);
+
+	////////////////////////////////////////////////////////////////////////////
+	// IMPLIES EXPRESSION
+	////////////////////////////////////////////////////////////////////////////
+
+	static BF impliesExpr(const BF & arg0, const BF & arg1);
 
 
 	////////////////////////////////////////////////////////////////////////////
 	// QUANTIFIER EXPRESSION
 	////////////////////////////////////////////////////////////////////////////
 
-	static BF existExpr(const BF & boundVar, const BF & formula);
+	static BF existsExpr(const BF & boundVar, const BF & formula);
 
-	static BF existExpr(const AvmCode::this_container_type & listOfArg);
+	static BF existsExpr(const AvmCode::OperandCollectionT & operands);
 
 
 	static BF forallExpr(const BF & boundVar, const BF & formula);
 
-	static BF forallExpr(const AvmCode::this_container_type & listOfArg);
+	static BF forallExpr(const AvmCode::OperandCollectionT & operands);
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -604,6 +626,19 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 
 	static BF notExpr(const BF & arg);
+
+
+	////////////////////////////////////////////////////////////////////////////
+	// BITWISE EXPRESSION
+	////////////////////////////////////////////////////////////////////////////
+
+	static BF bandExpr(const BF & arg0, const BF & arg1);
+
+	static BF borExpr(const BF & arg0, const BF & arg1);
+
+	static BF bxorExpr(const BF & arg0, const BF & arg1);
+
+	static BF bnotExpr(const BF & arg);
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -631,7 +666,7 @@ public:
 
 	static BF addExpr(const BF & arg0, const BF & arg1);
 
-	static BF addExpr(const AvmCode::this_container_type & listOfArg);
+	static BF addExpr(const AvmCode::OperandCollectionT & operands);
 
 
 
@@ -640,6 +675,8 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 
 	static BF minusExpr(const BF & arg0, const BF & arg1);
+
+	static BF minusExpr(const AvmCode::OperandCollectionT & operands);
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -654,8 +691,14 @@ public:
 
 	static BF multExpr(const BF & arg0, const BF & arg1);
 
-	static BF multExpr(const AvmCode::this_container_type & listOfArg);
+	static BF multExpr(const AvmCode::OperandCollectionT & operands);
 
+
+	////////////////////////////////////////////////////////////////////////////
+	// MOD EXPRESSION
+	////////////////////////////////////////////////////////////////////////////
+
+	static BF modExpr(const BF & arg0, const BF & arg1);
 
 	////////////////////////////////////////////////////////////////////////////
 	// POW EXPRESSION
@@ -675,10 +718,25 @@ public:
 	// OPERATOR EXPRESSION
 	////////////////////////////////////////////////////////////////////////////
 
-	inline static BF newExpr(Operator * anOperator,
-			const AvmCode::this_container_type & listOfArg)
+	////////////////////////////////////////////////////////////////////////////
+	// OPERATOR EXPRESSION
+	////////////////////////////////////////////////////////////////////////////
+
+	inline static BF newExpr(const Operator * anOperator, const BF & arg)
 	{
-		return( CommonExpressionConstructorImpl::newExpr(anOperator, listOfArg) );
+		return( CommonExpressionConstructorImpl::newExpr(anOperator, arg) );
+	}
+
+	inline static BF newExpr(
+			const Operator * anOperator, const BF & arg1, const BF & arg2)
+	{
+		return( CommonExpressionConstructorImpl::newExpr(anOperator, arg1, arg2) );
+	}
+
+	inline static BF newExpr(const Operator * anOperator,
+			const AvmCode::OperandCollectionT & operands)
+	{
+		return( CommonExpressionConstructorImpl::newExpr(anOperator, operands) );
 	}
 
 };

@@ -16,7 +16,6 @@
 #include <builder/compiler/BaseMachineCompiler.h>
 
 #include <builder/compiler/CompilerOfInteraction.h>
-#include <builder/compiler/CompilerOfProgram.h>
 #include <builder/compiler/CompilerOfTransition.h>
 #include <builder/compiler/CompilerOfVariable.h>
 
@@ -41,17 +40,11 @@ class System;
 class Compiler : public BaseMachineCompiler
 {
 
-public:
-	/**
-	 * ATTRIBUTE
-	 */
-	CompilerOfVariable mDataCompiler;
-
 protected:
 	/**
 	 * ATTRIBUTE
 	 */
-	CompilerOfProgram mProgramCompiler;
+	CompilerOfVariable mVariableCompiler;
 
 	CompilerOfTransition mTransitionCompiler;
 
@@ -73,6 +66,15 @@ public:
 		//!! NOTHING
 	}
 
+	/**
+	 * GETTER
+	 */
+
+	inline CompilerOfVariable & getVariableCompiler()
+	{
+		return( mVariableCompiler );
+	}
+
 
 	/**
 	 * CONFIGURE
@@ -86,41 +88,43 @@ public:
 	 */
 	virtual bool start(System & aSystem);
 
+	// Due to [-Woverloaded-virtual=]
+	using BaseMachineCompiler::start;
 
 	/*
 	 ***************************************************************************
-	 * PRE-COMPILING SYSTEM - (STATE)MACHINE  TRANSITION
+	 * PRE-COMPILING SYSTEM - [STATE]MACHINE - TRANSITION
 	 ***************************************************************************
 	 */
 	void precompilePropertyPart(
-			ExecutableForm * anExecutable, PropertyPart & theDeclaration,
+			ExecutableForm & anExecutable, const PropertyPart & theDeclaration,
 			TableOfInstanceOfData & tableOfVariable);
 
 	void precompileDataType(
-			AvmProgram * aProgram, PropertyPart & theDeclaration,
+			AvmProgram & aProgram, const PropertyPart & theDeclaration,
 			TableOfInstanceOfData & tableOfVariable);
 
 
 	void precompileExecutableCompositePart(
-			ExecutableForm * aContainer, Machine * anExecutableSpec);
+			ExecutableForm & aContainer, Machine & anExecutableSpec);
 
 	void precompileExecutable(
-			ExecutableForm * aContainer, Machine * anExecutableSpec);
+			ExecutableForm & aContainer, Machine & anExecutableSpec);
 
 	ExecutableForm * precompileExecutableModel(
-			ExecutableForm * aContainer, Machine * anExecutableSpec);
+			ExecutableForm & aContainer, Machine & anExecutableSpec);
 
 	void precompileExecutablePrototype(
-			ExecutableForm * aContainer, Machine * anExecutableSpec);
+			ExecutableForm & aContainer, Machine & anExecutableSpec);
 
 	void precompileExecutableInstanceStatic(
-			ExecutableForm * aContainer, Machine * anExecutableSpec);
+			ExecutableForm & aContainer, const Machine & anExecutableSpec);
 
 	void precompileExecutableInstanceDynamique(
-			ExecutableForm * aContainer, Machine * anExecutableSpec);
+			ExecutableForm & aContainer, const Machine & anExecutableSpec);
 
 	void precompileExecutableGroup(
-			ExecutableForm * aContainer, Machine * aStatemachine);
+			ExecutableForm & aContainer, const Machine & aStatemachine);
 
 
 	void precompileSystem(System & aSystem);
@@ -130,75 +134,77 @@ public:
 	 * setInheritedSpecifier from container to owned elements
 	 */
 	void setInheritedSpecifier(
-			ExecutableForm * aContainer, ExecutableForm * anExecutable);
+			ExecutableForm & aContainer, ExecutableForm & anExecutable);
 
 	void setInheritedSpecifier(
-			ExecutableForm * aContainer, InstanceOfMachine * aMachine);
+			ExecutableForm & aContainer, InstanceOfMachine & aMachine);
 
 
 	/*
 	 ***************************************************************************
-	 * COMPILING EXECUTABLE - AVMPROGRAM
+	 * COMPILING EXECUTABLE - PROGRAM
 	 ***************************************************************************
 	 */
 	void compileExecutableSystem();
 
-	void compileExecutable(ExecutableForm * anExecutable);
+	void compileExecutable(ExecutableForm & anExecutable);
 
-	void compileAvmPrograms();
+	void compilePrograms(ExecutableForm & anExecutable);
+
+	void compileProgram(AvmProgram & aProgram);
 
 
 	/*
 	 ***************************************************************************
-	 * COMPILING SYSTEM - (STATE)MACHINE  TRANSITION
+	 * COMPILING SYSTEM - [STATE]MACHINE - TRANSITION
 	 ***************************************************************************
 	 */
-	void compileAllInstances(ExecutableForm * anExecutableForm);
+	void compileAllInstances(ExecutableForm & anExecutableForm);
 
 	void compileInstance(
-			ExecutableForm * theExecutableContainer,
+			ExecutableForm & theExecutableContainer,
 			InstanceOfMachine * anInstanceMachine);
 
 	void compileInstanceParameters(
-			ExecutableForm * theExecutableContainer,
+			ExecutableForm & theExecutableContainer,
 			InstanceOfMachine * anInstanceMachine);
 
-	void compileBaseMachine(ExecutableForm * anExecutableForm);
+	void compileBaseMachine(ExecutableForm & anExecutableForm);
 
-	void compileProcedure(ExecutableForm * anExecutableForm);
+	void compileProcedure(ExecutableForm & anExecutableForm);
 
-	void compileMachine(ExecutableForm * anExecutableForm);
+	void compileMachine(ExecutableForm & anExecutableForm);
 
-	void compileSystem(ExecutableForm * anExecutableForm);
-	void compileStatemachine(ExecutableForm * anExecutableForm);
+	void compileSystem(ExecutableForm & anExecutableForm);
+	void compileStatemachine(ExecutableForm & anExecutableForm);
 
 	void compileExecutableMocCompositeStructure(
-			ExecutableForm * anExecutableForm);
+			ExecutableForm & anExecutableForm);
 
 	void compileExecutableMocStateTransitionStructure(
-			ExecutableForm * anExecutableForm);
+			ExecutableForm & anExecutableForm);
 
-	void compileStatemachineBasic(ExecutableForm * anExecutableForm);
-	void compileStatemachinePseudo(ExecutableForm * anExecutableForm);
-	void compileStatemachineHistory(ExecutableForm * anExecutableForm);
-	void compilePseudostateEnding(ExecutableForm * anExecutableForm);
+	void compileStatemachineBasic(ExecutableForm & anExecutableForm);
+	void compileStatemachinePseudo(ExecutableForm & anExecutableForm);
+	void compileStatemachineHistory(ExecutableForm & anExecutableForm);
+	void compilePseudostateEnding(ExecutableForm & anExecutableForm);
 
 
-	void removeSubmachineInputEnabledCode(ExecutableForm * anExecutableForm);
+	void removeSubmachineInputEnabledCode(const ExecutableForm & anExecutableForm);
 
-	void computeInputEnabledCom(ExecutableForm * anExecutableForm);
+	void computeInputEnabledCom(ExecutableForm & anExecutableForm);
 
-	void computeInputEnabledBuffer(ExecutableForm * anExecutableForm);
+	void computeInputEnabledBuffer(ExecutableForm & anExecutableForm);
 
-	void compileAllBehavioralRoutines(ExecutableForm * theExecutable);
+	void compileAllBehavioralRoutines(ExecutableForm & theExecutable);
 
-	void compileBehaviorInitialization(ExecutableForm * theExecutable);
-	void compileBehaviorEnabling(ExecutableForm * theExecutable);
-	void compileBehaviorDisabling(ExecutableForm * theExecutable);
-	void compileBehaviorAborting(ExecutableForm * theExecutable);
+	void compileBehaviorInitialization(ExecutableForm & theExecutable);
+	void compileBehaviorEnabling(ExecutableForm & theExecutable);
+	void compileBehaviorDisabling(ExecutableForm & theExecutable);
+	void compileBehaviorAborting(ExecutableForm & theExecutable);
 
-	void compileBehaviorScheduling(ExecutableForm * theExecutable);
-	void setRdvScheduling(ExecutableForm * theExecutable);
+	void compileBehaviorScheduling(ExecutableForm & theExecutable);
+	void setRdvScheduling(ExecutableForm & theExecutable);
 
 };
 

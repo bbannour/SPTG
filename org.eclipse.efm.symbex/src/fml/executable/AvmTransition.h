@@ -18,7 +18,8 @@
 
 #include <fml/executable/AvmProgram.h>
 
-#include <collection/Typedef.h>
+#include <collection/BFContainer.h>
+#include <collection/List.h>
 
 #include <fml/executable/InstanceOfMachine.h>
 
@@ -29,6 +30,8 @@ namespace sep
 {
 
 class AvmTransition;
+
+typedef   List < const AvmTransition * > ListOfAvmTransition;
 
 class ExecutableForm;
 
@@ -56,9 +59,9 @@ public:
 	 * Default
 	 */
 	AvmTransition(AvmProgram * aContainer,
-			ObjectElement * aCompiled, avm_size_t aSize)
+			const ObjectElement & astTransition, std::size_t aSize)
 	: AvmProgram(CLASS_KIND_T( AvmTransition ),
-			Specifier::SCOPE_TRANSITION_KIND, aContainer, aCompiled, aSize),
+			Specifier::SCOPE_TRANSITION_KIND, aContainer, astTransition, aSize),
 	mTarget( )
 	{
 		updateFullyQualifiedNameID();
@@ -77,14 +80,14 @@ public:
 	 * GETTER
 	 * theCompiledForm
 	 */
-	inline const Transition * getAstTransition() const
+	inline const Transition & getAstTransition() const
 	{
-		return( getAstElement()->as< Transition >() );
+		return( safeAstElement().as< Transition >() );
 	}
 
 	inline bool isAstTransition() const
 	{
-		return( getAstElement()->is< Transition >() );
+		return( safeAstElement().is< Transition >() );
 	}
 
 
@@ -125,7 +128,7 @@ public:
 	ExecutableForm * getTransitionSource() const;
 
 
-	static InstanceOfMachine * getrecTargetMachine(AvmCode * aCode);
+	static InstanceOfMachine * getrecTargetMachine(const AvmCode & aCode);
 
 	inline InstanceOfMachine * getTransitionTarget() const
 	{
@@ -135,19 +138,20 @@ public:
 		}
 		else
 		{
-			return( hasCode() ? getrecTargetMachine( getCode() ) : NULL );
+			return( hasCode() ? getrecTargetMachine( getAvmCode() ) : nullptr );
 		}
 	}
 
 
 	static void getrecTargetMachine(
-			ListOfInstanceOfMachine & listOfTargets, AvmCode * aCode);
+			ListOfInstanceOfMachine & listOfTargets, const AvmCode & aCode);
 
-	inline void getTransitionTarget(ListOfInstanceOfMachine & listOfTargets) const
+	inline void getTransitionTarget(
+			ListOfInstanceOfMachine & listOfTargets) const
 	{
 		if( hasCode() )
 		{
-			AvmTransition::getrecTargetMachine(listOfTargets, getCode());
+			AvmTransition::getrecTargetMachine(listOfTargets, getAvmCode());
 		}
 	}
 
@@ -165,7 +169,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void strHeader(OutStream & out) const;
+	virtual void strHeader(OutStream & out) const override;
 
 	inline std::string strTransitionHeader() const
 	{
@@ -182,11 +186,11 @@ public:
 				<< "Unexpected a non Transition program scope !!!"
 				<< SEND_EXIT;
 
-		getAstTransition()->toStreamHeader(out);
+		getAstTransition().toStreamHeader(out);
 	}
 
 
-	virtual void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
 
 	static void toStream(OutStream & out,
 			const ListOfAvmTransition & listofTransition);
@@ -202,7 +206,6 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef  TableOfBF_T< AvmTransition >  TableOfTransition;
-
 
 
 } /* namespace sep */

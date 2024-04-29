@@ -18,6 +18,8 @@
 
 #include <string>
 
+#include <fml/operator/OperatorLib.h>
+
 
 namespace sep
 {
@@ -59,7 +61,7 @@ enum PROCESS_EVAL_STATE
 };
 
 
-enum AVM_EXEC_ENDING_STATUS
+enum AVM_EXECUTION_ENDING_STATUS
 {
 	AEES_OK,
 	AEES_FAILED,
@@ -122,14 +124,16 @@ public:
 	 */
 	static std::string strPES(PROCESS_EVAL_STATE aPES);
 
-	static std::string strAEES(AVM_EXEC_ENDING_STATUS anAEES);
+	static std::string strAEES(AVM_EXECUTION_ENDING_STATUS anAEES);
 
 
 	/**
 	 * CONVERSION
 	 */
-	static AVM_EXEC_ENDING_STATUS PES_to_AEES(
-			PROCESS_EVAL_STATE aPES, AVM_EXEC_ENDING_STATUS defaultAEES);
+	static AVM_EXECUTION_ENDING_STATUS PES_to_AEES(
+			PROCESS_EVAL_STATE aPES, AVM_EXECUTION_ENDING_STATUS defaultAEES);
+
+	static PROCESS_EVAL_STATE Opcode_to_PES(AVM_OPCODE opcode);
 
 
 	/**
@@ -138,8 +142,9 @@ public:
 	static PROCESS_EVAL_STATE syncPES(PROCESS_EVAL_STATE refState,
 				PROCESS_EVAL_STATE frstState, PROCESS_EVAL_STATE scndState);
 
-	static AVM_EXEC_ENDING_STATUS syncAEES(
-			AVM_EXEC_ENDING_STATUS frstAEES, AVM_EXEC_ENDING_STATUS scndAEES);
+	static AVM_EXECUTION_ENDING_STATUS syncAEES(
+			AVM_EXECUTION_ENDING_STATUS frstAEES,
+			AVM_EXECUTION_ENDING_STATUS scndAEES);
 
 
 

@@ -19,13 +19,13 @@
 
 #include <fml/infrastructure/Buffer.h>
 #include <fml/infrastructure/Channel.h>
-#include <fml/infrastructure/Connector.h>
 #include <fml/infrastructure/Port.h>
 #include <fml/infrastructure/Routine.h>
 #include <fml/infrastructure/Variable.h>
 
 #include <fml/infrastructure/BehavioralPart.h>
 #include <fml/infrastructure/CompositePart.h>
+#include <fml/infrastructure/Connector.h>
 #include <fml/infrastructure/InstanceSpecifierPart.h>
 #include <fml/infrastructure/InteractionPart.h>
 #include <fml/infrastructure/ModelOfComputationPart.h>
@@ -54,18 +54,17 @@ Machine::Machine(Machine * aContainer,
 SpecifierImpl( aMocSpecifier ),
 
 mGroupId( ),
-mOwnedElements( ),
 mOwnedElementsSpecifier( ),
 mModel( ),
 
 mPropertyDeclaration( this , "property" ),
 
-mModelOfComputation( NULL ),
+mModelOfComputation( nullptr ),
 
 mCompositeSpecification( new CompositePart(this, "composite") ),
 
-mInteractionSpecification( NULL ),
-mBehavioralSpecification( NULL ),
+mInteractionSpecification( nullptr ),
+mBehavioralSpecification( nullptr ),
 mInstanceSpecifier( new InstanceSpecifierPart(this, "instance") )
 {
 	//!! NOTHING
@@ -74,33 +73,36 @@ mInstanceSpecifier( new InstanceSpecifierPart(this, "instance") )
 
 /**
  * CONSTRUCTOR
- * Other
+ * Instance
  */
-Machine::Machine(Machine * aContainer, const std::string & aNameID,
+Machine::Machine(Machine & aContainer, const std::string & aNameID,
 		const Specifier & aMocSpecifier, const BF & aModel,
-		avm_size_t anInitialInstanceCount, avm_size_t aMaximalInstanceCount)
-: BehavioralElement(CLASS_KIND_T( Machine ), aContainer, aNameID),
+		std::size_t anInitialInstanceCount, std::size_t aMaximalInstanceCount)
+: BehavioralElement(CLASS_KIND_T( Machine ), (& aContainer), aNameID),
 SpecifierImpl( aMocSpecifier ),
 
 mGroupId( ),
-mOwnedElements( ),
 mOwnedElementsSpecifier( ),
 mModel( aModel ),
 
 mPropertyDeclaration( this , "property" ),
 
-mModelOfComputation( NULL ),
+mModelOfComputation( nullptr ),
 
 mCompositeSpecification( new CompositePart(this, "composite") ),
 
-mInteractionSpecification( NULL ),
-mBehavioralSpecification( NULL ),
+mInteractionSpecification( nullptr ),
+mBehavioralSpecification( nullptr ),
 mInstanceSpecifier( new InstanceSpecifierPart(this, aModel,
 		anInitialInstanceCount, aMaximalInstanceCount, "instance") )
 {
 	//!! NOTHING
 }
 
+/**
+ * CONSTRUCTOR
+ * Other
+ */
 Machine::Machine(class_kind_t aClassKind, Machine * aContainer,
 		const std::string & aFullyQualifiedNameID, const std::string & aNameID,
 		const std::string & name, const Specifier & aMocSpecifier)
@@ -108,18 +110,17 @@ Machine::Machine(class_kind_t aClassKind, Machine * aContainer,
 SpecifierImpl( aMocSpecifier ),
 
 mGroupId( ),
-mOwnedElements( ),
 mOwnedElementsSpecifier( ),
 mModel( ),
 
 mPropertyDeclaration( this , "property" ),
 
-mModelOfComputation( NULL ),
+mModelOfComputation( nullptr ),
 
 mCompositeSpecification( new CompositePart(this, "composite") ),
 
-mInteractionSpecification( NULL ),
-mBehavioralSpecification( NULL ),
+mInteractionSpecification( nullptr ),
+mBehavioralSpecification( nullptr ),
 mInstanceSpecifier( new InstanceSpecifierPart(this, "instance") )
 {
 	//!! NOTHING
@@ -136,6 +137,16 @@ Machine::~Machine()
 	delete mInteractionSpecification;
 	delete mBehavioralSpecification;
 	delete mInstanceSpecifier;
+}
+
+
+/**
+ * GETTER
+ * EXECUTABLE MACHINE COUNT
+ */
+std::size_t Machine::getExecutableMachineCount() const
+{
+	return( 1 + mCompositeSpecification->getExecutableMachineCount() );
 }
 
 
@@ -169,7 +180,7 @@ void Machine::setGroupId()
 
 void Machine::expandGroupStatemachine()
 {
-	if( mCompositeSpecification != NULL )
+	if( mCompositeSpecification != nullptr )
 	{
 		mCompositeSpecification->expandGroupStatemachine();
 	}
@@ -185,7 +196,7 @@ const Machine * Machine::LCA(const Machine * aMachine) const
 {
 	List< const Machine * > containerListOfThis;
 	const Machine * itContainer = this->getContainerMachine();
-	for ( ; itContainer != NULL ;
+	for ( ; itContainer != nullptr ;
 			itContainer = itContainer->getContainerMachine() )
 	{
 		containerListOfThis.push_back(itContainer);
@@ -194,7 +205,7 @@ const Machine * Machine::LCA(const Machine * aMachine) const
 	List< const Machine * >::iterator it;
 	List< const Machine * >::iterator endIt = containerListOfThis.end();
 	itContainer = aMachine->getContainerMachine();
-	for ( ; itContainer != NULL ;
+	for ( ; itContainer != nullptr ;
 			itContainer = itContainer->getContainerMachine() )
 	{
 		for ( it = containerListOfThis.begin() ; it != endIt ; ++it )
@@ -210,7 +221,7 @@ const Machine * Machine::LCA(const Machine * aMachine) const
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
@@ -219,71 +230,20 @@ const Machine * Machine::LCA(const Machine * aMachine) const
  * DISPATCH
  * mOwnedElements
  */
-void Machine::dispatchOwnedElement(const BF & anElement)
+const BF & Machine::saveOwnedElement(Machine * ptrElement)
 {
-	AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( anElement )
-			<< "Executable Machine owned element !!!"
+	AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( ptrElement )
+			<< "Composite owned element !!!"
 			<< SEND_EXIT;
 
-	switch( anElement.classKind() )
-	{
-		// PROPERTY ELEMENT
-		case FORM_XFSP_VARIABLE_KIND:
-		case FORM_XFSP_DATATYPE_KIND:
-		case FORM_XFSP_BUFFER_KIND:
-		case FORM_XFSP_CHANNEL_KIND:
-		case FORM_XFSP_PORT_KIND:
-		{
-			mPropertyDeclaration.dispatchOwnedElement( anElement );
-			break;
-		}
+	addOwnedElementSpecifier( ptrElement->getSpecifier() );
 
-		// COMPOSITE STRUCTURE ELEMENT
+	return( getUniqCompositePart()->saveOwnedElement(ptrElement) );
+}
 
-		case FORM_XFSP_MACHINE_KIND:
-		{
-			addOwnedElementSpecifier(
-					anElement.to_ptr< Machine >()->getSpecifier() );
-
-			getUniqCompositePart()->dispatchOwnedElement( anElement );
-
-			break;
-		}
-
-		case FORM_XFSP_TRANSITION_KIND:
-		{
-			getUniqBehaviorPart()->appendOutgoingTransition( anElement );
-			break;
-		}
-
-		// INTERACTION ELEMENT
-		case FORM_XFSP_CONNECTOR_KIND:
-		{
-			getUniqInteraction()->appendConnector( anElement );
-			break;
-		}
-
-		// BEHAVIORAL ELEMENT
-		case FORM_XFSP_ROUTINE_KIND:
-		{
-			getUniqBehaviorPart()->appendRoutine( anElement );
-			break;
-		}
-
-
-		case FORM_XFSP_PACKAGE_KIND:
-
-		default:
-		{ // TODO
-			AVM_OS_FATAL_ERROR_EXIT
-					<< "dispatchOwnedElement() unexpected object, typeinfo: "
-					<< anElement.classKindInfo() << "\n\t<< "
-					<< anElement.to_ptr< ObjectElement >()->strHeader()
-					<< " >> !!!"
-					<< SEND_EXIT;
-			break;
-		}
-	}
+const BF & Machine::saveOwnedElement(BehavioralElement * ptrElement)
+{
+	return( getUniqBehaviorPart()->saveOwnedElement(ptrElement) );
 }
 
 
@@ -293,7 +253,7 @@ void Machine::dispatchOwnedElement(const BF & anElement)
  */
 ModelOfComputationPart * Machine::getUniqModelOfComputation()
 {
-	if( mModelOfComputation == NULL )
+	if( mModelOfComputation == nullptr )
 	{
 		mModelOfComputation = new ModelOfComputationPart(this, "moc");
 	}
@@ -307,7 +267,7 @@ ModelOfComputationPart * Machine::getUniqModelOfComputation()
  */
 CompositePart * Machine::getUniqCompositePart()
 {
-	if( mCompositeSpecification == NULL )
+	if( mCompositeSpecification == nullptr )
 	{
 		mCompositeSpecification = new CompositePart(this, "composite");
 	}
@@ -322,13 +282,8 @@ CompositePart * Machine::getUniqCompositePart()
  */
 bool Machine::hasProcedure() const
 {
-	return( (mCompositeSpecification != NULL) &&
+	return( (mCompositeSpecification != nullptr) &&
 			mCompositeSpecification->hasProcedure() );
-}
-
-void Machine::saveProcedure(Machine * aProcedure)
-{
-	mCompositeSpecification->saveProcedure( aProcedure );
 }
 
 /**
@@ -337,10 +292,9 @@ void Machine::saveProcedure(Machine * aProcedure)
  */
 bool Machine::hasState() const
 {
-	return( (mCompositeSpecification != NULL) &&
+	return( (mCompositeSpecification != nullptr) &&
 			mCompositeSpecification->hasState() );
 }
-
 
 /**
  * GETTER - SETTER
@@ -348,13 +302,8 @@ bool Machine::hasState() const
  */
 bool Machine::hasMachine() const
 {
-	return( (mCompositeSpecification != NULL) &&
+	return( (mCompositeSpecification != nullptr) &&
 			mCompositeSpecification->hasMachine() );
-}
-
-void Machine::saveMachine(Machine * aMachine)
-{
-	mCompositeSpecification->saveMachine( aMachine );
 }
 
 
@@ -364,7 +313,7 @@ void Machine::saveMachine(Machine * aMachine)
  */
 InteractionPart * Machine::getUniqInteraction()
 {
-	if( mInteractionSpecification == NULL )
+	if( mInteractionSpecification == nullptr )
 	{
 		mInteractionSpecification = new InteractionPart(this, "com");
 	}
@@ -379,7 +328,7 @@ InteractionPart * Machine::getUniqInteraction()
  */
 BehavioralPart * Machine::getUniqBehaviorPart()
 {
-	if( mBehavioralSpecification == NULL )
+	if( mBehavioralSpecification == nullptr )
 	{
 		mBehavioralSpecification = new BehavioralPart(this, "moe");
 	}
@@ -388,17 +337,29 @@ BehavioralPart * Machine::getUniqBehaviorPart()
 }
 
 
+bool Machine::hasOwnedBehavior() const
+{
+	return( (mBehavioralSpecification != nullptr)
+			&& mBehavioralSpecification->hasOwnedBehavior() );
+}
+
 bool Machine::hasRunnableBehavior() const
 {
-	return( (mBehavioralSpecification != NULL)
+	return( (mBehavioralSpecification != nullptr)
 			&& (mBehavioralSpecification->hasOnRun()
 				|| mBehavioralSpecification->hasOnSchedule()
 				|| mBehavioralSpecification->hasOnConcurrency()) );
 }
 
+bool Machine::hasOnInitMachine() const
+{
+	return( (mBehavioralSpecification != nullptr)
+				&& mBehavioralSpecification->hasOnInitMachine() );
+}
+
 bool Machine::hasOnEnable() const
 {
-	return( ( (mBehavioralSpecification != NULL)
+	return( ( (mBehavioralSpecification != nullptr)
 				&& mBehavioralSpecification->hasOnEnable() )
 			|| getSpecifier().hasPseudostateHistory() );
 }
@@ -406,7 +367,7 @@ bool Machine::hasOnEnable() const
 bool Machine::isInlinableEnable() const
 {
 	return( (not getSpecifier().isPseudostate())
-			&& (mBehavioralSpecification != NULL)
+			&& (mBehavioralSpecification != nullptr)
 			&& (mBehavioralSpecification->hasOnEnable()
 				|| mBehavioralSpecification->hasOnIEnable()) );
 }
@@ -419,13 +380,13 @@ bool Machine::isInlinableEnable() const
  */
 bool Machine::hasOutgoingTransition() const
 {
-	return( (mBehavioralSpecification != NULL)
+	return( (mBehavioralSpecification != nullptr)
 			&& mBehavioralSpecification->hasOutgoingTransition() );
 }
 
 bool Machine::hasIncomingTransition() const
 {
-	return( (mBehavioralSpecification != NULL)
+	return( (mBehavioralSpecification != nullptr)
 			&& mBehavioralSpecification->hasIncomingTransition() );
 }
 
@@ -436,7 +397,7 @@ bool Machine::hasIncomingTransition() const
  */
 InstanceSpecifierPart * Machine::getUniqInstanceSpecifier()
 {
-	if( mInstanceSpecifier == NULL )
+	if( mInstanceSpecifier == nullptr )
 	{
 		mInstanceSpecifier = new InstanceSpecifierPart(this, "instance");
 	}
@@ -469,12 +430,17 @@ const TableOfVariable & Machine::getVariableParameters() const
 	return( mPropertyDeclaration.getVariableParameters() );
 }
 
-const BF & Machine::getVariableParameter(avm_size_t offset) const
+TableOfVariable & Machine::getVariableParameters()
+{
+	return( mPropertyDeclaration.getVariableParameters() );
+}
+
+const BF & Machine::getVariableParameter(std::size_t offset) const
 {
 	return( mPropertyDeclaration.getVariableParameter(offset) );
 }
 
-avm_size_t Machine::getVariableParametersCount() const
+std::size_t Machine::getVariableParametersCount() const
 {
 	return( mPropertyDeclaration.getVariableParametersCount() );
 }
@@ -494,7 +460,12 @@ const TableOfVariable & Machine::getVariableReturns() const
 	return( mPropertyDeclaration.getVariableReturns() );
 }
 
-const BF & Machine::getVariableReturn(avm_size_t offset) const
+TableOfVariable & Machine::getVariableReturns()
+{
+	return( mPropertyDeclaration.getVariableReturns() );
+}
+
+const BF & Machine::getVariableReturn(std::size_t offset) const
 {
 	return( mPropertyDeclaration.getVariableReturn(offset) );
 }
@@ -529,12 +500,12 @@ bool Machine::hasPortSignal() const
 /**
  * Serialization
  */
-void Machine::header(OutStream & os) const
+void Machine::header(OutStream & out) const
 {
-	os << getModifier().toString()
-			<< getSpecifier().strDesign_not(
-					Specifier::DESIGN_PROTOTYPE_STATIC_KIND)
-			<< getSpecifier().keywordComponent();
+	out << getSpecifier().strFeature(" ")
+		<< getModifier().toString()
+		<< getSpecifier().strDesign_not(Specifier::DESIGN_PROTOTYPE_STATIC_KIND)
+		<< getSpecifier().keywordComponent();
 
 	bool hasChevron = false;
 
@@ -545,128 +516,159 @@ void Machine::header(OutStream & os) const
 		aSpecifier.unsetComponentKind();
 		aSpecifier.remStateMoc( Specifier::STATE_SIMPLE_MOC );
 		aSpecifier.unsetDesignKind();
+		aSpecifier.unsetFeatureKind();
 
 		if( aSpecifier.isDefined() )
 		{
 			hasChevron = true;
 
-			os << "< " << aSpecifier.str();
+			out << "< " << aSpecifier.str();
 		}
 	}
-
-	if( hasOwnedElementsSpecifier() )
+	
+	if( hasInstanceSpecifier()  )
 	{
-		Specifier aSpecifier( getOwnedElementsSpecifier() );
-		aSpecifier.unsetDesignKind();
-
-		if( aSpecifier.isDefined() )
-		{
-			if( hasChevron ) { os << " , "; }
-			else { os << "< "; hasChevron = true; }
-
-			os << "owned: " << aSpecifier.str();
-		}
+		mInstanceSpecifier->header(out, hasChevron);
 	}
 
-	if( hasInstanceSpecifier() )
-	{
-		mInstanceSpecifier->header(os, hasChevron);
-	}
-
-	os << ( hasChevron ? " > " : " " );
+	out << ( hasChevron ? " > " : " " );
 
 	if( getSpecifier().hasGroupMask() )
 	{
-		os << ( getSpecifier().isGroupEvery() ? "[*" :
+		out << ( getSpecifier().isGroupEvery() ? "[*" :
 				( getSpecifier().isGroupExcept() ? "[^" : "[" ) );
 		if( mGroupId.nonempty() )
 		{
 			ListOfString::const_iterator it = mGroupId.begin();
 			ListOfString::const_iterator endIt = mGroupId.end();
-			os << (*it);
+			out << (*it);
 			for( ++it ; it != endIt ; ++it)
 			{
-				os << " , " << (*it);
+				out << " , " << (*it);
 			}
 		}
-		os << "]";
+		out << "]";
 	}
 	else
 	{
-		os << getNameID();
+		out << getNameID();
 	}
 }
 
 
-void Machine::strHeader(OutStream & os) const
+void Machine::strHeader(OutStream & out) const
 {
-	header( os );
+	header( out );
 
-	mPropertyDeclaration.strVariableParameters(os, " [ ", " ]", ", ");
+	mPropertyDeclaration.strVariableParameters(out, " [ ", " ]", ", ");
 
-	mPropertyDeclaration.strVariableReturns(os, " returns: [ ", " ]", ", ");
+	mPropertyDeclaration.strVariableReturns(out, " returns: [ ", " ]", ", ");
 }
 
 
-void Machine::toStream(OutStream & os) const
+void Machine::headerDebug(OutStream & out) const
 {
-	os << TAB;
+	bool hasChevron = false;
 
-	header( os );
+	out << "//" << getSpecifier().strFeature(" ") << getModifier().toString()
+		<< getSpecifier().strDesign_not(Specifier::DESIGN_PROTOTYPE_STATIC_KIND)
+		<< getSpecifier().keywordComponent();
 
-	os << " {" << EOL;
-
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	//
-	if( mOwnedElements.nonempty() )
+	if( hasOwnedElementsSpecifier() )
 	{
-		os << TAB << "/*owned: [" << EOL_INCR_INDENT
-				<< str_header( mOwnedElements ) << DECR_INDENT_TAB
-				<< "] // end owned*/" << EOL2_FLUSH;
-	}
-	//
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
+		Specifier aSpecifier( getOwnedElementsSpecifier() );
+		aSpecifier.unsetDesignKind();
+		aSpecifier.unsetFeatureKind();
 
+		if( aSpecifier.isDefined() )
+		{
+			hasChevron = true;
+			out << " < owned: " << aSpecifier.str();
+		}
+	}
+
+	if( hasInstanceSpecifier() )
+	{
+		mInstanceSpecifier->header(out, hasChevron);
+	}
+
+	if( hasChevron )
+	{
+		out << " >" << EOL;
+		hasChevron = false;
+	}
+}
+
+void Machine::toStream(OutStream & out) const
+{
+AVM_IF_DEBUG_FLAG2( COMPILING , STATEMACHINE )
+	if( hasOwnedElementsSpecifier() )
+	{
+		out << TAB;
+		headerDebug( out );
+	}
+AVM_ENDIF_DEBUG_FLAG2( COMPILING , STATEMACHINE )
+
+	out << TAB;
+
+	header( out );
+
+	if( hasReallyUnrestrictedName() )
+	{
+		out << " \"" << getUnrestrictedName() << "\"";
+	}
+
+	out << " {";
 
 	if( hasProperty() )
 	{
-		mPropertyDeclaration.toStream(os);
-		os << EOL;
+		out << EOL;
+		mPropertyDeclaration.toStream(out);
 	}
 
-	if( (mBehavioralSpecification != NULL) &&
+	if( (mBehavioralSpecification != nullptr) &&
 		mBehavioralSpecification->hasAnyRoutine() )
 	{
-		mBehavioralSpecification->toStreamAnyRoutine( os );
+		out << EOL;
+		mBehavioralSpecification->toStreamAnyRoutine( out );
 	}
 
-	if( mCompositeSpecification != NULL )
+	if( mCompositeSpecification != nullptr )
 	{
-		mCompositeSpecification->toStream( os );
+		mCompositeSpecification->toStream( out );
 	}
 
-	if( mModelOfComputation != NULL )
+	if( mModelOfComputation != nullptr )
 	{
-		mModelOfComputation->toStream(os);
+		out << EOL;
+		mModelOfComputation->toStream(out);
 	}
 
-	if( mInteractionSpecification != NULL  )
+	if( mInteractionSpecification != nullptr  )
 	{
-		mInteractionSpecification->toStream(os);
-		os << EOL;
+		out << EOL;
+		mInteractionSpecification->toStream(out);
 	}
 
-	if( mBehavioralSpecification != NULL  )
+	if( mBehavioralSpecification != nullptr  )
 	{
-		mBehavioralSpecification->toStreamMoe(os);
-		os << EOL;
+		out << EOL;
+		mBehavioralSpecification->toStreamMoe(out);
 	}
 
-	os << TAB << "}" << EOL_FLUSH;
+	if( (not hasProperty())
+		&& ((mBehavioralSpecification  == nullptr)
+			|| mBehavioralSpecification->empty())
+		&& ((mCompositeSpecification   == nullptr)
+			|| mCompositeSpecification->empty())
+		&& (mModelOfComputation        == nullptr)
+		&& ((mInteractionSpecification == nullptr)
+			|| mInteractionSpecification->empty()) )
+	{
+		out << EOL;
+	}
+
+	out << TAB << "}" << EOL_FLUSH;
 }
 
 

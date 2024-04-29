@@ -13,12 +13,12 @@
 #ifndef EXECUTIONCONFIGURATION_H_
 #define EXECUTIONCONFIGURATION_H_
 
-#include <common/AvmPointer.h>
 #include <common/Element.h>
 #include <common/BF.h>
 
 #include <fml/executable/AvmProgram.h>
 #include <fml/executable/AvmTransition.h>
+#include <fml/executable/ExecutableForm.h>
 
 #include <fml/expression/AvmCode.h>
 
@@ -33,6 +33,7 @@ namespace sep
 
 
 class ExecutionConfiguration : public Element ,
+		AVM_INJECT_STATIC_NULL_REFERENCE( ExecutionConfiguration ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( ExecutionConfiguration )
 {
 
@@ -49,27 +50,38 @@ protected:
 
 	BF mCode;
 
+	// The timestamp
+	BF mTimestamp;
+
 
 public:
 	/**
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	ExecutionConfiguration(const RuntimeID & aRID, const BF & aCode)
+	ExecutionConfiguration(const RuntimeID & aRID, const BF & aCode,
+			const BF & aTimestamp = BF::REF_NULL)
 	: Element( CLASS_KIND_T( ExecutionConfiguration ) ),
 	mRuntimeID( aRID ),
 	mIOMessage( ),
-	mCode( aCode )
+	mCode( aCode ),
+	mTimestamp( aTimestamp )
 	{
-		//!! NOTHING
+		if( mCode.is< AvmCode >()
+			&& mCode.to< AvmCode >().hasOperand()
+			&& mCode.to< AvmCode >().first().is< Message >() )
+		{
+			mIOMessage = mCode.to< AvmCode >().first();
+		}
 	}
 
-	ExecutionConfiguration(const RuntimeID & aRID,
-			const BF & aCode, const Message & ioMessage)
+	ExecutionConfiguration(const RuntimeID & aRID, const BFCode & aCode,
+			const Message & ioMessage, const BF & aTimestamp = BF::REF_NULL)
 	: Element( CLASS_KIND_T( ExecutionConfiguration ) ),
 	mRuntimeID( aRID ),
 	mIOMessage( ioMessage ),
-	mCode( aCode )
+	mCode( aCode ),
+	mTimestamp( aTimestamp )
 	{
 		//!! NOTHING
 	}
@@ -82,7 +94,8 @@ public:
 	: Element( anExecConf ),
 	mRuntimeID( anExecConf.mRuntimeID ),
 	mIOMessage( anExecConf.mIOMessage ),
-	mCode( anExecConf.mCode )
+	mCode( anExecConf.mCode ),
+	mTimestamp( anExecConf.mTimestamp )
 	{
 		//!! NOTHING
 	}
@@ -98,11 +111,24 @@ public:
 
 
 	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static ExecutionConfiguration & nullref()
+	{
+		static ExecutionConfiguration _NULL_(
+				RuntimeID::nullref(), BF::REF_NULL);
+
+		return( _NULL_ );
+	}
+
+
+	/**
 	 * Serialization
 	 */
-	virtual std::string str() const;
+	virtual std::string str() const override;
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
 
 
 
@@ -130,24 +156,14 @@ public:
 	 * GETTER - SETTER
 	 * mMessage
 	 */
-	inline const Message & getIOMessage()
+	inline const Message & getIOMessage() const
 	{
-		if( mIOMessage.invalid()
-			&& mCode.is< AvmCode >() && mCode.to_ptr< AvmCode >()->nonempty()
-			&& mCode.to_ptr< AvmCode >()->first().is< Message >() )
-		{
-			mIOMessage = mCode.to_ptr< AvmCode >()->first();
-		}
-
 		return( mIOMessage );
 	}
 
 	inline bool hasIOMessage() const
 	{
-		return( mIOMessage.valid()
-			|| (mCode.is< AvmCode >()
-				&& mCode.to_ptr< AvmCode >()->nonempty()
-				&& mCode.to_ptr< AvmCode >()->first().is< Message >()) );
+		return( mIOMessage.valid() );
 	}
 
 
@@ -181,9 +197,10 @@ public:
 		return( mCode.is< Operator >() );
 	}
 
-	inline Operator * getOperator() const
+	inline const Operator & getOperator() const
 	{
-		return( isOperator() ? getCode().to_ptr< Operator >() : NULL );
+		return( isOperator() ?
+				getCode().to< Operator >() : Operator::nullref() );
 	}
 
 
@@ -195,23 +212,23 @@ public:
 
 	inline const BFCode & getAvmCode() const
 	{
-		return( isAvmCode() ? getCode().bfCode() : BFCode::REF_NULL );
+		return( isAvmCode() ? mCode.bfCode() : BFCode::REF_NULL );
 	}
 
-	inline const BFCode & toAvmCode() const
+	inline const AvmCode & toAvmCode() const
 	{
-		return( getCode().bfCode() );
+		return( mCode.to< AvmCode >() );
 	}
 
 	inline AVM_OPCODE getAvmOpCode() const
 	{
-		return( isAvmCode() ? mCode.to_ptr< AvmCode >()->getAvmOpCode()
+		return( isAvmCode() ? mCode.to< AvmCode >().getAvmOpCode()
 				: AVM_OPCODE_NULL );
 	}
 
 	inline AVM_OPCODE getOptimizedOpCode() const
 	{
-		return( isAvmCode() ? mCode.to_ptr< AvmCode >()->getOptimizedOpCode()
+		return( isAvmCode() ? mCode.to< AvmCode >().getOptimizedOpCode()
 				: AVM_OPCODE_NULL );
 	}
 
@@ -224,24 +241,30 @@ public:
 
 	inline AvmTransition * getTransition() const
 	{
-		return( isTransition() ? getCode().to_ptr< AvmTransition >() : NULL );
+		return( isTransition() ? getCode().to_ptr< AvmTransition >() : nullptr );
 	}
 
-	inline AvmTransition * toTransition() const
+	inline const AvmTransition & toTransition() const
 	{
-		return( getCode().to_ptr< AvmTransition >() );
+		return( getCode().to< AvmTransition >() );
 	}
 
 	inline bool isRoutine() const
 	{
 		return( mCode.is_exactly< AvmProgram >() &&
-				getCode().to_ptr< AvmProgram >()->isScopeRoutine() );
+				getCode().to< AvmProgram >().isScopeRoutine() );
 	}
 
 	inline bool isRunnable() const
 	{
 		return( mCode.is_exactly< AvmProgram >() &&
-				getCode().to_ptr< AvmProgram >()->isScopeRoutine() );
+				getCode().to< AvmProgram >().isScopeRoutine() );
+	}
+
+	inline bool isRunnableState() const
+	{
+		return( mCode.is_exactly< ExecutableForm >() &&
+				getCode().to< ExecutableForm >().getSpecifier().isFamilyComponentState() );
 	}
 
 
@@ -257,12 +280,32 @@ public:
 
 	inline AvmProgram * getProgram() const
 	{
-		return( isWeakProgram() ? getCode().to_ptr< AvmProgram >() : NULL );
+		return( isWeakProgram() ? getCode().to_ptr< AvmProgram >() : nullptr );
 	}
 
-	inline AvmProgram * toProgram() const
+	inline const AvmProgram & toProgram() const
 	{
-		return( getCode().to_ptr< AvmProgram >() );
+		return( getCode().to< AvmProgram >() );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * mTimestamp
+	 */
+	inline const BF & getTimestamp() const
+	{
+		return( mTimestamp );
+	}
+
+	inline bool hasTimestamp() const
+	{
+		return( mTimestamp.valid() );
+	}
+
+	inline void setTimestamp(const BF & aTimestamp)
+	{
+		mTimestamp = aTimestamp;
 	}
 
 

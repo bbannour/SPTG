@@ -154,10 +154,13 @@ public:
 						(itCode == el->itCode) && (endCode == el->endCode)) );
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using Element::isEQ;
+
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 };
 

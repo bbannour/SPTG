@@ -18,9 +18,9 @@
 
 #include <util/avm_assert.h>
 #include <util/avm_debug.h>
-#include <util/avm_injector.h>
 #include <util/avm_numeric.h>
 
+#include <base/Injector.h>
 #include <base/ReferenceCounter.h>
 #include <base/SmartPointer.h>
 
@@ -76,7 +76,7 @@ private:
 		/**
 		 * ATTRIBUTES
 		 */
-		avm_size_t mSize;
+		std::size_t mSize;
 
 		pointer_pointer_t mElements;
 		/**
@@ -86,15 +86,15 @@ private:
 		TableT()
 		: ReferenceCounter( ),
 		mSize( 0 ),
-		mElements( NULL )
+		mElements( nullptr )
 		{
 			//!! NOTHING
 		}
 
-		TableT(avm_size_t aSize, pointer_t aDefaultValue = NULL)
+		TableT(std::size_t aSize, pointer_t aDefaultValue = nullptr)
 		: ReferenceCounter( ),
 		mSize( aSize ),
-		mElements( NULL )
+		mElements( nullptr )
 		{
 			alloc(aDefaultValue);
 		}
@@ -106,16 +106,16 @@ private:
 		TableT(const TableT & aTable)
 		: ReferenceCounter( ),
 		mSize( aTable.mSize ),
-		mElements( NULL )
+		mElements( nullptr )
 		{
 			acquire( aTable );
 		}
 
-		TableT(avm_size_t aSize, const TableT & aTable,
-				pointer_t aDefaultValue = NULL)
+		TableT(std::size_t aSize, const TableT & aTable,
+				pointer_t aDefaultValue = nullptr)
 		: ReferenceCounter( ),
 		mSize( aSize ),
-		mElements( NULL )
+		mElements( nullptr )
 		{
 			acquire_resize( aTable, aDefaultValue );
 		}
@@ -132,7 +132,7 @@ private:
 
 		inline void destroyTable()
 		{
-			for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+			for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 			{
 				Tdestructor::destroy( mElements[ offset ] );
 			}
@@ -141,27 +141,27 @@ private:
 		/**
 		 * ALLOCATION
 		 */
-		inline void alloc(pointer_t aDefaultValue = NULL)
+		inline void alloc(pointer_t aDefaultValue = nullptr)
 		{
 			if( mSize > 0 )
 			{
 				mElements = new pointer_t[ mSize ];
 
-				for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+				for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 				{
 					mElements[offset] = aDefaultValue;
 				}
 			}
 			else
 			{
-				mElements = NULL;
+				mElements = nullptr;
 			}
 		}
 
 		/**
 		 * Resize
 		 */
-		inline void resize(avm_size_t aSize, pointer_t aDefaultValue = NULL)
+		inline void resize(std::size_t aSize, pointer_t aDefaultValue = nullptr)
 		{
 			if( aSize == 0 )
 			{
@@ -171,12 +171,12 @@ private:
 			}
 			else if( mSize > 0 )
 			{
-				avm_size_t oldSize = mSize;
+				std::size_t oldSize = mSize;
 				pointer_pointer_t oldELements = mElements;
 
 				mElements = new pointer_t[ mSize = aSize ];
 
-				avm_size_t offset = 0;
+				std::size_t offset = 0;
 
 				// The size increased
 				if( aSize >= oldSize )
@@ -228,14 +228,14 @@ private:
 				mElements = new pointer_t[ mSize ];
 
 				// Acquire
-				for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+				for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 				{
 					acquire(offset, aTable.mElements[offset]);
 				}
 			}
 			else
 			{
-				mElements = NULL;
+				mElements = nullptr;
 			}
 		}
 
@@ -246,9 +246,9 @@ private:
 			{
 				mElements = new pointer_t[ mSize ];
 
-				avm_size_t offset = 0;
+				std::size_t offset = 0;
 
-				avm_size_t minBound = std::min(mSize, aTable.mSize);
+				std::size_t minBound = std::min(mSize, aTable.mSize);
 
 				// Acquire
 				for( ; offset < minBound ; ++offset )
@@ -263,14 +263,14 @@ private:
 			}
 			else
 			{
-				mElements = NULL;
+				mElements = nullptr;
 			}
 		}
 
 
-		inline void acquire(avm_size_t offset, pointer_t anElement)
+		inline void acquire(std::size_t offset, pointer_t anElement)
 		{
-			if( anElement != NULL )
+			if( anElement != nullptr )
 			{
 				anElement->incrRefCount();
 			}
@@ -278,18 +278,18 @@ private:
 			mElements[offset] = anElement;
 		}
 
-		inline void release(avm_size_t offset, pointer_t anElement)
+		inline void release(std::size_t offset, pointer_t anElement)
 		{
 			Tdestructor::destroy( mElements[offset] );
 
 			mElements[offset] = anElement;
 		}
 
-		inline void release_acquire(avm_size_t offset, pointer_t anElement)
+		inline void release_acquire(std::size_t offset, pointer_t anElement)
 		{
 			Tdestructor::destroy( mElements[offset] );
 
-			if( anElement != NULL )
+			if( anElement != nullptr )
 			{
 				anElement->incrRefCount();
 			}
@@ -307,7 +307,7 @@ private:
 		}
 
 		inline TableT * clone_resize_acquire(
-				avm_size_t aSize, pointer_t aDefaultValue = NULL) const
+				std::size_t aSize, pointer_t aDefaultValue = nullptr) const
 		{
 			return( new TableT(aSize, *this, aDefaultValue) );
 		}
@@ -335,21 +335,21 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	explicit SmartTable(table_pointer_t aTable = NULL)
+	explicit SmartTable(table_pointer_t aTable = nullptr)
 	: mTable( aTable )
 	{
 		//!! NOTHING
 	}
 
-	SmartTable(avm_size_t aSize, pointer_t aDefaultValue = NULL)
+	SmartTable(std::size_t aSize, pointer_t aDefaultValue = nullptr)
 	: mTable( new table_type(aSize, aDefaultValue) )
 	{
 		//!! NOTHING
 	}
 
-	SmartTable(avm_size_t aSize,
-			const SmartTable & aSmartTable, pointer_t aDefaultValue = NULL)
-	: mTable( NULL )
+	SmartTable(std::size_t aSize,
+			const SmartTable & aSmartTable, pointer_t aDefaultValue = nullptr)
+	: mTable( nullptr )
 	{
 		if( aSize == aSmartTable.size() )
 		{
@@ -367,14 +367,14 @@ public:
 	 * Copy
 	 */
 	SmartTable(const SmartTable & aSmartTable)
-	: mTable( NULL )
+	: mTable( nullptr )
 	{
 		acquire( aSmartTable.mTable );
 	}
 
 	template< class U >
 	SmartTable(const SmartTable< U , Tdestructor > & aSmartTable)
-	: mTable( NULL )
+	: mTable( nullptr )
 	{
 		acquire( aSmartTable.mTable );
 	}
@@ -394,7 +394,7 @@ public:
 
 	inline void destroyTable(table_pointer_t & aTable)
 	{
-		if( aTable != NULL )
+		if( aTable != nullptr )
 		{
 			if( aTable->isUnique() )
 			{
@@ -405,7 +405,7 @@ public:
 				aTable->decrRefCount();
 			}
 
-			aTable = NULL;
+			aTable = nullptr;
 		}
 	}
 
@@ -413,24 +413,24 @@ public:
 	/**
 	 * mSize
 	 */
-	inline avm_size_t size() const
+	inline std::size_t size() const
 	{
-		return( (mTable == NULL) ? 0 : mTable->mSize );
+		return( (mTable == nullptr) ? 0 : mTable->mSize );
 	}
 
 	inline bool empty() const
 	{
-		return( (mTable == NULL) || (mTable->mSize == 0) );
+		return( (mTable == nullptr) || (mTable->mSize == 0) );
 	}
 
 	inline bool nonempty() const
 	{
-		return( (mTable != NULL) && (mTable->mSize > 0) );
+		return( (mTable != nullptr) && (mTable->mSize > 0) );
 	}
 
 	inline bool populated() const
 	{
-		return( (mTable != NULL) && (mTable->mSize > 1) );
+		return( (mTable != nullptr) && (mTable->mSize > 1) );
 	}
 
 
@@ -439,7 +439,7 @@ public:
 	 * for element at given position by reference
 	 * return( [const_]pointer_t )
 	 */
-	inline pointer_t at(avm_size_t offset)
+	inline pointer_t at(std::size_t offset)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -451,7 +451,7 @@ public:
 		return( mTable->mElements[offset] );
 	}
 
-	inline const_pointer_t at(avm_size_t offset) const
+	inline const_pointer_t at(std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -468,7 +468,7 @@ public:
 	 * for element at given position
 	 * return( [const_]reference_t )
 	 */
-	inline reference_t ref(avm_size_t offset)
+	inline reference_t ref(std::size_t offset)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -480,7 +480,7 @@ public:
 		return( *( mTable->mElements[offset] ) );
 	}
 
-	inline const_reference_t ref(avm_size_t offset) const
+	inline const_reference_t ref(std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -497,7 +497,7 @@ public:
 	 * SETTER
 	 * for element at given position
 	 */
-	inline void set(avm_size_t offset, pointer_t anElement) const
+	inline void set(std::size_t offset, pointer_t anElement) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -510,10 +510,10 @@ public:
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( 0 , size() )
 				<< SEND_EXIT;
 
-		avm_size_t offset = 0;
+		std::size_t offset = 0;
 		for( ; offset < mTable->mSize ; ++offset )
 		{
-			if( mTable->mElements[ offset ] == NULL )
+			if( mTable->mElements[ offset ] == nullptr )
 			{
 				mTable->mElements[offset] = anElement;
 
@@ -531,7 +531,7 @@ public:
 	 * for element at given position
 	 * update reference counter:> release acquire
 	 */
-	inline void assign(avm_size_t offset, pointer_t anElement) const
+	inline void assign(std::size_t offset, pointer_t anElement) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -539,7 +539,7 @@ public:
 		mTable->release_acquire(offset, anElement);
 	}
 
-	inline void assign(avm_size_t offset,
+	inline void assign(std::size_t offset,
 			const smart_pointer_t & anElement) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
@@ -554,13 +554,13 @@ public:
 	 * return( Smart Pointer )
 	 */
 	template< class SmartPointerT >
-	inline SmartPointerT to_sp(avm_size_t offset) const
+	inline SmartPointerT to_sp(std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
 
-		if( //(mTable != NULL) && (mTable->mSize > offset) &&
-			(mTable->mElements[ offset ] != NULL) )
+		if( //(mTable != nullptr) && (mTable->mSize > offset) &&
+			(mTable->mElements[ offset ] != nullptr) )
 		{
 			mTable->mElements[ offset ]->incrRefCount();
 
@@ -577,7 +577,7 @@ public:
 	 * operator[]
 	 * return( [const_]reference_t )
 	 */
-	inline reference_t operator[](avm_size_t offset)
+	inline reference_t operator[](std::size_t offset)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -589,7 +589,7 @@ public:
 		return( *( mTable->mElements[offset] ) );
 	}
 
-	inline const_reference_t operator[](avm_size_t offset) const
+	inline const_reference_t operator[](std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -608,22 +608,22 @@ public:
 	 */
 	inline reference_pointer_t front()
 	{
-		return((size() == 0) ? NULL : mTable->mElements[ 0 ] );
+		return((size() == 0) ? nullptr : mTable->mElements[ 0 ] );
 	}
 
 	inline const_reference_pointer_t front() const
 	{
-		return( (size() == 0) ? NULL : mTable->mElements[ 0 ] );
+		return( (size() == 0) ? nullptr : mTable->mElements[ 0 ] );
 	}
 
 	inline reference_pointer_t back()
 	{
-		return( (size() == 0) ? NULL : mTable->mElements[mTable->mSize - 1] );
+		return( (size() == 0) ? nullptr : mTable->mElements[mTable->mSize - 1] );
 	}
 
 	inline const_reference_pointer_t back() const
 	{
-		return( (size() == 0) ? NULL : mTable->mElements[mTable->mSize - 1] );
+		return( (size() == 0) ? nullptr : mTable->mElements[mTable->mSize - 1] );
 	}
 
 
@@ -671,20 +671,20 @@ public:
 	/**
 	 * REFCOUNT
 	 */
-	inline avm_uint32_t getRefCount() const
+	inline std::uint32_t getRefCount() const
 	{
-		return( ( mTable == NULL ) ? 0 : mTable->getRefCount() );
+		return( ( mTable == nullptr ) ? 0 : mTable->getRefCount() );
 	}
 
 
 	inline bool isUnique() const
 	{
-		return( (mTable == NULL) ? false : mTable->isUnique() );
+		return( (mTable == nullptr) ? false : mTable->isUnique() );
 	}
 
 	inline bool isMultiple() const
 	{
-		return( (mTable == NULL) ? false : mTable->isMultiple() );
+		return( (mTable == nullptr) ? false : mTable->isMultiple() );
 	}
 
 	/**
@@ -693,7 +693,7 @@ public:
 	inline void AVM_DEBUG_REF_COUNTER(OutStream & os) const
 	{
 AVM_IF_DEBUG_FLAG( REFERENCE_COUNTING )
-		if( mTable != NULL )
+		if( mTable != nullptr )
 		{
 			os << " /* < ref: " << mTable->getRefCount() << " > */";
 		}
@@ -733,7 +733,7 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 		}
 	}
 
-	inline void makeWritable(avm_size_t offset)
+	inline void makeWritable(std::size_t offset)
 	{
 		makeWritable();
 
@@ -754,7 +754,7 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	 * for witable element at given position
 	 * return( reference_pointer_t )
 	 */
-	inline reference_pointer_t getWritable(avm_size_t offset)
+	inline reference_pointer_t getWritable(std::size_t offset)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -780,7 +780,7 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	 * for witable element at given position
 	 * return( reference_t )
 	 */
-	inline reference_t refWritable(avm_size_t offset)
+	inline reference_t refWritable(std::size_t offset)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -813,7 +813,7 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	 * return( SmartPointerT )
 	 */
 	template< class SmartPointerT >
-	inline SmartPointerT spWritable(avm_size_t offset)
+	inline SmartPointerT spWritable(std::size_t offset)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
@@ -845,7 +845,7 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	 * RESIZE
 	 */
 	inline void makeWritableResize(
-			avm_size_t aSize, pointer_t aDefaultValue = NULL)
+			std::size_t aSize, pointer_t aDefaultValue = nullptr)
 	{
 		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTable )
 				<< " Table in an SmartTable !!!"
@@ -866,66 +866,66 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	/**
 	 * [IN]VALIDITY
 	 */
-	inline bool isNull() const
+	inline bool isNullptr() const
 	{
-		return( mTable == NULL );
+		return( mTable == nullptr );
 	}
 
-	inline bool isNull(avm_size_t offset) const
+	inline bool isNullptr(std::size_t offset) const
 	{
 //		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTable )
 //				<< " Table in an SmartTable !!!"
 //				<< SEND_EXIT;
 
-		return( (mTable == NULL)
-				|| (mTable->mElements[offset] == NULL) );
+		return( (mTable == nullptr)
+				|| (mTable->mElements[offset] == nullptr) );
 	}
 
 	inline bool invalid() const
 	{
-		return( mTable == NULL );
+		return( mTable == nullptr );
 	}
 
-	inline bool invalid(avm_size_t offset) const
+	inline bool invalid(std::size_t offset) const
 	{
 //		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTable )
 //				<< " Table in an SmartTable !!!"
 //				<< SEND_EXIT;
 
-		return( (mTable == NULL)
-				|| (mTable->mElements[offset] == NULL) );
+		return( (mTable == nullptr)
+				|| (mTable->mElements[offset] == nullptr) );
 	}
 
 
-	inline bool isnotNull() const
+	inline bool isnotNullptr() const
 	{
-		return( mTable != NULL );
+		return( mTable != nullptr );
 	}
 
-	inline bool isnotNull(avm_size_t offset) const
+	inline bool isnotNullptr(std::size_t offset) const
 	{
 //		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTable )
 //				<< " Table in an SmartTable !!!"
 //				<< SEND_EXIT;
 
-		return( (mTable != NULL)
-				&& (mTable->mElements[offset] != NULL) );
+		return( (mTable != nullptr)
+				&& (mTable->mElements[offset] != nullptr) );
 	}
 
 
 	inline bool valid() const
 	{
-		return( mTable != NULL );
+		return( mTable != nullptr );
 	}
 
-	inline bool valid(avm_size_t offset) const
+	inline bool valid(std::size_t offset) const
 	{
 //		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTable )
 //				<< " Table in an SmartTable !!!"
 //				<< SEND_EXIT;
 
-		return( (mTable != NULL)
-				&& (mTable->mElements[offset] != NULL) );
+		return( (mTable != nullptr)
+				&& (mTable->mElements[offset] != nullptr) );
 	}
 
 
@@ -942,7 +942,7 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	{
 		release( other.mTable );
 
-		other.mTable = NULL;
+		other.mTable = nullptr;
 	}
 
 
@@ -950,9 +950,9 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	 * GETTER
 	 * mTable
 	 */
-	inline avm_address_t raw_address() const
+	inline std::intptr_t raw_address() const
 	{
-		return( avm_address_t( mTable ) );
+		return( std::intptr_t( mTable ) );
 	}
 
 	/**
@@ -1027,7 +1027,7 @@ protected:
 	// increment the count
 	inline void acquire(table_pointer_t aTable)
 	{
-		if( aTable != NULL )
+		if( aTable != nullptr )
 		{
 			aTable->incrRefCount();
 		}
@@ -1049,7 +1049,7 @@ protected:
 	{
 		destroyTable( mTable );
 
-		if( aTable != NULL )
+		if( aTable != nullptr )
 		{
 			aTable->incrRefCount();
 		}
@@ -1066,15 +1066,15 @@ public:
 	{
 		std::ostringstream oss;
 
-		if( mTable != NULL )
+		if( mTable != nullptr )
 		{
 			if( mTable->mSize > 0 )
 			{
 				oss << "[ " << mTable->mElements[ 0 ]->str();
 
-				for( avm_size_t offset = 1 ; offset < mTable->mSize ; ++offset )
+				for( std::size_t offset = 1 ; offset < mTable->mSize ; ++offset )
 				{
-					if( mTable->mElements[ offset ] != NULL )
+					if( mTable->mElements[ offset ] != nullptr )
 					{
 						oss	<< " , " << mTable->mElements[ offset ]->str();
 					}
@@ -1111,13 +1111,13 @@ public:
 
 	inline void toStream(OutStream & os) const
 	{
-		if( mTable != NULL )
+		if( mTable != nullptr )
 		{
 			if( mTable->mSize > 0 )
 			{
-				for( avm_size_t offset = 0 ; offset < mTable->mSize ; ++offset )
+				for( std::size_t offset = 0 ; offset < mTable->mSize ; ++offset )
 				{
-					if( mTable->mElements[ offset ] != NULL )
+					if( mTable->mElements[ offset ] != nullptr )
 					{
 						mTable->mElements[ offset ]->toStream(os);
 					}

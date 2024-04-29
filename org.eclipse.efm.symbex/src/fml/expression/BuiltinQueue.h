@@ -44,7 +44,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinQueue(class_kind_t aClassKind, avm_size_t aCapacity)
+	BuiltinQueue(class_kind_t aClassKind, std::size_t aCapacity)
 	: BuiltinList( aClassKind , aCapacity )
 	{
 		//!! NOTHING
@@ -72,7 +72,7 @@ public:
 	/**
 	 * INTERFACE
 	 */
-	inline virtual void set(avm_size_t idx, const BF & arg)
+	inline virtual void set(std::size_t idx, const BF & arg) override
 	{
 		iterator it = mData.begin();
 		iterator endIt = mData.end();
@@ -92,7 +92,7 @@ public:
 	}
 
 
-	inline virtual void resize(avm_size_t newSize)
+	inline virtual void resize(std::size_t newSize) override
 	{
 		if( mCapacity > newSize )
 		{
@@ -108,7 +108,7 @@ public:
 		mCapacity = newSize;
 	}
 
-	inline virtual void resize(avm_size_t newSize, const BF & arg)
+	inline virtual void resize(std::size_t newSize, const BF & arg)
 	{
 		if( mCapacity > newSize )
 		{
@@ -134,7 +134,7 @@ public:
 	}
 
 
-	virtual bool push(const BF & arg) = 0;
+	virtual bool push(const BF & arg) override = 0;
 
 	// assign_top
 	virtual bool top(const BF & arg) = 0;
@@ -142,9 +142,9 @@ public:
 	virtual BF & top() = 0;
 	virtual const BF & top() const = 0;
 
-	virtual BF pop() = 0;
+	virtual BF pop() override= 0;
 
-	inline virtual BF pop(avm_size_t count)
+	inline virtual BF pop(std::size_t count)
 	{
 		BF elt;
 
@@ -156,6 +156,9 @@ public:
 
 		return( pop() );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinList::pop;
 
 
 	virtual BF pop_from(const BuiltinList & aList) const = 0;
@@ -185,7 +188,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinFifo(avm_size_t aCapacity)
+	BuiltinFifo(std::size_t aCapacity)
 	: BuiltinQueue( CLASS_KIND_T( BuiltinFifo ) , aCapacity )
 	{
 		//!! NOTHING
@@ -213,7 +216,7 @@ public:
 	/**
 	 * INTERFACE
 	 */
-	inline virtual bool push(const BF & arg)
+	inline virtual bool push(const BF & arg) override
 	{
 		if( size() < mCapacity )
 		{
@@ -223,7 +226,7 @@ public:
 		return( false );
 	}
 
-	inline virtual bool top(const BF & arg)
+	inline virtual bool top(const BF & arg) override
 	{
 		if( nonempty() )
 		{
@@ -234,7 +237,7 @@ public:
 		return( false );
 	}
 
-	inline virtual BF & top()
+	inline virtual BF & top() override
 	{
 		if ( nonempty() )
 		{
@@ -243,7 +246,7 @@ public:
 		return( BF::REF_NULL );
 	}
 
-	inline virtual const BF & top() const
+	inline virtual const BF & top() const override
 	{
 		if ( nonempty() )
 		{
@@ -253,7 +256,7 @@ public:
 	}
 
 
-	inline virtual BF pop()
+	inline virtual BF pop() override
 	{
 		if ( nonempty() )
 		{
@@ -262,8 +265,11 @@ public:
 		return( BF::REF_NULL );
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinQueue::pop;
 
-	inline virtual BF pop_from(const BuiltinList & aList) const
+
+	inline virtual BF pop_from(const BuiltinList & aList) const override
 	{
 		const_reverse_iterator endIt = mData.rend();
 		for( const_reverse_iterator it = mData.rbegin() ; (it != endIt) ; ++it )
@@ -279,7 +285,7 @@ public:
 
 
 
-	inline virtual void remove_popable(const BF & arg)
+	inline virtual void remove_popable(const BF & arg) override
 	{
 		reverse_iterator endIt = mData.rend();
 		for( reverse_iterator it = mData.rbegin() ; (it != endIt) ; ++it )
@@ -316,7 +322,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinLifo(avm_size_t aCapacity)
+	BuiltinLifo(std::size_t aCapacity)
 	: BuiltinQueue( CLASS_KIND_T( BuiltinLifo ) , aCapacity )
 	{
 		//!! NOTHING
@@ -344,7 +350,7 @@ public:
 	/**
 	 * INTERFACE
 	 */
-	inline virtual bool push(const BF & arg)
+	inline virtual bool push(const BF & arg) override
 	{
 		if( size() < mCapacity )
 		{
@@ -355,7 +361,7 @@ public:
 	}
 
 
-	inline virtual bool top(const BF & arg)
+	inline virtual bool top(const BF & arg) override
 	{
 		if( nonempty() )
 		{
@@ -366,7 +372,7 @@ public:
 		return( false );
 	}
 
-	inline virtual BF & top()
+	inline virtual BF & top() override
 	{
 		if ( nonempty() )
 		{
@@ -375,7 +381,7 @@ public:
 		return( BF::REF_NULL );
 	}
 
-	inline virtual const BF & top() const
+	inline virtual const BF & top() const override
 	{
 		if ( nonempty() )
 		{
@@ -385,7 +391,7 @@ public:
 	}
 
 
-	inline virtual BF pop()
+	inline virtual BF pop() override
 	{
 		if ( nonempty() )
 		{
@@ -394,8 +400,11 @@ public:
 		return( BF::REF_NULL );
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using BuiltinQueue::pop;
 
-	inline virtual BF pop_from(const BuiltinList & aList) const
+
+	inline virtual BF pop_from(const BuiltinList & aList) const override
 	{
 		const_iterator endIt = mData.end();
 		for( const_iterator it = mData.begin() ; (it != endIt) ; ++it )
@@ -410,7 +419,7 @@ public:
 	}
 
 
-	inline virtual void remove_popable(const BF & arg)
+	inline virtual void remove_popable(const BF & arg) override
 	{
 		iterator endIt = mData.end();
 		for( iterator it = mData.begin() ; (it != endIt) ; ++it )

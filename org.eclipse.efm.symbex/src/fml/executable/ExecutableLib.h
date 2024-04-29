@@ -55,11 +55,12 @@ public:
 
 
 	/**
-	 * PRE DEFINED MACHINE VARIABLE
+	 * PRE-DEFINED MACHINE VARIABLE
 	 */
 	static Symbol MACHINE_NULL;
 	static Symbol MACHINE_ENVIRONMENT;
 
+	static Symbol MACHINE_THIS;
 	static Symbol MACHINE_SELF;
 	static Symbol MACHINE_PARENT;
 	static Symbol MACHINE_COMMUNICATOR;
@@ -71,13 +72,21 @@ public:
 	static Symbol MACHINE_SYSTEM;
 
 	/**
-	 * PRE DEFINED NULL FORM
+	 * PRE-DEFINED NULL ELEMENT
 	 */
 	static Symbol CHANNEL_NIL;
 	static Symbol PORT_NIL;
 	static Symbol BUFFER_NIL;
 
-
+	/**
+	 * PRE-DEFINED VALUE ELEMENT
+	 */
+	static Symbol ANY_VALUE;
+	static Symbol DEFAULT_VALUE;
+	static Symbol OPTIONAL_VALUE;
+	static Symbol OMIT_VALUE;
+	static Symbol NONE_VALUE;
+	static Symbol ANY_OR_NONE_VALUE;
 
 	/**
 	 * BOTTOM

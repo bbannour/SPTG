@@ -12,7 +12,9 @@
  ******************************************************************************/
 #include "RoutingData.h"
 
-#include <fml/executable/InstanceOfConnect.h>
+#include <fml/executable/InstanceOfConnector.h>
+#include <fml/executable/InstanceOfMachine.h>
+
 #include <fml/infrastructure/ComProtocol.h>
 
 
@@ -30,12 +32,28 @@ RoutingData RoutingData::_NULL_;
  * CONSTRUCTOR
  * Default
  */
-RoutingDataElement::RoutingDataElement(InstanceOfConnect * aConnector,
-		InstanceOfMachine * aMachine, InstanceOfPort * aPort)
+RoutingDataElement::RoutingDataElement(
+		std::size_t mid, const InstanceOfMachine & aMachine,
+		const InstanceOfPort & aPort, ComProtocol::PROTOCOL_KIND aProtocol)
 : Element( CLASS_KIND_T( RoutingData ) ),
-mMID( aConnector->getMID() ),
-mProtocol( aConnector->getProtocol() ),
-mConnect( aConnector ),
+mMID( mid ),
+
+mProtocol( aProtocol ),
+mConnector( InstanceOfConnector::nullref() ),
+mMachinePort(aMachine, aPort),
+mBufferInstance( ),
+mRuntimeRID( )
+{
+	//!! NOTHING
+}
+
+
+RoutingDataElement::RoutingDataElement(const InstanceOfConnector & aConnector,
+		const InstanceOfMachine & aMachine, const InstanceOfPort & aPort)
+: Element( CLASS_KIND_T( RoutingData ) ),
+mMID( aConnector.getMID() ),
+mProtocol( aConnector.getProtocol() ),
+mConnector( aConnector ),
 mMachinePort(aMachine, aPort),
 mBufferInstance( ),
 mRuntimeRID( )
@@ -73,56 +91,81 @@ std::string RoutingData::str() const
 	return( oss.str() );
 }
 
-void RoutingDataElement::toStream(OutStream & os) const
+void RoutingDataElement::toStreamPrefix(OutStream & out) const
 {
-	os << TAB << "routing< "
-			<< ComProtocol::to_string(mProtocol)
-			<< " , mid:" << mMID<< " > ";
-	if( getMachine()->isnotThis() )
+	out << TAB << "routing< "
+		<< ComProtocol::to_string(mProtocol)
+		<< " , mid:" << mMID << " > ";
+
+	if( getMachine().isnotThis() )
 	{
-		os << ( mRuntimeRID.valid() ?  mRuntimeRID.strUniqId() :
-				getMachine()->getFullyQualifiedNameID() ) << "->";
+		out << ( mRuntimeRID.valid() ?  mRuntimeRID.strUniqId() :
+				getMachine().getFullyQualifiedNameID() ) << "->";
 	}
-	os << getPort()->getFullyQualifiedNameID() << " {";
-	AVM_DEBUG_REF_COUNTER(os);
-	os << EOL;
+
+	out << getPort().getFullyQualifiedNameID() << " {";
+	AVM_DEBUG_REF_COUNTER(out);
+	out << EOL;
 
 //	if( hasRuntimeRID() )
 //	{
-//		os << TAB2 << "rid#runtime = " << getRuntimeRID().str() << ";" << EOL;
+//		out << TAB2 << "rid#runtime = " << getRuntimeRID().str() << ";" << EOL;
 //	}
 
-	if( mConnect != NULL )
-	{
-		os << TAB2 << "connector = "
-				<< mConnect->getFullyQualifiedNameID() << ";" <<  EOL;
-	}
+	out << TAB2 << "connector = " << mConnector.getFullyQualifiedNameID()
+		<< ";" <<  EOL;
 
-//	os << TAB2 << "machine = " << getMachine()->getFullyQualifiedNameID() << ";" <<  EOL;
-//	os << TAB2 << "port = " << getPort()->getFullyQualifiedNameID() << ";" <<  EOL;
+//	out << TAB2 << "machine = "
+//		<< getMachine()->getFullyQualifiedNameID() << ";" <<  EOL;
+//		<< TAB2 << "port = " << getPort()->getFullyQualifiedNameID() << ";"
+//		<<  EOL;
 
 	if( mBufferInstance.nonempty() )
 	{
-		os << TAB2 << "buffer = [|";
+		out << TAB2 << "buffer = [|";
 		if( mBufferInstance.singleton() )
 		{
-			os << " " << str_header( mBufferInstance.first() ) << " ";
+			out << " " << str_header( mBufferInstance.first() ) << " ";
 		}
 		else
 		{
-			ListOfInstanceOfBuffer::const_iterator it = mBufferInstance.begin();
-			ListOfInstanceOfBuffer::const_iterator itEnd = mBufferInstance.end();
-			for( ; it != itEnd ; ++it )
+			for( const auto & itBuffer : mBufferInstance )
 			{
-				os << EOL_TAB3 << str_header( *it );
+				out << EOL_TAB3 << str_header( itBuffer );
 			}
-			os << EOL_TAB2;
+			out << EOL_TAB2;
 		}
-		os << "|];" << EOL;
+		out << "|];" << EOL;
 	}
 
-	os << TAB << "}" << EOL_FLUSH;
+	out << std::flush;
 }
+
+
+void RoutingData::toStream(OutStream & out) const
+{
+	if( base_this_type::mPTR != nullptr )
+	{
+		base_this_type::mPTR->toStreamPrefix( out );
+
+		if( mManyCastRoutingData.nonempty() )
+		{
+			out << EOL_INCR_INDENT;
+			for( const auto & itManyRoutingData : mManyCastRoutingData )
+			{
+				itManyRoutingData.toStream(out);
+			}
+			out << DECR_INDENT;
+		}
+
+		out << TAB << "}" << EOL_FLUSH;
+	}
+	else
+	{
+		out << "RoutingData<null>" << std::flush;
+	}
+}
+
 
 
 }

@@ -48,7 +48,7 @@ public:
 	TraceableElement()
 	: mCommentFlag( false ),
 	mDescription( ),
-	mLocation( NULL )
+	mLocation( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -60,7 +60,7 @@ public:
 	TraceableElement(const TraceableElement & anElement)
 	: mCommentFlag( anElement.mCommentFlag ),
 	mDescription( anElement.mDescription),
-	mLocation( (anElement.mLocation == NULL) ? NULL :
+	mLocation( (anElement.mLocation == nullptr) ? nullptr :
 			new LocationElement( *(anElement.mLocation) ) )
 	{
 		//!! NOTHING
@@ -117,13 +117,13 @@ public:
 
 	inline bool hasLocation() const
 	{
-		return( mLocation != NULL );
+		return( mLocation != nullptr );
 	}
 
 
 	inline void setLocation(LocationElement * aLocation)
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			delete( mLocation );
 		}
@@ -132,22 +132,22 @@ public:
 
 	inline void copyLocation(LocationElement * aLocation)
 	{
-		if( aLocation != NULL )
+		if( aLocation != nullptr )
 		{
 			setLocation(aLocation->getFileLocation(),
 					aLocation->getBeginLine(), aLocation->getEndLine());
 		}
-		else if( mLocation != NULL )
+		else if( mLocation != nullptr )
 		{
 			delete( mLocation );
-			mLocation = NULL;
+			mLocation = nullptr;
 		}
 	}
 
 	inline void setLocation(const std::string & aFileLocation,
-			const avm_size_t beginLine, const avm_size_t endLine)
+			const std::size_t beginLine, const std::size_t endLine)
 	{
-		if( mLocation == NULL )
+		if( mLocation == nullptr )
 		{
 			mLocation = new LocationElement(aFileLocation, beginLine, endLine);
 		}
@@ -162,15 +162,15 @@ public:
 	 * FATAL ERROR location
 	 */
 	inline std::string fatalErrorLocation(
-			const TraceableElement * container = NULL) const
+			const TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->fatalErrorLocation() );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->fatalErrorLocation(NULL) );
+			return( container->fatalErrorLocation(nullptr) );
 		}
 		else
 		{
@@ -179,15 +179,15 @@ public:
 	}
 
 	inline OutStream & fatalErrorLocation(OutStream & os,
-			const TraceableElement * container = NULL) const
+			const TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->fatalErrorLocation(os) );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->fatalErrorLocation(os, NULL) );
+			return( container->fatalErrorLocation(os, nullptr) );
 		}
 		else
 		{
@@ -196,15 +196,15 @@ public:
 	}
 
 	inline PairOutStream & fatalErrorLocation(PairOutStream & os,
-			const TraceableElement * container = NULL) const
+			const TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->fatalErrorLocation(os) );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->fatalErrorLocation(os, NULL) );
+			return( container->fatalErrorLocation(os, nullptr) );
 		}
 		else
 		{
@@ -213,15 +213,15 @@ public:
 	}
 
 	inline TripleOutStream & fatalErrorLocation(TripleOutStream & os,
-			TraceableElement * container = NULL) const
+			TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->fatalErrorLocation(os) );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->fatalErrorLocation(os, NULL) );
+			return( container->fatalErrorLocation(os, nullptr) );
 		}
 		else
 		{
@@ -233,16 +233,28 @@ public:
 	/**
 	 * ERROR location
 	 */
-	inline std::string errorLocation(
-			const TraceableElement * container = NULL) const
+	inline std::string errorLocation(const TraceableElement & container) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->errorLocation() );
 		}
-		else if( container != NULL )
+		else
 		{
-			return( container->errorLocation(NULL) );
+			return( container.errorLocation(nullptr) );
+		}
+	}
+
+	inline std::string errorLocation(
+			const TraceableElement * container = nullptr) const
+	{
+		if( mLocation != nullptr )
+		{
+			return( mLocation->errorLocation() );
+		}
+		else if( container != nullptr )
+		{
+			return( container->errorLocation(nullptr) );
 		}
 		else
 		{
@@ -251,15 +263,15 @@ public:
 	}
 
 	inline OutStream & errorLocation(OutStream & os,
-			const TraceableElement * container = NULL) const
+			const TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->errorLocation(os) );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->errorLocation(os, NULL) );
+			return( container->errorLocation(os, nullptr) );
 		}
 		else
 		{
@@ -268,15 +280,15 @@ public:
 	}
 
 	inline PairOutStream & errorLocation(PairOutStream & os,
-			const TraceableElement * container = NULL) const
+			const TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->errorLocation(os) );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->errorLocation(os, NULL) );
+			return( container->errorLocation(os, nullptr) );
 		}
 		else
 		{
@@ -285,15 +297,15 @@ public:
 	}
 
 	inline TripleOutStream & errorLocation(TripleOutStream & os,
-			const TraceableElement * container = NULL) const
+			const TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->errorLocation(os) );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->errorLocation(os, NULL) );
+			return( container->errorLocation(os, nullptr) );
 		}
 		else
 		{
@@ -305,16 +317,28 @@ public:
 	/**
 	 * WARNING location
 	 */
-	inline std::string warningLocation(
-			const TraceableElement * container = NULL) const
+	inline std::string warningLocation(const TraceableElement & container) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->warningLocation() );
 		}
-		else if( container != NULL )
+		else
 		{
-			return( container->warningLocation(NULL) );
+			return( container.warningLocation(nullptr) );
+		}
+	}
+
+	inline std::string warningLocation(
+			const TraceableElement * container = nullptr) const
+	{
+		if( mLocation != nullptr )
+		{
+			return( mLocation->warningLocation() );
+		}
+		else if( container != nullptr )
+		{
+			return( container->warningLocation(nullptr) );
 		}
 		else
 		{
@@ -323,15 +347,15 @@ public:
 	}
 
 	inline OutStream & warningLocation(OutStream & os,
-			const TraceableElement * container = NULL) const
+			const TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->warningLocation(os) );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->warningLocation(os, NULL) );
+			return( container->warningLocation(os, nullptr) );
 		}
 		else
 		{
@@ -340,15 +364,15 @@ public:
 	}
 
 	inline PairOutStream & warningLocation(PairOutStream & os,
-			const TraceableElement * container = NULL) const
+			const TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->warningLocation(os) );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->warningLocation(os, NULL) );
+			return( container->warningLocation(os, nullptr) );
 		}
 		else
 		{
@@ -357,15 +381,15 @@ public:
 	}
 
 	inline TripleOutStream & warningLocation(TripleOutStream & os,
-			const TraceableElement * container = NULL) const
+			const TraceableElement * container = nullptr) const
 	{
-		if( mLocation != NULL )
+		if( mLocation != nullptr )
 		{
 			return( mLocation->warningLocation(os) );
 		}
-		else if( container != NULL )
+		else if( container != nullptr )
 		{
-			return( container->warningLocation(os, NULL) );
+			return( container->warningLocation(os, nullptr) );
 		}
 		else
 		{
@@ -379,7 +403,7 @@ public:
 	inline std::string traceLine(const std::string & tab,
 			bool singleLineComment = true) const
 	{
-		return( (mLocation != NULL ) ?
+		return( (mLocation != nullptr ) ?
 				mLocation->traceLine(tab, singleLineComment) : "" );
 	}
 

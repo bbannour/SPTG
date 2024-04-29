@@ -37,9 +37,9 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	ChoiceTypeSpecifier(DataType * aCompiledType)
+	ChoiceTypeSpecifier(const DataType & astType)
 	: BaseSymbolTypeSpecifier(CLASS_KIND_T( ChoiceTypeSpecifier ),
-			TYPE_UNION_SPECIFIER, aCompiledType, 1, 1, 0)
+			TYPE_UNION_SPECIFIER, astType, 1, 1, 0)
 	{
 		//!!! NOTHING
 	}
@@ -57,7 +57,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
 
 
 };

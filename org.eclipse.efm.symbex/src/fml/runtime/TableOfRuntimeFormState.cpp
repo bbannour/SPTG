@@ -28,13 +28,13 @@ namespace sep
  * mEvalState
  * mTableOfAssignedFlag
  */
-void TableOfRuntimeFormState::resize(avm_size_t aSize)
+void TableOfRuntimeFormState::resize(std::size_t aSize)
 {
 	if( mSize > 0 )
 	{
 		PROCESS_EVAL_STATE * oldEvalState = mEvalState;
 
-		avm_size_t offset = mSize;
+		std::size_t offset = mSize;
 		mSize = aSize;
 
 		if( aSize > offset )
@@ -44,7 +44,7 @@ void TableOfRuntimeFormState::resize(avm_size_t aSize)
 
 		mEvalState = new PROCESS_EVAL_STATE[ mSize ];
 
-		if( mTableOfAssignedFlag != NULL )
+		if( mTableOfAssignedFlag != nullptr )
 		{
 			TableOfAssignedFlag oldTableOfAssigned = mTableOfAssignedFlag;
 			mTableOfAssignedFlag = new Bitset *[ mSize ];
@@ -60,7 +60,7 @@ void TableOfRuntimeFormState::resize(avm_size_t aSize)
 			{
 				mEvalState[ offset ] = PROCESS_UNDEFINED_STATE;
 
-				mTableOfAssignedFlag[ offset ] = NULL;
+				mTableOfAssignedFlag[ offset ] = nullptr;
 			}
 
 			delete [] oldTableOfAssigned;
@@ -94,44 +94,44 @@ void TableOfRuntimeFormState::resize(avm_size_t aSize)
  * mTableOfAssignedFlag
  */
 
-void TableOfRuntimeFormState::setAssigned(const ExecutionData & anED,
-		avm_size_t rid, avm_size_t offset, bool flag)
+void TableOfRuntimeFormState::setAssigned(
+		const ExecutionData & anED, std::size_t rid, std::size_t offset)
 {
-	if( mTableOfAssignedFlag == NULL )
+	if( mTableOfAssignedFlag == nullptr )
 	{
 		allocAssignedFlag(rid,
 				anED.getRuntime(rid).getVariables().size(), false);
 	}
-	else if( mTableOfAssignedFlag[rid] == NULL )
+	else if( mTableOfAssignedFlag[rid] == nullptr )
 	{
 		mTableOfAssignedFlag[rid] = new Bitset(
 				anED.getRuntime(rid).getVariables().size(), false );
 	}
 
-	( *(mTableOfAssignedFlag[rid]) )[offset] = flag;
+	( *(mTableOfAssignedFlag[rid]) )[offset] = true;
 }
 
 
-void TableOfRuntimeFormState::setAssignedUnion(avm_size_t rid,
-		Bitset * assignedTableA, Bitset * assignedTableB)
+void TableOfRuntimeFormState::setAssignedUnion(std::size_t rid,
+		const Bitset * assignedTableA, const Bitset * assignedTableB)
 {
-	if( assignedTableA != NULL )
+	if( assignedTableA != nullptr )
 	{
-		if( mTableOfAssignedFlag == NULL )
+		if( mTableOfAssignedFlag == nullptr )
 		{
 			reallocAssignedFlag();
 		}
 
 		mTableOfAssignedFlag[rid] = new Bitset( *assignedTableA );
 
-		if( assignedTableB != NULL )
+		if( assignedTableB != nullptr )
 		{
 			( *(mTableOfAssignedFlag[rid]) ) |= (*assignedTableB);
 		}
 	}
-	else if( assignedTableB != NULL )
+	else if( assignedTableB != nullptr )
 	{
-		if( mTableOfAssignedFlag == NULL )
+		if( mTableOfAssignedFlag == nullptr )
 		{
 			reallocAssignedFlag();
 		}
@@ -146,13 +146,13 @@ void TableOfRuntimeFormState::setAssignedUnion(avm_size_t rid,
 /**
  * COMPARISON
  */
-bool TableOfRuntimeFormState::equalsState(TableOfRuntimeFormState * other) const
+bool TableOfRuntimeFormState::equalsState(const TableOfRuntimeFormState * other) const
 {
 	if( this->mEvalState != other->mEvalState )
 	{
 		if( this->size() == other->size() )
 		{
-			for( avm_size_t i = 0 ; i != this->size() ; ++i )
+			for( std::size_t i = 0 ; i != this->size() ; ++i )
 			{
 				if( isNEQ(this->stateAt(i), other ->stateAt(i)) )
 				{
@@ -164,7 +164,7 @@ bool TableOfRuntimeFormState::equalsState(TableOfRuntimeFormState * other) const
 		}
 		else if( this->size() < other->size() )
 		{
-			avm_size_t i = 0;
+			std::size_t i = 0;
 
 			for( ; i != this->size() ; ++i )
 			{
@@ -186,7 +186,7 @@ bool TableOfRuntimeFormState::equalsState(TableOfRuntimeFormState * other) const
 		}
 		else if( this->size() > other->size() )
 		{
-			avm_size_t i = 0;
+			std::size_t i = 0;
 
 			for( ; i != this->size() ; ++i )
 			{
@@ -222,7 +222,7 @@ bool TableOfRuntimeFormState::equalsState(TableOfRuntimeFormState * other) const
  */
 void TableOfRuntimeFormState::toStream(OutStream & os) const
 {
-	for( avm_size_t offset = 0 ; offset != mSize ; ++offset )
+	for( std::size_t offset = 0 ; offset != mSize ; ++offset )
 	{
 		os << TAB << "rid#" << offset << " = "
 				<< RuntimeDef::strPES( mEvalState[offset] )
@@ -234,7 +234,7 @@ void TableOfRuntimeFormState::toStream(OutStream & os) const
 void TableOfRuntimeFormState::toStream(
 		const ExecutionData & anED, OutStream & os) const
 {
-	for( avm_size_t offset = 0 ; offset != mSize ; ++offset )
+	for( std::size_t offset = 0 ; offset != mSize ; ++offset )
 	{
 //AVM_IF_DEBUG_LEVEL_GT_MEDIUM_OR( mEvalState[i] != PROCESS_IDLE_STATE )
 		os << TAB << "<@rid#" << offset << " = "

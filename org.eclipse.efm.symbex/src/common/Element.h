@@ -63,9 +63,9 @@ public:
 	}
 
 
-	inline avm_address_t raw_address() const
+	inline std::intptr_t raw_address() const
 	{
-		return( avm_address_t( this ) );
+		return( std::intptr_t( this ) );
 	}
 
 
@@ -80,20 +80,20 @@ public:
 	 * for container of BF
 	 */
 	// Generally with range check
-	virtual BF & at(avm_size_t offset);
-	virtual const BF & at(avm_size_t offset) const;
+	virtual BF & at(std::size_t offset);
+	virtual const BF & at(std::size_t offset) const;
 
 	// Generally with range check
-	virtual const BF & operator[](avm_size_t offset) const;
-	virtual BF & operator[](avm_size_t offset);
+	virtual const BF & operator[](std::size_t offset) const;
+	virtual BF & operator[](std::size_t offset);
 
-	virtual BF & getWritable(avm_size_t offset);
+	virtual BF & getWritable(std::size_t offset);
 
-	virtual void makeWritable(avm_size_t offset);
+	virtual void makeWritable(std::size_t offset);
 
-	virtual void set(avm_size_t offset, const BF & bf);
+	virtual void set(std::size_t offset, const BF & bf);
 
-	virtual avm_size_t size() const;
+	virtual std::size_t size() const;
 
 
 	/**
@@ -101,61 +101,65 @@ public:
 	 * OPERATOR
 	 */
 
-	inline virtual bool isEQ(const Element & bf) const
+	inline virtual bool isEQ(const Element & anElement) const
 	{
-		return( this == &bf );
+		return( this == (& anElement) );
 	}
 
-	inline virtual bool isEQ(const Element * bf) const
+	inline virtual bool isEQ(const Element * anElement) const
 	{
-		return( (bf != NULL) && isEQ(* bf) );
-	}
-
-
-	inline virtual bool isNEQ(const Element & bf) const
-	{
-		return( this != &bf );
-	}
-
-	inline virtual bool isNEQ(const Element * bf) const
-	{
-		return( (bf == NULL) || isNEQ(* bf) );
+		return( (anElement != nullptr) && isEQ(* anElement) );
 	}
 
 
-	bool virtual isTEQ(const Element & bf) const
+	inline virtual bool isNEQ(const Element & anElement) const
 	{
-		return( this == &bf );
+		return( this != (& anElement) );
 	}
 
-	bool virtual isTEQ(const Element * bf) const
+	inline virtual bool isNEQ(const Element * anElement) const
 	{
-		return( this == bf );
+		return( (anElement == nullptr) || isNEQ(* anElement) );
 	}
 
 
-	inline virtual bool isNTEQ(const Element & bf) const
+	virtual bool isTEQ(const Element & anElement) const
 	{
-		return( this != &bf );
+		return( this == (& anElement) );
 	}
 
-	inline virtual bool isNTEQ(const Element * bf) const
+	virtual bool isTEQ(const Element * anElement) const
 	{
-		return( this != bf );
+		return( this == anElement );
+	}
+
+
+	inline virtual bool isNTEQ(const Element & anElement) const
+	{
+		return( this != (& anElement) );
+	}
+
+	inline virtual bool isNTEQ(const Element * anElement) const
+	{
+		return( this != anElement );
 	}
 
 
 	/**
 	 * SERIALIZATION
 	 */
-	virtual void toStream(OutStream & os) const = 0;
+	virtual void toStream(OutStream & os) const override = 0;
 
+
+	inline void toFscn(OutStream & os) const
+	{
+		toStream( os );
+	}
 
 	inline void serialize(OutStream & os) const
 	{
 		toStream( os );
 	}
-
 
 	inline virtual std::string str() const
 	{
@@ -180,12 +184,50 @@ public:
 	 */
 	inline void dbgDestroy() const
 	{
-		AVM_OS_WARN << "destroy< @ " << avm_address_t( this )
+		AVM_OS_WARN << "destroy< @ " << std::intptr_t( this )
 				<< " , " << std::setw(16) << classKindName() << " > : "
 				<< std::flush << str() << std::endl;
 	}
 
 };
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//// DESTROY POLICY for SMART POINTER.
+////////////////////////////////////////////////////////////////////////////////
+
+struct DestroyElementPolicy
+{
+	static void destroy(Element * anObject);
+};
+
+inline void destroyElement(Element * anElement)
+{
+	DestroyElementPolicy::destroy(anElement);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//// TYPE DEFINITION for SMART POINTER.
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+
+#define AVM_DECLARE_CLONABLE_BASE_CLASS(ClassName)  \
+public:                                             \
+	virtual ClassName * clone() const               \
+	{ return( new ClassName(*this) ); }             \
+private:
+
+
+#define AVM_DECLARE_CLONABLE_CLASS(ClassName)       \
+public:                                             \
+	virtual ClassName * clone() const override      \
+	{ return( new ClassName(*this) ); }             \
+private:
 
 
 template< class T >
@@ -221,6 +263,15 @@ class ClonableElement :  public Element
 		return( new T( * static_cast< const T * >(this) ) );
 	}
 };
+
+
+
+
+#define AVM_DECLARE_UNCLONABLE_CLASS(ClassName)     \
+public:                                             \
+	virtual ClassName * clone() const override      \
+	{ return( const_cast< ClassName * >(this) ); }  \
+private:
 
 
 template< class T >

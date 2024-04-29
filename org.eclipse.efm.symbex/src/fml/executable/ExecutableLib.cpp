@@ -30,11 +30,12 @@ namespace sep
 {
 
 /**
- * PRE DEFINED MACHINE VARIABLE
+ * PRE-DEFINED MACHINE VARIABLE
  */
 Symbol ExecutableLib::MACHINE_NULL;
 Symbol ExecutableLib::MACHINE_ENVIRONMENT;
 
+Symbol ExecutableLib::MACHINE_THIS;
 Symbol ExecutableLib::MACHINE_SELF;
 Symbol ExecutableLib::MACHINE_PARENT;
 Symbol ExecutableLib::MACHINE_COMMUNICATOR;
@@ -47,11 +48,22 @@ Symbol ExecutableLib::MACHINE_SYSTEM;
 
 
 /**
- * PRE DEFINED NULL FORM
+ * PRE-DEFINED NULL ELEMENT
  */
 Symbol ExecutableLib::CHANNEL_NIL;
 Symbol ExecutableLib::PORT_NIL;
 Symbol ExecutableLib::BUFFER_NIL;
+
+
+/**
+ * PRE-DEFINED VALUE ELEMENT
+ */
+Symbol ExecutableLib::ANY_VALUE;
+Symbol ExecutableLib::DEFAULT_VALUE;
+Symbol ExecutableLib::OPTIONAL_VALUE;
+Symbol ExecutableLib::OMIT_VALUE;
+Symbol ExecutableLib::NONE_VALUE;
+Symbol ExecutableLib::ANY_OR_NONE_VALUE;
 
 
 /**
@@ -71,90 +83,129 @@ Symbol ExecutableLib::_INFINITY_;
  */
 void ExecutableLib::load()
 {
-	MACHINE_NULL = new InstanceOfMachine(NULL, NULL, NULL, NULL, 0,
+	MACHINE_NULL = new InstanceOfMachine(ExecutableForm::nullref_ptr(),
+			Machine::nullref(), ExecutableForm::nullref(),
+			InstanceOfMachine::nullref_ptr(), 0,
 			Specifier::DESIGN_INSTANCE_STATIC_SPECIFIER);
 	MACHINE_NULL.machine().getwModifier().setModifierPublicFinalStatic();
 	MACHINE_NULL.setAllNameID("null#machine", "null#machine");
-//	MACHINE_NULL.setAllNameID("null< machine >", "null< machine >");
+//	MACHINE_NULL.setAllNameID("$null<machine>", "$null<machine>");
 	MACHINE_NULL.machine().setInstanceModel(MACHINE_NULL.rawMachine());
 
+	MACHINE_THIS = new InstanceOfData(
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::MACHINE, "$this", 0,
+			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
+
 	MACHINE_SELF = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			TypeManager::MACHINE, "const::self", 0,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::MACHINE, "$self", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 	MACHINE_PARENT = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			TypeManager::MACHINE, "const::parent", 0,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::MACHINE, "$parent", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 	MACHINE_COMMUNICATOR = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
 			TypeManager::MACHINE, "const::machine#com", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 
 	MACHINE_COMPONENT_SELF = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
 			TypeManager::MACHINE, "const::machine#component#self", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 	MACHINE_COMPONENT_PARENT = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
 			TypeManager::MACHINE, "const::machine#component#parent", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 	MACHINE_COMPONENT_COMMUNICATOR = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
 			TypeManager::MACHINE, "const::machine#component#communicator", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 
 	MACHINE_SYSTEM = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			TypeManager::MACHINE, "const::system", 0,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::MACHINE, "$system", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 	MACHINE_ENVIRONMENT = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			TypeManager::MACHINE, "const::env", 0,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::MACHINE, "$env", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 
 	CHANNEL_NIL = InstanceOfPort::newChannel(
-			NULL, NULL, AVM_NUMERIC_MAX_OFFSET);
+			nullptr, Channel::nullref(), AVM_NUMERIC_MAX_OFFSET);
 	CHANNEL_NIL.setAllNameID("null#channel", "null#channel");
-//	CHANNEL_NIL.setAllNameID("null< channel >", "null< channel >");
+//	CHANNEL_NIL.setAllNameID("$null<channel>", "$null<channel>");
 
-	PORT_NIL = new InstanceOfPort(NULL, NULL,
+	PORT_NIL = new InstanceOfPort(nullptr, Port::nullref(),
 			AVM_NUMERIC_MAX_OFFSET, 0, IComPoint::IO_UNDEFINED_NATURE);
 	PORT_NIL.setAllNameID("null#port", "null#port");
-//	PORT_NIL.setAllNameID("null< port >", "null< port >");
+//	PORT_NIL.setAllNameID("$null<port>", "$null<port>");
 
-	BUFFER_NIL = new InstanceOfBuffer(NULL, NULL, AVM_NUMERIC_MAX_OFFSET,
-			TYPE_UNDEFINED_SPECIFIER, -1);
+	BUFFER_NIL = new InstanceOfBuffer(
+			ExecutableForm::nullref(), Buffer::nullref(),
+			AVM_NUMERIC_MAX_OFFSET, TYPE_UNDEFINED_SPECIFIER, -1);
 	BUFFER_NIL.setAllNameID("null#buffer", "null#buffer");
-//	BUFFER_NIL.setAllNameID("null< buffer >", "null< buffer >");
+//	BUFFER_NIL.setAllNameID("$null<buffer>", "$null<buffer>");
+
+
+	ANY_VALUE = new InstanceOfData(
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$any", 0,
+			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
+
+	DEFAULT_VALUE = new InstanceOfData(
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$default", 0,
+			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
+
+	OPTIONAL_VALUE = new InstanceOfData(
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$optional", 0,
+			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
+
+	NONE_VALUE = new InstanceOfData(
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$none", 0,
+			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
+
+	OMIT_VALUE = new InstanceOfData(
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$omit", 0,
+			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
+
+	ANY_OR_NONE_VALUE = new InstanceOfData(
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$any$none", 0,
+			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 
 	BOTTOM = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			TypeManager::UNIVERSAL, "const::BOTTOM", 0,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$bottom", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 	TOP = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			TypeManager::UNIVERSAL, "const::TOP", 0,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$top", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 	_NULL_ = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			TypeManager::UNIVERSAL, "const::NULL", 0,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$null", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 
 	_INFINITY_ = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			TypeManager::UNIVERSAL, "const::INFINITY", 0,
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			TypeManager::UNIVERSAL, "$infinity", 0,
 			Modifier::PROPERTY_PUBLIC_FINAL_STATIC_MODIFIER);
 }
 
@@ -167,6 +218,7 @@ void ExecutableLib::dispose()
 	MACHINE_NULL.destroy();
 	MACHINE_ENVIRONMENT.destroy();
 
+	MACHINE_THIS.destroy();
 	MACHINE_SELF.destroy();
 	MACHINE_PARENT.destroy();
 	MACHINE_COMMUNICATOR.destroy();
@@ -178,6 +230,13 @@ void ExecutableLib::dispose()
 	CHANNEL_NIL.destroy();
 	PORT_NIL.destroy();
 	BUFFER_NIL.destroy();
+
+	ANY_VALUE.destroy();
+	DEFAULT_VALUE.destroy();
+	OPTIONAL_VALUE.destroy();
+	OMIT_VALUE.destroy();
+	NONE_VALUE.destroy();
+	ANY_OR_NONE_VALUE.destroy();
 
 	BOTTOM.destroy();
 	TOP.destroy();

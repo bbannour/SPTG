@@ -29,6 +29,112 @@ namespace sep
 {
 
 
+/*
+ ***************************************************************************
+ ***************************************************************************
+ * RDV COMMUNICATION UTILS
+ ***************************************************************************
+ ***************************************************************************
+ */
+
+
+// Compute EVAL where NOT OTHER
+bool AvmBaseRdvPrimitive::buildRdvConfiguration(
+		RdvConfigurationData & aRdvConf,
+		avm_offset_t idx, ListOfExecutionData & syncEDS,
+		bool & hasPossibleRdv, bool & hasPossibleMultiRdv)
+{
+	ExecutionData tmpED;
+
+	while( syncEDS.nonempty() )
+	{
+		syncEDS.pop_first_to( tmpED );
+
+		switch( tmpED.getAEES() )
+		{
+			case AEES_WAITING_INCOM_RDV:
+			{
+				if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolRDV() )
+				{
+					aRdvConf.IN_ED_RDV[ idx ].append( tmpED );
+					aRdvConf.mAwaitingOutputRdvFlag[ idx ] = true;
+					hasPossibleRdv = true;
+				}
+				else if( tmpED.getExecSyncPoint()->
+						mRoutingData.isProtocolMULTI_RDV() )
+				{
+					aRdvConf.ED_MULTIRDV[ idx ].append( tmpED );
+					aRdvConf.mAwaitingOutputMultiRdvFlag[ idx ] = true;
+					hasPossibleMultiRdv = true;
+				}
+
+				break;
+			}
+
+			case AEES_WAITING_OUTCOM_RDV:
+			{
+				if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolRDV() )
+				{
+					aRdvConf.OUT_ED_RDV[ idx ].append( tmpED );
+					aRdvConf.mAwaitingInputRdvFlag[ idx ] = true;
+					hasPossibleRdv = true;
+				}
+				else if( tmpED.getExecSyncPoint()->
+						mRoutingData.isProtocolMULTI_RDV() )
+				{
+					aRdvConf.ED_MULTIRDV[ idx ].append( tmpED );
+					aRdvConf.mAwaitingInputMultiRdvFlag[ idx ] = true;
+					hasPossibleMultiRdv = true;
+				}
+
+				break;
+			}
+
+			default:
+			{
+				AVM_OS_FATAL_ERROR_EXIT
+						<< "Unexpected ENDIND EXECUTION STATUS :> "
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
+						<< SEND_EXIT;
+
+				return( false );
+			}
+		}
+	}
+
+	return( true );
+}
+
+
+void AvmBaseRdvPrimitive::computeRdv(ExecutionEnvironment & ENV,
+		RdvConfigurationData & aRdvConf, avm_offset_t idx,
+		bool & hasPossibleRdv, bool & hasPossibleMultiRdv)
+{
+	aRdvConf.resize( idx );
+
+	if( hasPossibleRdv )
+	{
+		aRdvConf.updatePossibleInternalRdvFlag();
+	}
+	if( hasPossibleMultiRdv )
+	{
+		aRdvConf.updatePossibleInternalMultiRdvFlag();
+	}
+
+	if( aRdvConf.hasPossibleInternalRdvFlag
+		|| aRdvConf.hasPossibleInternalMultiRdvFlag )
+	{
+		AvmCommunicationRdvPrimitive rdvComputer(PRIMITIVE_PROCESSOR,
+				aRdvConf, hasPossibleRdv, hasPossibleMultiRdv);
+
+		if( rdvComputer.resume_rdv(ENV.outEDS) )
+		{
+			// OK
+		}
+	}
+}
+
+
 /**
  ***************************************************************************
  * execution of an INTERLEAVING program
@@ -36,11 +142,9 @@ namespace sep
  */
 bool AvmPrimitive_Interleaving::run(ExecutionEnvironment & ENV)
 {
-	AvmCode::const_iterator it = ENV.inCODE->begin();
-	AvmCode::const_iterator endIt = ENV.inCODE->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		ENV.run( *it );
+		ENV.run( itOperand );
 	}
 
 	return( true );
@@ -49,95 +153,32 @@ bool AvmPrimitive_Interleaving::run(ExecutionEnvironment & ENV)
 bool AvmPrimitive_RdvInterleaving::run(ExecutionEnvironment & ENV)
 {
 	ExecutionEnvironment tmpENV(ENV, BFCode::REF_NULL);
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	RdvConfigurationData aRdvConf(ENV, ENV.inCODE->size());
-	bool checkRdv = false;
-	bool checkMultiRdv = false;
-
-	bool hasCom = false;
+	bool hasPossibleRdv = false;
+	bool hasPossibleMultiRdv = false;
 
 	avm_offset_t idx = 0;
 
-	ListOfAPExecutionData listofRDV;
-
-	AvmCode::const_iterator it = ENV.inCODE->begin();
-	AvmCode::const_iterator endIt = ENV.inCODE->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		if( not tmpENV.run(*it) )
+		if( not tmpENV.run( itOperand ) )
 		{
 			return( false );
 		}
 
-//		AVM_OS_COUT << "AvmPrimitive_RdvInterleaving::run :>" << std::endl;
-//		tmpENV.toStream(AVM_OS_COUT);
-
-		while( tmpENV.syncEDS.nonempty() )
+		if( tmpENV.syncEDS.nonempty() )
 		{
-			tmpENV.syncEDS.pop_first_to( tmpED );
-
-			switch( tmpED->mAEES )
+			if( buildRdvConfiguration(aRdvConf, idx, tmpENV.syncEDS,
+					hasPossibleRdv, hasPossibleMultiRdv) )
 			{
-				case AEES_WAITING_INCOM_RDV:
-				{
-					hasCom = true;
-
-					if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolRDV() )
-					{
-						aRdvConf.IN_ED_RDV[ idx ].append( tmpED );
-						aRdvConf.mAwaitingOutputRdvFlag[ idx ] = true;
-						checkRdv = true;
-					}
-					else if( tmpED->mEXEC_SYNC_POINT->mRoutingData.
-							isProtocolMULTI_RDV() )
-					{
-						aRdvConf.ED_MULTIRDV[ idx ].append( tmpED );
-						aRdvConf.mAwaitingOutputMultiRdvFlag[ idx ] = true;
-						checkMultiRdv = true;
-					}
-
-					break;
-				}
-
-				case AEES_WAITING_OUTCOM_RDV:
-				{
-					hasCom = true;
-
-					if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolRDV() )
-					{
-						aRdvConf.OUT_ED_RDV[ idx ].append( tmpED );
-						aRdvConf.mAwaitingInputRdvFlag[ idx ] = true;
-						checkRdv = true;
-					}
-					else if( tmpED->mEXEC_SYNC_POINT->mRoutingData.
-							isProtocolMULTI_RDV() )
-					{
-						aRdvConf.ED_MULTIRDV[ idx ].append( tmpED );
-						aRdvConf.mAwaitingInputMultiRdvFlag[ idx ] = true;
-						checkMultiRdv = true;
-					}
-
-					break;
-				}
-
-				default:
-				{
-					AVM_OS_FATAL_ERROR_EXIT
-							<< "Unexpected ENDIND EXECUTION STATUS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
-							<< SEND_EXIT;
-
-					return( false );
-				}
+				idx = idx + 1;
 			}
-		}
-
-		if( hasCom )
-		{
-			idx = idx + 1;
-
-			hasCom = false;
+			else
+			{
+				return( false );
+			}
 		}
 	}
 
@@ -147,26 +188,138 @@ bool AvmPrimitive_RdvInterleaving::run(ExecutionEnvironment & ENV)
 	// Sync EDS traitement
 	if( idx > 1 )
 	{
-		aRdvConf.resize( idx );
+		computeRdv(ENV, aRdvConf, idx, hasPossibleRdv, hasPossibleMultiRdv);
+	}
 
-		if( checkRdv )
-		{
-			aRdvConf.updatePossibleInternalRdvFlag();
-		}
-		if( checkMultiRdv )
-		{
-			aRdvConf.updatePossibleInternalMultiRdvFlag();
-		}
+	return( true );
+}
 
-		if( aRdvConf.hasPossibleInternalRdvFlag || aRdvConf.hasPossibleInternalMultiRdvFlag )
-		{
-			AvmCommunicationRdvPrimitive rdvComputer(PRIMITIVE_PROCESSOR, aRdvConf, checkRdv, checkMultiRdv);
 
-			if( rdvComputer.resume_rdv(listofRDV) )
+
+/**
+ ***************************************************************************
+ * execution of an PARTIAL_ORDER program
+ ***************************************************************************
+ */
+bool AvmPrimitive_PartialOrder::run(ExecutionEnvironment & ENV)
+{
+	ExecutionData poED = ENV.inED;
+
+	const RuntimeID & poRID = poED.getRID();
+
+	const AvmCode & scheduleCode =
+			poED.getRuntimeFormOnSchedule(poRID).to< AvmCode >();
+
+	std::size_t ScheduleSize = scheduleCode.size();
+
+	BFCode poCode = poED.getRuntimeFormOnDefer(poRID);
+
+	if( poCode.valid() )
+	{
+		// Position of current PO Code  in Scheduler Code
+		AvmCode::const_iterator itOperandPosition = scheduleCode.begin();
+		AvmCode::const_iterator endOperand = scheduleCode.end();
+		for( ; itOperandPosition != endOperand ; ++itOperandPosition )
+		{
+			if( (*itOperandPosition).isEQ( poCode ) )
 			{
-				ENV.outEDS.splice( listofRDV );
+				break;
 			}
 		}
+
+		ExecutionEnvironment tmpENV(ENV);
+
+		std::size_t runCount = 0;
+		for( ; runCount < ScheduleSize ; ++runCount )
+		{
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
+	AVM_OS_INFO << "PartialOrder: " + poCode.str() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
+
+			if( not tmpENV.run(poED, poCode) )
+			{
+				return( false );
+			}
+
+			// Next PO Code in Scheduler Code
+			if( (++itOperandPosition) == endOperand )
+			{
+				itOperandPosition = scheduleCode.begin();
+			}
+
+			if( (*itOperandPosition).is< AvmCode >() )
+			{
+				poCode = (*itOperandPosition).bfCode();
+			}
+
+			if( tmpENV.hasOutputSyncIrq() )
+			{
+				break;
+			}
+		}
+
+		for( auto & itED : tmpENV.outEDS )
+		{
+			itED.mwsetRuntimeFormOnDefer(poRID, poCode);
+		}
+
+		ENV.spliceOutput(tmpENV);
+
+		ENV.spliceNotOutput(tmpENV);
+	}
+	else
+	{
+		for( const auto & itOperand : ENV.inCODE.getOperands() )
+		{
+			ENV.run( itOperand );
+		}
+	}
+
+	return( true );
+}
+
+
+bool AvmPrimitive_RdvPartialOrder::run(ExecutionEnvironment & ENV)
+{
+	ExecutionEnvironment tmpENV(ENV, BFCode::REF_NULL);
+	ExecutionData tmpED;
+
+	RdvConfigurationData aRdvConf(ENV, ENV.inCODE->size());
+	bool hasPossibleRdv = false;
+	bool hasPossibleMultiRdv = false;
+
+	avm_offset_t idx = 0;
+
+	ListOfExecutionData listofRDV;
+
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
+	{
+		if( not tmpENV.run( itOperand ) )
+		{
+			return( false );
+		}
+
+		if( tmpENV.syncEDS.nonempty() )
+		{
+			if( buildRdvConfiguration(aRdvConf, idx, tmpENV.syncEDS,
+					hasPossibleRdv, hasPossibleMultiRdv) )
+			{
+				idx = idx + 1;
+			}
+			else
+			{
+				return( false );
+			}
+		}
+	}
+
+	// output EDS traitement
+	ENV.spliceOutput(tmpENV);
+
+	// Sync EDS traitement
+	if( idx > 1 )
+	{
+		computeRdv(ENV, aRdvConf, idx, hasPossibleRdv, hasPossibleMultiRdv);
 	}
 
 	return( true );
@@ -186,10 +339,9 @@ bool AvmPrimitive_Asynchronous::run(ExecutionEnvironment & ENV)
 				" a.k.a ASynchronous::run( ENV ) !!!"
 			<< SEND_EXIT;
 
-	AvmCode::const_iterator endIt = ENV.inCODE->end();
-	for( AvmCode::const_iterator it = ENV.inCODE->begin() ; it != endIt ; ++it )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		ENV.run( *it );
+		ENV.run( itOperand );
 	}
 
 	return( true );
@@ -203,10 +355,9 @@ bool AvmPrimitive_RdvAsynchronous::run(ExecutionEnvironment & ENV)
 				" a.k.a RDV< ASynchronous >::run( ENV ) !!!"
 			<< SEND_EXIT;
 
-	AvmCode::const_iterator endIt = ENV.inCODE->end();
-	for( AvmCode::const_iterator it = ENV.inCODE->begin() ; it != endIt ; ++it )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		ENV.run( *it );
+		ENV.run( itOperand );
 	}
 
 	return( true );
@@ -221,21 +372,21 @@ bool AvmPrimitive_RdvAsynchronous::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_StrongSynchronous::run(ExecutionEnvironment & ENV)
 {
-	ListOfAPExecutionData tmpListOfED;
+	ListOfExecutionData tmpListOfED;
 
-	ListOfAPExecutionData fusionListOfOutputED;
+	ListOfExecutionData fusionListOfOutputED;
 
-	ListOfAPExecutionData::iterator itED;
-	ListOfAPExecutionData::iterator endItED;
+	ListOfExecutionData::iterator itED;
+	ListOfExecutionData::iterator endItED;
 
-	APExecutionData tmpED;
-	APExecutionData anED;
+	ExecutionData tmpED;
+	ExecutionData anED;
 
-	AvmCode::const_iterator itEnd = ENV.inCODE->end();
-	AvmCode::const_iterator it = ENV.inCODE->begin();
+	AvmCode::const_iterator endOperand = ENV.inCODE->end();
+	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
 
 	// Initialisation du process
-	ExecutionEnvironment tmpENV(ENV, *it);
+	ExecutionEnvironment tmpENV(ENV, *itOperand);
 	if( not tmpENV.run() )
 	{
 		return( false );
@@ -251,9 +402,9 @@ bool AvmPrimitive_StrongSynchronous::run(ExecutionEnvironment & ENV)
 		return( false );
 	}
 
-	for( ++it ; it != itEnd ; ++it )
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
-		if( not tmpENV.run(*it) )
+		if( not tmpENV.run(*itOperand) )
 		{
 			return( false );
 		}
@@ -267,7 +418,7 @@ bool AvmPrimitive_StrongSynchronous::run(ExecutionEnvironment & ENV)
 
 		// COMPUTE STRONG FUSION
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
-		AVM_OS_TRACE << "<< " << ENV.inED->mRID.strUniqId()
+		AVM_OS_TRACE << "<< " << ENV.inED.getRID().strUniqId()
 				<< " |=> strong fusion for ED :> "
 				<< "frstList( " << tmpENV.outEDS.size() << " )" << " with "
 				<< "scndList( " << tmpListOfED.size() << " )" << std::endl;
@@ -301,7 +452,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		}
 
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
-		AVM_OS_TRACE << ">> " << ENV.inED->mRID.strUniqId()
+		AVM_OS_TRACE << ">> " << ENV.inED.getRID().strUniqId()
 		<< " |=> result( " << tmpListOfED.size() << " )" << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	}
@@ -319,10 +470,9 @@ bool AvmPrimitive_RdvStrongSynchronous::run(ExecutionEnvironment & ENV)
 				" a.k.a RDV< StrongSynchronous >::run( ENV ) !!!"
 			<< SEND_EXIT;
 
-	AvmCode::const_iterator endIt = ENV.inCODE->end();
-	for( AvmCode::const_iterator it = ENV.inCODE->begin() ; it != endIt ; ++it )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		ENV.run( *it );
+		ENV.run( itOperand );
 	}
 
 	return( true );
@@ -337,17 +487,17 @@ bool AvmPrimitive_RdvStrongSynchronous::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_WeakSynchronous::run(ExecutionEnvironment & ENV)
 {
-	ENV.inED->setEnabledLocalNodeCondition( true );
+	ENV.inED.setEnabledLocalNodeCondition( true );
 
-	ListOfAPExecutionData oneListOfED;
-	ListOfAPExecutionData otherListOfED;
-	ListOfAPExecutionData resultListOfED;
+	ListOfExecutionData oneListOfED;
+	ListOfExecutionData otherListOfED;
+	ListOfExecutionData resultListOfED;
 
-	AvmCode::const_iterator it = ENV.inCODE->begin();
-	AvmCode::const_iterator itEnd = ENV.inCODE->end();
+	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
+	AvmCode::const_iterator endOperand = ENV.inCODE->end();
 
 	// Initialisation du process
-	ExecutionEnvironment tmpENV(ENV, *it);
+	ExecutionEnvironment tmpENV(ENV, *itOperand);
 	if( not tmpENV.run() )
 	{
 		return( false );
@@ -355,9 +505,9 @@ bool AvmPrimitive_WeakSynchronous::run(ExecutionEnvironment & ENV)
 	oneListOfED.splice( tmpENV.outEDS );
 
 	// Recurrence
-	for( ++it ; it != itEnd ; ++it )
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
-		if( not tmpENV.run(*it) )
+		if( not tmpENV.run(*itOperand) )
 		{
 			return( false );
 		}
@@ -369,13 +519,13 @@ bool AvmPrimitive_WeakSynchronous::run(ExecutionEnvironment & ENV)
 		otherListOfED.clear();
 		while( resultListOfED.nonempty() )
 		{
-			resultListOfED.last()->setEnabledLocalNodeCondition( false );
+			resultListOfED.last().setEnabledLocalNodeCondition( false );
 
 			oneListOfED.append( resultListOfED.pop_last() );
 		}
 	}
 
-	ENV.inED->setEnabledLocalNodeCondition( false );
+	ENV.inED.setEnabledLocalNodeCondition( false );
 
 	ENV.outEDS.splice( oneListOfED );
 
@@ -385,9 +535,9 @@ bool AvmPrimitive_WeakSynchronous::run(ExecutionEnvironment & ENV)
 
 
 bool AvmPrimitive_WeakSynchronous::computeWeakSynchronous(
-		APExecutionData & anInputED, ListOfAPExecutionData & oneListOfED,
-		ListOfAPExecutionData & otherListOfED,
-		ListOfAPExecutionData & resultListOfED)
+		ExecutionData & anInputED, ListOfExecutionData & oneListOfED,
+		ListOfExecutionData & otherListOfED,
+		ListOfExecutionData & resultListOfED)
 {
 	if( otherListOfED.empty() )
 	{
@@ -401,12 +551,10 @@ bool AvmPrimitive_WeakSynchronous::computeWeakSynchronous(
 
 	else
 	{
-		ListOfAPExecutionData::iterator itOther = otherListOfED.begin();
-		ListOfAPExecutionData::iterator endOther = otherListOfED.end();
-		for( ; itOther != endOther ; ++itOther )
+		for( auto & itOther : otherListOfED )
 		{
 			if( not computeWeakSynchronous(anInputED,
-					*itOther, oneListOfED, resultListOfED) )
+					itOther, oneListOfED, resultListOfED) )
 			{
 				return( false );
 			}
@@ -420,20 +568,20 @@ bool AvmPrimitive_WeakSynchronous::computeWeakSynchronous(
 
 
 bool AvmPrimitive_WeakSynchronous::computeWeakSynchronous(
-		APExecutionData & anInputED, APExecutionData & oneED,
-		ListOfAPExecutionData & listOfOtherED,
-		CollectionOfAPExecutionData & listOfOutputED)
+		ExecutionData & anInputED, ExecutionData & oneED,
+		ListOfExecutionData & listOfOtherED,
+		CollectionOfExecutionData & listOfOutputED)
 {
-	APExecutionData anED;
+	ExecutionData anED;
 
-	ListOfAPExecutionData::iterator itOther;
-	ListOfAPExecutionData::iterator endOther = listOfOtherED.end();
+	ListOfExecutionData::iterator itOther;
+	ListOfExecutionData::iterator endOther = listOfOtherED.end();
 
 	// Fusion with OTHERS
 	for( itOther = listOfOtherED.begin() ; itOther != endOther ; ++itOther )
 	{
 		anED = AvmSynchronizationFactory::fusion(anInputED, oneED, *itOther);
-		if( anED != NULL )
+		if( anED.valid() )
 		{
 			listOfOutputED.append( anED );
 		}
@@ -452,11 +600,11 @@ bool AvmPrimitive_WeakSynchronous::computeWeakSynchronous(
 
 
 bool AvmPrimitive_WeakSynchronous::computeWeakSynchronous(
-		APExecutionData & anInputED, APExecutionData & oneED,
-		APExecutionData & otherED,
-		CollectionOfAPExecutionData & listOfOutputED)
+		ExecutionData & anInputED, ExecutionData & oneED,
+		ExecutionData & otherED,
+		CollectionOfExecutionData & listOfOutputED)
 {
-	APExecutionData anED = AvmSynchronizationFactory::fusion(
+	ExecutionData anED = AvmSynchronizationFactory::fusion(
 			anInputED, oneED, otherED);
 	if( anED.valid() )
 	{
@@ -481,10 +629,9 @@ bool AvmPrimitive_RdvWeakSynchronous::run(ExecutionEnvironment & ENV)
 				" a.k.a RDV< WeakSynchronous >::run( ENV ) !!!"
 			<< SEND_EXIT;
 
-	AvmCode::const_iterator endIt = ENV.inCODE->end();
-	for( AvmCode::const_iterator it = ENV.inCODE->begin() ; it != endIt ; ++it )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		ENV.run( *it );
+		ENV.run( itOperand );
 	}
 
 	return( true );
@@ -506,31 +653,31 @@ bool AvmPrimitive_Parallel::run(ExecutionEnvironment & ENV)
 //	std::vector< ExecutionEnvironment > tabOfENV(
 //			ENV.inCODE->size(), ExecutionEnvironment(ENV, ENV.inED) );
 //
-//	AvmCode::const_iterator it = ENV.inCODE->begin();
-//	AvmCode::const_iterator itEnd = ENV.inCODE->end();
+//	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
+//	AvmCode::const_iterator endOperand = ENV.inCODE->end();
 //
-//	// Cas de l'éventuel premier exitEDS
-//	for( idx = 0 ; it != itEnd ; ++it, ++idx )
+//	// Cas de l'éventuel premier exitOperandEDS
+//	for( idx = 0 ; itOperand != endOperand ; ++itOperand, ++idx )
 //	{
-//		if( not tabOfENV[idx].run(*it) )
+//		if( not tabOfENV[idx].run(*itOperand) )
 //		{
 //			return( false );
 //		}
 //	}
 
-	ListOfAPExecutionData fusionListOfOutputED;
-	ListOfAPExecutionData parallelOutputED;
+	ListOfExecutionData fusionListOfOutputED;
+	ListOfExecutionData parallelOutputED;
 
-	ListOfAPExecutionData fusionListOfExitED;
-	ListOfAPExecutionData parallelExitED;
+	ListOfExecutionData fusionListOfExitED;
+	ListOfExecutionData parallelExitED;
 
-	AvmCode::const_iterator it = ENV.inCODE->begin();
-	AvmCode::const_iterator itEnd = ENV.inCODE->end();
+	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
+	AvmCode::const_iterator endOperand = ENV.inCODE->end();
 
 	// Cas de l'éventuel premier exitEDS
-	for( ; (it != itEnd) && parallelExitED.empty() ; ++it )
+	for( ; (itOperand != endOperand) && parallelExitED.empty() ; ++itOperand )
 	{
-		ExecutionEnvironment tmpENV(ENV, *it);
+		ExecutionEnvironment tmpENV(ENV, *itOperand);
 		if( tmpENV.run() )
 		{
 			ENV.spliceNotOutputExit(tmpENV);
@@ -561,9 +708,9 @@ bool AvmPrimitive_Parallel::run(ExecutionEnvironment & ENV)
 	}
 
 	// Cas de cohabitation outEDS et exitEDS
-	for( ; (it != itEnd) && parallelOutputED.nonempty() ; ++it )
+	for( ; (itOperand != endOperand) && parallelOutputED.nonempty() ; ++itOperand )
 	{
-		ExecutionEnvironment tmpENV(ENV, *it);
+		ExecutionEnvironment tmpENV(ENV, *itOperand);
 		if( tmpENV.run() )
 		{
 			ENV.spliceNotOutputExit(tmpENV);
@@ -607,9 +754,9 @@ bool AvmPrimitive_Parallel::run(ExecutionEnvironment & ENV)
 	}
 
 	// Cas ou tout le monde est contaminé par exitEDS
-	for( ; it != itEnd ; ++it )
+	for( ; itOperand != endOperand ; ++itOperand )
 	{
-		ExecutionEnvironment tmpENV(ENV, *it);
+		ExecutionEnvironment tmpENV(ENV, *itOperand);
 		if( tmpENV.run() )
 		{
 			ENV.spliceNotOutputExit(tmpENV);
@@ -645,13 +792,13 @@ bool AvmPrimitive_Parallel::run(ExecutionEnvironment & ENV)
 }
 
 
-void AvmPrimitive_Parallel::computeParallel(APExecutionData & refED,
-		ListOfAPExecutionData & outEDS,
-		ListOfAPExecutionData & prevParallelListOfOutputED,
-		ListOfAPExecutionData & listOfOutputED)
+void AvmPrimitive_Parallel::computeParallel(ExecutionData & refED,
+		ListOfExecutionData & outEDS,
+		ListOfExecutionData & prevParallelListOfOutputED,
+		ListOfExecutionData & listOfOutputED)
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
-	AVM_OS_TRACE << "<< " << refED->mRID.strUniqId()
+	AVM_OS_TRACE << "<< " << refED.getRID().strUniqId()
 			<< " |=> parallel fusion for ED :> "
 			<< "frstList( " << outEDS.size() << " ) with "
 			<< "scndList( " << prevParallelListOfOutputED.size()
@@ -668,14 +815,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	}
 	else
 	{
-		ListOfAPExecutionData::iterator itOutED;
-		ListOfAPExecutionData::iterator endOutED;
+		ListOfExecutionData::iterator itOutED;
+		ListOfExecutionData::iterator endOutED;
 
-		APExecutionData anED;
+		ExecutionData anED;
 
-		ListOfAPExecutionData::iterator itParallelED =
+		ListOfExecutionData::iterator itParallelED =
 				prevParallelListOfOutputED.begin();
-		ListOfAPExecutionData::iterator endParallelED =
+		ListOfExecutionData::iterator endParallelED =
 				prevParallelListOfOutputED.end();
 		endOutED = outEDS.end();
 		for( ; itParallelED != endParallelED ; ++itParallelED )
@@ -684,9 +831,9 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 			{
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 				AVM_OS_TRACE << "ED<frst> "
-						<< (*itParallelED)->getRunnableElementTrace().str()
+						<< (*itParallelED).getRunnableElementTrace().str()
 						<< std::endl << "ED<scnd> "
-						<< (*itOutED)->getRunnableElementTrace().str()
+						<< (*itOutED).getRunnableElementTrace().str()
 						<< std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 				anED = AvmSynchronizationFactory::fusion(
@@ -700,7 +847,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	}
 
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
-	AVM_OS_TRACE << ">> " << refED->mRID.strUniqId() << " |=> result( "
+	AVM_OS_TRACE << ">> " << refED.getRID().strUniqId() << " |=> result( "
 			<< listOfOutputED.size() << " )" << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 }
@@ -715,13 +862,13 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 //	std::vector< ExecutionEnvironment > tabOfENV(
 //			ENV.inCODE->size(), ExecutionEnvironment(ENV, ENV.inED) );
 //
-//	AvmCode::const_iterator it = ENV.inCODE->begin();
-//	AvmCode::const_iterator itEnd = ENV.inCODE->end();
+//	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
+//	AvmCode::const_iterator endOperand = ENV.inCODE->end();
 //
 //	// Cas de l'éventuel premier exitEDS
-//	for( idx = 0 ; it != itEnd ; ++it, ++idx )
+//	for( idx = 0 ; itOperand != endOperand ; ++itOperand, ++idx )
 //	{
-//		if( not tabOfENV[idx].run(*it) )
+//		if( not tabOfENV[idx].run(*itOperand) )
 //		{
 //			return( false );
 //		}
@@ -741,30 +888,28 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 //	}
 
 
-	ListOfAPExecutionData fusionListOfOutputED;
-	ListOfAPExecutionData parallelOutputED;
+	ListOfExecutionData fusionListOfOutputED;
+	ListOfExecutionData parallelOutputED;
 
-	ListOfAPExecutionData fusionListOfExitED;
-	ListOfAPExecutionData parallelExitED;
+	ListOfExecutionData fusionListOfExitED;
+	ListOfExecutionData parallelExitED;
 
 	RdvConfigurationData aRdvConf(ENV, ENV.inCODE->size());
-	bool checkRdv = false;
-	bool checkMultiRdv = false;
-
-	bool hasCom = false;
+	bool hasPossibleRdv = false;
+	bool hasPossibleMultiRdv = false;
 
 	avm_offset_t idx = 0;
 
-	ListOfAPExecutionData listofRDV;
+	ListOfExecutionData listofRDV;
 
 
-	AvmCode::const_iterator it = ENV.inCODE->begin();
-	AvmCode::const_iterator itEnd = ENV.inCODE->end();
+	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
+	AvmCode::const_iterator endOperand = ENV.inCODE->end();
 
 	// Cas de l'éventuel premier exitEDS
-	for( ; (it != itEnd) && parallelExitED.empty() ; ++it )
+	for( ; (itOperand != endOperand) && parallelExitED.empty() ; ++itOperand )
 	{
-		ExecutionEnvironment tmpENV(ENV, *it);
+		ExecutionEnvironment tmpENV(ENV, *itOperand);
 		if( tmpENV.run() )
 		{
 			if( tmpENV.exitEDS.nonempty() )
@@ -789,7 +934,9 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 			if( tmpENV.syncEDS.nonempty() )
 			{
 				configureRdv(aRdvConf, tmpENV.syncEDS,
-						checkRdv, checkMultiRdv, hasCom, idx);
+						hasPossibleRdv, hasPossibleMultiRdv, idx);
+
+				idx = idx + 1;
 			}
 
 			ENV.spliceNotOutputExit(tmpENV);
@@ -801,9 +948,9 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 	}
 
 	// Cas de cohabitation outEDS et exitEDS
-	for( ; (it != itEnd) && parallelOutputED.nonempty() ; ++it )
+	for( ; (itOperand != endOperand) && parallelOutputED.nonempty() ; ++itOperand )
 	{
-		ExecutionEnvironment tmpENV(ENV, *it);
+		ExecutionEnvironment tmpENV(ENV, *itOperand);
 		if( tmpENV.run() )
 		{
 			if( tmpENV.outEDS.nonempty() )
@@ -841,7 +988,9 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 			if( tmpENV.syncEDS.nonempty() )
 			{
 				configureRdv(aRdvConf, tmpENV.syncEDS,
-						checkRdv, checkMultiRdv, hasCom, idx);
+						hasPossibleRdv, hasPossibleMultiRdv, idx);
+
+				idx = idx + 1;
 			}
 
 			ENV.spliceNotOutputExit(tmpENV);
@@ -853,9 +1002,9 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 	}
 
 	// Cas ou tout le monde est contaminé par exitEDS
-	for( ; it != itEnd ; ++it )
+	for( ; itOperand != endOperand ; ++itOperand )
 	{
-		ExecutionEnvironment tmpENV(ENV, *it);
+		ExecutionEnvironment tmpENV(ENV, *itOperand);
 		if( tmpENV.run() )
 		{
 			if( tmpENV.outEDS.nonempty() )
@@ -878,7 +1027,9 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 			if( tmpENV.syncEDS.nonempty() )
 			{
 				configureRdv(aRdvConf, tmpENV.syncEDS,
-						checkRdv, checkMultiRdv, hasCom, idx);
+						hasPossibleRdv, hasPossibleMultiRdv, idx);
+
+				idx = idx + 1;
 			}
 
 			ENV.spliceNotOutputExit(tmpENV);
@@ -894,11 +1045,11 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 	{
 		aRdvConf.resize( idx );
 
-		if( checkRdv )
+		if( hasPossibleRdv )
 		{
 			aRdvConf.updatePossibleInternalRdvFlag();
 		}
-		if( checkMultiRdv )
+		if( hasPossibleMultiRdv )
 		{
 			aRdvConf.updatePossibleInternalMultiRdvFlag();
 		}
@@ -907,7 +1058,7 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 				aRdvConf.hasPossibleInternalMultiRdvFlag )
 		{
 			AvmCommunicationRdvPrimitive rdvComputer(PRIMITIVE_PROCESSOR,
-					aRdvConf, checkRdv, checkMultiRdv);
+					aRdvConf, hasPossibleRdv, hasPossibleMultiRdv);
 
 			if( rdvComputer.resume_rdv(listofRDV) )
 			{
@@ -928,33 +1079,31 @@ bool AvmPrimitive_RdvParallel::run(ExecutionEnvironment & ENV)
 }
 
 
-void AvmPrimitive_RdvParallel::configureRdv(RdvConfigurationData & aRdvConf,
-		ListOfAPExecutionData & syncEDS, bool & checkRdv,
-		bool & checkMultiRdv, bool & hasCom, avm_offset_t & idx)
+void AvmPrimitive_RdvParallel::configureRdv(
+		RdvConfigurationData & aRdvConf, ListOfExecutionData & syncEDS,
+		bool & hasPossibleRdv, bool & hasPossibleMultiRdv, avm_offset_t idx)
 {
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	while( syncEDS.nonempty() )
 	{
 		syncEDS.pop_first_to( tmpED );
 
-		switch( tmpED->mAEES )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_WAITING_INCOM_RDV:
 			{
-				hasCom = true;
-
-				if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolRDV() )
+				if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolRDV() )
 				{
 					aRdvConf.IN_ED_RDV[ idx ].append( tmpED );
 					aRdvConf.mAwaitingOutputRdvFlag[ idx ] = true;
-					checkRdv = true;
+					hasPossibleRdv = true;
 				}
-				else if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolMULTI_RDV() )
+				else if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolMULTI_RDV() )
 				{
 					aRdvConf.ED_MULTIRDV[ idx ].append( tmpED );
 					aRdvConf.mAwaitingOutputMultiRdvFlag[ idx ] = true;
-					checkMultiRdv = true;
+					hasPossibleMultiRdv = true;
 				}
 
 				break;
@@ -962,19 +1111,17 @@ void AvmPrimitive_RdvParallel::configureRdv(RdvConfigurationData & aRdvConf,
 
 			case AEES_WAITING_OUTCOM_RDV:
 			{
-				hasCom = true;
-
-				if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolRDV() )
+				if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolRDV() )
 				{
 					aRdvConf.OUT_ED_RDV[ idx ].append( tmpED );
 					aRdvConf.mAwaitingInputRdvFlag[ idx ] = true;
-					checkRdv = true;
+					hasPossibleRdv = true;
 				}
-				else if( tmpED->mEXEC_SYNC_POINT->mRoutingData.isProtocolMULTI_RDV() )
+				else if( tmpED.getExecSyncPoint()->mRoutingData.isProtocolMULTI_RDV() )
 				{
 					aRdvConf.ED_MULTIRDV[ idx ].append( tmpED );
 					aRdvConf.mAwaitingInputMultiRdvFlag[ idx ] = true;
-					checkMultiRdv = true;
+					hasPossibleMultiRdv = true;
 				}
 
 				break;
@@ -984,17 +1131,10 @@ void AvmPrimitive_RdvParallel::configureRdv(RdvConfigurationData & aRdvConf,
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 			}
 		}
-	}
-
-	if( hasCom )
-	{
-		idx = idx + 1;
-
-		hasCom = false;
 	}
 }
 
@@ -1007,17 +1147,17 @@ void AvmPrimitive_RdvParallel::configureRdv(RdvConfigurationData & aRdvConf,
  */
 bool AvmPrimitive_Product::run(ExecutionEnvironment & ENV)
 {
-	ENV.inED->setEnabledLocalNodeCondition( true );
+	ENV.inED.setEnabledLocalNodeCondition( true );
 
-	ListOfAPExecutionData oneListOfED;
-	ListOfAPExecutionData otherListOfED;
-	ListOfAPExecutionData resultListOfED;
+	ListOfExecutionData oneListOfED;
+	ListOfExecutionData otherListOfED;
+	ListOfExecutionData resultListOfED;
 
-	AvmCode::const_iterator it = ENV.inCODE->begin();
-	AvmCode::const_iterator itEnd = ENV.inCODE->end();
+	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
+	AvmCode::const_iterator endOperand = ENV.inCODE->end();
 
 	// Initialisation du process
-	ExecutionEnvironment tmpENV(ENV, *it);
+	ExecutionEnvironment tmpENV(ENV, *itOperand);
 	if( not tmpENV.run() )
 	{
 		return( false );
@@ -1025,9 +1165,9 @@ bool AvmPrimitive_Product::run(ExecutionEnvironment & ENV)
 	oneListOfED.splice( tmpENV.outEDS );
 
 	// Recurrence
-	for( ++it ; it != itEnd ; ++it )
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
-		if( not tmpENV.run(*it) )
+		if( not tmpENV.run(*itOperand) )
 		{
 			return( false );
 		}
@@ -1038,13 +1178,13 @@ bool AvmPrimitive_Product::run(ExecutionEnvironment & ENV)
 		otherListOfED.clear();
 		while( resultListOfED.nonempty() )
 		{
-			resultListOfED.last()->setEnabledLocalNodeCondition( false );
+			resultListOfED.last().setEnabledLocalNodeCondition( false );
 
 			oneListOfED.append( resultListOfED.pop_last() );
 		}
 	}
 
-	ENV.inED->setEnabledLocalNodeCondition( false );
+	ENV.inED.setEnabledLocalNodeCondition( false );
 
 	ENV.outEDS.splice( oneListOfED );
 
@@ -1053,10 +1193,10 @@ bool AvmPrimitive_Product::run(ExecutionEnvironment & ENV)
 
 
 
-bool AvmPrimitive_Product::computeProduct(APExecutionData & anInputED,
-		ListOfAPExecutionData & oneListOfED,
-		ListOfAPExecutionData & otherListOfED,
-		ListOfAPExecutionData & resultListOfED)
+bool AvmPrimitive_Product::computeProduct(ExecutionData & anInputED,
+		ListOfExecutionData & oneListOfED,
+		ListOfExecutionData & otherListOfED,
+		ListOfExecutionData & resultListOfED)
 {
 	if( otherListOfED.empty() )
 	{
@@ -1070,12 +1210,10 @@ bool AvmPrimitive_Product::computeProduct(APExecutionData & anInputED,
 
 	else
 	{
-		ListOfAPExecutionData::iterator itOther = otherListOfED.begin();
-		ListOfAPExecutionData::iterator endOther = otherListOfED.end();
-		for( ; itOther != endOther ; ++itOther )
+		for( auto & itOther : otherListOfED )
 		{
 			if( not computeProduct(anInputED,
-					*itOther, oneListOfED, resultListOfED) )
+					itOther, oneListOfED, resultListOfED) )
 			{
 				return( false );
 			}
@@ -1089,14 +1227,14 @@ bool AvmPrimitive_Product::computeProduct(APExecutionData & anInputED,
 
 
 bool AvmPrimitive_Product::computeProduct(
-		APExecutionData & anInputED, APExecutionData & oneED,
-		ListOfAPExecutionData & listOfOtherED,
-		CollectionOfAPExecutionData & listOfOutputED)
+		ExecutionData & anInputED, ExecutionData & oneED,
+		ListOfExecutionData & listOfOtherED,
+		CollectionOfExecutionData & listOfOutputED)
 {
-	APExecutionData anED;
+	ExecutionData anED;
 
-	ListOfAPExecutionData::iterator itOther;
-	ListOfAPExecutionData::iterator endOther = listOfOtherED.end();
+	ListOfExecutionData::iterator itOther;
+	ListOfExecutionData::iterator endOther = listOfOtherED.end();
 
 	// Fusion with OTHERS
 	for( itOther = listOfOtherED.begin() ; itOther != endOther ; ++itOther )
@@ -1120,11 +1258,11 @@ bool AvmPrimitive_Product::computeProduct(
 }
 
 
-bool AvmPrimitive_Product::computeProduct(APExecutionData & anInputED,
-		APExecutionData & oneED, APExecutionData & otherED,
-		CollectionOfAPExecutionData & listOfOutputED)
+bool AvmPrimitive_Product::computeProduct(ExecutionData & anInputED,
+		ExecutionData & oneED, ExecutionData & otherED,
+		CollectionOfExecutionData & listOfOutputED)
 {
-	APExecutionData anED = AvmSynchronizationFactory::fusion(
+	ExecutionData anED = AvmSynchronizationFactory::fusion(
 			anInputED, oneED, otherED);
 	if( anED.valid() )
 	{
@@ -1157,12 +1295,12 @@ bool AvmPrimitive_Synchronize::run(ExecutionEnvironment & ENV)
 		return( false );
 	}
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 	while( tmpENV.syncEDS.nonempty() )
 	{
 		tmpENV.syncEDS.pop_first_to( tmpED );
 
-		switch( tmpED->mAEES )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_WAITING_INCOM_RDV:
 			case AEES_WAITING_OUTCOM_RDV:

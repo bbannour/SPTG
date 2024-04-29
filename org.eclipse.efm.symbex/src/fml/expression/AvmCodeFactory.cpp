@@ -49,24 +49,22 @@ BF AvmCodeFactory::flatten(BF aCode)
 
 BFCode AvmCodeFactory::flattenCode(BFCode anAvmCode)
 {
-	Operator * anOperator = anAvmCode->getOperator();
+	const Operator * anOperator = anAvmCode->getOperator();
 
-	AvmCode::this_container_type flattenArgs;
+	AvmCode::OperandCollectionT flattenArgs;
 	BFCode arg;
-	avm_size_t flatCount = 0;
+	std::size_t flatCount = 0;
 
-	AvmCode::iterator it = anAvmCode->begin();
-	AvmCode::iterator itEnd = anAvmCode->end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itOperand : anAvmCode.getOperands() )
 	{
-		if( (*it).is< AvmCode >() )
+		if( itOperand.is< AvmCode >() )
 		{
-			arg = AvmCodeFactory::flattenCode( (*it).bfCode() );
+			arg = AvmCodeFactory::flattenCode( itOperand.bfCode() );
 
 			if( anOperator->isWeakAssociative() &&
 				arg->isOperator( anOperator ) )
 			{
-				flattenArgs.append( arg->getArgs() );
+				flattenArgs.append( arg->getOperands() );
 
 				++flatCount;
 			}
@@ -74,7 +72,7 @@ BFCode AvmCodeFactory::flattenCode(BFCode anAvmCode)
 			{
 				flattenArgs.append( arg );
 
-				if( (*it).raw_pointer() != arg )
+				if( itOperand.raw_pointer() != arg )
 				{
 					++flatCount;
 				}
@@ -82,7 +80,7 @@ BFCode AvmCodeFactory::flattenCode(BFCode anAvmCode)
 		}
 		else
 		{
-			flattenArgs.append( (*it) );
+			flattenArgs.append( itOperand );
 		}
 	}
 
@@ -90,7 +88,7 @@ BFCode AvmCodeFactory::flattenCode(BFCode anAvmCode)
 	{
 		if( anAvmCode->isUnique() )
 		{
-			anAvmCode->clear();
+			anAvmCode->getOperands().clear();
 			anAvmCode->append(flattenArgs);
 		}
 		else
@@ -109,7 +107,7 @@ BFCode AvmCodeFactory::flattenCode(BFCode anAvmCode)
  * METHODS
  * contains subCode with a specific operator
  */
-bool AvmCodeFactory::contains(ExecutableForm * anExecutable,
+bool AvmCodeFactory::contains(const ExecutableForm & anExecutable,
 		const BFCode & aCode, AVM_OPCODE anOpcode)
 {
 	if( aCode.invalid() )
@@ -120,22 +118,21 @@ bool AvmCodeFactory::contains(ExecutableForm * anExecutable,
 	{
 		return true;
 	}
-	else if( OperatorManager::isActivity(aCode->getOperator()) &&
-			(aCode->empty() || (aCode->first() == ExecutableLib::MACHINE_SELF)) )
+	else if( OperatorManager::isActivity(aCode->getOperator())
+			&& ( aCode->noOperand()
+				|| (aCode->first() == ExecutableLib::MACHINE_SELF) ) )
 	{
 		return( contains(anExecutable,
-				anExecutable->getOnActivity( aCode->getAvmOpCode() ),
+				anExecutable.getOnActivity( aCode->getAvmOpCode() ),
 				anOpcode) );
 	}
 	else
 	{
-		AvmCode::const_iterator it = aCode->begin();
-		AvmCode::const_iterator itEnd = aCode->end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itOperand : aCode.getOperands() )
 		{
-			if( (*it).is< AvmCode >() )
+			if( itOperand.is< AvmCode >() )
 			{
-				if( contains(anExecutable, (*it).bfCode(), anOpcode) )
+				if( contains(anExecutable, itOperand.bfCode(), anOpcode) )
 				{
 					return true;
 				}
@@ -147,7 +144,7 @@ bool AvmCodeFactory::contains(ExecutableForm * anExecutable,
 }
 
 
-bool AvmCodeFactory::contains(ExecutableForm * anExecutable,
+bool AvmCodeFactory::contains(const ExecutableForm & anExecutable,
 		const BFCode & aCode, AVM_OPCODE anOpcode1, AVM_OPCODE anOpcode2)
 {
 	if( aCode.invalid() )
@@ -158,22 +155,22 @@ bool AvmCodeFactory::contains(ExecutableForm * anExecutable,
 	{
 		return true;
 	}
-	else if( OperatorManager::isActivity(aCode->getOperator()) &&
-			(aCode->empty() || (aCode->first() == ExecutableLib::MACHINE_SELF)) )
+	else if( OperatorManager::isActivity(aCode->getOperator())
+			&& ( aCode->noOperand()
+				|| (aCode->first() == ExecutableLib::MACHINE_SELF) ) )
 	{
 		return( contains(anExecutable,
-				anExecutable->getOnActivity( aCode->getAvmOpCode() ),
+				anExecutable.getOnActivity( aCode->getAvmOpCode() ),
 				anOpcode1, anOpcode2) );
 	}
 	else
 	{
-		AvmCode::const_iterator it = aCode->begin();
-		AvmCode::const_iterator itEnd = aCode->end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itOperand : aCode.getOperands() )
 		{
-			if( (*it).is< AvmCode >() )
+			if( itOperand.is< AvmCode >() )
 			{
-				if( contains(anExecutable, (*it).bfCode(), anOpcode1, anOpcode2) )
+				if( contains(anExecutable,
+						itOperand.bfCode(), anOpcode1, anOpcode2) )
 				{
 					return true;
 				}

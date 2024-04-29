@@ -41,14 +41,18 @@ public:
 	 * Collect information about
 	 * general communication
 	 */
+	static BF getCommunicationCodeOfTargetActivity(
+			const AvmProgram & anAvmProgram,
+			const BFCode & aCode, AVM_OPCODE activityOpCode,
+			bool (*isCom)(const AvmCode & comCode), bool & hasMutableSchedule);
+
 	static BF getCommunicationCode(
-			AvmProgram * anAvmProgram, const BFCode & aCode,
-			bool (*isCom)(AvmCode * comCode) , bool & hasMutableSchedule );
+			const AvmProgram & anAvmProgram, const BFCode & aCode,
+			bool (*isCom)(const AvmCode & comCode), bool & hasMutableSchedule);
 
-
-	static bool isCommunicationCode(AvmCode * comCode)
+	static bool isCommunicationCode(const AvmCode & comCode)
 	{
-		AVM_OPCODE opCode = comCode->getAvmOpCode();
+		AVM_OPCODE opCode = comCode.getAvmOpCode();
 
 		return( (opCode == AVM_OPCODE_INPUT      ) ||
 				(opCode == AVM_OPCODE_INPUT_FROM ) ||
@@ -56,7 +60,7 @@ public:
 				(opCode == AVM_OPCODE_OUTPUT_TO  ) );
 	}
 
-	inline static BF getCommunicationCode(AvmProgram * anAvmProgram,
+	inline static BF getCommunicationCode(const AvmProgram & anAvmProgram,
 			const BFCode & aCode, bool & hasMutableSchedule)
 	{
 		return( getCommunicationCode(anAvmProgram, aCode,
@@ -65,10 +69,10 @@ public:
 	}
 
 
-	static bool isInternalCommunicationCode(AvmCode * comCode)
+	static bool isInternalCommunicationCode(const AvmCode & comCode)
 	{
-		AVM_OPCODE opCode = comCode->getAvmOpCode();
-		AVM_OPCODE optimizCode = comCode->getOptimizedOpCode();
+		AVM_OPCODE opCode = comCode.getAvmOpCode();
+		AVM_OPCODE optimizCode = comCode.getOptimizedOpCode();
 
 		return( ((opCode == AVM_OPCODE_INPUT     ) ||
 				(opCode == AVM_OPCODE_INPUT_FROM ) ||
@@ -78,7 +82,8 @@ public:
 				(optimizCode != AVM_OPCODE_OUTPUT_ENV) );
 	}
 
-	inline static BF getInternalCommunicationCode(AvmProgram * anAvmProgram,
+	inline static BF getInternalCommunicationCode(
+			const AvmProgram & anAvmProgram,
 			const BFCode & aCode, bool & hasMutableSchedule)
 	{
 		return( getCommunicationCode(anAvmProgram, aCode,
@@ -91,15 +96,15 @@ public:
 	 * Collect information about
 	 * communication with the environment
 	 */
-	static bool isEnvironmentCom(AvmCode * comCode)
+	static bool isEnvironmentCom(const AvmCode & comCode)
 	{
-		AVM_OPCODE optimizeCode = comCode->getOptimizedOpCode();
+		AVM_OPCODE optimizeCode = comCode.getOptimizedOpCode();
 
 		return( (optimizeCode == AVM_OPCODE_INPUT_ENV) ||
 				(optimizeCode == AVM_OPCODE_OUTPUT_ENV) );
 	}
 
-	inline static BF getEnvironmentCom(AvmProgram * anAvmProgram,
+	inline static BF getEnvironmentCom(const AvmProgram & anAvmProgram,
 			const BFCode & aCode, bool & hasMutableSchedule)
 	{
 		return( getCommunicationCode(anAvmProgram, aCode,
@@ -109,12 +114,12 @@ public:
 
 
 
-	static bool isEnvironmentInputCom(AvmCode * comCode)
+	static bool isEnvironmentInputCom(const AvmCode & comCode)
 	{
-		return( comCode->getOptimizedOpCode() == AVM_OPCODE_INPUT_ENV );
+		return( comCode.getOptimizedOpCode() == AVM_OPCODE_INPUT_ENV );
 	}
 
-	inline static BF getEnvironmentInputCom(AvmProgram * anAvmProgram,
+	inline static BF getEnvironmentInputCom(const AvmProgram & anAvmProgram,
 			const BFCode & aCode, bool & hasMutableSchedule)
 	{
 		return( getCommunicationCode(anAvmProgram, aCode,
@@ -123,12 +128,12 @@ public:
 	}
 
 
-	static bool isEnvironmentOutputCom(AvmCode * comCode)
+	static bool isEnvironmentOutputCom(const AvmCode & comCode)
 	{
-		return( comCode->getOptimizedOpCode() == AVM_OPCODE_OUTPUT_ENV );
+		return( comCode.getOptimizedOpCode() == AVM_OPCODE_OUTPUT_ENV );
 	}
 
-	inline static BF getEnvironmentOutputCom(AvmProgram * anAvmProgram,
+	inline static BF getEnvironmentOutputCom(const AvmProgram & anAvmProgram,
 			const BFCode & aCode, bool & hasMutableSchedule)
 	{
 		return( getCommunicationCode(anAvmProgram, aCode,
@@ -142,47 +147,61 @@ public:
 	 * Collect information about
 	 * static input enabled communication
 	 */
-	static void computeInputEnabledCom(AvmProgram * anAvmProgram,
-			ListOfInstanceOfPort & inputEnabledCom, AvmCode * aCode,
-			bool (*isCom)(AvmCode * comCode) , bool & hasMutableSchedule );
+	static void computeInputEnabledCom(const AvmProgram & anAvmProgram,
+			ListOfInstanceOfPort & inputEnabledCom, const AvmCode & aCode,
+			bool (*isCom)(const AvmCode & comCode), bool & hasMutableSchedule);
 
-
-	static bool isInputEnabledCom(AvmCode * comCode)
+	inline static void computeInputEnabledCom(const AvmProgram & anAvmProgram,
+			ListOfInstanceOfPort & inputEnabledCom, const BFCode & aCode,
+			bool (*isCom)(const AvmCode & comCode), bool & hasMutableSchedule)
 	{
-		return( (comCode->hasOpCode( AVM_OPCODE_INPUT, AVM_OPCODE_INPUT_FROM ))
-				&& (comCode->getOptimizedOpCode() != AVM_OPCODE_INPUT_ENV) );
+		computeInputEnabledCom(anAvmProgram,
+				inputEnabledCom, (* aCode), isCom, hasMutableSchedule);
+	}
+
+	static void computeInputEnabledComOfTargetActivity(
+			const AvmProgram & anAvmProgram,
+			ListOfInstanceOfPort & inputEnabledCom,
+			const AvmCode & aCode, AVM_OPCODE activityOpCode,
+			bool (*isCom)(const AvmCode & comCode), bool & hasMutableSchedule);
+
+
+	static bool isInputEnabledCom(const AvmCode & comCode)
+	{
+		return( (comCode.hasOpCode( AVM_OPCODE_INPUT, AVM_OPCODE_INPUT_FROM ))
+				&& (comCode.getOptimizedOpCode() != AVM_OPCODE_INPUT_ENV) );
 	}
 
 	inline static void computeInputEnabledCom(
-			AvmProgram * anAvmProgram, AvmCode * aCode)
+			AvmProgram & anAvmProgram, const AvmCode & aCode)
 	{
 		bool hasMutableSchedule = false;
 
 		computeInputEnabledCom( anAvmProgram,
-				anAvmProgram->getInputEnabledCom(), aCode,
+				anAvmProgram.getInputEnabledCom(), aCode,
 				& CommunicationDependency::isInputEnabledCom,
 				hasMutableSchedule );
 
-		anAvmProgram->setMutableCommunication( hasMutableSchedule );
+		anAvmProgram.setMutableCommunication( hasMutableSchedule );
 	}
 
 
-	static bool isInputEnabledSave(AvmCode * comCode)
+	static bool isInputEnabledSave(const AvmCode & comCode)
 	{
-		return( comCode->isOpCode( AVM_OPCODE_INPUT_SAVE ) );
+		return( comCode.isOpCode( AVM_OPCODE_INPUT_SAVE ) );
 	}
 
 	inline static void computeInputEnabledSave(
-			AvmProgram * anAvmProgram, AvmCode * aCode)
+			AvmProgram & anAvmProgram, const AvmCode & aCode)
 	{
 		bool hasMutableSchedule = false;
 
 		computeInputEnabledCom( anAvmProgram,
-				anAvmProgram->getInputEnabledSave(), aCode,
+				anAvmProgram.getInputEnabledSave(), aCode,
 				& CommunicationDependency::isInputEnabledSave,
 				hasMutableSchedule );
 
-		anAvmProgram->setMutableCommunication( hasMutableSchedule );
+		anAvmProgram.setMutableCommunication( hasMutableSchedule );
 	}
 
 
@@ -191,37 +210,38 @@ public:
 	 * Collect information about
 	 * input / output internal communication
 	 */
-	static bool isInputCom(AvmCode * comCode)
+	static bool isInputCom(const AvmCode & comCode)
 	{
-		return( (comCode->hasOpCode( AVM_OPCODE_INPUT, AVM_OPCODE_INPUT_FROM ))
-				&& (comCode->getOptimizedOpCode() != AVM_OPCODE_INPUT_ENV) );
+		return( (comCode.hasOpCode( AVM_OPCODE_INPUT, AVM_OPCODE_INPUT_FROM ))
+				&& (comCode.getOptimizedOpCode() != AVM_OPCODE_INPUT_ENV) );
 	}
 
-	inline static BF getInputCom(AvmProgram * anAvmProgram,
+	inline static BF getInputCom(const AvmProgram & anAvmProgram,
 			const BFCode & aCode, bool & hasMutableSchedule)
 	{
 		return( getCommunicationCode(anAvmProgram, aCode,
 				& CommunicationDependency::isInputCom, hasMutableSchedule) );
 	}
 
-	static void computeInputCom(AvmProgram * anAvmProgram, AvmCode * aCode)
+	static void computeInputCom(
+			AvmProgram & anAvmProgram, const AvmCode & aCode)
 	{
 		bool hasMutableSchedule = false;
 
-		computeInputEnabledCom(anAvmProgram, anAvmProgram->getInputCom(), aCode,
+		computeInputEnabledCom(anAvmProgram, anAvmProgram.getInputCom(), aCode,
 				& CommunicationDependency::isInputCom, hasMutableSchedule);
 
-		anAvmProgram->setMutableCommunication( hasMutableSchedule );
+		anAvmProgram.setMutableCommunication( hasMutableSchedule );
 	}
 
 
-	static bool isOutputCom(AvmCode * comCode)
+	static bool isOutputCom(const AvmCode & comCode)
 	{
-		return( (comCode->hasOpCode( AVM_OPCODE_OUTPUT, AVM_OPCODE_OUTPUT_TO ))
-				&& (comCode->getOptimizedOpCode() != AVM_OPCODE_OUTPUT_ENV) );
+		return( (comCode.hasOpCode( AVM_OPCODE_OUTPUT, AVM_OPCODE_OUTPUT_TO ))
+				&& (comCode.getOptimizedOpCode() != AVM_OPCODE_OUTPUT_ENV) );
 	}
 
-	inline static BF getOutputCom(AvmProgram * anAvmProgram,
+	inline static BF getOutputCom(const AvmProgram & anAvmProgram,
 			const BFCode & aCode, bool & hasMutableSchedule)
 	{
 		return( getCommunicationCode(anAvmProgram, aCode,
@@ -229,14 +249,15 @@ public:
 	}
 
 
-	static void computeOutputCom( AvmProgram * anAvmProgram, AvmCode * aCode)
+	static void computeOutputCom(
+			AvmProgram & anAvmProgram, const AvmCode & aCode)
 	{
 		bool hasMutableSchedule = false;
 
-		computeInputEnabledCom(anAvmProgram, anAvmProgram->getOutputCom(), aCode,
+		computeInputEnabledCom(anAvmProgram, anAvmProgram.getOutputCom(), aCode,
 				& CommunicationDependency::isOutputCom, hasMutableSchedule);
 
-		anAvmProgram->setMutableCommunication( hasMutableSchedule );
+		anAvmProgram.setMutableCommunication( hasMutableSchedule );
 	}
 
 
@@ -247,23 +268,34 @@ public:
 	 */
 	static void computeInputEnabledCom(const ExecutionData & anED,
 			const RuntimeID & aRID, ListOfInstanceOfPort & inputEnabledCom,
-			AvmCode * aCode, bool (*isCom)(AvmCode * comCode) );
+			const AvmCode & aCode, bool (*isCom)(const AvmCode & comCode) );
+
+	inline static void computeInputEnabledCom(const ExecutionData & anED,
+			const RuntimeID & aRID, ListOfInstanceOfPort & inputEnabledCom,
+			const BFCode & aCode, bool (*isCom)(const AvmCode & comCode) )
+	{
+		if( aCode.valid() )
+		{
+			computeInputEnabledCom(
+					anED, aRID, inputEnabledCom, (* aCode), isCom);
+		}
+	}
 
 
 	inline static void computeInputEnabledCom(
 			const ExecutionData & anED, const RuntimeID & aRID,
-			ListOfInstanceOfPort & inputEnabledCom, AvmCode * aCode)
+			ListOfInstanceOfPort & inputEnabledCom, const AvmCode & aCode)
 	{
 		computeInputEnabledCom(anED, aRID, inputEnabledCom, aCode,
-				& CommunicationDependency::isInputEnabledCom );
+				& CommunicationDependency::isInputEnabledCom);
 	}
 
 	inline static void computeInputEnabledSave(
 			const ExecutionData & anED, const RuntimeID & aRID,
-			ListOfInstanceOfPort & inputEnabledSave, AvmCode * aCode )
+			ListOfInstanceOfPort & inputEnabledSave, const AvmCode & aCode)
 	{
 		computeInputEnabledCom(anED, aRID, inputEnabledSave, aCode,
-				& CommunicationDependency::isInputEnabledSave );
+				& CommunicationDependency::isInputEnabledSave);
 	}
 
 

@@ -13,7 +13,6 @@
 #ifndef RUNTIMEFORMID_H_
 #define RUNTIMEFORMID_H_
 
-#include <common/AvmPointer.h>
 #include <common/NamedElement.h>
 #include <common/BF.h>
 
@@ -165,7 +164,7 @@ public:
 	 * GETTER - SETTER
 	 * mFullyQualifiedNameID
 	 */
-	inline std::string getQualifiedNameID() const
+	inline std::string getQualifiedNameID() const override
 	{
 		return( mQualifiedNameID );
 	}
@@ -179,7 +178,7 @@ public:
 	 * GETTER - SETTER
 	 * mNameID
 	 */
-	inline virtual const std::string & getNameID() const
+	inline virtual const std::string & getNameID() const override
 	{
 		if( mNameID.empty() )
 		{
@@ -192,20 +191,20 @@ public:
 	 * GETTER
 	 * Executable
 	 */
-	ExecutableForm * getExecutable() const;
+	ExecutableForm & refExecutable() const;
 
 	/**
 	 * mRID of shortcut
 	 */
-	inline static int mRidOf(_RuntimeID_ * anElement)
+	inline static int ridOf(_RuntimeID_ * anElement)
 	{
-		return( ( anElement != NULL ) ? anElement->mRid : -1 );
+		return( ( anElement != nullptr ) ? anElement->mRid : -1 );
 	}
 
 	/**
 	 * Serialization
 	 */
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		return( mQualifiedNameID );
 	}
@@ -215,18 +214,18 @@ public:
 		return( mQualifiedNameID );
 	}
 
-	inline virtual void strHeader(OutStream & os) const
+	inline virtual void strHeader(OutStream & out) const
 	{
-		os << mQualifiedNameID;
+		out << mQualifiedNameID;
 	}
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
 
 };
 
 
-class RuntimeID :
-		public BF,
+class RuntimeID : public BF,
+		AVM_INJECT_STATIC_NULL_REFERENCE( RuntimeID ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( RuntimeID )
 {
 
@@ -234,7 +233,32 @@ private:
 	/**
 	 * TYPEDEF
 	 */
-	typedef BF base_this_type;
+	typedef BF          base_this_type;
+
+public:
+	typedef _RuntimeID_ raw_value_t;
+
+
+public:
+	/**
+	* GLOBALS
+	* BASE NAME PREFIX
+	*/
+	static std::string NAME_ID_SEPARATOR;
+
+	static std::string BASENAME_PREFIX;
+
+	static std::string BASENAME;
+
+	static std::string BASENAME_PARENT_PREFIX;
+
+	static std::string BASENAME_PARENT;
+
+	/**
+	 * DEFAULT NULL REFERENCE
+	 */
+	static RuntimeID REF_NULL;
+
 
 
 public:
@@ -264,7 +288,7 @@ public:
 
 	RuntimeID(const RuntimeID & aParent, int aPid,
 			avm_offset_t anOffset, InstanceOfMachine * anInstance)
-	: BF( new _RuntimeID_(NULL,
+	: BF( new _RuntimeID_(nullptr,
 			aParent.rid_pointer(), aPid, anOffset, anInstance) )
 	{
 		initialize();
@@ -296,7 +320,7 @@ public:
 	 */
 	void create(int aPid, avm_offset_t anOffset, InstanceOfMachine * anInstance)
 	{
-		release( new _RuntimeID_(NULL, NULL, aPid, anOffset, anInstance) );
+		release( new _RuntimeID_(nullptr, nullptr, aPid, anOffset, anInstance) );
 	}
 
 
@@ -307,6 +331,21 @@ public:
 	{
 		//!! NOTHING
 	}
+
+
+	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static RuntimeID & nullref()
+	{
+//		static RuntimeID _NULL_;
+//
+//		return( _NULL_ );
+
+		return( RuntimeID::REF_NULL );
+	}
+
 
 	/**
 	 * initialize
@@ -413,6 +452,11 @@ public:
 	 */
 	std::string getFullyQualifiedNameID() const;
 
+	inline bool isLocationID(const std::string & aLocationID) const
+	{
+		return( rid_pointer()->isLocationID(aLocationID) );
+	}
+
 	/**
 	 * GETTER - SETTER
 	 * mQualifiedNameID
@@ -436,9 +480,24 @@ public:
 		return( rid_pointer()->getNameID() );
 	}
 
+	inline std::string getPortableNameID() const
+	{
+		return( rid_pointer()->getPortableNameID() );
+	}
+
+	inline std::string getUniqNameID() const
+	{
+		return( rid_pointer()->getUniqNameID() );
+	}
+
 	inline void setNameID(const std::string & aNameID)
 	{
 		rid_pointer()->setNameID( aNameID );
+	}
+
+	inline bool fqnEndsWith(const std::string & aQualifiedNameID) const
+	{
+		return( rid_pointer()->fqnEndsWith(aQualifiedNameID) );
 	}
 
 
@@ -453,12 +512,17 @@ public:
 
 	inline std::string strPid() const
 	{
-		return( OSS() << "pid#" << getRid() );
+		return( OSS() << BASENAME << getRid() );
+	}
+
+	inline std::string strPPid() const
+	{
+		return( OSS() << BASENAME_PARENT << getPRid() );
 	}
 
 	inline std::string strUniqId() const
 	{
-		return( OSS() << "pid#" << getRid() << ":" << getNameID() );
+		return( OSS() << BASENAME << getRid() << ":" << getNameID() );
 	}
 
 
@@ -467,17 +531,21 @@ public:
 	 */
 	inline static RuntimeID smartPointerOf(_RuntimeID_ * anElement)
 	{
-		if( anElement != NULL )
+		if( anElement != nullptr )
 		{
 			anElement->incrRefCount();
-		}
 
-		return( RuntimeID( anElement ) );
+			return( RuntimeID( anElement ) );
+		}
+		else
+		{
+			return( RuntimeID::REF_NULL );
+		}
 	}
 
-	inline static int mRidOf(_RuntimeID_ * anElement)
+	inline static int ridOf(_RuntimeID_ * anElement)
 	{
-		return( ( anElement != NULL ) ? anElement->mRid : -1 );
+		return( ( anElement != nullptr ) ? anElement->mRid : -1 );
 	}
 
 
@@ -492,17 +560,17 @@ public:
 
 	inline bool hasPRID() const
 	{
-		return( rid_pointer()->mParent!= NULL );
+		return( rid_pointer()->mParent!= nullptr );
 	}
 
 	inline int getPRid() const
 	{
-		return( mRidOf( rid_pointer()->mParent ) );
+		return( ridOf( rid_pointer()->mParent ) );
 	}
 
-	inline int getPOffset() const
+	inline int getParentOffset() const
 	{
-		return( ( rid_pointer()->mParent != NULL ) ?
+		return( ( rid_pointer()->mParent != nullptr ) ?
 				rid_pointer()->mParent->mOffset : 0 );
 	}
 
@@ -514,11 +582,6 @@ public:
 	inline avm_offset_t getOffset() const
 	{
 		return( rid_pointer()->mOffset );
-	}
-
-	inline void setOffset(avm_offset_t anOffset)
-	{
-		rid_pointer()->mOffset = anOffset;
 	}
 
 
@@ -536,7 +599,7 @@ public:
 
 	inline bool hasInstance() const
 	{
-		return( rid_pointer()->mInstance != NULL );
+		return( rid_pointer()->mInstance != nullptr );
 	}
 
 
@@ -544,6 +607,8 @@ public:
 
 	bool hasModelInstance() const;
 
+
+	ExecutableForm & refExecutable() const;
 
 	ExecutableForm * getExecutable() const;
 
@@ -556,6 +621,7 @@ public:
 
 	bool hasVariable() const;
 
+	bool hasConstVariable() const;
 
 	/**
 	 * GETTER - SETTER
@@ -601,12 +667,12 @@ public:
 
 	inline int getModelRid() const
 	{
-		return( mRidOf( rid_pointer()->mModel ) );
+		return( ridOf( rid_pointer()->mModel ) );
 	}
 
 	inline bool hasModel() const
 	{
-		return( rid_pointer()->mModel != NULL );
+		return( rid_pointer()->mModel != nullptr );
 	}
 
 
@@ -621,12 +687,12 @@ public:
 
 	inline int getParentRid() const
 	{
-		return( mRidOf( rid_pointer()->mParent ) );
+		return( ridOf( rid_pointer()->mParent ) );
 	}
 
 	inline bool hasParent() const
 	{
-		return( rid_pointer()->mParent != NULL );
+		return( rid_pointer()->mParent != nullptr );
 	}
 
 
@@ -641,9 +707,11 @@ public:
 
 	bool hasAsAncestor(const RuntimeID & aRID) const;
 
-	bool hasAsAncestor(const InstanceOfMachine * anInstance) const;
+	bool hasAsAncestor(const InstanceOfMachine & anInstance) const;
 
-	RuntimeID getAncestorContaining(const BaseInstanceForm * anInstance) const;
+	RuntimeID getAncestor(const InstanceOfMachine & anInstance) const;
+
+	RuntimeID getAncestorContaining(const BaseInstanceForm & anInstance) const;
 
 
 	/**
@@ -652,7 +720,7 @@ public:
 	 */
 	inline RuntimeID getCompositeComponent() const
 	{
-		if( rid_pointer()->mCompositeComponent != NULL )
+		if( rid_pointer()->mCompositeComponent != nullptr )
 		{
 			rid_pointer()->mCompositeComponent->incrRefCount();
 		}
@@ -668,7 +736,7 @@ public:
 
 	inline bool hasCompositeComponent() const
 	{
-		return( rid_pointer()->mCompositeComponent != NULL );
+		return( rid_pointer()->mCompositeComponent != nullptr );
 	}
 
 
@@ -678,7 +746,7 @@ public:
 	 */
 	inline RuntimeID getCompositeComponentParent() const
 	{
-		if( rid_pointer()->mCompositeComponentParent != NULL )
+		if( rid_pointer()->mCompositeComponentParent != nullptr )
 		{
 			rid_pointer()->mCompositeComponentParent->incrRefCount();
 		}
@@ -689,12 +757,12 @@ public:
 
 	inline int getCompositeComponentParentRid() const
 	{
-		return( mRidOf( rid_pointer()->mCompositeComponentParent ) );
+		return( ridOf( rid_pointer()->mCompositeComponentParent ) );
 	}
 
 	inline bool hasCompositeComponentParent() const
 	{
-		return( rid_pointer()->mCompositeComponentParent != NULL );
+		return( rid_pointer()->mCompositeComponentParent != nullptr );
 	}
 
 
@@ -702,9 +770,9 @@ public:
 	 * GETTER - SETTER
 	 * the Lifeline Ancestor container
 	 */
-	RuntimeID getLifeline(InstanceOfMachine * aMachine) const;
+	RuntimeID getLifeline(const InstanceOfMachine & aMachine) const;
 
-	RuntimeID getLifeline(InstanceOfPort * aPort) const;
+	RuntimeID getLifeline(const InstanceOfPort & aPort) const;
 
 	inline RuntimeID getLifeline() const
 	{
@@ -713,12 +781,12 @@ public:
 
 	inline int getLifelineRid() const
 	{
-		return( mRidOf( rid_pointer()->mLifeline ) );
+		return( ridOf( rid_pointer()->mLifeline ) );
 	}
 
 	inline bool hasLifeline() const
 	{
-		return( rid_pointer()->mLifeline != NULL );
+		return( rid_pointer()->mLifeline != nullptr );
 	}
 
 
@@ -727,9 +795,9 @@ public:
 	 * GETTER - SETTER
 	 * the Communicator Ancestor container
 	 */
-	RuntimeID getCommunicator(InstanceOfMachine * aMachine) const;
+	RuntimeID getCommunicator(const InstanceOfMachine & aMachine) const;
 
-	RuntimeID getCommunicator(InstanceOfPort * aPort) const;
+	RuntimeID getCommunicator(const InstanceOfPort & aPort) const;
 
 	inline RuntimeID getCommunicator() const
 	{
@@ -738,12 +806,12 @@ public:
 
 	inline int getCommunicatorRid() const
 	{
-		return( mRidOf( rid_pointer()->mCommunicator ) );
+		return( ridOf( rid_pointer()->mCommunicator ) );
 	}
 
 	inline bool hasCommunicator() const
 	{
-		return( rid_pointer()->mCommunicator != NULL );
+		return( rid_pointer()->mCommunicator != nullptr );
 	}
 
 
@@ -759,12 +827,12 @@ public:
 
 	inline int getComponentSelfRid() const
 	{
-		return( mRidOf( rid_pointer()->mComponentSelf ) );
+		return( ridOf( rid_pointer()->mComponentSelf ) );
 	}
 
 	inline bool hasComponentSelf() const
 	{
-		return( rid_pointer()->mComponentSelf != NULL );
+		return( rid_pointer()->mComponentSelf != nullptr );
 	}
 
 
@@ -779,12 +847,12 @@ public:
 
 	inline int getComponentParentRid() const
 	{
-		return( mRidOf( rid_pointer()->mComponentParent ) );
+		return( ridOf( rid_pointer()->mComponentParent ) );
 	}
 
 	inline bool hasComponentParent() const
 	{
-		return( rid_pointer()->mComponentParent != NULL );
+		return( rid_pointer()->mComponentParent != nullptr );
 	}
 
 
@@ -794,7 +862,7 @@ public:
 	 */
 	inline RuntimeID getComponentCommunicator() const
 	{
-		if( rid_pointer()->mComponentCommunicator != NULL )
+		if( rid_pointer()->mComponentCommunicator != nullptr )
 		{
 			rid_pointer()->mComponentCommunicator->incrRefCount();
 		}
@@ -804,26 +872,20 @@ public:
 
 	inline int getComponentCommunicatorRid() const
 	{
-		return( mRidOf( rid_pointer()->mComponentCommunicator ) );
+		return( ridOf( rid_pointer()->mComponentCommunicator ) );
 	}
 
 	inline bool hasComponentCommunicator() const
 	{
-		return( rid_pointer()->mComponentCommunicator != NULL );
+		return( rid_pointer()->mComponentCommunicator != nullptr );
 	}
-
-
-	/**
-	 * DEFAULT NULL
-	 */
-	static RuntimeID REF_NULL;
 
 
    /**
 	 * Serialization
 	 */
 	inline virtual std::string toString(
-			const AvmIndent & indent = AVM_TAB_INDENT) const
+			const AvmIndent & indent = AVM_TAB_INDENT) const override
 	{
 		StringOutStream oss(indent);
 
@@ -832,104 +894,104 @@ public:
 		return( oss.str() );
 	}
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
-		return( ( base_this_type::mPTR == NULL ) ?
+		return( ( base_this_type::mPTR == nullptr ) ?
 				"RuntimeID<null>"  : rid_pointer()->str() );
 	}
 
 
-	inline virtual void AVM_DEBUG_REF_COUNTER(OutStream & os) const
+	inline virtual void AVM_DEBUG_REF_COUNTER(OutStream & out) const override
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
-			base_this_type::mPTR->AVM_DEBUG_REF_COUNTER(os);
+			base_this_type::mPTR->AVM_DEBUG_REF_COUNTER(out);
 		}
 		else
 		{
-			os << "RuntimeID<null, ref:0>" << std::flush;
+			out << "RuntimeID<null, ref:0>" << std::flush;
 		}
 	}
 
-	inline virtual std::string AVM_DEBUG_REF_COUNTER() const
+	inline virtual std::string AVM_DEBUG_REF_COUNTER() const override
 	{
-		return( ( base_this_type::mPTR != NULL )
+		return( ( base_this_type::mPTR != nullptr )
 				? base_this_type::mPTR->AVM_DEBUG_REF_COUNTER()
 				: "RuntimeID<null, ref:0>" );
 	}
 
-	inline virtual std::string strHeader() const
+	inline virtual std::string strHeader() const override
 	{
-		return( ( base_this_type::mPTR == NULL ) ?
+		return( ( base_this_type::mPTR == nullptr ) ?
 				"RuntimeID<null>"  : rid_pointer()->strHeader() );
 	}
 
-	inline virtual void strHeader(OutStream & os) const
+	inline virtual void strHeader(OutStream & out) const override
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
-			rid_pointer()->strHeader(os);
+			rid_pointer()->strHeader(out);
 		}
 		else
 		{
-			os << "RuntimeID<null>" << std::flush;
+			out << "RuntimeID<null>" << std::flush;
 		}
 	}
 
 
-	inline virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & out) const override
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
-			rid_pointer()->toStream(os);
+			rid_pointer()->toStream(out);
 		}
 		else
 		{
-			os << "RuntimeID<null>" << std::flush;
+			out << "RuntimeID<null>" << std::flush;
 		}
 	}
 
 	/*
 	 * !UNUSED!
-	inline static void toStream(OutStream & os,
+	inline static void toStream(OutStream & out,
 			const Vector< RuntimeID > & aTable,
 			const std::string & aSectionName = "child")
 	{
-		os << TAB << aSectionName;
+		out << TAB << aSectionName;
 
 AVM_IF_DEBUG_LEVEL_GTE_MEDIUM
 
-		os << EOL_INCR_INDENT;
+		out << EOL_INCR_INDENT;
 		Vector< RuntimeID >::const_iterator it = aTable.begin();
 		Vector< RuntimeID >::const_iterator itEnd = aTable.end();
 		for( ; it != itEnd ; ++it )
 		{
 	AVM_IF_DEBUG_LEVEL_GTE_HIGH
 
-			(*it).toStream(os);
+			(*it).toStream(out);
 
 	AVM_DEBUG_ELSE
 
-			os << TAB << (*it).getFullyQualifiedNameID() << EOL;
+			out << TAB << (*it).getFullyQualifiedNameID() << EOL;
 
 	AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
 		}
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 
 AVM_ELSEIF_DEBUG_LEVEL_GTE_LOW
 
-		os << " = [| ";
+		out << " = [| ";
 		Vector< RuntimeID >::const_iterator it = aTable.begin();
 		Vector< RuntimeID >::const_iterator itEnd = aTable.end();
 		for( ; it != itEnd ; ++it )
 		{
-			os << (*it).getOffset() << " ";
+			out << (*it).getOffset() << " ";
 		}
-		os << "|];" << EOL;
+		out << "|];" << EOL;
 
 AVM_ENDIF_DEBUG_LEVEL_GTE_LOW
 
-		os << std::flush;
+		out << std::flush;
 	}
 	* !UNUSED!
 	*/
@@ -944,11 +1006,11 @@ AVM_ENDIF_DEBUG_LEVEL_GTE_LOW
 ////////////////////////////////////////////////////////////////////////////////
 
 class TableOfRuntimeID :  public AvmObject ,
-	public Vector< RuntimeID >,
+		public Vector< RuntimeID >,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( TableOfRuntimeID )
 {
 
-	AVM_DECLARE_CLONABLE_CLASS( TableOfRuntimeID )
+	AVM_DECLARE_CLONABLE_BASE_CLASS( TableOfRuntimeID )
 
 
 public:
@@ -984,16 +1046,6 @@ public:
 	}
 
 };
-
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-// TYPE DEFINITION for SMART POINTER and CONTAINER
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-AVM_DEFINE_AP_CLASS( TableOfRuntimeID )
-
 
 
 }

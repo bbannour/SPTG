@@ -17,8 +17,9 @@
 #define PRINTER_OUTSTREAM_H_
 
 #include <fstream>
-#include <iostream>
 #include <iomanip>
+#include <iosfwd>
+#include <iostream>
 #include <sstream>
 #include <stack>
 #include <string>
@@ -40,8 +41,7 @@ namespace sep
 //#define AVM_CHAR_TAB         "\t"
 
 
-class ParameterManager;
-class Workflow;
+class WorkflowParameter;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,12 +80,12 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	OutStream(std::ostream * os = NULL,
+	OutStream(std::ostream * os = nullptr,
 			const std::string & tabs   = "",
 			const std::string & _char_ = "\t",
 			const std::string & eol    = "\n")
 	: OS( os ),
-	WRAP_OS( NULL ),
+	WRAP_OS( nullptr ),
 	INDENT( tabs, _char_ , eol ),
 	DEPTH( 0 ),
 	STACK( ),
@@ -98,7 +98,7 @@ public:
 
 	OutStream(std::ostream * os, const AvmIndent & indent)
 	: OS( os ),
-	WRAP_OS( NULL ),
+	WRAP_OS( nullptr ),
 	INDENT( indent ),
 	DEPTH( 0 ),
 	STACK( ),
@@ -111,7 +111,7 @@ public:
 
 	OutStream(std::ostream * os, const OutStream & aos)
 	: OS( os ),
-	WRAP_OS( NULL ),
+	WRAP_OS( nullptr ),
 	INDENT( aos.INDENT ),
 	DEPTH( 0 ),
 	STACK( ),
@@ -125,7 +125,7 @@ public:
 
 	OutStream(std::ostream & os, const AvmIndent & indent)
 	: OS( & os ),
-	WRAP_OS( NULL ),
+	WRAP_OS( nullptr ),
 	INDENT( indent ),
 	DEPTH( 0 ),
 	STACK( ),
@@ -154,7 +154,7 @@ public:
 
 	OutStream(std::ostream & os, const OutStream & aos)
 	: OS( & os ),
-	WRAP_OS( NULL ),
+	WRAP_OS( nullptr ),
 	INDENT( aos.INDENT ),
 	DEPTH( 0 ),
 	STACK( ),
@@ -170,7 +170,7 @@ public:
 			const std::string & _char_ = "\t",
 			const std::string & eol    = "\n")
 	: OS( & os ),
-	WRAP_OS( NULL ),
+	WRAP_OS( nullptr ),
 	INDENT(tabs, _char_ , eol ),
 	DEPTH( 0 ),
 	STACK( ),
@@ -198,12 +198,12 @@ public:
 	{
 		delete( OS );
 
-		OS = NULL;
+		OS = nullptr;
 	}
 
 	inline void destroy()
 	{
-		if( (OS != NULL) && (OS != _avm_os_null_) &&
+		if( (OS != nullptr) && (OS != _avm_os_null_) &&
 			(OS != &(std::cout)) && (OS != &(std::cerr)) )
 		{
 			if( OS->good() )
@@ -220,14 +220,14 @@ public:
 	 * OS
 	 * fail / good
 	 */
-	inline virtual bool fail()
+	inline virtual bool fail() const
 	{
-		return( (OS == NULL) || OS->fail() );
+		return( (OS == nullptr) || OS->fail() );
 	}
 
-	inline virtual bool good()
+	inline virtual bool good() const
 	{
-		return( (OS != NULL) && OS->good() );
+		return( (OS != nullptr) && OS->good() );
 	}
 
 
@@ -237,9 +237,9 @@ public:
 	 */
 	inline bool isOpen()
 	{
-		return( (OS != NULL) &&
-				(dynamic_cast< std::ofstream * >(OS) != NULL) &&
-				dynamic_cast< std::ofstream * >(OS)->is_open() );
+		return( (OS != nullptr)
+				&& (dynamic_cast< std::ofstream * >(OS) != nullptr)
+				&& dynamic_cast< std::ofstream * >(OS)->is_open() );
 	}
 
 	inline bool open(const std::string & aFileLocation,
@@ -247,7 +247,7 @@ public:
 	{
 		OS = new std::ofstream(aFileLocation.c_str(), aMode);
 
-		return( (OS != NULL) && OS->good() );
+		return( (OS != nullptr) && OS->good() );
 	}
 
 	inline bool reopen(const std::string & aFileLocation,
@@ -258,7 +258,7 @@ public:
 			destroy();
 		}
 
-		return( open(aFileLocation.c_str(), aMode) );
+		return( open(aFileLocation, aMode) );
 	}
 
 
@@ -295,17 +295,24 @@ public:
 		VALUE_STRUCT_CSS = vsc;
 	}
 
+	inline void setSymbexValueCSS(const OutStream & out)
+	{
+		VALUE_ARRAY_CSS  = out.VALUE_ARRAY_CSS;
+		VALUE_PARAMS_CSS = out.VALUE_PARAMS_CSS;
+		VALUE_STRUCT_CSS = out.VALUE_STRUCT_CSS;
+	}
+
 	/**
 	 * flush()
 	 */
 	inline virtual void flush() const
 	{
-		if( WRAP_OS != NULL )
+		if( WRAP_OS != nullptr )
 		{
 			WRAP_OS->flush();
 		}
 
-		if( OS != NULL )
+		if( OS != nullptr )
 		{
 			OS->flush();
 		}
@@ -354,7 +361,7 @@ public:
 		{
 			( *os ) << '\b';
 		}
-		else if( os != NULL )
+		else if( os != nullptr )
 		{
 			os->seekp(-1, std::ios::end);
 		}
@@ -400,7 +407,7 @@ public:
 	{
 		if( good() )
 		{
-			if( WRAP_OS != NULL )
+			if( WRAP_OS != nullptr )
 			{
 				delete( WRAP_OS );
 			}
@@ -417,7 +424,7 @@ public:
 
 	inline void end_wrap()
 	{
-		if( good() && (WRAP_OS != NULL) )
+		if( good() && (WRAP_OS != nullptr) )
 		{
 			OS = WRAP_OS->mOS;
 
@@ -425,7 +432,7 @@ public:
 
 			delete( WRAP_OS );
 
-			WRAP_OS = NULL;
+			WRAP_OS = nullptr;
 		}
 	}
 
@@ -492,7 +499,7 @@ public:
 	template< class T >
 	inline OutStream & operator<<(const _ptrStream_< T > & obj)
 	{
-		if( obj.ptr != NULL )
+		if( obj.ptr != nullptr )
 		{
 			obj.ptr->toStream( *this );
 		}
@@ -519,7 +526,7 @@ public:
 	template< class T >
 	inline OutStream & operator<<(const _ptrHeader_< T > & obj)
 	{
-		if( obj.ptr != NULL )
+		if( obj.ptr != nullptr )
 		{
 			obj.ptr->strHeader( *this );
 		}
@@ -546,7 +553,7 @@ public:
 	template< class T >
 	inline OutStream & operator<<(const _ptrFQN_< T > & obj)
 	{
-		if( obj.ptr != NULL )
+		if( obj.ptr != nullptr )
 		{
 			obj.ptr->strFQN( *this );
 		}
@@ -579,7 +586,7 @@ public:
 	template< class T >
 	inline OutStream & operator<<(const _ptrIncrIndent_< T > & obj)
 	{
-		if( obj.ptr != NULL )
+		if( obj.ptr != nullptr )
 		{
 			incr();
 
@@ -615,7 +622,7 @@ public:
 	template< class T >
 	inline OutStream & operator<<(const _ptrIncrIndentCount_< T > & obj)
 	{
-		if( obj.ptr != NULL )
+		if( obj.ptr != nullptr )
 		{
 			incr( obj.count );
 
@@ -649,7 +656,7 @@ public:
 	template< class T >
 	inline OutStream & operator<<(const _ptrIndent_< T > & obj)
 	{
-		if( obj.ptr != NULL )
+		if( obj.ptr != nullptr )
 		{
 			obj.ptr->toStream( OutStream::operator<<( obj.indent ) );
 
@@ -785,7 +792,7 @@ public:
 	/**
 	 * CONFIGURE
 	 */
-	static bool configure(Workflow * aWorkflow);
+	static bool configure(const WorkflowParameter & aWorkflowParameter);
 
 };
 
@@ -1320,6 +1327,19 @@ public:
 		//!! NOTHING
 	}
 
+	// For Flag like CSS
+	StringOutStream(const OutStream & out)
+	: OutStream( oss , AVM_TAB_INDENT )
+	{
+		setSymbexValueCSS( out );
+	}
+
+	StringOutStream(const AvmIndent & indent, const OutStream & out)
+	: OutStream( oss , indent )
+	{
+		setSymbexValueCSS( out );
+	}
+
 	StringOutStream(
 			const std::string & tabs,
 			const std::string & _char_ = "\t",
@@ -1347,6 +1367,23 @@ public:
 
 
 	/**
+	 *empty()
+	 */
+	inline bool empty()
+	{
+		oss.seekp(0, std::ios::end);
+
+		return( oss.tellp() <= 0 );
+	}
+
+	inline bool nonempty()
+	{
+		oss.seekp(0, std::ios::end);
+
+		return( oss.tellp() > 0 );
+	}
+
+	/**
 	 * str()
 	 */
 	inline std::string str() const
@@ -1366,12 +1403,13 @@ public:
 	/**
 	 * c_str()
 	 */
-	inline const char * c_str() const
-	{
-		OutStream::flush();
-
-		return( oss.str().c_str() );
-	}
+//!?< LLVM Warning >
+//	inline const char * c_str() const
+//	{
+//		OutStream::flush();
+//
+//		return( oss.str().c_str() );
+//	}
 
 
 	/**
@@ -1397,6 +1435,14 @@ public:
 	/**
 	 * operator<<
 	 */
+	// Require for polymorphism in functor like TAB or EOL family
+	inline virtual StringOutStream & operator<<( const std::string & x ) override
+	{
+		( *OS ) << x;
+
+		return( *this );
+	}
+
 	template< class T >
 	inline StringOutStream & operator<<( const T & x )
 	{
@@ -1473,6 +1519,9 @@ public:
 	{
 		return( *this );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using OutStream::operator<<;
 
 };
 

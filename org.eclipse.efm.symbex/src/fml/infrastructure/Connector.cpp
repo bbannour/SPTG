@@ -14,7 +14,6 @@
  ******************************************************************************/
 
 #include "Connector.h"
-
 #include <fml/lib/IComPoint.h>
 
 #include <fml/infrastructure/InteractionPart.h>
@@ -32,8 +31,8 @@ std::string Connector::ANONYM_ID = "_#connector";
  * CONSTRUCTOR
  * Default
  */
-Connector::Connector(const InteractionPart & anInteractionPart)
-: ObjectElement( CLASS_KIND_T( Connector ), anInteractionPart.getContainer()),
+Connector::Connector(const InteractionPart * anInteractionPart)
+: ObjectElement( CLASS_KIND_T( Connector ), anInteractionPart->getContainer()),
 ComProtocol( PROTOCOL_UNDEFINED_KIND ),
 mComRoutes( )
 {
@@ -49,16 +48,22 @@ void Connector::toStream(OutStream & out) const
 	out << TAB << getModifier().toString()
 		<< (isPort() ? "connector" : "route");
 
-	toStreamProtocolCast( out , true ) << " " << getNameID() <<  " {" << EOL;
+	toStreamProtocolCast( out , true ) << " " << getNameID();
 
-	if( mComRoutes.nonempty() )
+	if( hasReallyUnrestrictedName() )
+	{
+		out << " \"" << getUnrestrictedName() << "\"";
+	}
+
+	out <<  " {" << EOL;
+
+	if( not mComRoutes.empty() )
 	{
 		ScopeIncrIndent asii(out);
 
-		route_iterator endIt = mComRoutes.end();
-		for( route_iterator it = mComRoutes.begin() ; it != endIt ; ++it )
+		for( const auto & itComRoute : mComRoutes )
 		{
-			(*it)->toStream(out);
+			itComRoute.toStream(out);
 		}
 	}
 

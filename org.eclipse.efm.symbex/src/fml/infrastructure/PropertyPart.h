@@ -17,19 +17,25 @@
 #define FML_INFRASTRUCTURE_PROPERTYPART_H_
 
 #include <fml/common/ObjectClassifier.h>
-#include <fml/common/ObjectElement.h>
 
 #include <collection/BFContainer.h>
+
+#include <common/BF.h>
 
 #include <fml/infrastructure/Buffer.h>
 #include <fml/infrastructure/Channel.h>
 #include <fml/infrastructure/DataType.h>
+#include <fml/infrastructure/Function.h>
 #include <fml/infrastructure/Port.h>
 #include <fml/infrastructure/Variable.h>
 
 
 namespace sep
 {
+
+class ObjectElement;
+
+class TypeSpecifier;
 
 
 class PropertyPart : public ObjectClassifier ,
@@ -40,6 +46,17 @@ class PropertyPart : public ObjectClassifier ,
 
 
 public:
+	/**
+	 * TIME CONSTANT
+	 */
+	static std::string VAR_ID_TIME;
+	static std::string VAR_ID_TIME_INITIAL;
+	static BF VAR_TIME_INITIAL_VALUE;
+
+	static std::string VAR_ID_DELTA_TIME;
+	static std::string VAR_ID_DELTA_TIME_INITIAL;
+	static BF VAR_DELTA_TIME_INITIAL_VALUE;
+
 	/**
 	 * TYPEDEF
 	 */
@@ -53,16 +70,13 @@ public:
 
 	typedef TableOfBF_T< DataType      >  TableOfDataType;
 
-	typedef TableOfBF_T< Variable      >  TableOfVariable;
+	typedef TableOfBF_T< Function      >  TableOfFunction;
 
-	typedef TableOfBF_T< ObjectElement >  TableOfOwnedElement;
+	typedef TableOfBF_T< Variable      >  TableOfVariable;
 
 	/**
 	 * ITERATORS
 	 */
-
-	typedef TableOfOwnedElement::const_raw_iterator  const_owned_iterator;
-
 	typedef TableOfDataType::const_raw_iterator      const_type_iterator;
 
 	typedef TableOfVariable::const_raw_iterator      const_variable_iterator;
@@ -84,11 +98,23 @@ protected:
 
 	TableOfDataType     mDataTypes;
 
+	TableOfFunction     mFunctions;
+
 	TableOfVariable     mVariables;
 
 	TableOfVariable     mVariableParameters;
 
 	TableOfVariable     mVariableReturns;
+
+
+	Variable * mTimeVariable;
+	Variable * mDeltaTimeVariable;
+
+	BF mExprTimeVariable;
+	BF mExprDeltaTimeVariable;
+
+	BF mExprTimeInitialConstant;
+	BF mExprDeltaTimeInitialConstant;
 
 
 public:
@@ -100,14 +126,27 @@ public:
 	PropertyPart(ObjectElement * aContainer, const std::string & aNameID)
 	: ObjectClassifier( CLASS_KIND_T( PropertyPart ) , aContainer , aNameID ),
 	mOwnedElements( ),
+
 	mBuffers( ),
 	mPorts( ),
 	mSignals( ),
 	mChannels( ),
+
 	mDataTypes( ),
+	mFunctions( ),
+
 	mVariables( ),
 	mVariableParameters( ),
-	mVariableReturns( )
+	mVariableReturns( ),
+
+	mTimeVariable( nullptr ),
+	mDeltaTimeVariable( nullptr ),
+
+	mExprTimeVariable( ),
+	mExprDeltaTimeVariable( ),
+
+	mExprTimeInitialConstant( ),
+	mExprDeltaTimeInitialConstant( )
 	{
 		//!! NOTHING
 	}
@@ -119,14 +158,27 @@ public:
 	PropertyPart(const PropertyPart & aPart)
 	: ObjectClassifier( aPart ),
 	mOwnedElements( aPart.mOwnedElements ),
+
 	mBuffers( aPart.mBuffers ),
 	mPorts( aPart.mPorts ),
 	mSignals( aPart.mSignals ),
 	mChannels( aPart.mChannels ),
+
 	mDataTypes( aPart.mDataTypes ),
+	mFunctions( aPart.mFunctions ),
+
 	mVariables( aPart.mVariables ),
 	mVariableParameters( aPart.mVariableParameters ),
-	mVariableReturns( aPart.mVariableReturns )
+	mVariableReturns( aPart.mVariableReturns ),
+
+	mTimeVariable( aPart.mTimeVariable ),
+	mDeltaTimeVariable( aPart.mDeltaTimeVariable ),
+
+	mExprTimeVariable( aPart.mExprTimeVariable ),
+	mExprDeltaTimeVariable( aPart.mExprDeltaTimeVariable ),
+
+	mExprTimeInitialConstant( aPart.mExprTimeInitialConstant ),
+	mExprDeltaTimeInitialConstant( aPart.mExprDeltaTimeInitialConstant )
 	{
 		//!! NOTHING
 	}
@@ -150,6 +202,11 @@ public:
 		return( mOwnedElements );
 	}
 
+	inline bool hasOwnedElement() const
+	{
+		return( mOwnedElements.nonempty() );
+	}
+
 
 	/**
 	 * [ CONST ] ITERATOR
@@ -169,7 +226,7 @@ public:
 	 * DISPATCH - SAVE
 	 * mOwnedElements
 	 */
-	void dispatchOwnedElement(const BF & anElement);
+	void dispatchOwnedElement(BF & anElement);
 
 	inline const BF & saveOwnedElement(ObjectElement * ptrElement)
 	{
@@ -178,7 +235,7 @@ public:
 				<< SEND_EXIT;
 
 		// Should be set by the executable machine container !
-		ptrElement->setOffset( mOwnedElements.size() );
+		ptrElement->setOwnedOffset( mOwnedElements.size() );
 
 		mOwnedElements.append( INCR_BF( ptrElement ) );
 
@@ -325,6 +382,9 @@ public:
 		return( mDataTypes.getByQualifiedNameID(aQualifiedNameID) );
 	}
 
+	const BF & getEnumDataType(const std::string & aQualifiedNameID) const;
+	const BF & getSemEnumDataType(const std::string & aQualifiedNameID) const;
+
 
 	/**
 	 * [ CONST ] ITERATOR
@@ -342,6 +402,146 @@ public:
 
 	/**
 	 * GETTER - SETTER
+	 * mFunctions
+	 */
+	inline void appendFunction(const BF & aFunction)
+	{
+		mFunctions.append( aFunction );
+
+		mOwnedElements.append( aFunction );
+	}
+
+	inline const TableOfFunction & getFunctions() const
+	{
+		return( mFunctions );
+	}
+
+	inline const BF & getFunction(const std::string & aQualifiedNameID) const
+	{
+		return( mFunctions.getByQualifiedNameID(aQualifiedNameID) );
+	}
+
+	/**
+	 * [ CONST ] ITERATOR
+	 */
+	inline const_type_iterator fuction_begin() const
+	{
+		return( mFunctions.begin() );
+	}
+
+	inline const_type_iterator function_end() const
+	{
+		return( mFunctions.end() );
+	}
+
+
+	/**
+	 * ADD
+	 * [ delta ] time property
+	 */
+	Variable * addTimeSupport(const TypeSpecifier & timeType);
+
+	Variable * addDeltaTimeSupport(const TypeSpecifier & deltaType);
+
+
+	/**
+	 * GETTER
+	 * Time Variable
+	 */
+	inline Variable * getTimeVariable() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTimeVariable )
+				<< "Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mTimeVariable );
+	}
+
+	inline const BF & getTimeType() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTimeVariable )
+				<< "Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mTimeVariable->getType() );
+	}
+
+	inline const BF & exprTimeVariable() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTimeVariable )
+				<< "Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mExprTimeVariable );
+	}
+
+	inline const BF & exprTimeInitialConstant() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( mExprTimeInitialConstant )
+				<< "Time Initial Constant in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mExprTimeInitialConstant );
+	}
+
+
+	inline bool hasTimeVariable() const
+	{
+		return( mTimeVariable != nullptr );
+	}
+
+
+	/**
+	 * GETTER
+	 * Delta Time Variable
+	 */
+	inline Variable * getDeltaTimeVariable() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mDeltaTimeVariable )
+				<< "Delta Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mDeltaTimeVariable );
+	}
+
+	inline const BF & getDeltaTimeType() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mDeltaTimeVariable )
+				<< "Delta Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mDeltaTimeVariable->getType() );
+	}
+
+	inline const BF & exprDeltaTimeVariable() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mDeltaTimeVariable )
+				<< "Delta Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mExprDeltaTimeVariable );
+	}
+
+	inline const BF & exprDeltaTimeInitialConstant() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT(
+				mExprDeltaTimeInitialConstant )
+				<< "Delta Time Initial Constant in "
+				<< str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mExprDeltaTimeInitialConstant );
+	}
+
+
+	inline bool hasDeltaTimeVariable() const
+	{
+		return( mDeltaTimeVariable != nullptr );
+	}
+
+
+	/**
+	 * GETTER - SETTER
 	 * mVariables
 	 */
 	inline void appendVariable(const BF & aVariable)
@@ -349,6 +549,13 @@ public:
 		mVariables.append( aVariable );
 
 		mOwnedElements.append( aVariable );
+	}
+
+	inline void appendVariable(const TableOfVariable & variables)
+	{
+		mVariables.append( variables );
+
+		mOwnedElements.append( variables );
 	}
 
 	inline const TableOfVariable & getVariables() const
@@ -365,11 +572,6 @@ public:
 	{
 		return( mVariables.nonempty() );
 	}
-
-//	inline void saveVariable(Variable * aVariable)
-//	{
-//		appendVariable( BF(aVariable) );
-//	}
 
 
 	/**
@@ -397,7 +599,18 @@ public:
 		mOwnedElements.append( aVariable );
 	}
 
+	inline void appendVariableParameter(
+			const std::string & label, const BF & aParameter)
+	{
+		mVariableParameters.append( aParameter );
+	}
+
 	inline const TableOfVariable & getVariableParameters() const
+	{
+		return( mVariableParameters );
+	}
+
+	inline TableOfVariable & getVariableParameters()
 	{
 		return( mVariableParameters );
 	}
@@ -432,7 +645,7 @@ public:
 	 * UTIL
 	 * mVariables as Parameters
 	 */
-	inline const BF & getVariableParameter(avm_size_t offset) const
+	inline const BF & getVariableParameter(std::size_t offset) const
 	{
 		return( mVariableParameters.get( offset ) );
 	}
@@ -460,7 +673,18 @@ public:
 		mOwnedElements.append( aVariable );
 	}
 
+	inline void appendVariableReturn(
+			const std::string & label, const BF & aParameter)
+	{
+		mVariableReturns.append( aParameter );
+	}
+
 	inline const TableOfVariable & getVariableReturns() const
+	{
+		return( mVariableReturns );
+	}
+
+	inline TableOfVariable & getVariableReturns()
 	{
 		return( mVariableReturns );
 	}
@@ -495,7 +719,7 @@ public:
 	 * UTIL
 	 * mVariables as Returns
 	 */
-	inline const BF & getVariableReturn(avm_size_t offset) const
+	inline const BF & getVariableReturn(std::size_t offset) const
 	{
 		return( mVariableReturns.get( offset ) );
 	}
@@ -513,6 +737,21 @@ public:
 
 
 	/**
+	 * GETTER
+	 * the parameters / returns
+	 */
+	inline const BF & getVariableParameterReturn(
+			const std::string & aNameID) const
+	{
+		const BF & bfParam = mVariableParameters.getByNameID(aNameID);
+
+		return( bfParam.valid() ? bfParam
+				: mVariableReturns.getByNameID(aNameID)  );
+
+	}
+
+
+	/**
 	 * DISPATCH - SAVE
 	 * using Variable::Modifier
 	 * mVariables
@@ -520,23 +759,18 @@ public:
 	 * mVariableReturns
 	 * mVariableInternals
 	 */
-	void dispatchOwnedVariable(const BF & aVariable);
+	void dispatchOwnedVariable(BF & bfVariable);
 
-	inline const BF & saveOwnedVariable(Variable * aVariable)
-	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aVariable )
-				<< "Property Variable owned element !!!"
-				<< SEND_EXIT;
+	const BF & saveOwnedVariable(Variable * aVariable);
 
-		// Should be set by the executable machine container !
-		aVariable->setOffset( mOwnedElements.size() );
+	/**
+	 * SAVE
+	 * mVariableParameters
+	 * mVariableReturns
+	 */
+	const BF & saveOwnedVariableParameter(Variable * aVariable);
 
-		mOwnedElements.append( INCR_BF( aVariable ) );
-
-		dispatchOwnedVariable( mOwnedElements.last() );
-
-		return( mOwnedElements.last() );
-	}
+	const BF & saveOwnedVariableReturn(Variable * aVariable);
 
 
 	/**
@@ -559,12 +793,12 @@ public:
 	 * PARSER
 	 * COMPILER
 	 */
-	inline const BF & getPropertyByNameID(const std::string & aNameID) const
+	inline const BF & getObjectByNameID(const std::string & aNameID) const
 	{
 		return( mOwnedElements.getByNameID(aNameID) );
 	}
 
-	inline const BF & getPropertyByQualifiedNameID(
+	inline const BF & getObjectByQualifiedNameID(
 			const std::string & aQualifiedNameID) const
 	{
 		return( mOwnedElements.getByQualifiedNameID(aQualifiedNameID) );
@@ -574,17 +808,19 @@ public:
 	/**
 	 * Serialization
 	 */
-	void strVariableParameters(OutStream & os,
+	void strVariableParameters(OutStream & out,
 			const std::string & begin = " [ ",
 			const std::string & end = " ]",
 			const std::string & sep = ", ") const;
 
-	void strVariableReturns(OutStream & os,
+	void strVariableReturns(OutStream & out,
 			const std::string & begin = " returns: [ ",
 			const std::string & end = " ]",
 			const std::string & sep = ", ") const;
 
-	void toStream(OutStream & os) const;
+	void strHeader(OutStream & out) const;
+
+	void toStream(OutStream & out) const override;
 
 };
 

@@ -19,6 +19,8 @@
 #include <fml/common/BasePointer.h>
 #include <fml/type/TypeSpecifier.h>
 
+#include <common/Element.h>
+
 #include <collection/List.h>
 #include <collection/Vector.h>
 
@@ -67,12 +69,10 @@ class Specifier;
 class TableOfSymbol;
 class TypeSpecifier;
 
-class ComRouteData;
-
 class ExecutableForm;
 
 class InstanceOfBuffer;
-class InstanceOfConnect;
+class InstanceOfConnector;
 class InstanceOfData;
 class InstanceOfMachine;
 class InstanceOfPort;
@@ -85,7 +85,7 @@ class RoutingData;
 class Symbol :
 		public BasePointer< BaseInstanceForm >,
 		public ITypeSpecifier,
-		public IPointerDataNature,
+		public IPointerVariableNature,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( Symbol )
 {
 
@@ -151,9 +151,9 @@ public:
 	 * GETTER
 	 * pointer
 	 */
-	inline pointer rawSymbol() const
+	inline pointer_t rawSymbol() const
 	{
-		return( static_cast< pointer >( mPTR ) );
+		return( static_cast< pointer_t >( mPTR ) );
 	}
 
 
@@ -165,7 +165,7 @@ public:
 	 */
 	Symbol & operator=(const BF & aSymbol);
 
-	Symbol & operator=(pointer aPtr)
+	Symbol & operator=(pointer_t aPtr)
 	{
 		if( mPTR != aPtr )
 		{
@@ -211,22 +211,22 @@ public:
 //		return( rawSymbol()->getTypeSpecifier() );
 //	}
 
-	inline virtual const BaseTypeSpecifier * thisTypeSpecifier() const
+	inline virtual const BaseTypeSpecifier & thisTypeSpecifier() const override
 	{
 		return( rawSymbol()->thisTypeSpecifier() );
 	}
 
-	inline BaseTypeSpecifier * getTypeSpecifier() const
+	inline const BaseTypeSpecifier & getTypeSpecifier() const
 	{
 		return( rawSymbol()->getTypeSpecifier() );
 	}
 
-	inline BaseTypeSpecifier * referedTypeSpecifier() const
+	inline const BaseTypeSpecifier & referedTypeSpecifier() const
 	{
 		return( rawSymbol()->referedTypeSpecifier() );
 	}
 
-	inline virtual avm_type_specifier_kind_t getTypeSpecifierKind() const
+	inline virtual avm_type_specifier_kind_t getTypeSpecifierKind() const override
 	{
 		return( rawSymbol()->getTypeSpecifierKind() );
 	}
@@ -234,18 +234,6 @@ public:
 	inline bool hasTypeSpecifier() const
 	{
 		return( rawSymbol()->hasTypeSpecifier() );
-	}
-
-
-	inline void setTypeSpecifier(BaseTypeSpecifier * aTypeSpecifier)
-	{
-		rawSymbol()->setTypeSpecifier( aTypeSpecifier );
-	}
-
-
-	inline bool isTypeFamily(avm_type_specifier_kind_t typeFamily)
-	{
-		return( rawSymbol()->isTypeFamily( typeFamily ) );
 	}
 
 
@@ -339,7 +327,7 @@ public:
 	 * GETTER - SETTER
 	 * mAliasTarget
 	 */
-	inline BaseInstanceForm * getAliasTarget() const
+	inline const BaseInstanceForm * getAliasTarget() const
 	{
 		return( rawSymbol()->getAliasTarget() );
 	}
@@ -349,7 +337,7 @@ public:
 		return( rawSymbol()->hasAliasTarget() );
 	}
 
-	inline void setAliasTarget(BaseInstanceForm * anAliasTarget)
+	inline void setAliasTarget(const BaseInstanceForm & anAliasTarget)
 	{
 		rawSymbol()->setAliasTarget( anAliasTarget );
 	}
@@ -358,17 +346,17 @@ public:
 	 * GETTER - SETTER
 	 * mInstanciationCount
 	 */
-	inline avm_uint32_t instanciationCountIncr() const
+	inline std::uint32_t instanciationCountIncr() const
 	{
 		return( rawSymbol()->instanciationCountIncr() );
 	}
 
-	inline avm_uint32_t getInstanciationCount() const
+	inline std::uint32_t getInstanciationCount() const
 	{
 		return( rawSymbol()->getInstanciationCount() );
 	}
 
-	inline void setInstanciationCount(avm_uint32_t anIndex)
+	inline void setInstanciationCount(std::uint32_t anIndex)
 	{
 		rawSymbol()->setInstanciationCount( anIndex );
 	}
@@ -389,9 +377,9 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////
 
-	InstanceOfBuffer & buffer();
+	InstanceOfBuffer & asBuffer();
 
-	const InstanceOfBuffer & buffer() const;
+	const InstanceOfBuffer & asBuffer() const;
 
 	InstanceOfBuffer * rawBuffer() const;
 
@@ -408,7 +396,7 @@ public:
 	 * GETTER - SETTER
 	 * mCapacity
 	 */
-	avm_size_t capacity() const;
+	std::size_t getCapacity() const;
 
 	long realCapacity() const;
 
@@ -430,25 +418,15 @@ public:
 
 	////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////
-	// InstanceOfConnect
+	// InstanceOfConnector
 	////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////
 
-	InstanceOfConnect & connector();
+	InstanceOfConnector & asConnector();
 
-	const InstanceOfConnect & connector() const;
+	const InstanceOfConnector & asConnector() const;
 
-	InstanceOfConnect * rawConnect() const;
-
-
-	/**
-	 * GETTER - SETTER
-	 * mOutputComRouteData
-	 * mInputComRouteData
-	 */
-	const ComRouteData & getOutputComRouteData() const;
-
-	const ComRouteData & getInputComRouteData() const;
+	InstanceOfConnector * rawConnector() const;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -457,11 +435,11 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////
 
-	InstanceOfData & data();
+	InstanceOfData & variable();
 
-	const InstanceOfData & data() const;
+	const InstanceOfData & variable() const;
 
-	InstanceOfData * rawData() const;
+	InstanceOfData * rawVariable() const;
 
 
 	/**
@@ -476,7 +454,7 @@ public:
 	 * GETTER - SETTER
 	 * mPointerNature
 	 */
-	virtual POINTER_DATA_NATURE getPointerNature() const;
+	virtual POINTER_VARIABLE_NATURE getPointerNature() const override;
 
 
 	/**
@@ -532,7 +510,7 @@ public:
 
 	void setDataPath(TableOfSymbol & aRelativeDataPath);
 
-	avm_size_t * getOffsetPath() const;
+	std::size_t * getOffsetPath() const;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -559,7 +537,7 @@ public:
 	 * GETTER
 	 * Compiled ObjectElement as Compiled Machine
 	 */
-	const Machine * getAstMachine() const;
+	const Machine & getAstMachine() const;
 
 
 	/**
@@ -574,11 +552,13 @@ public:
 	 * GETTER - SETTER
 	 * mExecutable
 	 */
-	ExecutableForm * getExecutable() const;
+	const ExecutableForm & getExecutable() const;
+
+	ExecutableForm & getExecutable();
+
+	const ExecutableForm * ptrExecutable() const;
 
 	bool hasExecutable() const;
-
-	void setExecutable(ExecutableForm * anExecutable);
 
 	/**
 	 * GETTER - SETTER
@@ -617,9 +597,9 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////
 
-	InstanceOfPort & port();
+	InstanceOfPort & asPort();
 
-	const InstanceOfPort & port() const;
+	const InstanceOfPort & asPort() const;
 
 	InstanceOfPort * rawPort() const;
 
@@ -628,9 +608,9 @@ public:
 	 * GETTER - SETTER
 	 * mRouteOffset
 	 */
-	avm_size_t getRouteOffset() const;
+	std::size_t getRouteOffset() const;
 
-	void setRouteOffset(avm_size_t aRouteOffset);
+	void setRouteOffset(std::size_t aRouteOffset);
 
 	/**
 	 * GETTER - SETTER
@@ -655,15 +635,15 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 	// Serialization
 	////////////////////////////////////////////////////////////////////////////
-	inline virtual std::string strHeader() const
+	inline virtual std::string strHeader() const override
 	{
-		return( ( mPTR != NULL ) ?
+		return( ( mPTR != nullptr ) ?
 				rawSymbol()->strHeader() : "Symbol::header<null>" );
 	}
 
-	inline virtual void strHeader(OutStream & os) const
+	inline virtual void strHeader(OutStream & os) const override
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			rawSymbol()->strHeader(os);
 		}
@@ -673,9 +653,9 @@ public:
 		}
 	}
 
-	inline virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			rawSymbol()->toStream( os );
 		}
@@ -687,7 +667,7 @@ public:
 
 	inline virtual void toFscn(OutStream & os) const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			rawSymbol()->toFscn( os );
 		}
@@ -698,7 +678,7 @@ public:
 	}
 
 	inline virtual std::string toString(
-			const AvmIndent & indent = AVM_TAB_INDENT) const
+			const AvmIndent & indent = AVM_TAB_INDENT) const override
 	{
 		StringOutStream oss(indent);
 
@@ -707,15 +687,16 @@ public:
 		return( oss.str() );
 	}
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
-		return( ( mPTR != NULL ) ? rawSymbol()->str() : "Symbol::str<null>" );
+		return( ( mPTR != nullptr ) ?
+				rawSymbol()->str() : "Symbol::str<null>" );
 	}
 
 	inline virtual std::string strNum(
-			uint8_t precision = AVM_MUMERIC_PRECISION) const
+			uint8_t precision = AVM_MUMERIC_PRECISION) const override
 	{
-		return( ( mPTR != NULL ) ?
+		return( ( mPTR != nullptr ) ?
 				rawSymbol()->strNum(precision) : "Symbol::num<null>" );
 	}
 
@@ -735,10 +716,10 @@ typedef         Vector < Symbol > VectorOfSymbol;
 /**
  * operator<<
  */
-AVM_OS_STREAM( Symbol )
-
-AVM_OS_STREAM_COLLECTION( ListOfSymbol     )
-AVM_OS_STREAM_COLLECTION( VectorOfSymbol   )
+//AVM_OS_STREAM( Symbol )
+//
+//AVM_OS_STREAM_COLLECTION( ListOfSymbol     )
+//AVM_OS_STREAM_COLLECTION( VectorOfSymbol   )
 
 
 

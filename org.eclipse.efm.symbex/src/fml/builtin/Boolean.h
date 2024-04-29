@@ -99,20 +99,20 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline void toStream(OutStream & os) const
+	inline void toStream(OutStream & os) const override
 	{
 		os << TAB << ( mValue ? "true" : "false" );
 		AVM_DEBUG_REF_COUNTER(os);
 		os << EOL << std::flush;
 	}
 
-	virtual std::string str() const
+	virtual std::string str() const override
 	{
 		return( mValue ? "true" : "false" );
 	}
 
 	inline virtual std::string strNum(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const override
 	{
 		return( mValue ? "true" : "false" );
 	}

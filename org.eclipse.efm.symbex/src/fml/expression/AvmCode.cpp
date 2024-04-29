@@ -12,25 +12,28 @@
  ******************************************************************************/
 #include "AvmCode.h"
 
+#include <fml/builtin/BuiltinForm.h>
+
 #include <fml/common/BehavioralElement.h>
 #include <fml/common/ObjectElement.h>
 
 #include <fml/executable/AvmProgram.h>
 #include <fml/executable/BaseAvmProgram.h>
-#include <fml/executable/BaseCompiledForm.h>
 #include <fml/executable/BaseInstanceForm.h>
 
 #include <fml/expression/BuiltinArray.h>
-#include <fml/builtin/BuiltinForm.h>
 #include <fml/expression/ExpressionComparer.h>
 #include <fml/expression/ExpressionComparer.h>
 #include <fml/expression/StatementTypeChecker.h>
+
+#include <fml/infrastructure/Routine.h>
 
 #include <fml/operator/OperatorManager.h>
 
 #include <fml/runtime/RuntimeID.h>
 
 #include <fml/type/BaseTypeSpecifier.h>
+#include <fml/type/ContainerTypeSpecifier.h>
 
 #include <fml/workflow/UniFormIdentifier.h>
 #include <fml/workflow/WObject.h>
@@ -38,6 +41,11 @@
 
 namespace sep
 {
+
+/**
+* PRETTY PRINTING OPTIONS
+*/
+bool AvmCode::EXPRESSION_PRETTY_PRINTER_BASED_FQN = false;
 
 
 /**
@@ -60,15 +68,15 @@ int AvmCode::compare(const AvmCode & other) const
 	{
 		int  cmpResult = 0;
 
-		AvmCode::const_iterator it = begin();
-		AvmCode::const_iterator endIt = end();
+		AvmCode::const_iterator itOperand = begin();
+		AvmCode::const_iterator endOperand = end();
 
 		AvmCode::const_iterator itOther = other.begin();
 		AvmCode::const_iterator endOther = other.end();
 
-		for( ; (it != endIt) && (itOther != endOther) ; ++it , ++itOther )
+		for( ; (itOperand != endOperand) && (itOther != endOther) ; ++itOperand , ++itOther )
 		{
-			cmpResult = (*it).compare( *itOther );
+			cmpResult = (*itOperand).compare( *itOther );
 			if( cmpResult != 0  )
 			{
 				return( cmpResult );
@@ -92,12 +100,12 @@ bool AvmCode::isEQ(const AvmCode & other) const
 	}
 	else if( sameOperator( other ) && (size() == other.size()) )
 	{
-		AvmCode::const_iterator it = begin();
-		AvmCode::const_iterator endIt = end();
+		AvmCode::const_iterator itOperand = begin();
+		AvmCode::const_iterator endOperand = end();
 		AvmCode::const_iterator itOther = other.begin();
-		for(  ; it != endIt ; ++it , ++itOther )
+		for(  ; itOperand != endOperand ; ++itOperand , ++itOther )
 		{
-			if( not (*it).isEQ( *itOther ) )
+			if( not (*itOperand).isEQ( *itOther ) )
 			{
 				return( false );
 			}
@@ -144,45 +152,45 @@ void AvmCode::toStreamPrefix(OutStream & out, const BF & arg)
 
 	else if( arg.is< BuiltinForm >() )
 	{
-		out << TAB << arg.to_ptr< BuiltinForm >()->str() << EOL;
+		out << TAB << arg.to< BuiltinForm >().str() << EOL;
 	}
 
 	else if( arg.is< Operator >() )
 	{
-		out << TAB << arg.to_ptr< Operator >()->standardSymbol();
+		out << TAB << arg.to< Operator >().standardSymbol();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 	else if( arg.is< Routine >() )
 	{
-		arg.to_ptr< Routine >()->toStreamInvoke(out);
+		arg.to< Routine >().toStreamInvoke(out);
 	}
 
 	else if( arg.is< PropertyElement >() )
 	{
-		out << TAB << "&"
-			<< arg.to_ptr< PropertyElement >()->getFullyQualifiedNameID();
+		out << TAB << VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
+			<< arg.to< PropertyElement >().getFullyQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 	else if( arg.is< BaseInstanceForm >() )
 	{
 		out << TAB
-			<< arg.to_ptr< BaseInstanceForm >()->getFullyQualifiedNameID();
+			<< arg.to< BaseInstanceForm >().getFullyQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 	else if( arg.is< BehavioralElement >() )
 	{
-		out << TAB << "&"
-			<< arg.to_ptr< BehavioralElement >()->getFullyQualifiedNameID();
+		out << TAB << VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
+			<< arg.to< BehavioralElement >().getFullyQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 
 	else if( WObjectManager::is( arg ) )
 	{
-		out << TAB << "&"
+		out << TAB << VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
 			<< WObjectManager::from( arg )->getFullyQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
@@ -195,14 +203,14 @@ void AvmCode::toStreamPrefix(OutStream & out, const BF & arg)
 
 	else if( arg.is_exactly< AvmProgram >() )
 	{
-		AvmProgram * aProg = arg.to_ptr< AvmProgram >();
-		if( aProg->isAnonym() )
+		const AvmProgram & aProg = arg.to< AvmProgram >();
+		if( aProg.isAnonym() )
 		{
-			aProg->toStream(out);
+			aProg.toStream(out);
 		}
 		else
 		{
-			out << TAB << aProg->getFullyQualifiedNameID();
+			out << TAB << aProg.getFullyQualifiedNameID();
 			arg.AVM_DEBUG_REF_COUNTER(out);
 			out << EOL;
 		}
@@ -210,7 +218,7 @@ void AvmCode::toStreamPrefix(OutStream & out, const BF & arg)
 	else if( arg.is< BaseAvmProgram >() )
 	{
 		out << TAB
-			<< arg.to_ptr< BaseAvmProgram >()->getFullyQualifiedNameID();
+			<< arg.to< BaseAvmProgram >().getFullyQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
@@ -218,27 +226,27 @@ void AvmCode::toStreamPrefix(OutStream & out, const BF & arg)
 	else if( arg.is< BaseTypeSpecifier >() )
 	{
 		out << TAB
-			<< arg.to_ptr< BaseTypeSpecifier >()->getFullyQualifiedNameID();
+			<< arg.to< BaseTypeSpecifier >().getFullyQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 
 	else if( arg.is< ObjectElement >() )
 	{
-		out << TAB << "&"
-			<< arg.to_ptr< ObjectElement >()->getFullyQualifiedNameID();
+		out << TAB << VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
+			<< arg.to< ObjectElement >().getFullyQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 
 	else if( arg.is< BuiltinArray >() )
 	{
-		arg.to_ptr< BuiltinArray >()->toStream(out);
+		arg.to< BuiltinArray >().toStream(out);
 	}
 
 	else if ( arg.is< AvmCode >() )
 	{
-		arg.to_ptr< AvmCode >()->toStreamPrefix(out);
+		arg.to< AvmCode >().toStreamPrefix(out);
 	}
 
 	else
@@ -256,11 +264,11 @@ OutStream & AvmCode::toStreamWithBytecode(OutStream & out) const
 		<< mInstruction->getMainBytecode().strCode()
 		<< EOL_INCR_INDENT;
 
-	if( nonempty() )
+	if( hasOperand() )
 	{
 		const_iterator it = begin();
 		const_iterator itEnd = end();
-		for( avm_size_t argOffset = 0 ; it != itEnd ; ++it , ++argOffset )
+		for( std::size_t argOffset = 0 ; it != itEnd ; ++it , ++argOffset )
 		{
 			out << TAB << "$( " << mInstruction->at(argOffset).strCode();
 
@@ -268,13 +276,13 @@ OutStream & AvmCode::toStreamWithBytecode(OutStream & out) const
 			{
 				out << " ";
 
-				if( (*it).to_ptr< AvmCode >()->hasInstruction() )
+				if( (*it).to< AvmCode >().hasInstruction() )
 				{
-					(*it).to_ptr< AvmCode >()->toStreamWithBytecode(out);
+					(*it).to< AvmCode >().toStreamWithBytecode(out);
 				}
 				else
 				{
-					(*it).to_ptr< AvmCode >()->toStreamPrefix(
+					(*it).to< AvmCode >().toStreamPrefix(
 							out << IGNORE_FIRST_TAB, false );
 				}
 			}
@@ -306,11 +314,9 @@ AVM_IF_DEBUG_FLAG( BYTECODE )
 	{
 		out << " " << strOperator() << EOL;
 
-		AvmCode::const_iterator it = begin();
-		AvmCode::const_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itOperand : mOperands )
 		{
-			toStreamPrefix(out, (*it));
+			toStreamPrefix(out, itOperand);
 		}
 	}
 	else
@@ -324,13 +330,15 @@ AVM_ENDIF_DEBUG_FLAG( BYTECODE )
 
 	if( OperatorManager::isSchedule(mOperator) )
 	{
-		out << " " << strOperator() << EOL;
-
-		AvmCode::const_iterator it = begin();
-		AvmCode::const_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		if( not isOpCode(AVM_OPCODE_SEQUENCE) )
 		{
-			prettyPrinter(out, (*it));
+			out << " " << strOperator();
+		}
+		out << EOL;
+
+		for( const auto & itOperand : mOperands )
+		{
+			prettyPrinter(out, itOperand);
 		}
 	}
 	else
@@ -348,27 +356,27 @@ AVM_IF_DEBUG_FLAG_AND( BYTECODE , hasInstruction() )
 
 	toStreamWithBytecode( out << TAB << "$" ) << EOL_FLUSH;
 
-AVM_ELSE_IF( hasOperator() )
+AVM_ELSE
 
 	std::string strOperatorStd = strOperator();
 
-	out << TAB << "${" << strOperatorStd;
+	out << TAB << "${ " << strOperatorStd;
 
 	if( OperatorManager::isSchedule( mOperator ) ||
 		OperatorManager::isConditionnal( mOperator ) )
 	{
 		out << EOL_INCR_INDENT;
-		for( const_iterator it = begin() ; it != end() ; ++it )
+		for( const auto & itOperand : mOperands )
 		{
-			toStreamPrefix(out, (*it));
+			toStreamPrefix(out, itOperand);
 		}
 		out << DECR_INDENT_TAB <<  "}" << std::flush;
 	}
 
 	else if( OperatorManager::isActivity( mOperator )
-			&& populated()
-			&& second().is< AvmCode >()
-			&& StatementTypeChecker::isAssign( second() ) )
+			&& hasManyOperands()
+			&& mOperands[1].is< AvmCode >()
+			&& StatementTypeChecker::isAssign( mOperands[1] ) )
 	{
 		const_iterator it = begin();
 		toStreamPrefix( (out << AVM_STR_INDENT), (*it) );
@@ -383,9 +391,9 @@ AVM_ELSE_IF( hasOperator() )
 	else //if( OperatorManager::isUfiOrCtor( mOperator ) )
 	{
 		out << AVM_STR_INDENT;
-		for( const_iterator it = begin() ; it != end() ; ++it )
+		for( const auto & itOperand : mOperands )
 		{
-			toStreamPrefix(out, (*it));
+			toStreamPrefix(out, itOperand);
 		}
 		out << END_INDENT <<  " }" << std::flush;
 	}
@@ -396,15 +404,6 @@ AVM_ELSE_IF( hasOperator() )
 	}
 
 	return;
-
-AVM_ELSE_IF( nonempty() )
-
-	out << TAB << "{" << EOL_INCR_INDENT;
-	for( const_iterator it = begin() ; it != end() ; ++it )
-	{
-		toStreamPrefix(out, (*it));
-	}
-	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
 
 AVM_ENDIF_DEBUG_FLAG_AND( BYTECODE )
 }
@@ -422,7 +421,7 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 //		default:
 //	}
 
-	switch( mOperator->getAvmOpCode() )
+	switch( mOperator->getOptimizedOpCode() )
 	{
 		case AVM_OPCODE_NULL:
 
@@ -435,10 +434,6 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		// AVM META STATEMENT
 		case AVM_OPCODE_INFORMAL:
 
-		case AVM_OPCODE_TRACE:
-
-		case AVM_OPCODE_DEBUG:
-
 		case AVM_OPCODE_COMMENT:
 
 		case AVM_OPCODE_QUOTE:
@@ -447,6 +442,21 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		case AVM_OPCODE_META_RUN:
 		{
 			prettyPrinterBasicStatement( out , isStatement );
+
+			break;
+		}
+
+		case AVM_OPCODE_TRACE:
+		case AVM_OPCODE_DEBUG:
+		{
+			out << TAB << strOperator() << AVM_STR_INDENT;
+
+			for( const auto & itOperand : mOperands )
+			{
+				prettyPrinter(out, itOperand, false);
+			}
+
+			out << " }" << END_INDENT_EOL;
 
 			break;
 		}
@@ -464,11 +474,11 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		{
 			out << TAB << "ctor<" << AVM_STR_INDENT;
 
-			prettyPrinter( out , first() , false );
+			prettyPrinter( out , mOperands[0] , false );
 
 			out << " >(";
 
-			prettyPrinter( out , second() , false );
+			prettyPrinter( out , mOperands[1] , false );
 
 			out << " )" << END_INDENT_EOL;
 
@@ -488,14 +498,17 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		{
 			out << TAB << "ctx<" << AVM_STR_INDENT;
 
-			prettyPrinter( out , first() , false );
+			prettyPrinter( out , mOperands[0] , false );
 
 			out << TAB << "> " << END_INDENT << IGNORE_FIRST_TAB;
 
-			prettyPrinter( out , second() , isStatement );
+			prettyPrinter( out , mOperands[1] , isStatement );
 
 			break;
 		}
+
+		case AVM_OPCODE_PROCESS_STATE_GET:
+		case AVM_OPCODE_PROCESS_STATE_SET:
 
 		case AVM_OPCODE_INIT:
 		case AVM_OPCODE_FINAL:
@@ -605,7 +618,7 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		case AVM_OPCODE_WEAK_SYNCHRONOUS:
 
 		case AVM_OPCODE_INTERLEAVING:
-		case AVM_OPCODE_PARTIAL_ORDER_REDUCTION:
+		case AVM_OPCODE_PARTIAL_ORDER:
 
 		case AVM_OPCODE_PARALLEL:
 
@@ -615,7 +628,7 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		case AVM_OPCODE_RDV_WEAK_SYNCHRONOUS:
 
 		case AVM_OPCODE_RDV_INTERLEAVING:
-		case AVM_OPCODE_RDV_PARTIAL_ORDER_REDUCTION:
+		case AVM_OPCODE_RDV_PARTIAL_ORDER:
 
 		case AVM_OPCODE_RDV_PARALLEL:
 
@@ -685,19 +698,20 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		{
 			out << TAB << AVM_STR_INDENT;
 
-			AvmCode::const_iterator it = begin();
-			AvmCode::const_iterator endIt = end();
+			AvmCode::const_iterator itOperand = begin();
+			AvmCode::const_iterator endOperand = end();
 
-			prettyPrinter(out, (*it), false);
+			prettyPrinter(out << IGNORE_FIRST_TAB, (*itOperand), false);
 
-			BaseTypeSpecifier * aType = (*it).is< InstanceOfData >() ?
-				(*it).to_ptr< InstanceOfData >()->getTypeSpecifier() : NULL;
+			const BaseTypeSpecifier & aType = (*itOperand).is< InstanceOfData >()
+					? (*itOperand).to< InstanceOfData >().getTypeSpecifier()
+					: BaseTypeSpecifier::nullref();
 
-			for( ++it ; it != endIt ; ++it )
+			for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 			{
 				out << TAB << strOperator();
 
-				prettyPrinter(out, (*it), aType);
+				prettyPrinter(out, (*itOperand), aType);
 			}
 
 			( isStatement ? (out << ";") : out ) << END_INDENT_EOL;
@@ -731,7 +745,6 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		case AVM_OPCODE_INPUT_SAVE:
 
 		// Optimized version of INPUT
-		case AVM_OPCODE_INPUT_ENV:
 		case AVM_OPCODE_INPUT_VAR:
 		case AVM_OPCODE_INPUT_FLOW:
 		case AVM_OPCODE_INPUT_BUFFER:
@@ -741,9 +754,7 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		case AVM_OPCODE_INPUT_DELEGATE:
 
 		case AVM_OPCODE_OUTPUT:
-		case AVM_OPCODE_OUTPUT_TO:
 		// Optimized version of OUTPUT
-		case AVM_OPCODE_OUTPUT_ENV:
 		case AVM_OPCODE_OUTPUT_VAR:
 		case AVM_OPCODE_OUTPUT_FLOW:
 		case AVM_OPCODE_OUTPUT_BUFFER:
@@ -754,21 +765,21 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		{
 			out << TAB << strOperator() << " " << AVM_NO_INDENT;
 
-			prettyPrinter(out, first(), false);
+			prettyPrinter(out, mOperands[0], false);
 
-			if( populated() )
+			if( hasManyOperands() )
 			{
-				AvmCode::const_iterator it = begin();
-				AvmCode::const_iterator endIt = end();
+				AvmCode::const_iterator itOperand = begin();
+				AvmCode::const_iterator endOperand = end();
 
 				out << "(";
 
-				prettyPrinter(out, *(++it), false);
+				prettyPrinter(out, *(++itOperand), false);
 
-				for( ++it ; it != endIt ; ++it )
+				for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 				{
 					out << ", ";
-					prettyPrinter(out, (*it), false);
+					prettyPrinter(out, (*itOperand), false);
 				}
 
 				out << ")";
@@ -779,26 +790,122 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 			break;
 		}
 
+		case AVM_OPCODE_OUTPUT_TO:
+		{
+			out << TAB << strOperator() << " " << AVM_NO_INDENT;
+
+			prettyPrinter(out, mOperands[0], false);
+
+			if( getOperands().size() > 2 )
+			{
+				AvmCode::const_iterator itOperand = begin();
+				AvmCode::const_iterator endOperand = end();
+
+				++itOperand;
+				++itOperand;
+
+				out << "(";
+
+				prettyPrinter(out, *itOperand, false);
+
+				for( ++itOperand ; itOperand != endOperand ; ++itOperand )
+				{
+					out << ", ";
+					prettyPrinter(out, (*itOperand), false);
+				}
+
+				out << ")";
+			}
+
+			out << " --> ";
+			prettyPrinter(out, mOperands[1], false);
+
+			out << ";" << END_INDENT_EOL;
+
+			break;
+		}
+
+		case AVM_OPCODE_INPUT_ENV:
+		{
+			out << TAB << OperatorManager::OPERATOR_INPUT->standardSymbol()
+				<< " " << AVM_NO_INDENT;
+
+			prettyPrinter(out, mOperands[0], false);
+
+			if( hasManyOperands() )
+			{
+				AvmCode::const_iterator itOperand = begin();
+				AvmCode::const_iterator endOperand = end();
+
+				out << "(";
+
+				prettyPrinter(out, *(++itOperand), false);
+
+				for( ++itOperand ; itOperand != endOperand ; ++itOperand )
+				{
+					out << ", ";
+					prettyPrinter(out, (*itOperand), false);
+				}
+
+				out << ") --> $env";
+			}
+
+			out << ";" << END_INDENT_EOL;
+
+			break;
+		}
+
+		case AVM_OPCODE_OUTPUT_ENV:
+		{
+			out << TAB << OperatorManager::OPERATOR_OUTPUT->standardSymbol()
+				<< " " << AVM_NO_INDENT;
+
+			prettyPrinter(out, mOperands[0], false);
+
+			if( hasManyOperands() )
+			{
+				AvmCode::const_iterator itOperand = begin();
+				AvmCode::const_iterator endOperand = end();
+
+				out << "(";
+
+				prettyPrinter(out, *(++itOperand), false);
+
+				for( ++itOperand ; itOperand != endOperand ; ++itOperand )
+				{
+					out << ", ";
+					prettyPrinter(out, (*itOperand), false);
+				}
+
+				out << ") <-- $env";
+			}
+
+			out << ";" << END_INDENT_EOL;
+
+			break;
+		}
+
+
 		case AVM_OPCODE_PRESENT:
 		case AVM_OPCODE_ABSENT:
 		{
 			out << TAB << strOperator() << " " << AVM_NO_INDENT;
 
-			prettyPrinter(out, first(), false);
+			prettyPrinter(out, mOperands[0], false);
 
-			if( populated() )
+			if( hasManyOperands() )
 			{
-				AvmCode::const_iterator it = begin();
-				AvmCode::const_iterator endIt = end();
+				AvmCode::const_iterator itOperand = begin();
+				AvmCode::const_iterator endOperand = end();
 
 				out << "(";
 
-				prettyPrinter(out, *(++it), false);
+				prettyPrinter(out, *(++itOperand), false);
 
-				for( ++it ; it != endIt ; ++it )
+				for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 				{
 					out << ", ";
-					prettyPrinter(out, (*it), false);
+					prettyPrinter(out, (*itOperand), false);
 				}
 
 				out << ")";
@@ -813,9 +920,9 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		{
 			out << TAB << "if";
 
-			prettyPrinterCondition( out , first() );
+			prettyPrinterCondition( out , mOperands[0] );
 
-			prettyPrinterBlock( out << EOL , second() );
+			prettyPrinterBlock( out << EOL , mOperands[1] );
 
 			break;
 		}
@@ -823,13 +930,13 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		{
 			out << TAB << "if";
 
-			prettyPrinterCondition( out , first() );
+			prettyPrinterCondition( out , mOperands[0] );
 
-			prettyPrinterBlock( out << EOL , second() );
+			prettyPrinterBlock( out << EOL , mOperands[1] );
 
 			out << TAB << "else" << EOL;
 
-			prettyPrinterBlock( out , third() );
+			prettyPrinterBlock( out , mOperands[2] );
 
 			break;
 		}
@@ -838,19 +945,19 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		{
 			out << TAB << "where";
 
-			prettyPrinterCondition( out , first() );
+			prettyPrinterCondition( out , mOperands[0] );
 
-			prettyPrinterBlock( out << EOL , second() );
+			prettyPrinterBlock( out << EOL , mOperands[1] );
 
 			break;
 		}
 		case AVM_OPCODE_WHERE_ELSE:
 		{
-			prettyPrinterCondition( out << TAB << "where" , first() );
+			prettyPrinterCondition( out << TAB << "where" , mOperands[0] );
 
-			prettyPrinterBlock( out << EOL , second() );
+			prettyPrinterBlock( out << EOL , mOperands[1] );
 
-			prettyPrinterBlock( out << TAB << "else" << EOL , third() );
+			prettyPrinterBlock( out << TAB << "else" << EOL , mOperands[2] );
 
 			break;
 		}
@@ -859,15 +966,15 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		{
 			out << TAB << "for( " << AVM_NO_INDENT;
 
-			prettyPrinter( out , first() , false );
+			prettyPrinter( out , mOperands[0] , false );
 			out << " ; ";
-			prettyPrinter( out , second() , false );
+			prettyPrinter( out , mOperands[1] , false );
 			out << " ; ";
-			prettyPrinter( out , third() , false );
+			prettyPrinter( out , mOperands[2] , false );
 
 			out << " )" << END_INDENT_EOL;
 
-			prettyPrinterBlock( out , fourth() );
+			prettyPrinterBlock( out , mOperands[3] );
 
 			break;
 		}
@@ -876,30 +983,30 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		{
 			out << TAB << "for( " << AVM_NO_INDENT;
 
-			prettyPrinter( out , first() , false );
+			prettyPrinter( out , mOperands[0] , false );
 			out << " : ";
-			prettyPrinter( out , second() , false );
+			prettyPrinter( out , mOperands[1] , false );
 
 			out << " )" << END_INDENT_EOL;
 
-			prettyPrinterBlock( out , third() );
+			prettyPrinterBlock( out , mOperands[2] );
 
 			break;
 		}
 
 		case AVM_OPCODE_WHILE_DO:
 		{
-			prettyPrinterCondition( out << TAB << "while" , first() );
+			prettyPrinterCondition( out << TAB << "while" , mOperands[0] );
 
-			prettyPrinterBlock( out << EOL , second() );
+			prettyPrinterBlock( out << EOL , mOperands[1] );
 
 			break;
 		}
 		case AVM_OPCODE_DO_WHILE:
 		{
-			prettyPrinterBlock( out << TAB << "do" << EOL , first() );
+			prettyPrinterBlock( out << TAB << "do" << EOL , mOperands[0] );
 
-			prettyPrinterCondition( out << TAB << "while" , second() );
+			prettyPrinterCondition( out << TAB << "while" , mOperands[1] );
 
 			out << ";" << EOL;
 
@@ -919,10 +1026,74 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 		case AVM_OPCODE_STEP_MARK:
 
 		// AVM QUANTIFIER EXPRESSION
-		case AVM_OPCODE_EXIST:
+		case AVM_OPCODE_EXISTS:
 		case AVM_OPCODE_FORALL:
 		{
-			prettyPrinterPrefix( out );
+			out << TAB << ( (mOperator->getAvmOpCode() == AVM_OPCODE_FORALL)
+					? "forall" : "exists" ) << "< " << AVM_STR_INDENT;
+
+			std::size_t endVarOfsset = mOperands.size() - 1;
+			for( std::size_t offset = 0 ; offset < endVarOfsset ; ++offset )
+			{
+				if( offset > 0 )
+				{
+					out << " , ";
+				}
+				if( mOperands[offset].is< Variable >() )
+				{
+					const Variable & boundVariable =
+							mOperands[offset].to< Variable >();
+
+					std::string strType = boundVariable.strTypeSpecifier();
+
+					if( boundVariable.hasTypeSpecifier() )
+					{
+						const BaseTypeSpecifier & typSeSpecifier =
+								boundVariable.getTypeSpecifier();
+						if( (typSeSpecifier.hasTypedTime() || typSeSpecifier.hasTypedClock())
+							&& typSeSpecifier.is< ContainerTypeSpecifier >() )
+						{
+							const BaseTypeSpecifier & domainType = typSeSpecifier.to<
+									ContainerTypeSpecifier >().getContentsTypeSpecifier();
+							strType = domainType.strT();
+						}
+					}
+					out << boundVariable.getNameID() << " : " << strType;
+				}
+				else if( mOperands[offset].is< InstanceOfData >() )
+				{
+					const InstanceOfData & boundVariable =
+							mOperands[offset].to< InstanceOfData >();
+					const BaseTypeSpecifier & typSeSpecifier =
+							boundVariable.getTypeSpecifier();
+
+					std::string strType = typSeSpecifier.strT();
+					if( (typSeSpecifier.hasTypedTime() || typSeSpecifier.hasTypedClock())
+						&& typSeSpecifier.is< ContainerTypeSpecifier >() )
+					{
+						const BaseTypeSpecifier & domainType = typSeSpecifier.to<
+								ContainerTypeSpecifier >().getContentsTypeSpecifier();
+						strType = domainType.strT();
+					}
+					out << boundVariable.getNameID() << " : " << strType;
+				}
+			}
+
+			out << " >" << IGNORE_FIRST_TAB;
+
+			if( mOperands[ endVarOfsset ].is< AvmCode >() )
+			{
+				prettyPrinter( out , mOperands[ endVarOfsset ] , false );
+			}
+			else
+			{
+				out << "( ";
+				prettyPrinter( out , mOperands[ endVarOfsset ] , false );
+				out << " )";
+			}
+
+			out << END_INDENT_EOL;
+
 
 			break;
 		}
@@ -944,6 +1115,8 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 
 		case AVM_OPCODE_XOR:
 		case AVM_OPCODE_XNOR:
+
+		case AVM_OPCODE_IMPLIES:
 
 		// AVM INTEGER BIT A BIT OPERATOR
 		case AVM_OPCODE_BNOT:
@@ -1051,6 +1224,13 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 			break;
 		}
 
+		case AVM_OPCODE_PUSH:
+		{
+			prettyPrinterInfix( out , false );
+
+			break;
+		}
+
 		case AVM_OPCODE_APPEND:
 
 		case AVM_OPCODE_REMOVE:
@@ -1060,7 +1240,6 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 
 		case AVM_OPCODE_SELECT:
 
-		case AVM_OPCODE_PUSH:
 		case AVM_OPCODE_ASSIGN_TOP:
 		case AVM_OPCODE_TOP:
 		case AVM_OPCODE_POP:
@@ -1109,7 +1288,19 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 
 		case AVM_OPCODE_OBS:
 		{
-			prettyPrinterPrefix( out );
+			out << TAB << strOperator() << "( ctx: " << AVM_NO_INDENT;
+
+			prettyPrinter(out, mOperands[0], false);
+
+			out << " ) {" << END_INDENT_EOL << INCR_INDENT;
+
+			prettyPrinter(out, mOperands[1], true);
+
+			out << DECR_INDENT << TAB << "} [ " << AVM_NO_INDENT;
+
+			prettyPrinter(out, mOperands[2], false);
+
+			out << " ];" << END_INDENT_EOL;
 
 			break;
 		}
@@ -1132,11 +1323,9 @@ void AvmCode::prettyPrinterBasicStatement(
 	out << TAB << ( isStatement ? "" : "(" ) << strOperator()
 		<< AVM_STR_INDENT;
 
-	AvmCode::const_iterator it = begin();
-	AvmCode::const_iterator endIt = end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : mOperands )
 	{
-		prettyPrinter(out, (*it), false);
+		prettyPrinter(out, itOperand, false);
 	}
 
 	out << ( isStatement ? ";" : ")" ) << END_INDENT_EOL;
@@ -1146,13 +1335,16 @@ void AvmCode::prettyPrinterBasicStatement(
 void AvmCode::prettyPrinterBlockStatement(
 		OutStream & out, bool isStatement) const
 {
-	out << TAB << "{ " << strOperator() << EOL_INCR_INDENT;
-
-	AvmCode::const_iterator it = begin();
-	AvmCode::const_iterator endIt = end();
-	for( ; it != endIt ; ++it )
+	out << TAB << "{";
+	if( not isOpCode(AVM_OPCODE_SEQUENCE) )
 	{
-		prettyPrinter(out, (*it), isStatement);
+		out << " " << strOperator();
+	}
+	out << EOL_INCR_INDENT;
+
+	for( const auto & itOperand : mOperands )
+	{
+		prettyPrinter(out, itOperand, isStatement);
 	}
 
 	out << DECR_INDENT_TAB << "}"  << EOL;
@@ -1163,99 +1355,94 @@ void AvmCode::prettyPrinterDefault(OutStream & out, bool isStatement) const
 {
 	out << TAB << "${ " << strOperator() << EOL_INCR_INDENT;
 
-	AvmCode::const_iterator it = begin();
-	AvmCode::const_iterator endIt = end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : mOperands )
 	{
-		prettyPrinter(out, (*it), isStatement);
+		prettyPrinter(out, itOperand, isStatement);
 	}
 
 	out << DECR_INDENT_TAB << "}" << EOL;
 }
 
 
-void AvmCode::prettyPrinterFunctional(OutStream & out) const
+void AvmCode::prettyPrinterFunctional(OutStream & out, bool isExpression) const
 {
 	out << TAB << strOperator() << "(" << AVM_NO_INDENT;
 
-	if( singleton() )
+	if( hasOneOperand() )
 	{
-		prettyPrinter(out, first(), false);
+		prettyPrinter(out, mOperands[0], false);
 	}
-	else if( populated() )
+	else if( hasManyOperands() )
 	{
-		AvmCode::const_iterator it = begin();
-		AvmCode::const_iterator endIt = end();
+		AvmCode::const_iterator itOperand = begin();
+		AvmCode::const_iterator endOperand = end();
 
-		prettyPrinter(out, (*it), false);
+		prettyPrinter(out, (*itOperand), false);
 
-		for( ++it ; it != endIt ; ++it )
+		for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 		{
 			out << ", ";
-			prettyPrinter(out, (*it), false);
+			prettyPrinter(out, (*itOperand), false);
 		}
 	}
 
-	out << ")" << END_INDENT_EOL;
+	out << ( isExpression ? ")" : ");" ) << END_INDENT_EOL;
 }
 
 
-void AvmCode::prettyPrinterInfix(OutStream & out) const
+void AvmCode::prettyPrinterInfix(OutStream & out, bool isExpression) const
 {
-	out << TAB << "(" << AVM_NO_INDENT;
+	out << TAB << ( isExpression ? "(" : "" ) << AVM_NO_INDENT;
 
-	if( singleton() )
+	if( hasOneOperand() )
 	{
 		out << strOperator() << " ";
 
-		prettyPrinter(out, first(), false);
+		prettyPrinter(out, mOperands[0], false);
 	}
-	else if( populated() )
+	else if( hasManyOperands() )
 	{
-		AvmCode::const_iterator it = begin();
-		AvmCode::const_iterator endIt = end();
+		AvmCode::const_iterator itOperand = begin();
+		AvmCode::const_iterator endOperand = end();
 
-		prettyPrinter(out, (*it), false);
+		prettyPrinter(out, (*itOperand), false);
 
-		for( ++it ; it != endIt ; ++it )
+		for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 		{
 			out << " " << strOperator() << " ";
 
-			prettyPrinter(out, (*it), false);
+			prettyPrinter(out, (*itOperand), false);
 		}
 	}
 
-	out << ")" << END_INDENT_EOL;
+	out << ( isExpression ? ")" : ";" ) << END_INDENT_EOL;
 }
 
 
-void AvmCode::prettyPrinterPrefix(OutStream & out) const
+void AvmCode::prettyPrinterPrefix(OutStream & out, bool isExpression) const
 {
-	out << TAB << "(" << strOperator() << AVM_STR_INDENT;
+	out << TAB << ( isExpression ? "(" : "" ) << strOperator()
+		<< AVM_STR_INDENT;
 
-	AvmCode::const_iterator it = begin();
-	AvmCode::const_iterator endIt = end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : mOperands )
 	{
-		prettyPrinter(out, (*it), false);
+		prettyPrinter(out, itOperand, false);
 	}
 
-	out << ")" << END_INDENT_EOL;
+	out << (isExpression ? ")" : ";") << END_INDENT_EOL;
 }
 
 
-void AvmCode::prettyPrinterSuffix(OutStream & out) const
+void AvmCode::prettyPrinterSuffix(OutStream & out, bool isExpression) const
 {
-	out << TAB << "(" << AVM_RTS_INDENT;
+	out << TAB << (isExpression ? "(" : "") << AVM_RTS_INDENT;
 
-	AvmCode::const_iterator it = begin();
-	AvmCode::const_iterator endIt = end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : mOperands )
 	{
-		prettyPrinter(out, (*it), false);
+		prettyPrinter(out, itOperand, false);
 	}
 
-	out << strOperator() << ")" << END_INDENT_EOL;
+	out << strOperator() << ( isExpression ? ")" : ";" ) << END_INDENT_EOL;
 }
 
 
@@ -1268,49 +1455,69 @@ void AvmCode::prettyPrinter(OutStream & out, const BF & arg, bool isStatement)
 
 	else if( arg.is< AvmCode >() )
 	{
-		arg.to_ptr< AvmCode >()->prettyPrinter(out, isStatement);
+		arg.to< AvmCode >().prettyPrinter(out, isStatement);
 	}
 	else if( arg.is< BuiltinForm >() )
 	{
-		out << TAB << arg.to_ptr< BuiltinForm >()->str() << EOL;
+		out << TAB << arg.to< BuiltinForm >().str() << EOL;
 	}
 
 	else if( arg.is< Operator >() )
 	{
-		out << TAB << arg.to_ptr< Operator >()->standardSymbol();
+		out << TAB << arg.to< Operator >().standardSymbol();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 	else if( arg.is< Routine >() )
 	{
-		arg.to_ptr< Routine >()->toStreamInvoke(out);
+		arg.to< Routine >().toStreamInvoke(out);
 	}
 
 	else if( arg.is< PropertyElement >() )
 	{
-		out << TAB << "&"
-			<< arg.to_ptr< PropertyElement >()->getQualifiedNameID();
-		arg.AVM_DEBUG_REF_COUNTER(out);
-		out << EOL;
+//		out << TAB << VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
+//			<< arg.to< PropertyElement >().getQualifiedNameID();
+//		arg.AVM_DEBUG_REF_COUNTER(out);
+//		out << EOL;
+//!@2024
+		if( EXPRESSION_PRETTY_PRINTER_BASED_FQN )
+		{
+			out << TAB << VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
+				<< arg.to< PropertyElement >().getQualifiedNameID();
+			arg.AVM_DEBUG_REF_COUNTER(out);
+			out << EOL;
+		}
+		else //if( EXPRESSION_PRETTY_PRINTER_BASED_NAME )
+		{
+			out << TAB << arg.to< PropertyElement >().getNameID() << EOL;
+		}
 	}
 	else if( arg.is< BaseInstanceForm >() )
 	{
-		out << TAB //<< "&"
-				<< arg.to_ptr< BaseInstanceForm >()->getQualifiedNameID();
+		if( EXPRESSION_PRETTY_PRINTER_BASED_FQN )
+		{
+			out << TAB //<< VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
+				<< arg.to< BaseInstanceForm >().getQualifiedNameID();
+		}
+		else //if( EXPRESSION_PRETTY_PRINTER_BASED_NAME )
+		{
+			out << TAB << arg.to< BaseInstanceForm >().getNameID();
+		}
+
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 	else if( arg.is< BehavioralElement >() )
 	{
-		out << TAB << "&"
-			<< arg.to_ptr< BehavioralElement >()->getQualifiedNameID();
+		out << TAB << VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
+			<< arg.to< BehavioralElement >().getQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 
 	else if( WObjectManager::is( arg ) )
 	{
-		out << TAB << "&"
+		out << TAB << VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
 			<< WObjectManager::from( arg )->getQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
@@ -1318,7 +1525,7 @@ void AvmCode::prettyPrinter(OutStream & out, const BF & arg, bool isStatement)
 
 	else if( arg.is< UniFormIdentifier >() )
 	{
-		out << TAB << arg.to_ptr< UniFormIdentifier >()->str() << EOL;
+		out << TAB << arg.to< UniFormIdentifier >().str() << EOL;
 	}
 
 	else if( arg.is< RuntimeID >() )
@@ -1328,14 +1535,14 @@ void AvmCode::prettyPrinter(OutStream & out, const BF & arg, bool isStatement)
 
 	else if( arg.is_exactly< AvmProgram >() )
 	{
-		AvmProgram * aProg = arg.to_ptr< AvmProgram >();
-		if( aProg->isAnonym() )
+		const AvmProgram & aProg = arg.to< AvmProgram >();
+		if( aProg.isAnonym() )
 		{
-			aProg->toStream(out);
+			aProg.toStream(out);
 		}
 		else
 		{
-			out << TAB << aProg->getQualifiedNameID();
+			out << TAB << aProg.getQualifiedNameID();
 			arg.AVM_DEBUG_REF_COUNTER(out);
 			out << EOL;
 		}
@@ -1343,22 +1550,22 @@ void AvmCode::prettyPrinter(OutStream & out, const BF & arg, bool isStatement)
 
 	else if( arg.is< BaseTypeSpecifier >() )
 	{
-		out << TAB << arg.to_ptr< BaseTypeSpecifier >()->strT();
+		out << TAB << arg.to< BaseTypeSpecifier >().strT();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 
 	else if( arg.is< ObjectElement >() )
 	{
-		out << TAB << "&"
-			<< arg.to_ptr< ObjectElement >()->getQualifiedNameID();
+		out << TAB << VALUE_IF_DEBUG_FLAG( ALL_NAME_ID , "&" , "" )
+			<< arg.to< ObjectElement >().getQualifiedNameID();
 		arg.AVM_DEBUG_REF_COUNTER(out);
 		out << EOL;
 	}
 
 	else if( arg.is< BuiltinArray >() )
 	{
-		arg.to_ptr< BuiltinArray >()->toStream(out);
+		arg.to< BuiltinArray >().toStream(out);
 	}
 
 	else
@@ -1369,11 +1576,12 @@ void AvmCode::prettyPrinter(OutStream & out, const BF & arg, bool isStatement)
 
 
 void AvmCode::prettyPrinter(OutStream & out,
-		const BF & arg, BaseTypeSpecifier * aType)
+		const BF & arg, const BaseTypeSpecifier & aType)
 {
-	if( aType != NULL )
+	if( aType.isnotNullref() )
 	{
-		aType->formatStream(out, arg);
+		aType.formatStream(out << TAB, arg);
+		out << EOL;
 	}
 	else
 	{
@@ -1388,7 +1596,7 @@ void AvmCode::prettyPrinterCondition(OutStream & out, const BF & arg)
 
 	if( arg.is< AvmCode >() )
 	{
-		arg.to_ptr< AvmCode >()->prettyPrinter( out , false );
+		arg.to< AvmCode >().prettyPrinter( out , false );
 	}
 	else
 	{
@@ -1404,14 +1612,14 @@ void AvmCode::prettyPrinterBlock(OutStream & out, const BF & arg)
 {
 	if( arg.is< AvmCode >() )
 	{
-		if( OperatorManager::isSchedule(arg.to_ptr< AvmCode >()->mOperator) )
+		if( OperatorManager::isSchedule(arg.to< AvmCode >().mOperator) )
 		{
-			arg.to_ptr< AvmCode >()->prettyPrinter( out, true );
+			arg.to< AvmCode >().prettyPrinter( out, true );
 		}
 		else
 		{
 			out << TAB << "{" << EOL_INCR_INDENT;
-			arg.to_ptr< AvmCode >()->prettyPrinter( out, true );
+			arg.to< AvmCode >().prettyPrinter( out, true );
 			out << DECR_INDENT_TAB << "}" << EOL;
 		}
 	}

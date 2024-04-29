@@ -13,7 +13,6 @@
 #ifndef AVM_UTIL_H_
 #define AVM_UTIL_H_
 
-#include <iostream>
 #include <string>
 
 
@@ -32,82 +31,82 @@ class OutStream;
 
 enum AVM_EXIT_CODE_KIND
 {
-	AVM_EXIT_GOOD_CODE                      = 0,
+	AVM_EXIT_GOOD_CODE                          = 0,
 
-	AVM_EXIT_FAILED_CODE                    = 1,
+	AVM_EXIT_FAILED_CODE                        = 1,
 
-	AVM_EXIT_OUT_OF_MEMORY_CODE             = 2,
+	AVM_EXIT_OUT_OF_MEMORY_CODE                 = 2,
 
-	AVM_EXIT_SEGMENTATION_FAULT_CODE        = 3,
+	AVM_EXIT_SEGMENTATION_FAULT_CODE            = 3,
 
-	AVM_EXIT_FATAL_ERROR_CODE               = 4,
-
-
-	AVM_EXIT_CONFIGURE_ERROR_CODE           = 5,
+	AVM_EXIT_FATAL_ERROR_CODE                   = 4,
 
 
-	AVM_EXIT_PARSING_ERROR_CODE             = 6,
-
-	AVM_EXIT_PARSING_EXCEPTION_CODE         = 7,
-
-	AVM_EXIT_COMPILING_ERROR_CODE           = 8,
+	AVM_EXIT_CONFIGURE_ERROR_CODE               = 5,
 
 
-	AVM_EXIT_EXECUTION_ERROR_CODE           = 9,
+	AVM_EXIT_PARSING_ERROR_CODE                 = 6,
 
-	AVM_EXIT_RUNTIME_ERROR_CODE             = 10,
+	AVM_EXIT_PARSING_EXCEPTION_CODE             = 7,
+
+	AVM_EXIT_COMPILING_ERROR_CODE               = 8,
 
 
-	AVM_EXIT_INITIALIZING_ERROR_CODE        = 11,
+	AVM_EXIT_EXECUTION_ERROR_CODE               = 9,
 
-	AVM_EXIT_PRE_PROCESSING_ERROR_CODE      = 12,
+	AVM_EXIT_RUNTIME_ERROR_CODE                 = 10,
 
-	AVM_EXIT_PROCESSING_ERROR_CODE          = 13,
 
-	AVM_EXIT_POST_PROCESSING_ERROR_CODE     = 14,
+	AVM_EXIT_INITIALIZING_ERROR_CODE            = 11,
 
-	AVM_EXIT_FINALIZING_ERROR_CODE          = 15,
+	AVM_EXIT_PRE_PROCESSING_ERROR_CODE          = 12,
+
+	AVM_EXIT_PROCESSING_ERROR_CODE              = 13,
+
+	AVM_EXIT_POST_PROCESSING_ERROR_CODE         = 14,
+
+	AVM_EXIT_FINALIZING_ERROR_CODE              = 15,
 
 
 	//CONTROLLER UNIT VERDICT
-	AVM_EXIT_SYMBEX_CONTROLLER_MIN_CODE     = 100,
+	AVM_EXIT_SYMBEX_CONTROLLER_MIN_CODE         = 100,
 
 
-	AVM_EXIT_COVERAGE_GOAL_ACHIEVED_CODE    = 101,
+	AVM_EXIT_COVERAGE_GOAL_ACHIEVED_CODE        = 101,
 
-	AVM_EXIT_COVERAGE_GOAL_UNACHIEVED_CODE  = 102,
+	AVM_EXIT_COVERAGE_GOAL_UNACHIEVED_CODE      = 102,
 
 	AVM_EXIT_COVERAGE_GOAL_ALMOST_ACHIEVED_CODE = 103,
 
-	AVM_EXIT_COVERAGE_GOAL_UNREACHABLE_CODE = 104,
+	AVM_EXIT_COVERAGE_GOAL_UNREACHABLE_CODE     = 104,
 
 
-	AVM_EXIT_VERDICT_PASS_CODE              = 110,
+	AVM_EXIT_VERDICT_PASS_CODE                  = 110,
 
-	AVM_EXIT_VERDICT_STRONG_PASS_CODE       = 111,
+	AVM_EXIT_VERDICT_STRONG_PASS_CODE           = 111,
 
-	AVM_EXIT_VERDICT_WEAK_PASS_CODE         = 112,
-
-
-	AVM_EXIT_VERDICT_INCONCLUIVE_CODE       = 113,
-
-	AVM_EXIT_VERDICT_INCONCLUIVE_INPUT_CODE = 114,
-
-	AVM_EXIT_VERDICT_INCONCLUIVE_R_CODE     = 115,
+	AVM_EXIT_VERDICT_WEAK_PASS_CODE             = 112,
 
 
-	AVM_EXIT_VERDICT_NONE_CODE              = 116,
+	AVM_EXIT_VERDICT_INCONCLUSIVE_CODE          = 113,
 
-	AVM_EXIT_VERDICT_FAIL_CODE              = 117,
+	AVM_EXIT_VERDICT_INCONCLUSIVE_INPUT_CODE    = 114,
 
-	AVM_EXIT_VERDICT_ERROR_CODE             = 118,
-
-	AVM_EXIT_VERDICT_ABORT_CODE             = 119,
-
-	AVM_EXIT_VERDICT_UNDEFINED_CODE         = 120,
+	AVM_EXIT_VERDICT_INCONCLUSIVE_REACTION_CODE = 115,
 
 
-	AVM_EXIT_UNKNOWN_CODE                   = 255
+	AVM_EXIT_VERDICT_NONE_CODE                  = 116,
+
+	AVM_EXIT_VERDICT_FAIL_CODE                  = 117,
+
+	AVM_EXIT_VERDICT_ERROR_CODE                 = 118,
+
+	AVM_EXIT_VERDICT_ABORT_CODE                 = 119,
+
+	AVM_EXIT_VERDICT_UNDEFINED_CODE             = 120,
+
+
+	AVM_EXIT_UNKNOWN_CODE                       = 255
 };
 
 extern AVM_EXIT_CODE_KIND  _AVM_EXIT_CODE_;
@@ -164,11 +163,15 @@ OutStream & operator<<(OutStream & OS, const AvmEXIT_SIGNAL & exitSignal);
 
 enum AVM_EXEC_MODE_KIND
 {
-	AVM_EXEC_STANDALONE_MODE   = 0,
+	AVM_EXEC_STANDALONE_MODE      = 0,
 
-	AVM_EXEC_SERVER_MODE       = 1,
+	AVM_EXEC_SERVER_MODE          = 1,
 
-	AVM_EXEC_INTERACTIVE_MODE  = 2
+	AVM_EXEC_SERVER_GRPC_MODE     = 2 | AVM_EXEC_SERVER_MODE ,
+
+	AVM_EXEC_SERVER_JSON_RPC_MODE = 4 | AVM_EXEC_SERVER_MODE ,
+
+	AVM_EXEC_INTERACTIVE_MODE     = 8
 };
 
 extern AVM_EXEC_MODE_KIND  _AVM_EXEC_MODE_;
@@ -181,6 +184,10 @@ extern AVM_EXEC_MODE_KIND  _AVM_EXEC_MODE_;
 
 
 void avm_setExecModeKind(std::string strModeKind);
+
+extern  std::string  _AVM_EXEC_SERVER_HOST_ADDRESS_;
+
+extern  std::string  _AVM_EXEC_SERVER_PORT_NUMBER_;
 
 
 
@@ -210,6 +217,9 @@ extern AVM_EXEC_VERBOSITY_LEVEL  _AVM_EXEC_VERBOSITY_;
 #define AVM_EXEC_VERBOSITY_IS( LEVEL )  \
 	( _AVM_EXEC_VERBOSITY_ == AVM_EXEC_VERBOSITY_##LEVEL )
 
+#define AVM_EXEC_VERBOSITY_ISNOT( LEVEL )  \
+	( _AVM_EXEC_VERBOSITY_ != AVM_EXEC_VERBOSITY_##LEVEL )
+
 #define AVM_EXEC_VERBOSITY_HAS( LEVEL )  \
 	( _AVM_EXEC_VERBOSITY_ >= AVM_EXEC_VERBOSITY_##LEVEL )
 
@@ -220,10 +230,17 @@ void avm_setExecVerbosityLevel(std::string strVerbosityLevel);
 std::string avm_strExecVerbosityLevel();
 
 
+extern bool AVM_ENABLED_SPIDER_VERBOSITY_FLAG;
+
+void avm_enabledSpiderVerbosity(bool enabled);
+
+
 /**
  * VERBOSITY TEST
  */
 #define _AVM_VERBOSITY_IF_IS_(  LEVEL )  if( AVM_EXEC_VERBOSITY_IS( LEVEL ) ) {
+
+#define _AVM_VERBOSITY_IF_ISNOT_(  LEVEL ) if( AVM_EXEC_VERBOSITY_ISNOT( LEVEL ) ) {
 
 #define _AVM_VERBOSITY_IF_HAS_( LEVEL )  if( AVM_EXEC_VERBOSITY_HAS( LEVEL ) ) {
 
@@ -247,6 +264,8 @@ std::string avm_strExecVerbosityLevel();
  * VERBOSITY MINIMUM
  */
 #define AVM_VERBOSITY_IF_IS_MINIMUM      _AVM_VERBOSITY_IF_IS_( MINIMUM )
+
+#define AVM_VERBOSITY_IF_ISNOT_MINIMUM   _AVM_VERBOSITY_IF_ISNOT_( MINIMUM )
 
 #define AVM_VERBOSITY_IF_HAS_MINIMUM     _AVM_VERBOSITY_IF_HAS_( MINIMUM )
 
@@ -321,18 +340,6 @@ std::string avm_strExecVerbosityLevel();
 #define AVM_VERBOSITY_SWITCH_CASE_MAXIMUM  AVM_VERBOSITY_CASE_END  AVM_VERBOSITY_CASE_MAXIMUM
 
 #define AVM_VERBOSITY_SWITCH_CASE_MAXIMUM  AVM_VERBOSITY_CASE_END  AVM_VERBOSITY_CASE_MAXIMUM
-
-
-
-
-/**
- *******************************************************************************
- * AVM GLOBAL METHOD
- *******************************************************************************
- */
-
-void avm_report(OutStream & os, const std::string & aMsg, bool forced = false);
-
 
 
 }

@@ -31,12 +31,25 @@ namespace sep
  * Default
  */
 SymbexProcessor::SymbexProcessor(
-		SymbexDispatcher & aSymbexDispatcher, WObject * wfParameterObject,
+		SymbexDispatcher & aSymbexDispatcher, const WObject * wfParameterObject,
 		SymbexControllerUnitManager & aControllerUnitManager)
 : SymbexJob(aSymbexDispatcher, wfParameterObject, aControllerUnitManager),
 mPrimitiveProcessor( aSymbexDispatcher.getPrimitiveProcessor() )
 {
 	//!! NOTHING
+}
+
+
+/**
+ * CONFIGURE
+ */
+bool SymbexProcessor::configure()
+{
+	// INITIALIZATION
+	mConfigFlag = SymbexJob::configure();
+
+
+	return mConfigFlag;
 }
 
 
@@ -149,12 +162,31 @@ void SymbexProcessor::runStep(ExecutionContext & anEC)
 }
 
 
+void SymbexProcessor::runStep(ExecutionContext & anEC, const BF & aRunnableElement)
+{
+	// STAT before PRINTING NEXT EVAL CONTEXT ID
+	anEC.setEvalNumber( mSymbexDispatcher.nextEvalNumber() );
+
+	tracePreEval(anEC);
+
+	mPrimitiveProcessor.run(anEC, aRunnableElement);
+
+	tracePostEval(anEC);
+
+	mSymbexDispatcher.sendToAnalyserWorkingQueue(& anEC);
+}
+
 
 /**
  * EVAL TRACE
  */
 void SymbexProcessor::traceBoundEval()
 {
+	if( AVM_ENABLED_SPIDER_VERBOSITY_FLAG )
+	{
+		mControllerUnitManager.traceInitSpider(AVM_OS_COUT);
+	}
+
 	mControllerUnitManager.traceBoundEval(AVM_OS_TRACE);
 
 	mControllerUnitManager.traceBoundEval(AVM_OS_COUT);
@@ -162,6 +194,11 @@ void SymbexProcessor::traceBoundEval()
 
 void SymbexProcessor::tracePreEval(const ExecutionContext & anEC)
 {
+	if( AVM_ENABLED_SPIDER_VERBOSITY_FLAG )
+	{
+		mControllerUnitManager.traceStepSpider(AVM_OS_COUT, anEC);
+	}
+
 	mControllerUnitManager.tracePreEval(AVM_OS_TRACE, anEC);
 
 	mControllerUnitManager.tracePreEval(AVM_OS_COUT, anEC);

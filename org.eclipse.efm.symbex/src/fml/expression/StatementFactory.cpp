@@ -20,6 +20,9 @@
 #include <fml/executable/ExecutableLib.h>
 
 #include <fml/expression/AvmCode.h>
+#include <fml/expression/StatementTypeChecker.h>
+
+#include <fml/infrastructure/Machine.h>
 
 #include <fml/runtime/ExecutionData.h>
 
@@ -32,41 +35,33 @@ namespace sep
  * COLLECT
  * [state]machine
  */
-void StatementFactory::collectRunMachine(ExecutableForm * anExecutableForm,
+void StatementFactory::collectRunMachine(
 		const BF & aStatement, ListOfInstanceOfMachine & listOfMachine)
 {
-	switch( aStatement.classKind() )
+	if( aStatement.invalid() )
+	{
+		return;
+	}
+	else switch( aStatement.classKind() )
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode* aCode = aStatement.to_ptr< AvmCode >();
+			const AvmCode & aCode = aStatement.to< AvmCode >();
 
-			switch( aCode->getAvmOpCode() )
+			if( OperatorManager::isScheduledActivity( aCode.getOperator() ) )
 			{
-				case AVM_OPCODE_RUN:
-
-//				case AVM_OPCODE_RESUME:
-//				case AVM_OPCODE_RESTART:
-				case AVM_OPCODE_START:
+				if( aCode.first().is< InstanceOfMachine >() )
 				{
-					if( aCode->first().is< InstanceOfMachine >() )
-					{
-						listOfMachine.add_union(
-								aCode->first().to_ptr< InstanceOfMachine >() );
-					}
-					break;
+					listOfMachine.add_unique(
+							aCode.first().to_ptr< InstanceOfMachine >() );
 				}
-
-				default:
+			}
+			else if( OperatorManager::isSchedule( aCode.getOperator() )
+					|| OperatorManager::isConditionnal( aCode.getOperator() ) )
+			{
+				for( const auto & itOperand : aCode.getOperands() )
 				{
-					AvmCode::iterator it = aCode->begin();
-					AvmCode::iterator itEnd = aCode->end();
-					for( ; it != itEnd ; ++it )
-					{
-						collectRunMachine(anExecutableForm, (*it), listOfMachine);
-					}
-
-					break;
+					collectRunMachine(itOperand, listOfMachine);
 				}
 			}
 
@@ -75,7 +70,7 @@ void StatementFactory::collectRunMachine(ExecutableForm * anExecutableForm,
 
 		case FORM_INSTANCE_MACHINE_KIND:
 		{
-//			listOfMachine.add_union( aStatement.to_ptr< InstanceOfMachine >() );
+//			listOfMachine.add_unique( aStatement.to_ptr< InstanceOfMachine >() );
 
 			break;
 		}
@@ -86,81 +81,181 @@ void StatementFactory::collectRunMachine(ExecutableForm * anExecutableForm,
 		}
 	}
 }
+
+
+bool StatementFactory::hasActivityMachine(
+		AVM_OPCODE opCode, const BF & aStatement)
+{
+	if( aStatement.invalid() )
+	{
+		return false;
+	}
+	else switch( aStatement.classKind() )
+	{
+		case FORM_AVMCODE_KIND:
+		{
+			const AvmCode & aCode = aStatement.to< AvmCode >();
+
+			if( aCode.isOpCode(opCode) && aCode.hasOperand() )
+			{
+				return( aCode.first().is< InstanceOfMachine >()
+						|| aCode.first().is< Machine >() );
+			}
+			else if( OperatorManager::isSchedule( aCode.getOperator() )
+					|| OperatorManager::isConditionnal( aCode.getOperator() ) )
+			{
+				for( const auto & itOperand : aCode.getOperands() )
+				{
+					if( hasActivityMachine(opCode, itOperand) )
+					{
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		case FORM_INSTANCE_MACHINE_KIND:
+		{
+//			listOfMachine.add_unique( aStatement.to_ptr< InstanceOfMachine >() );
+
+			return false;
+		}
+
+		default:
+		{
+			return false;
+		}
+	}
+}
+
+
+void StatementFactory::collectActivityMachine(AVM_OPCODE opCode,
+		const BF & aStatement, ListOfInstanceOfMachine & listOfMachine)
+{
+	if( aStatement.invalid() )
+	{
+		return;
+	}
+	else switch( aStatement.classKind() )
+	{
+		case FORM_AVMCODE_KIND:
+		{
+			const AvmCode & aCode = aStatement.to< AvmCode >();
+
+			if( aCode.isOpCode(opCode) && aCode.hasOperand() )
+			{
+				if( aCode.first().is< InstanceOfMachine >() )
+				{
+					listOfMachine.add_unique(
+							aCode.first().to_ptr< InstanceOfMachine >() );
+				}
+			}
+			else if( OperatorManager::isSchedule( aCode.getOperator() )
+					|| OperatorManager::isConditionnal( aCode.getOperator() ) )
+			{
+				for( const auto & itOperand : aCode.getOperands() )
+				{
+					collectActivityMachine(opCode, itOperand, listOfMachine);
+				}
+			}
+
+			break;
+		}
+
+		case FORM_INSTANCE_MACHINE_KIND:
+		{
+//			listOfMachine.add_unique( aStatement.to_ptr< InstanceOfMachine >() );
+
+			break;
+		}
+
+		default:
+		{
+			break;
+		}
+	}
+}
+
+
+void StatementFactory::collectActivityMachine(AVM_OPCODE opCode,
+		const BF & aStatement, BFCollection & listOfMachine)
+{
+	if( aStatement.invalid() )
+	{
+		return;
+	}
+	else switch( aStatement.classKind() )
+	{
+		case FORM_AVMCODE_KIND:
+		{
+			const AvmCode & aCode = aStatement.to< AvmCode >();
+
+			if( aCode.isOpCode(opCode) && aCode.hasOperand() )
+			{
+				if( aCode.first().is< InstanceOfMachine >() )
+				{
+					listOfMachine.add_unique( aCode.first() );
+				}
+			}
+			else if( OperatorManager::isSchedule( aCode.getOperator() )
+					|| OperatorManager::isConditionnal( aCode.getOperator() ) )
+			{
+				for( const auto & itOperand : aCode.getOperands() )
+				{
+					collectActivityMachine(opCode, itOperand, listOfMachine);
+				}
+			}
+
+			break;
+		}
+
+		case FORM_INSTANCE_MACHINE_KIND:
+		{
+//			listOfMachine.add_unique( aStatement.to_ptr< InstanceOfMachine >() );
+
+			break;
+		}
+
+		default:
+		{
+			break;
+		}
+	}
+}
+
 
 
 void StatementFactory::collectActivityMachine(
-		ExecutableForm * anExecutableForm, AVM_OPCODE opCode,
-		const BF & aStatement, ListOfInstanceOfMachine & listOfMachine)
-{
-	switch( aStatement.classKind() )
-	{
-		case FORM_AVMCODE_KIND:
-		{
-			AvmCode* aCode = aStatement.to_ptr< AvmCode >();
-
-			if( aCode->isOpCode(opCode) )
-			{
-				if( aCode->first().is< InstanceOfMachine >() )
-				{
-					listOfMachine.add_union(
-							aCode->first().to_ptr< InstanceOfMachine >() );
-				}
-			}
-			else
-			{
-				AvmCode::iterator it = aCode->begin();
-				AvmCode::iterator itEnd = aCode->end();
-				for( ; it != itEnd ; ++it )
-				{
-					collectActivityMachine(
-							anExecutableForm, opCode, (*it), listOfMachine);
-				}
-			}
-
-			break;
-		}
-
-		case FORM_INSTANCE_MACHINE_KIND:
-		{
-//			listOfMachine.add_union( aStatement.to_ptr< InstanceOfMachine >() );
-
-			break;
-		}
-
-		default:
-		{
-			break;
-		}
-	}
-}
-
-
-void StatementFactory::collectActivityMachine(ExecutableForm * anExecutableForm,
 		AVM_OPCODE opCode1, AVM_OPCODE opCode2,
 		const BF & aStatement, ListOfInstanceOfMachine & listOfMachine)
 {
-	switch( aStatement.classKind() )
+	if( aStatement.invalid() )
+	{
+		return;
+	}
+	else switch( aStatement.classKind() )
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode* aCode = aStatement.to_ptr< AvmCode >();
+			const AvmCode & aCode = aStatement.to< AvmCode >();
 
-			if( aCode->isOpCode(opCode1) || aCode->isOpCode(opCode2) )
+			if( aCode.isOpCode(opCode1) || aCode.isOpCode(opCode2) )
 			{
-				if( aCode->first().is< InstanceOfMachine >() )
+				if(  aCode.hasOperand() && aCode.first().is< InstanceOfMachine >() )
 				{
-					listOfMachine.add_union(
-							aCode->first().to_ptr< InstanceOfMachine >() );
+					listOfMachine.add_unique(
+							aCode.first().to_ptr< InstanceOfMachine >() );
 				}
 			}
-			else
+			else if( OperatorManager::isSchedule( aCode.getOperator() )
+					|| OperatorManager::isConditionnal( aCode.getOperator() ) )
 			{
-				AvmCode::iterator it = aCode->begin();
-				AvmCode::iterator itEnd = aCode->end();
-				for( ; it != itEnd ; ++it )
+				for( const auto & itOperand : aCode.getOperands() )
 				{
-					collectActivityMachine(anExecutableForm,
-							opCode1, opCode2, (*it), listOfMachine);
+					collectActivityMachine(
+							opCode1, opCode2, itOperand, listOfMachine);
 				}
 			}
 
@@ -169,7 +264,7 @@ void StatementFactory::collectActivityMachine(ExecutableForm * anExecutableForm,
 
 		case FORM_INSTANCE_MACHINE_KIND:
 		{
-//			listOfMachine.add_union( aStatement.to_ptr< InstanceOfMachine >() );
+//			listOfMachine.add_unique( aStatement.to_ptr< InstanceOfMachine >() );
 
 			break;
 		}
@@ -186,33 +281,38 @@ void StatementFactory::collectActivityMachine(ExecutableForm * anExecutableForm,
  * COLLECT
  * Transition
  */
-void StatementFactory::collectInvokeTransition(ExecutableForm * anExecutableForm,
+void StatementFactory::collectInvokeTransition(
+		const ExecutableForm & anExecutableForm,
 		const BF & aStatement, ListOfAvmTransition & listOfTransition)
 {
-	switch( aStatement.classKind() )
+	if( aStatement.invalid() )
+	{
+		return;
+	}
+	else switch( aStatement.classKind() )
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode* aCode = aStatement.to_ptr< AvmCode >();
+			const AvmCode & aCode = aStatement.to< AvmCode >();
 
-			switch( aCode->getAvmOpCode() )
+			switch( aCode.getAvmOpCode() )
 			{
 				case AVM_OPCODE_INVOKE_TRANSITION:
 				{
-					if( aCode->first().is< AvmTransition >() )
+					if( aCode.hasOperand() &&  aCode.first().is< AvmTransition >() )
 					{
-						listOfTransition.add_union(
-								aCode->first().to_ptr< AvmTransition >() );
+						listOfTransition.add_unique(
+								aCode.first().to_ptr< AvmTransition >() );
 					}
 					break;
 				}
 
 				case AVM_OPCODE_SCHEDULE_INVOKE:
 				{
-					if( aCode->empty() )
+					if( aCode.noOperand() )
 					{
 						collectInvokeTransition(anExecutableForm,
-								anExecutableForm->getOnSchedule(),
+								anExecutableForm.getOnSchedule(),
 								listOfTransition );
 					}
 					break;
@@ -220,12 +320,10 @@ void StatementFactory::collectInvokeTransition(ExecutableForm * anExecutableForm
 
 				default:
 				{
-					AvmCode::iterator it = aCode->begin();
-					AvmCode::iterator itEnd = aCode->end();
-					for( ; it != itEnd ; ++it )
+					for( const auto & itOperand : aCode.getOperands() )
 					{
 						collectInvokeTransition(
-								anExecutableForm, (*it), listOfTransition);
+								anExecutableForm, itOperand, listOfTransition);
 					}
 
 					break;
@@ -238,7 +336,7 @@ void StatementFactory::collectInvokeTransition(ExecutableForm * anExecutableForm
 
 		case FORM_AVMTRANSITION_KIND:
 		{
-//			listOfTransition.add_union( aStatement.to_ptr< AvmTransition >() );
+//			listOfTransition.add_unique( aStatement.to_ptr< AvmTransition >() );
 
 			break;
 		}
@@ -251,6 +349,31 @@ void StatementFactory::collectInvokeTransition(ExecutableForm * anExecutableForm
 	}
 }
 
+
+/**
+ * COLLECT
+ * Communication Statement
+ */
+void StatementFactory::collectCommunication(
+		const BF & aStatement, BFCollection & listOfComStatement)
+{
+	if( aStatement.is< AvmCode >() )
+	{
+		const AvmCode & aCode = aStatement.to< AvmCode >();
+
+		if( StatementTypeChecker::isCommunication(aCode) )
+		{
+			listOfComStatement.append(aStatement);
+		}
+		else
+		{
+			for( const auto & itOperand : aCode.getOperands() )
+			{
+				collectCommunication(itOperand, listOfComStatement);
+			}
+		}
+	}
+}
 
 
 /**
@@ -260,15 +383,18 @@ void StatementFactory::collectInvokeTransition(ExecutableForm * anExecutableForm
 void StatementFactory::collectRID(const BF & aStatement,
 		List< RuntimeID > & listOfRID)
 {
-	switch( aStatement.classKind() )
+	if( aStatement.invalid() )
+	{
+		return;
+	}
+	else switch( aStatement.classKind() )
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode::iterator it = aStatement.to_ptr< AvmCode >()->begin();
-			AvmCode::iterator itEnd = aStatement.to_ptr< AvmCode >()->end();
-			for( ; it != itEnd ; ++it )
+			for( const auto & itOperand :
+				aStatement.to< AvmCode >().getOperands() )
 			{
-				collectRID((*it), listOfRID);
+				collectRID(itOperand, listOfRID);
 			}
 
 			break;
@@ -276,7 +402,7 @@ void StatementFactory::collectRID(const BF & aStatement,
 
 		case FORM_RUNTIME_ID_KIND:
 		{
-			listOfRID.add_union( aStatement.bfRID() );
+			listOfRID.add_unique( aStatement.bfRID() );
 
 			break;
 		}
@@ -289,29 +415,26 @@ void StatementFactory::collectRID(const BF & aStatement,
 }
 
 
-
 /**
  * CONTAINS
  * Activity on RID
  */
-bool StatementFactory::containsOperationOnRID(AvmCode * aCode,
+bool StatementFactory::containsOperationOnRID(const AvmCode & aCode,
 		const AVM_OPCODE opActivity, const RuntimeID & aRID)
 {
-	if( aCode->nonempty() )
+	if( aCode.hasOperand() )
 	{
-		AvmCode::iterator it = aCode->begin();
-
-		if( aCode->isOpCode(opActivity) && ((aRID == (*it))
-				/*|| aCode->contains(aRID)*/) )
+		if( aCode.isOpCode(opActivity) && ((aRID == aCode.first())
+				/*|| aCode.contains(aRID)*/) )
 		{
 			return( true );
 		}
 
-		AvmCode::iterator itEnd = aCode->end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itOperand : aCode.getOperands() )
 		{
-			if( (*it).is< AvmCode >() && containsOperationOnRID(
-					(*it).to_ptr< AvmCode >(), opActivity, aRID) )
+			if( itOperand.is< AvmCode >()
+				&& containsOperationOnRID(
+						itOperand.to< AvmCode >(), opActivity, aRID) )
 			{
 				return( true );
 			}
@@ -328,58 +451,59 @@ bool StatementFactory::containsOperationOnRID(AvmCode * aCode,
  * or
  * RuntimeID
  */
-ExecutableForm * StatementFactory::getActivityTargetExecutable(
-		AvmProgram * anAvmProgram, AvmCode * aCode)
+const ExecutableForm * StatementFactory::getActivityTargetExecutable(
+		const AvmProgram & anAvmProgram, const AvmCode & aCode)
 {
 //		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aCode )	<< "AvmCode !!!"
 //				<< SEND_EXIT;
 
-	if( aCode->empty() )
+	if( aCode.noOperand() )
 	{
-		return( anAvmProgram->getExecutable() );
+		return( anAvmProgram.getExecutable() );
 	}
-	else // if( aCode->singleton() )
+	else // if( aCode.singleton() )
 	{
-		if( aCode->first() == ExecutableLib::MACHINE_SELF )
+		if( aCode.first() == ExecutableLib::MACHINE_SELF )
 		{
-			return( anAvmProgram->getExecutable() );
+			return( anAvmProgram.getExecutable() );
 		}
-		else if( aCode->first().is< InstanceOfMachine >() )
+		else if( aCode.first().is< InstanceOfMachine >() )
 		{
-			return( aCode->first().to_ptr< InstanceOfMachine >()
-					->getExecutable() );
+			return( aCode.first().to< InstanceOfMachine >()
+					.getExecutable() );
 		}
-		else if( aCode->first().is< RuntimeID >() )
+		else if( aCode.first().is< RuntimeID >() )
 		{
-			return( aCode->first().as_bf< RuntimeID >().getExecutable() );
+			return( aCode.first().as_bf< RuntimeID >().getExecutable() );
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
 const RuntimeID & StatementFactory::getActivityTargetRID(
-		const ExecutionData & anED, const RuntimeID & aRID, AvmCode * aCode)
+		const ExecutionData & anED,
+		const RuntimeID & aRID, const AvmCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode.noOperand() )
 	{
 		return( aRID );
 	}
-	else // if( aCode->singleton() )
+	else // if( aCode.singleton() )
 	{
-		if( aCode->first() == ExecutableLib::MACHINE_SELF )
+		if( aCode.first() == ExecutableLib::MACHINE_SELF )
 		{
 			return( aRID );
 		}
-		else if( aCode->first().is< RuntimeID >() )
+		else if( aCode.first().is< RuntimeID >() )
 		{
-			return( aCode->first().as_bf< RuntimeID >() );
+			return( aCode.first().as_bf< RuntimeID >() );
 		}
-		else if( aCode->first().is< InstanceOfMachine >() )
+		else if( aCode.first().is< InstanceOfMachine >() )
 		{
 			return( anED.getRuntimeID(
-					aCode->first().to_ptr< InstanceOfMachine >()) );
+					aCode.first().to< InstanceOfMachine >()) );
 		}
 	}
 

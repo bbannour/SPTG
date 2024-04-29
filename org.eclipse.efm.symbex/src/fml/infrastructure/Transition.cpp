@@ -15,8 +15,17 @@
 
 #include "Transition.h"
 
+#include <fml/expression/ExpressionParser.h>
+
+#include <fml/expression/StatementTypeChecker.h>
+#include <fml/expression/StatementConstructor.h>
+#include <fml/expression/StatementParser.h>
+
 #include <fml/infrastructure/Machine.h>
+#include <fml/infrastructure/Port.h>
 #include <fml/infrastructure/PropertyPart.h>
+
+#include <fml/operator/OperatorManager.h>
 
 
 namespace sep
@@ -27,11 +36,7 @@ namespace sep
  * CONSTRUCTOR
  * Default
  */
-/**
- * CONSTRUCTOR
- * Default
- */
-Transition::Transition(Machine * aContainer)
+Transition::Transition(Machine & aContainer)
 : BehavioralElement( CLASS_KIND_T( Transition ), aContainer),
 SpecifierImpl( ),
 
@@ -44,15 +49,15 @@ mTokenCount( 0 ),
 mSource( aContainer ),
 mTarget( ),
 
-mDeclaration( NULL ),
+mPropertyDeclaration( nullptr ),
 mStatement( )
 {
 	//!! NOTHING
 }
 
-Transition::Transition(Machine * aContainer,
+Transition::Transition(Machine & aContainer,
 		const std::string & aNameID, MOC_KIND aKind)
-: BehavioralElement( CLASS_KIND_T( Transition ), aContainer, aNameID),
+: BehavioralElement( CLASS_KIND_T( Transition ), (& aContainer), aNameID),
 SpecifierImpl( ),
 
 mMocKind( aKind ),
@@ -64,30 +69,71 @@ mTokenCount( 0 ),
 mSource( aContainer ),
 mTarget( ),
 
-mDeclaration( NULL ),
+mPropertyDeclaration( nullptr ),
 mStatement( )
 {
 	//!! NOTHING
 }
 
-Transition::Transition(Machine * aContainer, const Transition * aTransPattern)
-: BehavioralElement(CLASS_KIND_T( Transition ), aContainer, (*aTransPattern)),
+Transition::Transition(Machine & aContainer, const Transition & aTransPattern)
+: BehavioralElement(CLASS_KIND_T( Transition ), aContainer, aTransPattern),
  SpecifierImpl( aTransPattern ),
 
-mMocKind( aTransPattern->mMocKind ),
+mMocKind( aTransPattern.mMocKind ),
 
-mPriority( aTransPattern->mPriority ),
-mProbability( aTransPattern->mProbability ),
-mTokenCount( aTransPattern->mTokenCount ),
+mPriority( aTransPattern.mPriority ),
+mProbability( aTransPattern.mProbability ),
+mTokenCount( aTransPattern.mTokenCount ),
 
 mSource( aContainer ),
-mTarget( aTransPattern->mTarget ),
+mTarget( aTransPattern.mTarget ),
 
-mDeclaration( (aTransPattern->mDeclaration == NULL) ? NULL :
-		new PropertyPart( *(aTransPattern->mDeclaration) ) ),
-mStatement( aTransPattern->mStatement )
+mPropertyDeclaration( (aTransPattern.mPropertyDeclaration == nullptr)
+		? nullptr : new PropertyPart( *(aTransPattern.mPropertyDeclaration) ) ),
+mStatement( aTransPattern.mStatement )
 {
 
+}
+
+
+// For Python Binding
+Transition::Transition(Machine & aContainer, const std::string & aNameID)
+: BehavioralElement( CLASS_KIND_T( Transition ), (& aContainer), aNameID),
+SpecifierImpl( ),
+
+mMocKind( MOC_SIMPLE_KIND ),
+
+mPriority( 0 ),
+mProbability( 0.0 ),
+mTokenCount( 0 ),
+
+mSource( aContainer ),
+mTarget( ),
+
+mPropertyDeclaration( nullptr ),
+mStatement( )
+{
+	//!! NOTHING
+}
+
+Transition::Transition(Machine & aSource,
+		const std::string & aNameID, Machine & aTarget)
+: BehavioralElement( CLASS_KIND_T( Transition ), (& aSource), aNameID),
+SpecifierImpl( ),
+
+mMocKind( MOC_SIMPLE_KIND ),
+
+mPriority( 0 ),
+mProbability( 0.0 ),
+mTokenCount( 0 ),
+
+mSource( aSource ),
+mTarget( INCR_BF(& aTarget) ),
+
+mPropertyDeclaration( nullptr ),
+mStatement( )
+{
+	//!! NOTHING
 }
 
 
@@ -96,18 +142,23 @@ mStatement( aTransPattern->mStatement )
  */
 Transition::~Transition()
 {
-	delete mDeclaration;
+	delete mPropertyDeclaration;
 }
 
 
 /**
  * GETTER - SETTER
- * mDeclaration
+ * mPropertyDeclaration
  */
-
-bool Transition::hasDeclaration() const
+const PropertyPart & Transition::getPropertyPart() const
 {
-	return( (mDeclaration != NULL) && mDeclaration->nonempty() );
+	return( * mPropertyDeclaration );
+}
+
+bool Transition::hasPropertyPart() const
+{
+	return( (mPropertyDeclaration != nullptr)
+			&& mPropertyDeclaration->nonempty() );
 }
 
 
@@ -120,7 +171,7 @@ void Transition::updateNameID(const std::string & aNameID)
 {
 	setFullyQualifiedNameID(
 			ObjectElement::makeFullyQualifiedNameID(
-					getContainer()->as< Machine >(), aNameID) );
+					getContainer()->as_ptr< Machine >(), aNameID) );
 
 	setNameID(aNameID);
 
@@ -134,7 +185,139 @@ void Transition::updateNameID(const std::string & aNameID)
  */
 Machine * Transition::getSourceContainer() const
 {
-	return( mSource->getContainerMachine() );
+	return( mSource.getContainerMachine() );
+}
+
+/**
+ * SETTER
+ * mTarget
+ */
+void Transition::setTarget(Machine & aTarget)
+{
+	mTarget = INCR_BF(& aTarget);
+}
+
+
+/**
+ * GETTER - SETTER
+ * mStatement
+ */
+inline void Transition::addStatement(const BFCode & aStatement)
+{
+	if( mStatement.valid() )
+	{
+		if( StatementTypeChecker::isSchedule(mStatement) )
+		{
+			mStatement.append( aStatement );
+		}
+		else
+		{
+			mStatement = StatementConstructor::newCode(
+					OperatorManager::OPERATOR_SEQUENCE, mStatement, aStatement);
+		}
+	}
+	else
+	{
+		mStatement = aStatement;
+	}
+}
+
+inline void Transition::seqStatement(const BFCode & aStatement)
+{
+	if( mStatement.valid() )
+	{
+		mStatement = StatementConstructor::newCodeFlat(
+				OperatorManager::OPERATOR_SEQUENCE, mStatement, aStatement);
+	}
+	else
+	{
+		mStatement = aStatement;
+	}
+}
+
+
+// For Python Binding
+bool Transition::addStatement(const std::string & rawStatement)
+{
+	const Machine & machineCtx = getSource();
+	BFCode aStatement = StatementParser::parse(machineCtx, rawStatement);
+	if( aStatement.valid() )
+	{
+		addStatement( aStatement );
+
+		return true;
+
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool Transition::setStatement(const std::string & rawStatement)
+{
+	const Machine & machineCtx = getSource();
+	BFCode aStatement = StatementParser::parse(machineCtx, rawStatement);
+	if( aStatement.valid() )
+	{
+		setStatement( aStatement );
+
+		return true;
+
+	}
+	else
+	{
+		return false;
+	}
+}
+
+
+bool Transition::addOutput(Port & outPort, std::vector< std::string > & rvalues)
+{
+	BFCode outputStatement = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_OUTPUT, INCR_BF(& outPort) );
+
+	const Machine & machineCtx = getSource();
+	for( const auto & rvalue : rvalues )
+	{
+		const BF & rvalueExpr = ExpressionParser::parse(machineCtx, rvalue);
+		if( rvalueExpr.valid() )
+		{
+			outputStatement.append( rvalueExpr );
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	addStatement( outputStatement );
+
+	return true;
+}
+
+bool Transition::addInput(Port & inPort, std::vector< std::string > & lvalues)
+{
+	BFCode inputStatement = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_INPUT, INCR_BF(& inPort));
+
+	const Machine & machineCtx = getSource();
+	for( const auto & lvalue : lvalues )
+	{
+		const BF & lvalueVar = ExpressionParser::parseVariable(machineCtx, lvalue);
+		if( lvalueVar.valid() )
+		{
+			inputStatement.append( lvalueVar );
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	addStatement( inputStatement );
+
+	return true;
 }
 
 
@@ -192,12 +375,14 @@ std::string Transition::strMocKind(
 				strKind = "simple";
 				sep = SEPARATOR;
 			}
-			else if( kind & MOC_ABORT_KIND )
+
+			if( kind & MOC_ABORT_KIND )
 			{
 				strKind = "abort";
 				sep = SEPARATOR;
 			}
-			else if( kind & MOC_FINAL_KIND )
+
+			if( kind & MOC_FINAL_KIND )
 			{
 				strKind = "final";
 				sep = SEPARATOR;
@@ -222,143 +407,162 @@ std::string Transition::strMocKind(
 }
 
 
-void Transition::strHeader(OutStream & os) const
+void Transition::strHeader(OutStream & out) const
 {
-	os << getModifier().toString() << "transition";
+	out << getModifier().toString() << "transition";
 	if( not isMocSimple() )
 	{
-		os << "< " << strMocKind( ~ MOC_SIMPLE_KIND );
+		out << "< " << strMocKind( ~ MOC_SIMPLE_KIND );
 		if( mPriority != 0 )
 		{
-			os << " , " << mPriority;
+			out << " , " << mPriority;
 		}
 		if( mProbability != 0 )
 		{
-			os << " , " << mProbability;
+			out << " , " << mProbability;
 		}
-		os << " >";
+		out << " >";
 	}
 	else if( mPriority != 0 )
 	{
-		os << "< " << mPriority;
+		out << "< " << mPriority;
 		if( mProbability != 0 )
 		{
-			os << " , " << mProbability;
+			out << " , " << mProbability;
 		}
-		os << " >";
+		out << " >";
 	}
 	else if( mProbability != 0 )
 	{
-		os << "< " << mProbability << " >";
+		out << "< " << mProbability << " >";
 	}
 
-	os << " " << getNameID();
+	out << " " << getNameID();
 
 	if( mTarget.valid() )
 	{
 		if( mTokenCount != 0 )
 		{
-			os << "(" << mTokenCount << ")";
+			out << "(" << mTokenCount << ")";
 		}
 
-		os << " : " << str_header( getContainer()->as< Machine >() ) << " --> "
+		out << " : " << str_header( getContainer()->as_ptr< Machine >() ) << " --> "
 				<< (mTarget.is< Machine >() ?
-					mTarget.to_ptr< Machine >()->getNameID() : mTarget.str());
+					mTarget.to< Machine >().getNameID() : mTarget.str());
 	}
 }
 
 
-void Transition::toStreamHeader(OutStream & os) const
+void Transition::toStreamHeader(OutStream & out) const
 {
-	os << getModifier().toString()
+	out << getModifier().toString()
 			<< "transition " << getNameID() << " : "
-			<< getSource()->getNameID();
+			<< getSource().getNameID();
 
 	if( mTarget.is< Machine >() || mTarget.is< Variable >() )
 	{
-		os << " --> " << mTarget.to_ptr< ObjectElement >()->getNameID();
+		out << " --> " << mTarget.to< ObjectElement >().getNameID();
 	}
 	else if( mTarget.valid() )
 	{
-		os << " --> " << mTarget.str();
+		out << " --> " << mTarget.str();
 	}
 
-	os << std::flush;
+	out << std::flush;
 }
 
 
-void Transition::toStream(OutStream & os) const
+void Transition::toStream(OutStream & out) const
 {
-	os << TAB << "transition";
+	out << TAB << "transition";
 	if( not isMocSimple() )
 	{
-		os << "< " << strMocKind( ~ MOC_SIMPLE_KIND );
+		out << "< " << strMocKind( ~ MOC_SIMPLE_KIND );
 		if( mPriority != 0 )
 		{
-			os << " , " << mPriority;
+			out << " , " << mPriority;
 		}
 		if( mProbability != 0 )
 		{
-			os << " , " << mProbability;
+			out << " , " << mProbability;
 		}
-		os << " >";
+		out << " >";
 	}
 	else if( mPriority != 0 )
 	{
-		os << "< " << mPriority;
+		out << "< " << mPriority;
 		if( mProbability != 0 )
 		{
-			os << " , " << mProbability;
+			out << " , " << mProbability;
 		}
-		os << " >";
+		out << " >";
 	}
 	else if( mProbability != 0 )
 	{
-		os << "< " << mProbability << " >";
+		out << "< " << mProbability << " >";
 	}
 
 	if( mTokenCount != 0 )
 	{
-		os << "(" << mTokenCount << ")";
+		out << "(" << mTokenCount << ")";
 	}
 
-	os << " " << getNameID();
+	out << " " << getNameID();
+
+	if( hasReallyUnrestrictedName() )
+	{
+		out << " \"" << getUnrestrictedName() << "\"";
+	}
 
 	if( mTarget.valid() )
 	{
-		os << " --> " << mTarget.str();
+		out << " --> ";
+
+		if( mTarget.is< Machine >() )
+		{
+AVM_IF_DEBUG_FLAG( TRANSITION )
+			out << mTarget.to< Machine >().getFullyQualifiedNameID();
+AVM_ELSE
+			out << mTarget.to< Machine >().getNameID();
+AVM_ENDIF_DEBUG_FLAG( TRANSITION )
+		}
+		else
+		{
+			out << mTarget.str();
+		}
 	}
 
-	if( hasDeclaration() )
+	if( hasPropertyPart() )
 	{
-		os << " {" << EOL;
+		out << " {" << EOL;
 
-		mDeclaration->toStream(os);
-		os << EOL;
+		mPropertyDeclaration->toStream(out);
+		out << EOL;
 
 		if( mStatement.valid() )
 		{
-			os << TAB << "moe:" << EOL;
+			out << TAB << "moe:" << EOL;
 
-			os << TAB2 << "@run{" << INCR2_INDENT;
-			mStatement->toStreamRoutine( os );
-			os << DECR2_INDENT_TAB2 << "}" << EOL;
+			out << TAB2 << "@run{" << INCR2_INDENT;
+			mStatement->toStreamRoutine( out );
+			out << DECR2_INDENT_TAB2 << "}" << EOL;
 		}
 
-		os << TAB << "}" << EOL;
+		out << TAB << "}" << EOL;
 	}
 
-	else if( mStatement.valid() )
+	else if( mStatement.valid()
+			&& (not StatementTypeChecker::isEmptySequence(* mStatement)) )
 	{
-		mStatement->toStreamRoutine( os << " {" << INCR_INDENT )
+		mStatement->toStreamRoutine( out << " {" << INCR_INDENT )
 				<< DECR_INDENT_TAB << "}";
 	}
 	else
 	{
-		os << ";";
+		out << ";";
 	}
 
-	os << EOL << std::flush;
+	out << EOL << std::flush;
 }
 
 

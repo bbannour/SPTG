@@ -35,8 +35,8 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	BehavioralElement(class_kind_t aClassKind, BehavioralElement * aContainer)
-	: ObjectElement( aClassKind , aContainer )
+	BehavioralElement(class_kind_t aClassKind, BehavioralElement & aContainer)
+	: ObjectElement( aClassKind , (& aContainer) )
 	{
 		//!! NOTHING
 	}
@@ -58,16 +58,16 @@ public:
 		//!! NOTHING
 	}
 
-	BehavioralElement(class_kind_t aClassKind, BehavioralElement * aContainer,
+	BehavioralElement(class_kind_t aClassKind, BehavioralElement & aContainer,
 			const Modifier & aModifier, const std::string & aNameID)
-	: ObjectElement( aClassKind , aContainer , aModifier , aNameID )
+	: ObjectElement( aClassKind , (& aContainer) , aModifier , aNameID )
 	{
 		//!! NOTHING
 	}
 
 	BehavioralElement(class_kind_t aClassKind,
-			BehavioralElement * aContainer, const BehavioralElement & aPattern)
-	: ObjectElement( aClassKind , aContainer , aPattern )
+			BehavioralElement & aContainer, const BehavioralElement & aPattern)
+	: ObjectElement( aClassKind , (& aContainer) , aPattern )
 	{
 		//!! NOTHING
 	}

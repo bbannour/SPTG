@@ -58,7 +58,7 @@ public:
 	 * Default
 	 */
 	SatSolver()
-	: RunnableElement( NULL ),
+	: RunnableElement( nullptr ),
 	mListOfSelectedVariable( ),
 	mCurrentPathScopeFlag( false ),
 	mLogFolderLocation( )
@@ -78,24 +78,57 @@ public:
 	 * CONFIGURE
 	 */
 	virtual bool configure(
-			Configuration & aConfiguration, WObject * wfFilterObject,
+			Configuration & aConfiguration, const WObject * wfFilterObject,
 			ListOfPairMachineData & listOfSelectedVariable);
 
 
 	/**
 	 * INIT / EXIT
 	 */
-	virtual bool initImpl()
+	virtual bool initImpl() override
 	{
 		//!! NOTHING
 		return true;
 	}
 
-	virtual bool exitImpl()
+	virtual bool exitImpl() override
 	{
 		//!! NOTHING
 		return true;
 	}
+
+	/**
+	 * GETTER - SETTER
+	 * mListOfSelectedVariable
+	 */
+	inline std::string uniqParameterID(const InstanceOfData & aParameter) const
+	{
+		return aParameter.getUniqNameID();
+//		return aParameter.getPortableQualifiedNameID();
+//		return aParameter.getUniqQualifiedNameID();
+
+//		return( OSS() << "P_" << aParameter.getMark() << ":"
+//					<< aParameter.getPortableQualifiedNameID() );
+	}
+
+	inline std::string uniqVariableID(
+			const InstanceOfData & aVariable, std::size_t varID)
+	{
+		return aVariable.getUniqNameID();
+//		return aVariable.getPortableQualifiedNameID();
+//		return aVariable.getUniqQualifiedNameID();
+
+//		return ( OSS() << "V_" << varID );
+
+//		return( OSS() << "V_" << varID << ":"
+//						<< aVariable.getPortableQualifiedNameID() );
+	}
+
+	inline std::string uniqVariableID(const Variable & aVariable) const
+	{
+		return aVariable.getUniqNameID();
+	}
+
 
 	/**
 	 * GETTER - SETTER
@@ -182,6 +215,18 @@ public:
 
 
 	BF completeUsingDataTypeConstraint(
+			const BF & aCondition, BFVector & dataVector) const;
+
+
+	/**
+	 * SMT2 for DEBUG
+	 */
+	virtual std::string strTypeSmt2(const ITypeSpecifier & aTypedElement) const;
+
+	virtual bool to_smt(OutStream & os,
+			const BF & aCondition, bool enableModelProduction = true) const;
+
+	virtual bool to_smt(OutStream & os,
 			const BF & aCondition, BFVector & dataVector) const;
 
 };

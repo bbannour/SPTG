@@ -15,6 +15,9 @@
 
 #include "Manipulators.h"
 
+#include <fml/workflow/Query.h>
+#include <fml/workflow/WObject.h>
+
 namespace sep {
 
 
@@ -26,6 +29,39 @@ SymbexValueCSS DEFAULT_SYMBEX_VALUE_ARRAY_CSS ( "[ ", " , ", " ]" );
 SymbexValueCSS DEFAULT_SYMBEX_VALUE_PARAMS_CSS ( "( ", " , ", " )" );
 
 SymbexValueCSS DEFAULT_SYMBEX_VALUE_STRUCT_CSS( "{ ", " , ", " }" );
+
+
+// Linux : empty string => "\"\""
+static void normalizeEmptyString(std::string & str)
+{
+	if( str == "\"\"" )
+	{
+		str.clear();
+	}
+}
+
+bool SymbexValueCSS::configure(const WObject * wfParameterObject,
+		const std::string & scheme, const SymbexValueCSS & DEFAULT)
+{
+	if( wfParameterObject != WObject::_NULL_ )
+	{
+		BEGIN = Query::getRegexWPropertyString(wfParameterObject,
+				PLUS_WID3("value", scheme, "begin"), DEFAULT.BEGIN);
+
+		SEPARATOR = Query::getRegexWPropertyString(wfParameterObject,
+				PLUS_WID3("value", scheme, "separator"), DEFAULT.SEPARATOR);
+
+		END = Query::getRegexWPropertyString(wfParameterObject,
+				PLUS_WID3("value", scheme, "end"), DEFAULT.END);
+
+		normalizeEmptyString( BEGIN );
+		normalizeEmptyString( SEPARATOR );
+		normalizeEmptyString( END );
+
+	}
+
+	return true;
+}
 
 
 /**

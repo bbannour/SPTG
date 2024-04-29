@@ -15,9 +15,9 @@
 
 #include <base/SmartTable.h>
 
-#include <common/AvmPointer.h>
 #include <common/Element.h>
 #include <common/BF.h>
+#include <common/AvmPointer.h>
 
 #include <collection/Typedef.h>
 
@@ -48,17 +48,24 @@ typedef SmartTable< BaseBufferForm , DestroyElementPolicy > TableOfBufferT;
 
 
 class RuntimeForm  :  public Element ,
+		AVM_INJECT_STATIC_NULL_REFERENCE( RuntimeForm ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( RuntimeForm )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( RuntimeForm )
+
+protected:
+	/*
+	 * ATTRIBUTES
+	 */
+	typedef AvmPointer< TableOfRuntimeID , DestroyObjectPolicy > APTableOfRuntimeID;
 
 
 protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	avm_size_t mInstanciationCount;
+	std::size_t mInstanciationCount;
 
 	RuntimeID mRID;
 
@@ -85,7 +92,8 @@ public:
 	RuntimeForm(const RuntimeID & aRID)
 	: Element( CLASS_KIND_T( RuntimeForm ) ),
 
-	mInstanciationCount( aRID.getInstance()->getInstanciationCount() ),
+	mInstanciationCount( aRID.valid() ?
+			aRID.getInstance()->getInstanciationCount() : 0 ),
 
 	mRID( aRID ),
 
@@ -164,6 +172,18 @@ public:
 
 
 	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static RuntimeForm & nullref()
+	{
+		static 	RuntimeForm _NULL_( RuntimeID::REF_NULL );
+
+		return( _NULL_ );
+	}
+
+
+	/**
 	 * GETTER - SETTER
 	 * mRID
 	 */
@@ -200,6 +220,11 @@ public:
 		return( mRID.getInstance() );
 	}
 
+	inline ExecutableForm & refExecutable() const
+	{
+		return( mRID.refExecutable() );
+	}
+
 	inline ExecutableForm * getExecutable() const
 	{
 		return( mRID.getExecutable() );
@@ -216,9 +241,29 @@ public:
 		return( mRID.getFullyQualifiedNameID() );
 	}
 
+	inline bool isLocationID(const std::string & aLocationID) const
+	{
+		return( mRID.isLocationID(aLocationID) );
+	}
+
 	inline std::string getNameID() const
 	{
 		return( mRID.getNameID() );
+	}
+
+	inline std::string getPortableNameID() const
+	{
+		return( mRID.getPortableNameID() );
+	}
+
+	inline std::string getUniqNameID() const
+	{
+		return( mRID.getUniqNameID() );
+	}
+
+	inline bool fqnEndsWith(const std::string & aQualifiedNameID) const
+	{
+		return( mRID.fqnEndsWith(aQualifiedNameID) );
 	}
 
 
@@ -226,17 +271,17 @@ public:
 	 * GETTER - SETTER
 	 * mInstanciationCount
 	 */
-	inline avm_size_t getInstanciationCount() const
+	inline std::size_t getInstanciationCount() const
 	{
 		return( mInstanciationCount );
 	}
 
-	inline avm_size_t decrInstanciationCount()
+	inline std::size_t decrInstanciationCount()
 	{
 		return( --mInstanciationCount );
 	}
 
-	inline avm_size_t incrInstanciationCount()
+	inline std::size_t incrInstanciationCount()
 	{
 		return( ++mInstanciationCount );
 	}
@@ -253,9 +298,22 @@ public:
 	}
 
 
-	inline void setInstanciationCount(avm_size_t anInstanciationNumber)
+	inline void setInstanciationCount(std::size_t anInstanciationNumber)
 	{
 		mInstanciationCount = anInstanciationNumber;
+	}
+
+	/**
+	 * Finalizeable
+	 */
+	bool isFinalizeable() const
+	{
+		if( refExecutable().hasTransition() )
+		{
+			return false;
+		}
+
+		return true;
 	}
 
 
@@ -341,6 +399,40 @@ public:
 
 
 	/**
+	 * Assigned Flags
+	 */
+//	inline const Bitset * getAssigned() const
+//	{
+//		return( mDataTable->getAssigned() );
+//	}
+//
+//	inline bool isAssigned(avm_offset_t varOffset) const
+//	{
+//		return( mDataTable->isAssigned( varOffset ) );
+//	}
+//
+//	inline bool isAssigned(const InstanceOfData & aVariable) const
+//	{
+//		return( mDataTable->isAssigned( aVariable.getOffset() ) );
+//	}
+//
+//	inline void setAssigned(avm_offset_t varOffset) const
+//	{
+//		mDataTable->setAssigned( varOffset );
+//	}
+//
+//	inline void setAssigned(const Bitset * assignedFlags) const
+//	{
+//		mDataTable->setAssigned( assignedFlags );
+//	}
+//
+//	inline void setAssignedUnion(const Bitset * assignedFlags) const
+//	{
+//		mDataTable->setAssignedUnion( assignedFlags );
+//	}
+
+
+	/**
 	 * GETTER - SETTER
 	 * mDataTable
 	 */
@@ -391,7 +483,7 @@ public:
 
 	inline virtual const TableOfInstanceOfData & getVariables() const
 	{
-		return( mRID.getExecutable()->getData() );
+		return( mRID.refExecutable().getVariables() );
 	}
 
 	inline virtual InstanceOfData * rawVariable(avm_offset_t offset) const
@@ -423,9 +515,9 @@ public:
 
 	inline const BF & getData(const std::string & aFullyQualifiedNameID) const
 	{
-		InstanceOfData * anInstance = getExecutable()->getAllData().
+		InstanceOfData * anInstance = refExecutable().getAllVariables().
 				rawByFQNameID( aFullyQualifiedNameID );
-		if( anInstance != NULL )
+		if( anInstance != nullptr )
 		{
 			return( mDataTable->get(anInstance) );
 		}
@@ -435,8 +527,8 @@ public:
 	inline const BF & getDataByQualifiedNameID(
 			const std::string & aQualifiedNameID, InstanceOfData * & var) const
 	{
-		var = getExecutable()->getAllData().rawByQualifiedNameID(aQualifiedNameID);
-		if( var != NULL )
+		var = refExecutable().getAllVariables().rawByQualifiedNameID(aQualifiedNameID);
+		if( var != nullptr )
 		{
 			return( mDataTable->get(var) );
 		}
@@ -446,14 +538,19 @@ public:
 	inline const BF & getDataByNameID(const std::string & aNameID) const
 	{
 		InstanceOfData * anInstance =
-				getExecutable()->getAllData().rawByNameID(aNameID);
-		if( anInstance != NULL )
+				refExecutable().getAllVariables().rawByNameID(aNameID);
+		if( anInstance != nullptr )
 		{
 			return( mDataTable->get(anInstance) );
 		}
 		return( BF::REF_NULL );
 	}
 
+
+	inline void assign(avm_offset_t offset, const BF & aData) const
+	{
+		mDataTable->assign(offset, aData);
+	}
 
 	inline void setData(avm_offset_t offset, const BF & aData) const
 	{
@@ -465,6 +562,21 @@ public:
 	{
 		mDataTable->set(anInstance, aData);
 	}
+
+
+	/**
+	 * GETTER
+	 * Timestamp SymbeX value
+	 */
+	const BF & getTimeValue() const;
+
+	const BF & getDeltaTimeValue() const;
+
+	/**
+	 * SYNC-SETTER
+	 * Synchronization of Time Values
+	 */
+	void syncTimeValues(const ExecutionData & refED);
 
 
 	/**
@@ -594,7 +706,7 @@ public:
 	inline bool isInputEnabled() const
 	{
 		return( getRID().getInstance()->getSpecifier().hasFeatureInputEnabled()
-				|| getRID().getExecutable()->
+				|| getRID().refExecutable().
 						getSpecifier().hasFeatureInputEnabled() );
 	}
 
@@ -619,26 +731,23 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline virtual void toStream(OutStream & os) const
-	{
-		toStream(NULL, os);
-	}
-
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		return( getRID().str() );
 	}
 
-	virtual void toStream(const ExecutionData * anED, OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
 
-	virtual void toStreamData(const ExecutionData * anED, OutStream & os) const;
+	virtual void toStream(const ExecutionData & anED, OutStream & out) const;
+
+	virtual void toStreamData(const ExecutionData & anED, OutStream & out) const;
 
 
-	virtual void toFscnData(OutStream & os,
-			const ExecutionData * anED, const RuntimeForm * aPreviousRF) const;
+	virtual void toFscnData(OutStream & out,
+			const ExecutionData & anED, const RuntimeForm & aPreviousRF) const;
 
-	void toFscnBuffer(OutStream & os,
-			const ExecutionData * anED, const RuntimeForm * aPreviousRF) const;
+	void toFscnBuffer(OutStream & out,
+			const ExecutionData & anED, const RuntimeForm & aPreviousRF) const;
 
 };
 
@@ -676,7 +785,7 @@ public:
 		mDataTable = new TableOfData(0);
 	}
 
-	ParametersRuntimeForm(const RuntimeID & aRID, avm_size_t nbParams)
+	ParametersRuntimeForm(const RuntimeID & aRID, std::size_t nbParams)
 	: RuntimeForm( CLASS_KIND_T( ParametersRuntimeForm ) , aRID ),
 	mParameters( nbParams )
 	{
@@ -712,10 +821,12 @@ public:
 
 	void appendParameter(const BF & anInstance, const BF & rvalue);
 
-
 	void appendParameters(const BFList & paramsList);
 
 	void appendParameters(const BFVector & paramsVector);
+
+
+	void appendConstParameters(const BFVector & paramsVector);
 
 
 	inline const TableOfInstanceOfData & getParameters() const
@@ -723,8 +834,13 @@ public:
 		return( mParameters );
 	}
 
+	inline TableOfInstanceOfData & getParameters()
+	{
+		return( mParameters );
+	}
 
-	inline avm_size_t getParametersSize() const
+
+	inline std::size_t getParametersSize() const
 	{
 		return( mParameters.size() );
 	}
@@ -770,12 +886,12 @@ public:
 
 
 	// Variable
-	inline virtual const TableOfInstanceOfData & getVariables() const
+	inline virtual const TableOfInstanceOfData & getVariables() const override
 	{
 		return( mParameters );
 	}
 
-	inline virtual InstanceOfData * rawVariable(avm_offset_t offset) const
+	inline virtual InstanceOfData * rawVariable(avm_offset_t offset) const override
 	{
 		return( mParameters.rawAt(offset) );
 	}
@@ -797,21 +913,22 @@ public:
 	 */
 	void update(const BF & paramExpr);
 
+	void update(TableOfInstanceOfData potentialNewParameters);
+
 
 	/**
 	 * Serialization
 	 */
-	inline virtual void toStream(OutStream & os) const
-	{
-		toStream(NULL, os);
-	}
+	virtual void toStream(OutStream & out) const override;
 
-	virtual void toStream(const ExecutionData * anED, OutStream & os) const;
+	virtual void toStream(
+			const ExecutionData & anED, OutStream & out) const override;
 
-	virtual void toStreamData(const ExecutionData * anED, OutStream & os) const;
+	virtual void toStreamData(
+			const ExecutionData & anED, OutStream & out) const override;
 
-	virtual void toFscnData(OutStream & os,
-			const ExecutionData * anED, const RuntimeForm * aPreviousRF) const;
+	virtual void toFscnData(OutStream & out, const ExecutionData & anED,
+			const RuntimeForm & aPreviousRF) const override;
 
 };
 

@@ -28,24 +28,24 @@ namespace sep
  * GETTER - SETTER
  * mTable
  */
-const BF & TableOfData::get(const InstanceOfData * anInstance) const
+const BF & TableOfData::get(const InstanceOfData * aVariable) const
 {
-	switch( anInstance->getPointerNature() )
+	switch( aVariable->getPointerNature() )
 	{
-		case IPointerDataNature::POINTER_STANDARD_NATURE:
+		case IPointerVariableNature::POINTER_STANDARD_NATURE:
 		{
-			return( mTable[ anInstance->getOffset() ] );
+			return( mTable[ aVariable->getOffset() ] );
 		}
 
-		case IPointerDataNature::POINTER_UFI_OFFSET_NATURE:
-		case IPointerDataNature::POINTER_UFI_RUNTIME_NATURE:
+		case IPointerVariableNature::POINTER_UFI_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_UFI_RUNTIME_NATURE:
 		{
-			BF rvalue = mTable[ anInstance->getOffset() ];
+			BF rvalue = mTable[ aVariable->getOffset() ];
 
 			// NO +1 for << this >> which is the root of the path
-			avm_size_t pathLength = anInstance->getDataPath()->size();
-			avm_size_t * theOffsetPath = anInstance->getOffsetPath();
-			for( avm_size_t k = 1 ; k < pathLength ; ++k )
+			std::size_t pathLength = aVariable->getDataPath()->size();
+			std::size_t * theOffsetPath = aVariable->getOffsetPath();
+			for( std::size_t k = 1 ; k < pathLength ; ++k )
 			{
 				rvalue.moveAt( theOffsetPath[k] );
 			}
@@ -53,24 +53,24 @@ const BF & TableOfData::get(const InstanceOfData * anInstance) const
 			return( rvalue[ theOffsetPath[pathLength] ] );
 		}
 
-		case IPointerDataNature::POINTER_UFI_MIXED_NATURE:
+		case IPointerVariableNature::POINTER_UFI_MIXED_NATURE:
 		{
-			BF rvalue = mTable[ anInstance->getOffset() ];
+			BF rvalue = mTable[ aVariable->getOffset() ];
 
-			TableOfSymbol::iterator it = anInstance->getDataPath()->begin();
-			TableOfSymbol::iterator itEnd = anInstance->getDataPath()->pred_end();
+			TableOfSymbol::iterator it = aVariable->getDataPath()->begin();
+			TableOfSymbol::iterator itEnd = aVariable->getDataPath()->pred_end();
 			for( ; it != itEnd ; ++it )
 			{
 				switch( (*it).getPointerNature() )
 				{
-					case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-					case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 					{
 						rvalue.moveAt( (*it).getOffset() );
 
 						break;
 					}
-					case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 					{
 						if( (*it).getValue().isInteger() )
 						{
@@ -100,7 +100,7 @@ const BF & TableOfData::get(const InstanceOfData * anInstance) const
 						AVM_OS_FATAL_ERROR_EXIT
 								<< "TableOfData::get:> Unexpected "
 								"POINTER NATURE for the instance of data :>\n"
-								<< anInstance->toString( AVM_TAB1_INDENT )
+								<< aVariable->toString( AVM_TAB1_INDENT )
 								<< SEND_EXIT;
 
 						return( BF::REF_NULL );
@@ -110,12 +110,12 @@ const BF & TableOfData::get(const InstanceOfData * anInstance) const
 
 			switch( (*it).getPointerNature() )
 			{
-				case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-				case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 				{
 					return( rvalue[ (*it).getOffset() ] );
 				}
-				case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 				{
 					if( (*it).getValue().isInteger() )
 					{
@@ -143,7 +143,7 @@ const BF & TableOfData::get(const InstanceOfData * anInstance) const
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "TableOfData::get:> Unexpected "
 								"POINTER NATURE for the instance of data :>\n"
-							<< anInstance->toString( AVM_TAB1_INDENT )
+							<< aVariable->toString( AVM_TAB1_INDENT )
 							<< SEND_EXIT;
 
 					return( BF::REF_NULL );
@@ -157,7 +157,7 @@ const BF & TableOfData::get(const InstanceOfData * anInstance) const
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "TableOfData::get:> Unexpected "
 					"POINTER NATURE for the instance of data :>\n"
-					<< anInstance->toString( AVM_TAB1_INDENT )
+					<< aVariable->toString( AVM_TAB1_INDENT )
 					<< SEND_EXIT;
 			return( BF::REF_NULL );
 		}
@@ -167,25 +167,25 @@ const BF & TableOfData::get(const InstanceOfData * anInstance) const
 }
 
 
-void TableOfData::set(const InstanceOfData * anInstance, const BF & aData) const
+void TableOfData::set(const InstanceOfData * aVariable, const BF & aData) const
 {
-	switch( anInstance->getPointerNature() )
+	switch( aVariable->getPointerNature() )
 	{
-		case IPointerDataNature::POINTER_STANDARD_NATURE:
+		case IPointerVariableNature::POINTER_STANDARD_NATURE:
 		{
-			mTable[ anInstance->getOffset() ] = aData;
+			mTable[ aVariable->getOffset() ] = aData;
 
 			break;
 		}
-		case IPointerDataNature::POINTER_UFI_OFFSET_NATURE:
-		case IPointerDataNature::POINTER_UFI_RUNTIME_NATURE:
+		case IPointerVariableNature::POINTER_UFI_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_UFI_RUNTIME_NATURE:
 		{
-			BF rvalue = mTable[ anInstance->getOffset() ].getWritable();
+			BF rvalue = mTable[ aVariable->getOffset() ].getWritable();
 
 			// NO +1 for << this >> which is the root of the path
-			avm_size_t pathLength = anInstance->getDataPath()->size();
-			avm_size_t * theOffsetPath = anInstance->getOffsetPath();
-			for( avm_size_t k = 1 ; k < pathLength ; ++k )
+			std::size_t pathLength = aVariable->getDataPath()->size();
+			std::size_t * theOffsetPath = aVariable->getOffsetPath();
+			for( std::size_t k = 1 ; k < pathLength ; ++k )
 			{
 				rvalue.moveAtWritable( theOffsetPath[k] );
 			}
@@ -194,24 +194,24 @@ void TableOfData::set(const InstanceOfData * anInstance, const BF & aData) const
 
 			break;
 		}
-		case IPointerDataNature::POINTER_UFI_MIXED_NATURE:
+		case IPointerVariableNature::POINTER_UFI_MIXED_NATURE:
 		{
-			BF rvalue = mTable[ anInstance->getOffset() ].getWritable();
+			BF rvalue = mTable[ aVariable->getOffset() ].getWritable();
 
-			TableOfSymbol::iterator it = anInstance->getDataPath()->begin();
-			TableOfSymbol::iterator itEnd = anInstance->getDataPath()->pred_end();
+			TableOfSymbol::iterator it = aVariable->getDataPath()->begin();
+			TableOfSymbol::iterator itEnd = aVariable->getDataPath()->pred_end();
 			for( ; it != itEnd ; ++it )
 			{
 				switch( (*it).getPointerNature() )
 				{
-					case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-					case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 					{
 						rvalue.moveAtWritable( (*it).getOffset() );
 
 						break;
 					}
-					case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+					case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 					{
 						if( (*it).getValue().isInteger() )
 						{
@@ -241,7 +241,7 @@ void TableOfData::set(const InstanceOfData * anInstance, const BF & aData) const
 						AVM_OS_FATAL_ERROR_EXIT
 								<< "TableOfData::set:> Unexpected "
 								"POINTER NATURE for the instance of data :>\n"
-								<< anInstance->toString( AVM_TAB1_INDENT )
+								<< aVariable->toString( AVM_TAB1_INDENT )
 								<< SEND_EXIT;
 
 						return;
@@ -251,15 +251,15 @@ void TableOfData::set(const InstanceOfData * anInstance, const BF & aData) const
 
 			switch( (*it).getPointerNature() )
 			{
-				case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-				case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 				{
 					//rvalue[ (*it).getOffset() ].makeWritable();
 					rvalue.set( (*it).getOffset() , aData );
 
 					break;
 				}
-				case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 				{
 					if( (*it).getValue().isInteger() )
 					{
@@ -291,7 +291,7 @@ void TableOfData::set(const InstanceOfData * anInstance, const BF & aData) const
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "TableOfData::set:> Unexpected "
 								"POINTER NATURE for the instance of data :>\n"
-							<< anInstance->toString( AVM_TAB1_INDENT )
+							<< aVariable->toString( AVM_TAB1_INDENT )
 							<< SEND_EXIT;
 
 					return;
@@ -304,7 +304,7 @@ void TableOfData::set(const InstanceOfData * anInstance, const BF & aData) const
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "TableOfData::set:> Unexpected "
 						"POINTER NATURE for the instance of data :>\n"
-					<< anInstance->toString( AVM_TAB1_INDENT )
+					<< aVariable->toString( AVM_TAB1_INDENT )
 					<< SEND_EXIT;
 
 			break;
@@ -332,9 +332,9 @@ void TableOfData::toStream(OutStream & os, const BFVector & vars) const
 	avm_offset_t offset = 0;
 	for( const_iterator it = begin() ; it != end() ; ++it, ++offset )
 	{
-		os << TAB << vars[offset].to_ptr< InstanceOfData >()->getNameID()
+		os << TAB << vars[offset].to< InstanceOfData >().getNameID()
 				<< " := " << (*it).AVM_DEBUG_REF_COUNTER()
-				<< vars[offset].to_ptr< InstanceOfData >()->strValue()
+				<< vars[offset].to< InstanceOfData >().strValue()
 				<< ";" << EOL_FLUSH;
 	}
 }

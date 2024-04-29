@@ -36,70 +36,75 @@ const TypeManager & TypeFactory = *( TypeManager::singleton() );
  * PRIMITE TYPE NAME IDENTIFIER
  ***************************************************************************
  */
-const std::string & TypeManager::TYPE_ARRAY_ID     = "array";
-const std::string & TypeManager::TYPE_VECTOR_ID    = "vector";
-const std::string & TypeManager::TYPE_REVERSE_VECTOR_ID = "rvector";
-const std::string & TypeManager::TYPE_LIST_ID      = "list";
-const std::string & TypeManager::TYPE_SET_ID       = "set";
-const std::string & TypeManager::TYPE_MULTISET_ID  = "multiset";
-const std::string & TypeManager::TYPE_BAG_ID       = "bag";
+const std::string & TypeManager::TYPE_ARRAY_ID           = "array";
+const std::string & TypeManager::TYPE_VECTOR_ID          = "vector";
+const std::string & TypeManager::TYPE_REVERSE_VECTOR_ID  = "rvector";
+const std::string & TypeManager::TYPE_LIST_ID            = "list";
+const std::string & TypeManager::TYPE_SET_ID             = "set";
+const std::string & TypeManager::TYPE_MULTISET_ID        = "multiset";
+const std::string & TypeManager::TYPE_BAG_ID             = "bag";
 
-const std::string & TypeManager::TYPE_FIFO_ID      = "fifo";
-const std::string & TypeManager::TYPE_LIFO_ID      = "lifo";
+const std::string & TypeManager::TYPE_FIFO_ID            = "fifo";
+const std::string & TypeManager::TYPE_LIFO_ID            = "lifo";
 
-const std::string & TypeManager::TYPE_ENUM_ID      = "enum";
-const std::string & TypeManager::TYPE_UNION_ID     = "union";
-const std::string & TypeManager::TYPE_CHOICE_ID    = "choice";
-const std::string & TypeManager::TYPE_STRUCTURE_ID = "struct";
-const std::string & TypeManager::TYPE_CLASS_ID     = "class";
+const std::string & TypeManager::TYPE_ENUM_ID            = "enum";
+const std::string & TypeManager::TYPE_UNION_ID           = "union";
+const std::string & TypeManager::TYPE_CHOICE_ID          = "choice";
+const std::string & TypeManager::TYPE_STRUCTURE_ID       = "struct";
+const std::string & TypeManager::TYPE_CLASS_ID           = "class";
 
-const std::string & TypeManager::TYPE_BOOL_ID      = "bool";
-const std::string & TypeManager::TYPE_BOOLEAN_ID   = "boolean";
+const std::string & TypeManager::TYPE_BOOL_ID            = "bool";
+const std::string & TypeManager::TYPE_BOOLEAN_ID         = "boolean";
 
-const std::string & TypeManager::TYPE_INT8_ID      = "int8";
-const std::string & TypeManager::TYPE_INT16_ID     = "int16";
-const std::string & TypeManager::TYPE_INT32_ID     = "int32";
-const std::string & TypeManager::TYPE_INT64_ID     = "int64";
-const std::string & TypeManager::TYPE_INT128_ID    = "int128";
+const std::string & TypeManager::TYPE_INT8_ID            = "int8";
+const std::string & TypeManager::TYPE_INT16_ID           = "int16";
+const std::string & TypeManager::TYPE_INT32_ID           = "int32";
+const std::string & TypeManager::TYPE_INT64_ID           = "int64";
+const std::string & TypeManager::TYPE_INT128_ID          = "int128";
 
-const std::string & TypeManager::TYPE_INT_ID       = "int";
-const std::string & TypeManager::TYPE_INTEGER_ID   = "integer";
+const std::string & TypeManager::TYPE_INT_ID             = "int";
+const std::string & TypeManager::TYPE_INTEGER_ID         = "integer";
 
-const std::string & TypeManager::TYPE_RAT_ID       = "rat";
-const std::string & TypeManager::TYPE_RATIONAL_ID  = "rational";
+const std::string & TypeManager::TYPE_RAT_ID             = "rat";
+const std::string & TypeManager::TYPE_RATIONAL_ID        = "rational";
 
-const std::string & TypeManager::TYPE_FLOAT_ID     = "float";
-const std::string & TypeManager::TYPE_DOUBLE_ID    = "double";
-const std::string & TypeManager::TYPE_REAL_ID      = "real";
+const std::string & TypeManager::TYPE_FLOAT_ID           = "float";
+const std::string & TypeManager::TYPE_DOUBLE_ID          = "double";
+const std::string & TypeManager::TYPE_REAL_ID            = "real";
 
-const std::string & TypeManager::TYPE_UINT8_ID     = "uint8";
-const std::string & TypeManager::TYPE_UINT16_ID    = "uint16";
-const std::string & TypeManager::TYPE_UINT32_ID    = "uint32";
-const std::string & TypeManager::TYPE_UINT64_ID    = "uint64";
-const std::string & TypeManager::TYPE_UINT128_ID   = "uint128";
+const std::string & TypeManager::TYPE_UINT8_ID           = "uint8";
+const std::string & TypeManager::TYPE_UINT16_ID          = "uint16";
+const std::string & TypeManager::TYPE_UINT32_ID          = "uint32";
+const std::string & TypeManager::TYPE_UINT64_ID          = "uint64";
+const std::string & TypeManager::TYPE_UINT128_ID         = "uint128";
 
-const std::string & TypeManager::TYPE_UINT_ID      = "uint";
-const std::string & TypeManager::TYPE_UINTEGER_ID  = "uinteger";
+const std::string & TypeManager::TYPE_UINT_ID            = "uint";
+const std::string & TypeManager::TYPE_UINTEGER_ID        = "uinteger";
+const std::string & TypeManager::TYPE_POS_INTEGER_ID     = "pos_integer";
 
-const std::string & TypeManager::TYPE_POS_INTEGER_ID  = "pos_integer";
+const std::string & TypeManager::TYPE_URAT_ID            = "urat";
+const std::string & TypeManager::TYPE_URATIONAL_ID       = "urational";
+const std::string & TypeManager::TYPE_POS_RATIONAL_ID    = "pos_rational";
 
-const std::string & TypeManager::TYPE_URAT_ID      = "urat";
-const std::string & TypeManager::TYPE_URATIONAL_ID = "urational";
+const std::string & TypeManager::TYPE_UFLOAT_ID          = "ufloat";
+const std::string & TypeManager::TYPE_UDOUBLE_ID         = "udouble";
+const std::string & TypeManager::TYPE_UREAL_ID           = "ureal";
 
-const std::string & TypeManager::TYPE_UFLOAT_ID    = "ufloat";
-const std::string & TypeManager::TYPE_UDOUBLE_ID   = "udouble";
-const std::string & TypeManager::TYPE_UREAL_ID     = "ureal";
+const std::string & TypeManager::TYPE_POS_FLOAT_ID       = "pos_float";
+const std::string & TypeManager::TYPE_POS_DOUBLE_ID      = "pos_double";
+const std::string & TypeManager::TYPE_POS_REAL_ID        = "pos_real";
 
-const std::string & TypeManager::TYPE_CONTINUOUS_TIME_ID = "ctime";
-const std::string & TypeManager::TYPE_DISCRETE_TIME_ID   = "dtime";
+const std::string & TypeManager::TYPE_CONTINUOUS_TIME_ID = "time#continuous";
+const std::string & TypeManager::TYPE_DENSE_TIME_ID      = "time#dense";
+const std::string & TypeManager::TYPE_DISCRETE_TIME_ID   = "time#discrete";
 const std::string & TypeManager::TYPE_TIME_ID            = "time";
 const std::string & TypeManager::TYPE_CLOCK_ID           = "clock";
 
-const std::string & TypeManager::TYPE_CHAR_ID      = "char";
-const std::string & TypeManager::TYPE_CHARACTER_ID = "character";
-const std::string & TypeManager::TYPE_STRING_ID    = "string";
+const std::string & TypeManager::TYPE_CHAR_ID            = "char";
+const std::string & TypeManager::TYPE_CHARACTER_ID       = "character";
+const std::string & TypeManager::TYPE_STRING_ID          = "string";
 
-const std::string & TypeManager::TYPE_INTERVAL_ID  = "interval";
+const std::string & TypeManager::TYPE_INTERVAL_ID        = "interval";
 
 
 const std::string & TypeManager::TYPE_ARRAY_BOOLEAN_ID   = "array<boolean>";
@@ -117,23 +122,23 @@ const std::string & TypeManager::TYPE_ARRAY_ENUM_ID       = "array<enum>";
 const std::string & TypeManager::TYPE_ARRAY_ANY_ID        = "array<any>";
 
 
-const std::string & TypeManager::TYPE_LAMBDA_ID       = "lambda";
+const std::string & TypeManager::TYPE_LAMBDA_ID           = "lambda";
 
-const std::string & TypeManager::TYPE_OPERATOR_ID     = "operator";
-const std::string & TypeManager::TYPE_AVMCODE_ID      = "avmcode";
-const std::string & TypeManager::TYPE_EXPRESSION_ID   = "expression";
+const std::string & TypeManager::TYPE_OPERATOR_ID         = "operator";
+const std::string & TypeManager::TYPE_AVMCODE_ID          = "avmcode";
+const std::string & TypeManager::TYPE_EXPRESSION_ID       = "expression";
 
-const std::string & TypeManager::TYPE_PORT_ID         = "port";
-const std::string & TypeManager::TYPE_MESSAGE_ID      = "message";
-const std::string & TypeManager::TYPE_SIGNAL_ID       = "signal";
-const std::string & TypeManager::TYPE_BUFFER_ID       = "buffer";
-const std::string & TypeManager::TYPE_CONNECTOR_ID    = "connector";
-const std::string & TypeManager::TYPE_MACHINE_ID      = "machine";
-const std::string & TypeManager::TYPE_RID_ID          = "RuntimeID";
+const std::string & TypeManager::TYPE_PORT_ID             = "port";
+const std::string & TypeManager::TYPE_MESSAGE_ID          = "message";
+const std::string & TypeManager::TYPE_SIGNAL_ID           = "signal";
+const std::string & TypeManager::TYPE_BUFFER_ID           = "buffer";
+const std::string & TypeManager::TYPE_CONNECTOR_ID        = "connector";
+const std::string & TypeManager::TYPE_MACHINE_ID          = "machine";
+const std::string & TypeManager::TYPE_RID_ID              = "RuntimeID";
 
-const std::string & TypeManager::TYPE_UNIVERSAL_ID    = "universal";
+const std::string & TypeManager::TYPE_UNIVERSAL_ID        = "universal";
 
-const std::string & TypeManager::TYPE_SIMULINK_BUS_ID = "simulinkBus";
+const std::string & TypeManager::TYPE_SIMULINK_BUS_ID     = "simulinkBus";
 
 
 /*
@@ -171,21 +176,26 @@ TypeSpecifier TypeManager::URAT;
 
 TypeSpecifier TypeManager::RATIONAL;
 TypeSpecifier TypeManager::URATIONAL;
+TypeSpecifier TypeManager::POS_RATIONAL;
 
 
 TypeSpecifier TypeManager::FLOAT;
 TypeSpecifier TypeManager::UFLOAT;
+TypeSpecifier TypeManager::POS_FLOAT;
 
 TypeSpecifier TypeManager::DOUBLE;
 TypeSpecifier TypeManager::UDOUBLE;
+TypeSpecifier TypeManager::POS_DOUBLE;
 
 TypeSpecifier TypeManager::REAL;
 TypeSpecifier TypeManager::UREAL;
+TypeSpecifier TypeManager::POS_REAL;
 
 
 TypeSpecifier TypeManager::CLOCK;
 TypeSpecifier TypeManager::TIME;
 TypeSpecifier TypeManager::CONTINUOUS_TIME;
+TypeSpecifier TypeManager::DENSE_TIME;
 TypeSpecifier TypeManager::DISCRETE_TIME;
 
 TypeSpecifier TypeManager::CHAR;
@@ -247,6 +257,17 @@ TypeSpecifier TypeManager::UNIVERSAL;
 void TypeManager::load()
 {
 	// TypeManager:> TypeSpecifier, CompiledType, Type Size, Data Size
+
+
+	/*
+	 ***************************************************************************
+	 * UNIVERSAL TYPE SPECIFIER
+	 ***************************************************************************
+	 */
+	TypeManager::registerPrimitiveType(
+			UNIVERSAL = newTypeSpecifier(
+					TYPE_UNIVERSAL_ID, TYPE_UNIVERSAL_SPECIFIER, 1, 1, 0 ) );
+
 	/*
 	 ***************************************************************************
 	 * PRIMITE TYPE SPECIFIER
@@ -363,6 +384,11 @@ void TypeManager::load()
 					TYPE_URATIONAL_ID, TYPE_URATIONAL_SPECIFIER,
 					1, 0, ExpressionConstant::INTEGER_ZERO ) );
 
+	TypeManager::registerPrimitiveType(
+			POS_RATIONAL = newNumericTypeSpecifier(
+					TYPE_POS_RATIONAL_ID, TYPE_POS_RATIONAL_SPECIFIER,
+					1, 0, ExpressionConstant::INTEGER_ONE ) );
+
 
 	TypeManager::registerPrimitiveType(
 			FLOAT = newNumericTypeSpecifier(
@@ -375,6 +401,11 @@ void TypeManager::load()
 					1, 32, ExpressionConstant::INTEGER_ZERO ) );
 
 	TypeManager::registerPrimitiveType(
+			POS_FLOAT = newNumericTypeSpecifier(
+					TYPE_POS_FLOAT_ID, TYPE_POS_FLOAT_SPECIFIER,
+					1, 32, ExpressionConstant::INTEGER_ONE ) );
+
+	TypeManager::registerPrimitiveType(
 			DOUBLE = newNumericTypeSpecifier(
 					TYPE_DOUBLE_ID, TYPE_FLOAT_SPECIFIER,
 					1, 64, ExpressionConstant::INTEGER_ZERO ) );
@@ -383,6 +414,11 @@ void TypeManager::load()
 			UDOUBLE = newNumericTypeSpecifier(
 					TYPE_UDOUBLE_ID, TYPE_UFLOAT_SPECIFIER,
 					1, 64, ExpressionConstant::INTEGER_ZERO ) );
+
+	TypeManager::registerPrimitiveType(
+			POS_DOUBLE = newNumericTypeSpecifier(
+					TYPE_POS_DOUBLE_ID, TYPE_POS_FLOAT_SPECIFIER,
+					1, 64, ExpressionConstant::INTEGER_ONE ) );
 
 	TypeManager::registerPrimitiveType(
 			REAL = newNumericTypeSpecifier(
@@ -394,20 +430,33 @@ void TypeManager::load()
 					TYPE_UREAL_ID, TYPE_UREAL_SPECIFIER,
 					1, 0, ExpressionConstant::INTEGER_ZERO ) );
 
+	TypeManager::registerPrimitiveType(
+			POS_REAL = newNumericTypeSpecifier(
+					TYPE_POS_REAL_ID, TYPE_POS_REAL_SPECIFIER,
+					1, 0, ExpressionConstant::INTEGER_ONE ) );
+
+
+	/*
+	 ***************************************************************************
+	 * TIME / CLOCK TYPE SPECIFIER
+	 ***************************************************************************
+	 */
+	TypeManager::registerPrimitiveType(
+			CLOCK = newClockTime(TYPE_CLOCK_ID,
+					TYPE_CLOCK_SPECIFIER, URATIONAL) );
 
 	TypeManager::registerPrimitiveType(
-			CLOCK = newTypeSpecifier(
-					TYPE_CLOCK_ID, TYPE_CLOCK_SPECIFIER,
-					1, 1, 0, ExpressionConstant::INTEGER_ZERO ) );
-
-	TypeManager::registerPrimitiveType(
-			TIME = newTypeSpecifier(
-					TYPE_TIME_ID, TYPE_TIME_SPECIFIER,
-					1, 1, 0, ExpressionConstant::INTEGER_ZERO ) );
+			TIME = newClockTime(TYPE_TIME_ID,
+					TYPE_TIME_SPECIFIER, URATIONAL) );
 
 	TypeManager::registerPrimitiveType(
 			CONTINUOUS_TIME = newTypeSpecifier(
 					TYPE_CONTINUOUS_TIME_ID, TYPE_CONTINUOUS_TIME_SPECIFIER,
+					1, 1, 0, ExpressionConstant::INTEGER_ZERO ) );
+
+	TypeManager::registerPrimitiveType(
+			DENSE_TIME = newTypeSpecifier(
+					TYPE_DENSE_TIME_ID, TYPE_DENSE_TIME_SPECIFIER,
 					1, 1, 0, ExpressionConstant::INTEGER_ZERO ) );
 
 	TypeManager::registerPrimitiveType(
@@ -416,6 +465,11 @@ void TypeManager::load()
 					1, 1, 0, ExpressionConstant::INTEGER_ZERO ) );
 
 
+	/*
+	 ***************************************************************************
+	 * CHAR SEQUENCE TYPE SPECIFIER
+	 ***************************************************************************
+	 */
 	TypeManager::registerPrimitiveType(
 			CHAR = newCharacter(TYPE_CHAR_ID, 1) );
 
@@ -435,6 +489,12 @@ void TypeManager::load()
 					TYPE_STRING_ID, TYPE_QUALIFIED_IDENTIFIER_SPECIFIER,
 					1, 1, 0, ExpressionConstant::STRING_EMPTY ) );
 
+
+	/*
+	 ***************************************************************************
+	 * OBJECT TYPE SPECIFIER
+	 ***************************************************************************
+	 */
 	TypeManager::registerPrimitiveType(
 			LAMBDA = newTypeSpecifier(
 					TYPE_LAMBDA_ID, TYPE_LAMBDA_SPECIFIER, 1, 1, 0 ) );
@@ -477,6 +537,11 @@ void TypeManager::load()
 					TYPE_MACHINE_ID, TYPE_MACHINE_SPECIFIER, 1, 1, 0 ) );
 
 
+	/*
+	 ***************************************************************************
+	 * ARRAY TYPE SPECIFIER
+	 ***************************************************************************
+	 */
 	TypeManager::registerPrimitiveType(
 			ARRAY_BOOLEAN = newArray(
 					TYPE_ARRAY_BOOLEAN_ID, BOOLEAN, 0 ) );
@@ -523,6 +588,11 @@ void TypeManager::load()
 			ARRAY = newTypeSpecifier(
 					TYPE_ARRAY_ID, TYPE_ARRAY_SPECIFIER, 1, 1, 0 ) );
 
+	/*
+	 ***************************************************************************
+	 * COLLECTION TYPE SPECIFIER
+	 ***************************************************************************
+	 */
 	TypeManager::registerPrimitiveType(
 			VECTOR = newTypeSpecifier(
 					TYPE_VECTOR_ID, TYPE_VECTOR_SPECIFIER, 1, 1, 0 ) );
@@ -535,7 +605,6 @@ void TypeManager::load()
 			SET = newTypeSpecifier(
 					TYPE_SET_ID, TYPE_SET_SPECIFIER, 1, 1, 0 ) );
 
-	static TypeSpecifier MULTISET;
 	TypeManager::registerPrimitiveType(
 			MULTISET = newTypeSpecifier(
 					TYPE_MULTISET_ID, TYPE_MULTISET_SPECIFIER, 1, 1, 0 ) );
@@ -545,6 +614,11 @@ void TypeManager::load()
 					TYPE_BAG_ID, TYPE_MULTISET_SPECIFIER, 1, 1, 0 ) );
 
 
+	/*
+	 ***************************************************************************
+	 * STRUCTURE TYPE SPECIFIER
+	 ***************************************************************************
+	 */
 	TypeManager::registerPrimitiveType(
 			ENUM = newTypeSpecifier(
 					TYPE_ENUM_ID, TYPE_ENUM_SPECIFIER, 1, 1, 0 ) );
@@ -565,14 +639,14 @@ void TypeManager::load()
 			CHOICE = newTypeSpecifier(
 					TYPE_CHOICE_ID, TYPE_CHOICE_SPECIFIER, 1, 1, 0 ) );
 
+	/*
+	 ***************************************************************************
+	 * INTERVAL TYPE SPECIFIER
+	 ***************************************************************************
+	 */
 	TypeManager::registerPrimitiveType(
 			INTERVAL = newTypeSpecifier(
 					TYPE_INTERVAL_ID, TYPE_INTERVAL_SPECIFIER, 1, 1, 0 ) );
-
-
-	TypeManager::registerPrimitiveType(
-			UNIVERSAL = newTypeSpecifier(
-					TYPE_UNIVERSAL_ID, TYPE_UNIVERSAL_SPECIFIER, 1, 1, 0 ) );
 }
 
 
@@ -631,11 +705,11 @@ TypeSpecifier TypeManager::getTypePosInteger(int dim)
 {
 	switch( dim )
 	{
-		case   8:  return( POS_INTEGER );
-		case  16:  return( POS_INTEGER );
-		case  32:  return( POS_INTEGER );
-		case  64:  return( POS_INTEGER );
-		case 128:  return( POS_INTEGER );
+//		case   8:  return( POS_INTEGER8 );
+//		case  16:  return( POS_INTEGER16 );
+//		case  32:  return( POS_INTEGER32 );
+//		case  64:  return( POS_INTEGER64 );
+//		case 128:  return( POS_INTEGER128 );
 
 		default:
 		{
@@ -663,11 +737,9 @@ void TypeManager::dispose()
 	 * PRIMITE TYPE SPECIFIER
 	 ***************************************************************************
 	 */
-	MapOfTypeSpecifier::iterator itType = getPrimitiveTypeRepository().begin();
-	MapOfTypeSpecifier::iterator endType = getPrimitiveTypeRepository().end();
-	for( ; itType != endType ; ++itType )
+	for( auto & itType : getPrimitiveTypeRepository() )
 	{
-		itType->second.destroy();
+		itType.second.destroy();
 	}
 
 	getPrimitiveTypeRepository().clear();
@@ -709,6 +781,7 @@ void TypeManager::dispose()
 
 	TIME.destroy();
 	CONTINUOUS_TIME.destroy();
+	DENSE_TIME.destroy();
 	DISCRETE_TIME.destroy();
 
 	CHARACTER.destroy();

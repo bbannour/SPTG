@@ -31,13 +31,6 @@
 namespace sep
 {
 
-
-/**
- * DEFAULT NULL
- */
-TypeSpecifier TypeSpecifier::REF_NULL;
-
-
 /**
  * ASSIGNMENT
  * BF
@@ -90,7 +83,7 @@ TypeAliasSpecifier * TypeSpecifier::rawAlias() const
 }
 
 
-BaseTypeSpecifier * TypeSpecifier::aliasTypeSpecifier() const
+const BaseTypeSpecifier & TypeSpecifier::aliasTypeSpecifier() const
 {
 	return( rawAlias()->targetTypeSpecifier() );
 }
@@ -138,7 +131,7 @@ const Symbol & TypeSpecifier::getSymbolByNameID(
 
 
 const Symbol & TypeSpecifier::getSymbolByAstElement(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	return( rawSymbol()->getDataByAstElement( astElement ) );
 }
@@ -225,7 +218,7 @@ const Symbol & TypeSpecifier::getSymbolDataByValue(const BF & aValue) const
 }
 
 
-avm_size_t TypeSpecifier::getRandomSymbolOffset()
+std::size_t TypeSpecifier::getRandomSymbolOffset()
 {
 	return( rawEnum()->getRandomSymbolOffset() );
 }

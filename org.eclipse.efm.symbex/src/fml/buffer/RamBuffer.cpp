@@ -19,40 +19,55 @@ namespace sep
 {
 
 
-void RamBuffer::toStream(OutStream & os) const
+void RamBuffer::toStream(OutStream & out) const
 {
-	os << TAB << "buffer ram "
-			<< ( hasInstance() ? getInstance()->getFullyQualifiedNameID() : "_")
+	out << TAB << "buffer ram "
+			<< getInstance().getFullyQualifiedNameID()
 			<< " {";
-	AVM_DEBUG_REF_COUNTER(os);
-	os << EOL_INCR_INDENT;
+	AVM_DEBUG_REF_COUNTER(out);
+	out << EOL_INCR_INDENT;
 
 	if( nonempty() )
 	{
-		mMessage.toStream(os);
+		mMessage.toStream(out);
 	}
 
-	os << DECR_INDENT_TAB << "}" << EOL_FLUSH;
+	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
 }
 
 
-void RamBuffer::toFscn(OutStream & os,
+void RamBuffer::toStreamValue(OutStream & out) const
+{
+	out << TAB << "ram {";
+	AVM_DEBUG_REF_COUNTER(out);
+	out << EOL_INCR_INDENT;
+
+	if( nonempty() )
+	{
+		mMessage.toStreamValue(out);
+	}
+
+	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
+}
+
+
+void RamBuffer::toFscn(OutStream & out,
 		const RuntimeID & aRID, const BaseBufferForm * prevBuf) const
 {
-	bool hasDifference = (prevBuf == NULL);
+	bool hasDifference = (prevBuf == nullptr);
 
 	if( (not hasDifference)
 		&& (prevBuf->classKind() == classKind())
 		&& prevBuf->is< RamBuffer >() )
 	{
-		const RamBuffer* prev = prevBuf->to< RamBuffer >();
+		const RamBuffer* prev = prevBuf->to_ptr< RamBuffer >();
 		if(prev->mMessage!=mMessage)
 		{
 			hasDifference = true;
 		}
 	}
 
-	StringOutStream oss;
+	StringOutStream oss( out );
 
 	if( hasDifference )
 	{
@@ -85,16 +100,16 @@ void RamBuffer::toFscn(OutStream & os,
 			}
 		}
 
-		os << TAB << ":pid#" << aRID.getRid() << ":" << "<"
-				<< bufferkind << ">#" << getInstance()->getOffset() << "{";
+		out << TAB << ":pid#" << aRID.getRid() << ":" << "<"
+			<< bufferkind << ">#" << getInstance().getOffset() << "{";
 
 		if(oss.str().compare(" ")==0)
 		{
-			os << " }" << EOL_FLUSH;
+			out << " }" << EOL_FLUSH;
 		}
 		else
 		{
-			os << oss.str() << " }" << EOL_FLUSH;
+			out << oss.str() << " }" << EOL_FLUSH;
 		}
 	}
 }

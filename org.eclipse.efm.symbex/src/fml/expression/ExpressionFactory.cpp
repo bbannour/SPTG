@@ -43,10 +43,10 @@ namespace sep
  */
 void ExpressionFactory::load()
 {
-	///////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////
 	// SPECIFIC EDEN IMPLEMENTATION  or NOT
-	///////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////
 
 	ExpressionConstant::load();
 
@@ -111,7 +111,7 @@ bool ExpressionFactory::toBoolean(const BF & value)
 	{
 		case FORM_BUILTIN_BOOLEAN_KIND:
 		{
-			return( value.to_ptr< Boolean >()->getValue() );
+			return( value.to< Boolean >().getValue() );
 		}
 
 		default:
@@ -128,7 +128,7 @@ bool ExpressionFactory::isEqualFalse(const BF & value)
 	{
 		case FORM_BUILTIN_BOOLEAN_KIND:
 		{
-			return( value.to_ptr< Boolean >()->getValue() == false );
+			return( value.to< Boolean >().getValue() == false );
 		}
 
 		default :
@@ -144,7 +144,7 @@ bool ExpressionFactory::isNotEqualFalse(const BF & value)
 	{
 		case FORM_BUILTIN_BOOLEAN_KIND:
 		{
-			return( value.to_ptr< Boolean >()->getValue() != false );
+			return( value.to< Boolean >().getValue() != false );
 		}
 
 		default :
@@ -161,7 +161,7 @@ bool ExpressionFactory::isEqualTrue(const BF & value)
 	{
 		case FORM_BUILTIN_BOOLEAN_KIND:
 		{
-			return( value.to_ptr< Boolean >()->getValue() == true );
+			return( value.to< Boolean >().getValue() == true );
 		}
 
 		default :
@@ -177,7 +177,7 @@ bool ExpressionFactory::isNotEqualTrue(const BF & value)
 	{
 		case FORM_BUILTIN_BOOLEAN_KIND:
 		{
-			return( value.to_ptr< Boolean >()->getValue() != true );
+			return( value.to< Boolean >().getValue() != true );
 		}
 
 		default :
@@ -221,17 +221,17 @@ bool ExpressionFactory::isInt32(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->isInt32() );
+			return( value.to< Integer >().isInt32() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->isInt32() );
+			return( value.to< Rational >().isInt32() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->isInt32() );
+			return( value.to< Float >().isInt32() );
 		}
 
 		default:
@@ -241,23 +241,23 @@ bool ExpressionFactory::isInt32(const BF & value)
 	}
 }
 
-avm_int32_t ExpressionFactory::toInt32(const BF & value)
+std::int32_t ExpressionFactory::toInt32(const BF & value)
 {
 	switch( value.classKind() )
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->toInt32() );
+			return( value.to< Integer >().toInt32() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->toInt32() );
+			return( value.to< Rational >().toInt32() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->toInt32() );
+			return( value.to< Float >().toInt32() );
 		}
 
 		default:
@@ -274,17 +274,17 @@ bool ExpressionFactory::isInt64(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->isInt64() );
+			return( value.to< Integer >().isInt64() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->isInt64() );
+			return( value.to< Rational >().isInt64() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->isInt64() );
+			return( value.to< Float >().isInt64() );
 		}
 
 		default:
@@ -294,23 +294,23 @@ bool ExpressionFactory::isInt64(const BF & value)
 	}
 }
 
-avm_int64_t ExpressionFactory::toInt64(const BF & value)
+std::int64_t ExpressionFactory::toInt64(const BF & value)
 {
 	switch( value.classKind() )
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->toInt64() );
+			return( value.to< Integer >().toInt64() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->toInt64() );
+			return( value.to< Rational >().toInt64() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->toInt64() );
+			return( value.to< Float >().toInt64() );
 		}
 
 		default:
@@ -332,12 +332,12 @@ bool ExpressionFactory::isInteger(const BF & value)
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->isInteger() );
+			return( value.to< Rational >().isInteger() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->isInteger() );
+			return( value.to< Float >().isInteger() );
 		}
 
 		default:
@@ -353,17 +353,17 @@ avm_integer_t ExpressionFactory::toInteger(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->toInteger() );
+			return( value.to< Integer >().toInteger() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->toInteger() );
+			return( value.to< Rational >().toInteger() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->toInteger() );
+			return( value.to< Float >().toInteger() );
 		}
 
 		default:
@@ -380,17 +380,17 @@ bool ExpressionFactory::isPosInteger(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->isPosInteger() );
+			return( value.to< Integer >().isPosInteger() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->isPosInteger() );
+			return( value.to< Rational >().isPosInteger() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->isPosInteger() );
+			return( value.to< Float >().isPosInteger() );
 		}
 
 		default:
@@ -407,17 +407,17 @@ bool ExpressionFactory::isUInteger(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->isUInteger() );
+			return( value.to< Integer >().isUInteger() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->isUInteger() );
+			return( value.to< Rational >().isUInteger() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->isUInteger() );
+			return( value.to< Float >().isUInteger() );
 		}
 
 		default:
@@ -433,17 +433,17 @@ avm_uinteger_t ExpressionFactory::toUInteger(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->toUInteger() );
+			return( value.to< Integer >().toUInteger() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->toUInteger() );
+			return( value.to< Rational >().toUInteger() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->toUInteger() );
+			return( value.to< Float >().toUInteger() );
 		}
 
 		default:
@@ -469,7 +469,7 @@ bool ExpressionFactory::isRational(const BF & value)
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->isRational() );
+			return( value.to< Float >().isRational() );
 		}
 
 		default:
@@ -485,17 +485,17 @@ avm_integer_t ExpressionFactory::toDenominator(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->toDenominator() );
+			return( value.to< Integer >().toDenominator() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->toDenominator() );
+			return( value.to< Rational >().toDenominator() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->toDenominator() );
+			return( value.to< Float >().toDenominator() );
 		}
 
 		default:
@@ -510,17 +510,17 @@ avm_integer_t ExpressionFactory::toNumerator(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->toNumerator() );
+			return( value.to< Integer >().toNumerator() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->toNumerator() );
+			return( value.to< Rational >().toNumerator() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->toNumerator() );
+			return( value.to< Float >().toNumerator() );
 		}
 
 		default:
@@ -555,17 +555,17 @@ avm_float_t ExpressionFactory::toFloat(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->toFloat() );
+			return( value.to< Integer >().toFloat() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->toFloat() );
+			return( value.to< Rational >().toFloat() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->toFloat() );
+			return( value.to< Float >().toFloat() );
 		}
 
 		default:
@@ -600,17 +600,17 @@ avm_real_t ExpressionFactory::toReal(const BF & value)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			return( value.to_ptr< Integer >()->toReal() );
+			return( value.to< Integer >().toReal() );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			return( value.to_ptr< Rational >()->toReal() );
+			return( value.to< Rational >().toReal() );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			return( value.to_ptr< Float >()->toReal() );
+			return( value.to< Float >().toReal() );
 		}
 
 		default:
@@ -644,7 +644,7 @@ char ExpressionFactory::toCharacter(const BF & value)
 	{
 		case FORM_BUILTIN_CHARACTER_KIND:
 		{
-			return( value.to_ptr< Character >()->getValue() );
+			return( value.to< Character >().getValue() );
 		}
 
 		default:
@@ -680,7 +680,7 @@ std::string ExpressionFactory::toIdentifier(const BF & value)
 	{
 		case FORM_BUILTIN_IDENTIFIER_KIND:
 		{
-			return( value.to_ptr< Identifier >()->getValue() );
+			return( value.to< Identifier >().getValue() );
 		}
 
 		default:
@@ -713,7 +713,7 @@ std::string ExpressionFactory::toUfi(const BF & value)
 	{
 		case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
 		{
-			return( value.to_ptr< QualifiedIdentifier >()->getValue() );
+			return( value.to< QualifiedIdentifier >().getValue() );
 		}
 
 		default:
@@ -747,11 +747,11 @@ std::string ExpressionFactory::toUfid(const BF & value)
 	{
 		case FORM_BUILTIN_IDENTIFIER_KIND:
 		{
-			return( value.to_ptr< Identifier >()->getValue() );
+			return( value.to< Identifier >().getValue() );
 		}
 		case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
 		{
-			return( value.to_ptr< QualifiedIdentifier >()->getValue() );
+			return( value.to< QualifiedIdentifier >().getValue() );
 		}
 
 		default:
@@ -768,7 +768,7 @@ bool ExpressionFactory::isEnumSymbol(const BF & value)
 	{
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			return( value.to_ptr< InstanceOfData >()->isEnumSymbolPointer() );
+			return( value.to< InstanceOfData >().isEnumSymbolPointer() );
 		}
 
 		default:
@@ -786,7 +786,7 @@ std::string ExpressionFactory::strEnumSymbol(const BF & value)
 	{
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			return( value.to_ptr< InstanceOfData >()->getFullyQualifiedNameID() );
+			return( value.to< InstanceOfData >().getFullyQualifiedNameID() );
 		}
 
 		default:
@@ -821,7 +821,7 @@ std::string ExpressionFactory::toBuiltinString(const BF & value)
 	{
 		case FORM_BUILTIN_STRING_KIND:
 		{
-			return( value.to_ptr< String >()->getValue() );
+			return( value.to< String >().getValue() );
 		}
 
 		default:
@@ -881,7 +881,7 @@ bool ExpressionFactory::isConstValue(const BF & value)
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			return( value.to_ptr< InstanceOfData >()->isEnumSymbolPointer() );
+			return( value.to< InstanceOfData >().isEnumSymbolPointer() );
 		}
 
 		default:
@@ -910,7 +910,7 @@ void ExpressionFactory::collectVariable(
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			listOfVar.add_union( anExpr );
+			listOfVar.add_unique( anExpr );
 
 			break;
 		}
@@ -926,11 +926,9 @@ void ExpressionFactory::collectVariable(
 void ExpressionFactory::collectVariable(
 		const BFCode & aCode, BFCollection & listOfVar)
 {
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator itEnd = aCode->end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		collectVariable((*it), listOfVar);
+		collectVariable(itOperand, listOfVar);
 	}
 }
 
@@ -951,7 +949,7 @@ void ExpressionFactory::collectsFreeVariable(const BF & anExpr,
 		{
 			if( not listOfBoundVar.contains(anExpr) )
 			{
-				listOfVar.add_union( anExpr );
+				listOfVar.add_unique( anExpr );
 			}
 
 			break;
@@ -967,12 +965,31 @@ void ExpressionFactory::collectsFreeVariable(const BF & anExpr,
 void ExpressionFactory::collectsFreeVariable(const BFCode & aCode,
 		BFCollection & listOfBoundVar, BFCollection & listOfVar)
 {
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator itEnd = aCode->end();
-	for( ; it != itEnd ; ++it )
+	switch( aCode.getAvmOpCode() )
 	{
-		collectsFreeVariable((*it), listOfBoundVar, listOfVar);
+		case AVM_OPCODE_EXISTS:
+		case AVM_OPCODE_FORALL:
+		{
+			BFList boundVars;
+			boundVars.append( aCode.getOperands() );
+			boundVars.pop_last();
+			listOfBoundVar.append(boundVars);
+
+			collectsFreeVariable(aCode->last(), listOfBoundVar, listOfVar);
+
+			listOfBoundVar.remove(boundVars);
+			break;
+		}
+		default:
+		{
+			for( const auto & itOperand : aCode.getOperands() )
+			{
+				collectsFreeVariable(itOperand, listOfBoundVar, listOfVar);
+			}
+			break;
+		}
 	}
+
 }
 
 
@@ -1007,11 +1024,9 @@ bool ExpressionFactory::containsVariable(
 		const BFCode & aCode, InstanceOfData * aVariable)
 {
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator itEnd = aCode->end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		if( containsVariable((*it), aVariable) )
+		if( containsVariable(itOperand, aVariable) )
 		{
 			return( true );
 		}
@@ -1052,11 +1067,9 @@ bool ExpressionFactory::containsVariable(
 bool ExpressionFactory::containsVariable(
 		const BFCode & aCode, BFCollection & listOfVar)
 {
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator itEnd = aCode->end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		if( containsVariable((*it), listOfVar) )
+		if( containsVariable(itOperand, listOfVar) )
 		{
 			return( true );
 		}
@@ -1102,11 +1115,9 @@ void ExpressionFactory::collectsClause(
 {
 	if( aCode->isOpCode( AVM_OPCODE_AND ) )
 	{
-		AvmCode::iterator it = aCode->begin();
-		AvmCode::iterator itEnd = aCode->end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itOperand : aCode.getOperands() )
 		{
-			listOfClause.append( (*it) );
+			listOfClause.append( itOperand );
 		}
 	}
 	else
@@ -1158,17 +1169,15 @@ void ExpressionFactory::collectsClause(
 {
 	if( aCode->isOpCode( AVM_OPCODE_AND ) )
 	{
-		AvmCode::iterator it = aCode->begin();
-		AvmCode::iterator itEnd = aCode->end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itOperand : aCode.getOperands() )
 		{
-			if( containsVariable((*it), listOfBoundVar) )
+			if( containsVariable(itOperand, listOfBoundVar) )
 			{
-				listOfBoundClause.append( (*it) );
+				listOfBoundClause.append( itOperand );
 			}
 			else
 			{
-				listOfFreeClause.append( (*it) );
+				listOfFreeClause.append( itOperand );
 			}
 		}
 	}
@@ -1197,18 +1206,16 @@ void ExpressionFactory::deduceTrivialAssignmentsFromConjonction(
 
 			if( aCode->isOpCode( AVM_OPCODE_AND ) )
 			{
-				AvmCode::iterator it = aCode->begin();
-				AvmCode::iterator itEnd = aCode->end();
-				for( ; it != itEnd ; ++it )
+				for( const auto & itOperand : aCode.getOperands() )
 				{
 					deduceTrivialAssignmentsFromConjonction(
-							(*it), listOfAssignments);
+							itOperand, listOfAssignments);
 				}
 			}
 			else if( aCode->hasOpCode( AVM_OPCODE_EQ, AVM_OPCODE_SEQ ) )
 			{
 				if( aCode->first().is< InstanceOfData >()
-					&& aCode->first().to_ptr< InstanceOfData >()->
+					&& aCode->first().to< InstanceOfData >().
 							getModifier().noneModifierFinalReferenceMacro()
 					&& ExpressionTypeChecker::
 							isFinalSymbolicBasicSymbol(aCode->second()) )
@@ -1218,7 +1225,7 @@ void ExpressionFactory::deduceTrivialAssignmentsFromConjonction(
 							aCode->first(), aCode->second()) );
 				}
 				else if( aCode->second().is< InstanceOfData >()
-						&& aCode->second().to_ptr<InstanceOfData >()->
+						&& aCode->second().to<InstanceOfData >().
 								getModifier().noneModifierFinalReferenceMacro()
 						&& ExpressionTypeChecker::
 								isFinalSymbolicBasicSymbol(aCode->first()) )
@@ -1231,9 +1238,9 @@ void ExpressionFactory::deduceTrivialAssignmentsFromConjonction(
 			else if( aCode->isOpCode( AVM_OPCODE_NOT ) )
 			{
 				if( aCode->first().is< InstanceOfData >()
-					&& aCode->first().to_ptr< InstanceOfData >()->
+					&& aCode->first().to< InstanceOfData >().
 							getModifier().noneModifierFinalReferenceMacro()
-					&& aCode->first().to_ptr< InstanceOfData >()->isTypedBoolean() )
+					&& aCode->first().to< InstanceOfData >().isTypedBoolean() )
 				{
 					listOfAssignments.append( StatementConstructor::newCode(
 							OperatorManager::OPERATOR_ASSIGN,
@@ -1241,15 +1248,14 @@ void ExpressionFactory::deduceTrivialAssignmentsFromConjonction(
 				}
 			}
 
-
 			break;
 		}
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			if( anExpr.to_ptr< InstanceOfData >()->
+			if( anExpr.to< InstanceOfData >().
 					getModifier().noneModifierFinalReferenceMacro()
-				&& anExpr.to_ptr< InstanceOfData >()->isTypedBoolean() )
+				&& anExpr.to< InstanceOfData >().isTypedBoolean() )
 			{
 				listOfAssignments.append( StatementConstructor::newCode(
 						OperatorManager::OPERATOR_ASSIGN,

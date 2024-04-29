@@ -15,13 +15,7 @@
 
 #include "ExecutionInformation.h"
 
-#include <fam/api/AbstractProcessorUnit.h>
-
-#include <fam/coverage/FormulaCoverageFilter.h>
-
-#include <fam/hitorjump/AvmHitOrJumpProcessor.h>
-
-#include <fam/testing/OfflineTestProcessor.h>
+#include <famcore/api/AbstractProcessorUnit.h>
 
 #include <fml/trace/TracePoint.h>
 
@@ -114,7 +108,7 @@ void GenericInfoData::toFscn(OutStream & out) const
 	}
 	else
 	{
-		out << "\"NULL\"";
+		out << "\"nullptr\"";
 	}
 
 	if ( hasData() )
@@ -133,7 +127,7 @@ void GenericInfoData::toFscn(OutStream & out) const
 		}
 		else if( getData().is< String >() )
 		{
-			out << "kind=\"" << getData().to_ptr< String >()->getValue()
+			out << "kind=\"" << getData().to< String >().getValue()
 					<< "\"";
 		}
 		else if( getData().is< AvmCode >() )
@@ -146,7 +140,8 @@ void GenericInfoData::toFscn(OutStream & out) const
 		}
 		else if( getData().is< TracePoint >() )
 		{
-			out << "hoj=\"" << getData().to_ptr< TracePoint >()->str() << "\"";
+			out << "kind=\"" << getData()._str() <<  "\" as " << std::flush;
+			out << "trace=\"" << getData().to< TracePoint >().str() << "\"";
 		}
 		else
 		{
@@ -158,18 +153,6 @@ void GenericInfoData::toFscn(OutStream & out) const
 }
 
 
-
-/**
- * DESTRUCTOR
- */
-ExecutionInformation::~ExecutionInformation()
-{
-	sep::destroyElement( mFormulaCoverageFilterInfo );
-
-	sep::destroyElement( mHitOrJumpObjectiveInfo );
-
-	sep::destroyElement( mOfflineTestProcessorInfo );
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +195,7 @@ GenericInfoData * ExecutionInformation::getInfo(
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 GenericInfoData * ExecutionInformation::getInfo(
@@ -228,7 +211,7 @@ GenericInfoData * ExecutionInformation::getInfo(
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 GenericInfoData * ExecutionInformation::getInfo(
@@ -244,7 +227,7 @@ GenericInfoData * ExecutionInformation::getInfo(
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
@@ -261,7 +244,7 @@ GenericInfoData * ExecutionInformation::getInfoWithData(
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 GenericInfoData * ExecutionInformation::getInfo(const BF & anID) const
@@ -276,7 +259,7 @@ GenericInfoData * ExecutionInformation::getInfo(const BF & anID) const
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 GenericInfoData * ExecutionInformation::getInfo(Element * anID) const
@@ -291,7 +274,7 @@ GenericInfoData * ExecutionInformation::getInfo(Element * anID) const
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 GenericInfoData * ExecutionInformation::getInfo(
@@ -307,7 +290,7 @@ GenericInfoData * ExecutionInformation::getInfo(
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 GenericInfoData * ExecutionInformation::getInfo(
@@ -323,7 +306,7 @@ GenericInfoData * ExecutionInformation::getInfo(
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
@@ -339,7 +322,7 @@ GenericInfoData * ExecutionInformation::getInfoByData(const BF & aData) const
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 GenericInfoData * ExecutionInformation::getInfoByData(
@@ -355,7 +338,7 @@ GenericInfoData * ExecutionInformation::getInfoByData(
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
@@ -593,72 +576,6 @@ void ExecutionInformation::toFscnInfo(OutStream & out) const
 	for( ; itInfo != endInfo ; ++itInfo )
 	{
 		itInfo->toFscn(out);
-	}
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// FormulaCoverageFilter Information
-////////////////////////////////////////////////////////////////////////////////
-
-FormulaCoverageFilterInfo *
-ExecutionInformation::getUniqFormulaCoverageFilterInfo()
-{
-	if( mFormulaCoverageFilterInfo == NULL )
-	{
-		mFormulaCoverageFilterInfo = new FormulaCoverageFilterInfo();
-	}
-	return( mFormulaCoverageFilterInfo );
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// AvmHitOrJumpObjective Information
-////////////////////////////////////////////////////////////////////////////////
-
-HitOrJumpObjectiveInfo * ExecutionInformation::getUniqHitOrJumpObjectiveInfo()
-{
-	if( mHitOrJumpObjectiveInfo == NULL )
-	{
-		mHitOrJumpObjectiveInfo = new HitOrJumpObjectiveInfo();
-	}
-	return( mHitOrJumpObjectiveInfo );
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// OfflineTestProcessor Information
-////////////////////////////////////////////////////////////////////////////////
-
-OfflineTestProcessorInfo *
-ExecutionInformation::getUniqOfflineTestProcessorInfo()
-{
-	if( mOfflineTestProcessorInfo == NULL )
-	{
-		mOfflineTestProcessorInfo = new OfflineTestProcessorInfo();
-	}
-	return( mOfflineTestProcessorInfo );
-}
-
-
-/**
- * Serialization
- */
-void ExecutionInformation::toStream(OutStream & out) const
-{
-	toStreamInfo(out);
-
-	if( mFormulaCoverageFilterInfo != NULL )
-	{
-		mFormulaCoverageFilterInfo->toStream(out);
-	}
-}
-
-void ExecutionInformation::toFscn(OutStream & out) const
-{
-	if( mFormulaCoverageFilterInfo != NULL )
-	{
-		mFormulaCoverageFilterInfo->toFscn(out);
 	}
 }
 

@@ -55,14 +55,8 @@ public:
 	 * FUSION
 	 * ExecutionData -- RuntimeForm
 	 */
-	static APExecutionData fusion(const ExecutionData & aRefED,
+	static ExecutionData fusion(const ExecutionData & aRefED,
 			const ExecutionData & firstED, const ExecutionData & sndED);
-
-	inline static APExecutionData fusion(const APExecutionData & aRefED,
-			const APExecutionData & firstED, const APExecutionData & sndED)
-	{
-		return( fusion( (* aRefED) , (* firstED) , (* sndED) ) );
-	}
 
 	static bool fusion(const ExecutionData & newED,
 			const ParametersRuntimeForm & refParamsRF,
@@ -91,20 +85,20 @@ public:
 
 
 
-	static BF syncBF(Operator * buildOp, const BF & refBF,
+	static BF syncBF(const Operator * buildOp, const BF & refBF,
 			const BF & frstBF, const BF & sndBF);
 
 	static BF buildScheduleForm(
-			Operator * buildOp, const BF & refScheduleForm,
+			const Operator * buildOp, const BF & refScheduleForm,
 			const BF & frstScheduleForm, const BF & sndScheduleForm);
 
-	static BF buildRunnableElementTrace(Operator * buildOp,
+	static BF buildRunnableElementTrace(const Operator * buildOp,
 			const BF & refRunnableElementTrace,
 			const BF & frstRunnableElementTrace,
 			const BF & sndRunnableElementTrace);
 
 	static BF buildIOElementTrace(
-			Operator * buildOp, const BF & refIOElementTrace,
+			const Operator * buildOp, const BF & refIOElementTrace,
 			const BF & frstIOElementTrace, const BF & sndIOElementTrace);
 
 

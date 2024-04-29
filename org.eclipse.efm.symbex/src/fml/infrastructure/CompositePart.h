@@ -43,20 +43,30 @@ public:
 	/**
 	 * TYPEDEF
 	 */
+	typedef TableOfBF_T< BehavioralElement >  TableOfOwnedElement;
+
+	typedef TableOfOwnedElement::const_raw_iterator  const_owned_iterator;
+
 	typedef TableOfBF_T< Machine >  TableOfMachine;
 
-	typedef TableOfMachine::const_raw_iterator  const_procedure_iterator;
+	typedef TableOfMachine::ref_iterator        procedure_iterator;
+	typedef TableOfMachine::const_ref_iterator  const_procedure_iterator;
 
-	typedef TableOfMachine::const_raw_iterator  const_state_iterator;
+	typedef TableOfMachine::ref_iterator        state_iterator;
+	typedef TableOfMachine::const_ref_iterator  const_state_iterator;
 
-	typedef TableOfMachine::const_raw_iterator  const_machine_iterator;
+	typedef TableOfMachine::ref_iterator        machine_iterator;
+	typedef TableOfMachine::const_ref_iterator  const_machine_iterator;
 
+	typedef TableOfMachine::const_ref_iterator  instance_iterator;
 	typedef TableOfMachine::const_raw_iterator  const_instance_iterator;
 
 protected:
 	/**
 	 * ATTRIBUTES
 	 */
+	TableOfOwnedElement mOwnedElements;
+
 	TableOfMachine mProcedures;
 
 	TableOfMachine mStates;
@@ -95,10 +105,57 @@ public:
 
 
 	/**
+	 * GETTER
+	 * EXECUTABLE MACHINE COUNT
+	 */
+	std::size_t getExecutableMachineCount() const;
+
+
+	/**
 	 * DISPATCH
 	 * mOwnedElements
 	 */
-	void dispatchOwnedElement(const BF & anElement);
+	void dispatchOwnedElement(BF & anElement);
+
+	inline const BF & saveOwnedElement(BehavioralElement * ptrElement)
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( ptrElement )
+				<< "Composite owned element !!!"
+				<< SEND_EXIT;
+
+		// Should be set by the executable machine container !
+		ptrElement->setOwnedOffset( mOwnedElements.size() );
+
+		mOwnedElements.append( INCR_BF( ptrElement ) );
+
+		if( (ptrElement->getContainer() == nullptr)
+			|| (ptrElement->getContainer() != this->getContainer()) )
+		{
+			ptrElement->updateContainer( this->getContainer() );
+		}
+
+		dispatchOwnedElement( mOwnedElements.last() );
+
+		return( mOwnedElements.last() );
+	}
+
+	inline bool empty() const
+	{
+		return( mOwnedElements.empty() );
+	}
+
+	/**
+	 * [ CONST ] ITERATOR
+	 */
+	inline const_owned_iterator owned_begin() const
+	{
+		return( mOwnedElements.begin() );
+	}
+
+	inline const_owned_iterator owned_end() const
+	{
+		return( mOwnedElements.end() );
+	}
 
 
 	/**
@@ -113,16 +170,6 @@ public:
 	inline bool hasProcedure() const
 	{
 		return( mProcedures.nonempty() );
-	}
-
-	inline void appendProcedure(const BF & aProcedure)
-	{
-		mProcedures.append( aProcedure );
-	}
-
-	inline void saveProcedure(Machine * aProcedure)
-	{
-		mProcedures.append( BF(aProcedure) );
 	}
 
 
@@ -168,20 +215,31 @@ public:
 		return( mStates.nonempty() );
 	}
 
-	inline void appendState(const BF & aState)
-	{
-		mStates.append( aState );
-	}
-
-	inline void saveState(Machine * aState)
-	{
-		mStates.append( BF(aState) );
-	}
+//	inline void appendState(const BF & aState)
+//	{
+//		mStates.append( aState );
+//	}
+//
+//	inline void saveState(Machine * aState)
+//	{
+//		mStates.append( BF(aState) );
+//	}
 
 
 	/**
 	 * [ CONST ] ITERATOR
 	 */
+	inline state_iterator state_begin()
+	{
+		return( mStates.begin() );
+	}
+
+	inline state_iterator state_end()
+	{
+		return( mStates.end() );
+	}
+
+
 	inline const_state_iterator state_begin() const
 	{
 		return( mStates.begin() );
@@ -197,11 +255,11 @@ public:
 	 * GETTER - SETTER
 	 * mOutgoingTransitions
 	 */
-	void appendOutgoingTransitionToEveryState(Machine * aGroupState);
+	void appendOutgoingTransitionToEveryState(Machine & aGroupState);
 
-	void appendOutgoingTransitionToSomeState(Machine * aGroupState);
+	void appendOutgoingTransitionToSomeState(Machine & aGroupState);
 
-	void appendOutgoingTransitionToExceptState(Machine * aGroupState);
+	void appendOutgoingTransitionToExceptState(Machine & aGroupState);
 
 	void expandGroupStatemachine();
 
@@ -220,26 +278,31 @@ public:
 		return( mMachines.nonempty() );
 	}
 
-	inline void appendMachine(const BF & aMachine)
-	{
-		mMachines.append( aMachine );
-	}
-
-	inline void saveMachine(Machine * aMachine)
-	{
-		mMachines.append( BF(aMachine) );
-	}
-
-
-	/**
-	 * COPY TO
-	 */
-	void copyMachineTo(Collection< Machine * > & rawContainer) const;
+//	inline void appendMachine(const BF & aMachine)
+//	{
+//		mMachines.append( aMachine );
+//	}
+//
+//	inline void saveMachine(Machine * aMachine)
+//	{
+//		mMachines.append( BF(aMachine) );
+//	}
 
 
 	/**
 	 * [ CONST ] ITERATOR
 	 */
+	inline machine_iterator machine_begin()
+	{
+		return( mMachines.begin() );
+	}
+
+	inline machine_iterator machine_end()
+	{
+		return( mMachines.end() );
+	}
+
+
 	inline const_machine_iterator machine_begin() const
 	{
 		return( mMachines.begin() );
@@ -266,8 +329,11 @@ public:
 	}
 
 
-	Machine * rawExecutableMachineByQualifiedNameID(
-			const std::string & aQualifiedNameID) const;
+	inline Machine * rawExecutableMachineByQualifiedNameID(
+			const std::string & aQualifiedNameID) const
+	{
+		return( mMachines.rawByQualifiedNameID(aQualifiedNameID) );
+	}
 
 
 	/**
@@ -282,16 +348,6 @@ public:
 	inline bool hasInstanceStatic() const
 	{
 		return( mInstanceStatics.nonempty() );
-	}
-
-	inline void appendInstanceStatic(const BF & anInstance)
-	{
-		mInstanceStatics.append( anInstance );
-	}
-
-	inline void saveInstanceStatic(Machine * anInstance)
-	{
-		mInstanceStatics.append( BF(anInstance) );
 	}
 
 
@@ -323,16 +379,6 @@ public:
 		return( mInstanceDynamics.nonempty() );
 	}
 
-	inline void appendInstanceDynamic(const BF & anInstanceDynamic)
-	{
-		mInstanceDynamics.append( anInstanceDynamic );
-	}
-
-	inline void saveInstanceDynamic(Machine * anInstanceDynamic)
-	{
-		mInstanceDynamics.append( BF(anInstanceDynamic) );
-	}
-
 
 	/**
 	 * [ CONST ] ITERATOR
@@ -351,7 +397,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & out) const override;
 
 };
 

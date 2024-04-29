@@ -13,14 +13,15 @@
 #ifndef AVMCODE_H_
 #define AVMCODE_H_
 
-#include <common/AvmPointer.h>
 #include <common/Element.h>
+
+#include <common/BF.h>
 
 //#include <collection/BFContainer.h>
 #include <collection/List.h>
 #include <collection/Vector.h>
 
-#include <computer/instruction/AvmInstruction.h>
+#include <fml/executable/AvmInstruction.h>
 
 
 #include <fml/operator/Operator.h>
@@ -31,10 +32,11 @@ namespace sep
 
 class BaseTypeSpecifier;
 
+class BFCode;
 
-class AvmCode :
-		public Element ,
-		public Vector< BF > ,
+
+class AvmCode : public Element ,
+		AVM_INJECT_STATIC_NULL_REFERENCE( AvmCode ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( AvmCode )
 {
 
@@ -44,24 +46,27 @@ public:
 	/**
 	 * TYPEDEF
 	 */
-	typedef Vector< BF >                                this_container_type;
+	typedef Vector< BF >                               OperandCollectionT;
 
-	typedef this_container_type::const_iterator         const_iterator;
+	typedef OperandCollectionT::const_iterator         const_iterator;
 
-	typedef this_container_type::iterator               iterator;
+	typedef OperandCollectionT::iterator               iterator;
 
-	typedef this_container_type::const_reverse_iterator const_reverse_iterator;
+	typedef OperandCollectionT::size_type              size_type;
 
-	typedef this_container_type::reverse_iterator       reverse_iterator;
-
-	typedef this_container_type::size_type              size_type;
+	/**
+	* PRETTY PRINTING OPTIONS
+	*/
+	static bool EXPRESSION_PRETTY_PRINTER_BASED_FQN;
 
 
 protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	Operator * mOperator;
+	const Operator * mOperator;
+
+	OperandCollectionT mOperands;
 
 	AvmInstruction * mInstruction;
 
@@ -71,11 +76,11 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	AvmCode()
+	AvmCode(const Operator * anOperator)
 	: Element( CLASS_KIND_T( AvmCode ) ),
-	this_container_type(),
-	mOperator( NULL ),
-	mInstruction( NULL )
+	mOperator( anOperator ),
+	mOperands( ),
+	mInstruction( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -86,72 +91,59 @@ public:
 	 */
 	AvmCode(const AvmCode & anElement)
 	: Element( anElement ),
-	this_container_type( anElement ),
 	mOperator( anElement.mOperator ),
-	mInstruction( (anElement.mInstruction == NULL) ? NULL
+	mOperands( anElement.mOperands ),
+	mInstruction( (anElement.mInstruction == nullptr) ? nullptr
 			: new AvmInstruction( *(anElement.mInstruction) ) )
 	{
 		//!! NOTHING
 	}
 
 
-	/**
-	 * CONSTRUCTOR
-	 * Others
-	 */
-	AvmCode(Operator * anOperator)
+	AvmCode(const Operator * anOperator, const BF & arg)
 	: Element( CLASS_KIND_T( AvmCode ) ),
-	this_container_type( ),
 	mOperator( anOperator ),
-	mInstruction( NULL )
+	mOperands( arg ),
+	mInstruction( nullptr )
 	{
 		//!! NOTHING
 	}
 
-	AvmCode(Operator * anOperator, const BF & arg)
+	AvmCode(const Operator * anOperator, const BF & arg1, const BF & arg2)
 	: Element( CLASS_KIND_T( AvmCode ) ),
-	this_container_type( arg ),
 	mOperator( anOperator ),
-	mInstruction( NULL )
+	mOperands( arg1 , arg2 ),
+	mInstruction( nullptr )
 	{
 		//!! NOTHING
 	}
 
-	AvmCode(Operator * anOperator, const BF & arg1, const BF & arg2)
-	: Element( CLASS_KIND_T( AvmCode ) ),
-	this_container_type( arg1 , arg2 ),
-	mOperator( anOperator ),
-	mInstruction( NULL )
-	{
-		//!! NOTHING
-	}
-
-	AvmCode(Operator * anOperator, const BF & arg1,
+	AvmCode(const Operator * anOperator, const BF & arg1,
 			const BF & arg2, const BF & arg3)
 	: Element( CLASS_KIND_T( AvmCode ) ),
-	this_container_type( arg1 , arg2 , arg3 ),
 	mOperator( anOperator ),
-	mInstruction( NULL )
+	mOperands( arg1 , arg2 , arg3 ),
+	mInstruction( nullptr )
 	{
 		//!! NOTHING
 	}
 
-	AvmCode(Operator * anOperator, const BF & arg1,
+	AvmCode(const Operator * anOperator, const BF & arg1,
 			const BF & arg2, const BF & arg3, const BF & arg4)
 	: Element( CLASS_KIND_T( AvmCode ) ),
-	this_container_type( arg1 , arg2 , arg3 , arg4 ),
 	mOperator( anOperator ),
-	mInstruction( NULL )
+	mOperands( arg1 , arg2 , arg3 , arg4 ),
+	mInstruction( nullptr )
 	{
 		//!! NOTHING
 	}
 
-	AvmCode(Operator * anOperator, const BF & arg1, const BF & arg2,
+	AvmCode(const Operator * anOperator, const BF & arg1, const BF & arg2,
 			const BF & arg3, const BF & arg4, const BF & arg5)
 	: Element( CLASS_KIND_T( AvmCode ) ),
-	this_container_type( arg1 , arg2 , arg3 , arg4 , arg5 ),
 	mOperator( anOperator ),
-	mInstruction( NULL )
+	mOperands( arg1 , arg2 , arg3 , arg4 , arg5 ),
+	mInstruction( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -168,22 +160,79 @@ public:
 
 	/**
 	 * GETTER
-	 * this_container_type
+	 * Unique Null Reference
 	 */
-	inline this_container_type & getArgs()
+	inline static AvmCode & nullref()
 	{
-		return( *this );
+		static AvmCode _NULL_( Operator::nullref_ptr() );
+
+		return( _NULL_ );
 	}
 
-	inline const this_container_type & getArgs() const
+
+	/**
+	 * GETTER
+	 * mOperands
+	 */
+	inline const OperandCollectionT & getOperands() const
 	{
-		return( *this );
+		return( mOperands );
+	}
+
+	inline OperandCollectionT & getOperands()
+	{
+		return( mOperands );
+	}
+
+	inline bool hasOperand() const
+	{
+		return( mOperands.nonempty() );
+	}
+
+	inline bool hasOneOperand() const
+	{
+		return( mOperands.singleton() );
+	}
+
+	inline bool hasManyOperands() const
+	{
+		return( mOperands.populated() );
+	}
+
+	inline bool noOperand() const
+	{
+		return( mOperands.empty() );
+	}
+
+
+	/**
+	 * GETTER
+	 * for iterators
+	 */
+	inline AvmCode::iterator begin()
+	{
+		return( mOperands.begin() );
+	}
+
+	inline AvmCode::iterator end()
+	{
+		return( mOperands.end() );
+	}
+
+	inline AvmCode::const_iterator begin() const
+	{
+		return( mOperands.begin() );
+	}
+
+	inline AvmCode::const_iterator end() const
+	{
+		return( mOperands.end() );
 	}
 
 
 	/**
 	 * APPEND
-	 * this_container_type
+	 * OperandCollectionT
 	 */
 	inline void append(const BF & anElement)
 	{
@@ -192,27 +241,27 @@ public:
 //				<< strRefCount() << " " << str() << " !!!" !!!"
 //				<< SEND_EXIT;
 
-		this_container_type::append( anElement );
+		mOperands.append( anElement );
 	}
 
-	inline void append(const this_container_type & anElement)
+	inline void append(const OperandCollectionT & anElement)
 	{
 //		AVM_OS_ASSERT_FATAL_ERROR_EXIT( isUnique() )
 //				<< "ILLEGAL MODIFICATION OF A NON UNIQUE REFERENCE :> "
 //				<< strRefCount() << " " << str() << " !!!"
 //				<< SEND_EXIT;
 
-		this_container_type::append( anElement );
+		mOperands.append( anElement );
 	}
 
-	inline void appendTail(const this_container_type & anElement)
+	inline void appendTail(const OperandCollectionT & anElement)
 	{
 //		AVM_OS_ASSERT_FATAL_ERROR_EXIT( isUnique() )
 //				<< "ILLEGAL MODIFICATION OF A NON UNIQUE REFERENCE :> "
 //				<< strRefCount() << " " << str() << " !!!"
 //				<< SEND_EXIT;
 
-		this_container_type::appendTail( anElement );
+		mOperands.appendTail( anElement );
 	}
 
 	inline void append(const List< BF > & anElement)
@@ -222,7 +271,7 @@ public:
 //				<< strRefCount() << " " << str() << " !!!"
 //				<< SEND_EXIT;
 
-		this_container_type::append( anElement );
+		mOperands.append( anElement );
 	}
 
 	inline void append(const List< BFCode > & anElement)
@@ -232,7 +281,7 @@ public:
 //				<< strRefCount() << " " << str() << " !!!"
 //				<< SEND_EXIT;
 
-		this_container_type::append( anElement );
+		mOperands.append( anElement );
 	}
 
 
@@ -240,9 +289,9 @@ public:
 	{
 		if( anElement.is< AvmCode >()
 			&& getOperator()->isWeakAssociative()
-			&& (anElement.to_ptr< AvmCode >()->getOperator() == getOperator()) )
+			&& (anElement.to< AvmCode >().getOperator() == getOperator()) )
 		{
-			append( anElement.to_ptr< AvmCode >()->getArgs() );
+			append( anElement.to< AvmCode >().getOperands() );
 		}
 		else
 		{
@@ -253,60 +302,59 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * for element of this_container_type
+	 * for element in mOperands
 	 */
-	inline virtual BF & at(avm_size_t offset)
+	inline virtual const BF & operand(std::size_t offset) const
 	{
-		return( this_container_type::at(offset) );
+		return( mOperands.get(offset) );
 	}
 
-	inline virtual const BF & at(avm_size_t offset) const
+	inline virtual BF & operand(std::size_t offset)
 	{
-		return( this_container_type::at(offset) );
+		return( mOperands.get(offset) );
 	}
 
-
-	inline AvmCode * codeAt(avm_size_t offset)
+	inline virtual BF & at(std::size_t offset) override
 	{
-		return( this_container_type::at(offset).as_ptr< AvmCode >() );
+		return( mOperands.at(offset) );
 	}
 
-	inline const AvmCode * codeAt(avm_size_t offset) const
+	inline virtual const BF & at(std::size_t offset) const override
 	{
-		return( this_container_type::at(offset).as_ptr< AvmCode >() );
-	}
-
-
-	virtual BF & operator[](avm_size_t offset)
-	{
-		return( this_container_type::operator[](offset) );
-	}
-
-	virtual const BF & operator[](avm_size_t offset) const
-	{
-		return( this_container_type::operator[](offset) );
+		return( mOperands.at(offset) );
 	}
 
 
-	inline virtual BF & getWritable(avm_size_t offset)
+	inline virtual BF & operator[](std::size_t offset) override
 	{
-		this_container_type::at(offset).makeWritable();
-
-		return( this_container_type::operator[](offset) );
+		return( mOperands[offset] );
 	}
 
-	inline virtual void makeWritable(avm_size_t offset)
+	inline virtual const BF & operator[](std::size_t offset) const override
 	{
-		this_container_type::at(offset).makeWritable();
+		return( mOperands[offset] );
 	}
 
 
-	inline virtual void safe_set(avm_size_t index, const BF & anElement)
+	inline virtual BF & getWritable(std::size_t offset) override
 	{
-		this_container_type::operator[](index) = anElement;
+		mOperands.at(offset).makeWritable();
+
+		return( mOperands[offset] );
 	}
 
-	inline virtual void set(avm_size_t index, const BF & anElement)
+	inline virtual void makeWritable(std::size_t offset) override
+	{
+		mOperands.at(offset).makeWritable();
+	}
+
+
+	inline virtual void safe_set(std::size_t offset, const BF & anElement)
+	{
+		mOperands[offset] = anElement;
+	}
+
+	inline virtual void set(std::size_t offset, const BF & anElement) override
 	{
 //		AVM_OS_ASSERT_FATAL_ERROR_EXIT( isUnique() )
 //				<< "ILLEGAL MODIFICATION OF A NON UNIQUE REFERENCE :> "
@@ -316,17 +364,64 @@ public:
 		////////////////////////////////////////////////////////////////////////
 		//!!! OPTIMISATION
 		////////////////////////////////////////////////////////////////////////
-//		this_container_type::set(index, anElement);
+//		mOperands.set(offset, anElement);
 
-		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( index , size() )
+		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , size() )
 				<< SEND_EXIT;
 
-		this_container_type::operator[](index) = anElement;
+		mOperands.operator[](offset) = anElement;
 	}
 
-	inline avm_size_t size() const
+	inline std::size_t size() const override
 	{
-		return( this_container_type::size() );
+		return( mOperands.size() );
+	}
+
+
+	/**
+	 * GETTER UTILS
+	 */
+	inline const BF & first() const
+	{
+		return( mOperands.first() );
+	}
+
+	inline BF & first()
+	{
+		return( mOperands.first() );
+	}
+
+
+	inline const BF & second() const
+	{
+		return( mOperands.second() );
+	}
+
+	inline BF & second()
+	{
+		return( mOperands.second() );
+	}
+
+
+	inline const BF & third() const
+	{
+		return( mOperands.third() );
+	}
+
+	inline BF & third()
+	{
+		return( mOperands.third() );
+	}
+
+
+	inline const BF & last() const
+	{
+		return( mOperands.last() );
+	}
+
+	inline BF & last()
+	{
+		return( mOperands.last() );
 	}
 
 
@@ -334,7 +429,7 @@ public:
 	 * GETTER - SETTER
 	 * for mOperator
 	 */
-	inline Operator * getOperator() const
+	inline const Operator * getOperator() const
 	{
 		return( mOperator );
 	}
@@ -355,19 +450,9 @@ public:
 	}
 
 
-	inline bool hasOperator() const
+	inline bool isOperator(const Operator * anOperator) const
 	{
-		return( mOperator != NULL );
-	}
-
-	inline bool isOperator(Operator * op) const
-	{
-		return( mOperator->isEQ( op ) );
-	}
-
-	inline bool isnotOperator(Operator * op) const
-	{
-		return( mOperator->isNEQ( op ) );
+		return( mOperator->isEQ( anOperator ) );
 	}
 
 	inline bool isOpCode(AVM_OPCODE opCode) const
@@ -386,7 +471,7 @@ public:
 		return( mOperator->hasOpCode( opCode1 , opCode2 , opCode3 ) );
 	}
 
-	inline bool isOpCode(Operator * op) const
+	inline bool isOpCode(const Operator * op) const
 	{
 		return( mOperator->isOpCode( op ) );
 	}
@@ -401,7 +486,7 @@ public:
 		return( mOperator->isEQ( aCode.mOperator ) );
 	}
 
-	inline bool sameOperator(AvmCode * aCode) const
+	inline bool sameOperator(const AvmCode * aCode) const
 	{
 		return( mOperator->isEQ( aCode->mOperator ) );
 	}
@@ -413,7 +498,7 @@ public:
 	}
 
 
-	inline void setOperator(Operator * anOperator)
+	inline void setOperator(const Operator * anOperator)
 	{
 		mOperator = anOperator;
 	}
@@ -435,13 +520,13 @@ public:
 
 	inline bool hasInstruction() const
 	{
-		return( mInstruction != NULL );
+		return( mInstruction != nullptr );
 	}
 
 
 	inline AvmInstruction * newEmptyInstruction()
 	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mInstruction == NULL )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mInstruction == nullptr )
 				<< "Unexpected a code with AvmInstruction: "
 				<< toStringWithBytecode()
 				<< SEND_EXIT;
@@ -449,9 +534,9 @@ public:
 		return( mInstruction = new AvmInstruction() );
 	}
 
-	inline AvmInstruction * newInstruction(avm_size_t aSize)
+	inline AvmInstruction * newInstruction(std::size_t aSize)
 	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mInstruction == NULL )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mInstruction == nullptr )
 				<< "Unexpected a code with AvmInstruction: "
 				<< toStringWithBytecode()
 				<< SEND_EXIT;
@@ -482,9 +567,9 @@ public:
 		return( AvmCode::isEQ( other ) );
 	}
 
-	inline bool operator==(AvmCode * other) const
+	inline bool operator==(const AvmCode * other) const
 	{
-		return( (other != NULL) && AvmCode::isEQ( *other ) );
+		return( (other != nullptr) && AvmCode::isEQ( *other ) );
 	}
 
 	inline bool operator!=(const AvmCode & other) const
@@ -492,9 +577,9 @@ public:
 		return( (this != &other) && (not AvmCode::isEQ( other )) );
 	}
 
-	inline bool operator!=(AvmCode * other) const
+	inline bool operator!=(const AvmCode * other) const
 	{
-		return( (other == NULL)
+		return( (other == nullptr)
 				|| ((this != other)
 					&& (not AvmCode::isEQ( *other ) ) ) );
 	}
@@ -502,16 +587,19 @@ public:
 
 	bool isEQ(const AvmCode & other) const;
 
-	inline bool isEQ(AvmCode * other) const
+	inline bool isEQ(const AvmCode * other) const
 	{
-		return( (other != NULL) && AvmCode::isEQ( *other ) );
+		return( (other != nullptr) && AvmCode::isEQ( *other ) );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using Element::isEQ;
 
 
 	/**
 	 * Serialization
 	 */
-	std::string strDebug(const AvmIndent & indent = AVM_SPC_INDENT) const
+	inline std::string strDebug(const AvmIndent & indent = AVM_SPC_INDENT) const
 	{
 		StringOutStream oss(indent);
 
@@ -524,7 +612,7 @@ public:
 
 	OutStream & toStreamWithBytecode(OutStream & out) const;
 
-	std::string toStringWithBytecode(
+	inline std::string toStringWithBytecode(
 			const AvmIndent & indent = AVM_TAB_INDENT) const
 	{
 		StringOutStream oss(indent);
@@ -549,7 +637,7 @@ public:
 		prettyPrinter(out, arg);
 	}
 
-	inline virtual void toStream(OutStream & out) const
+	inline virtual void toStream(OutStream & out) const override
 	{
 AVM_IF_DEBUG_FLAG( BYTECODE )
 
@@ -576,16 +664,16 @@ AVM_ENDIF_DEBUG_FLAG( BYTECODE )
 
 	void prettyPrinterDefault(OutStream & out, bool isStatement = true) const;
 
-	void prettyPrinterFunctional(OutStream & out) const;
-	void prettyPrinterInfix(OutStream & out) const;
-	void prettyPrinterPrefix(OutStream & out) const;
-	void prettyPrinterSuffix(OutStream & out) const;
+	void prettyPrinterFunctional(OutStream & out, bool isExpression = true) const;
+	void prettyPrinterInfix(OutStream & out, bool isExpression = true) const;
+	void prettyPrinterPrefix(OutStream & out, bool isExpression = true) const;
+	void prettyPrinterSuffix(OutStream & out, bool isExpression = true) const;
 
 	static void prettyPrinter(OutStream & out,
 			const BF & arg, bool isStatement = true);
 
 	static void prettyPrinter(OutStream & out,
-			const BF & arg, BaseTypeSpecifier * aType);
+			const BF & arg, const BaseTypeSpecifier & aType);
 
 	static void prettyPrinterCondition(OutStream & out, const BF & arg);
 
@@ -596,7 +684,7 @@ AVM_ENDIF_DEBUG_FLAG( BYTECODE )
 	 * toString
 	 */
 	inline virtual std::string toString(
-			const AvmIndent & indent = AVM_TAB_INDENT) const
+			const AvmIndent & indent = AVM_TAB_INDENT) const override
 	{
 		StringOutStream oss(indent);
 
@@ -606,7 +694,7 @@ AVM_ENDIF_DEBUG_FLAG( BYTECODE )
 		return( oss.str() );
 	}
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		StringOutStream oss( AVM_STR_INDENT );
 
@@ -643,7 +731,7 @@ AVM_OS_STREAM( AvmCode )
 	#define AVM_DECLARE_DEBUG_BFCODE_PTR        public: std::string dbgPTR;
 
 
-	#define AVM_STR_BFCODE_PTR( ptr )  ( (ptr != NULL) ? ptr->str() : "BFCode<null>" )
+	#define AVM_STR_BFCODE_PTR( ptr )  ( (ptr != nullptr) ? ptr->str() : "BFCode<null>" )
 
 	#define AVM_INIT_DEBUG_BFCODE_PTR_NULL      , dbgPTR( "BFCode<null>" )
 
@@ -687,7 +775,7 @@ public:
 	 */
 	BFCode()
 	: BF()
-	AVM_INIT_DEBUG_BFCODE_PTR( NULL )
+	AVM_INIT_DEBUG_BFCODE_PTR( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -706,7 +794,7 @@ public:
 //	explicit BFCode(const BF & other)
 //	: BF( ( other.is< AvmCode >() ) ? other : BFCode::REF_NULL )
 //	AVM_INIT_DEBUG_BFCODE_PTR( ( other.is< AvmCode >() ) ?
-//			static_cast< const AvmCode * >( other.raw_pointer() ) : NULL )
+//			static_cast< const AvmCode * >( other.raw_pointer() ) : nullptr )
 //	{
 //		AVM_OS_ASSERT_FATAL_ERROR_EXIT( other.invalid() || other.is< AvmCode >() )
 //				<< "Invalid Constructor Cast of a BF to a BFCode !!!"
@@ -724,28 +812,28 @@ public:
 	 * CONSTRUCTOR
 	 * Others
 	 */
-	BFCode(Operator * anOperator)
+	BFCode(const Operator * anOperator)
 	: BF( AVM_ASSIGN_EXPR_DEBUG_BFCODE_PTR(
 			new AvmCode(anOperator) ) )
 	{
 		//!! NOTHING
 	}
 
-	BFCode(Operator * anOperator, const BF & arg)
+	BFCode(const Operator * anOperator, const BF & arg)
 	: BF( AVM_ASSIGN_EXPR_DEBUG_BFCODE_PTR(
 			new AvmCode(anOperator, arg) ) )
 	{
 		//!! NOTHING
 	}
 
-	BFCode(Operator * anOperator, const BF & arg1, const BF & arg2)
+	BFCode(const Operator * anOperator, const BF & arg1, const BF & arg2)
 	: BF( AVM_ASSIGN_EXPR_DEBUG_BFCODE_PTR(
 			new AvmCode(anOperator, arg1, arg2) ) )
 	{
 		//!! NOTHING
 	}
 
-	BFCode(Operator * anOperator, const BF & arg1,
+	BFCode(const Operator * anOperator, const BF & arg1,
 			const BF & arg2, const BF & arg3)
 	: BF( AVM_ASSIGN_EXPR_DEBUG_BFCODE_PTR(
 			new AvmCode(anOperator, arg1, arg2, arg3) ) )
@@ -753,7 +841,7 @@ public:
 		//!! NOTHING
 	}
 
-	BFCode(Operator * anOperator, const BF & arg1, const BF & arg2,
+	BFCode(const Operator * anOperator, const BF & arg1, const BF & arg2,
 			const BF & arg3, const BF & arg4)
 	: BF( AVM_ASSIGN_EXPR_DEBUG_BFCODE_PTR(
 			new AvmCode(anOperator, arg1, arg2, arg3, arg4) ) )
@@ -761,7 +849,7 @@ public:
 		//!! NOTHING
 	}
 
-	BFCode(Operator * anOperator, const BF & arg1, const BF & arg2,
+	BFCode(const Operator * anOperator, const BF & arg1, const BF & arg2,
 			const BF & arg3, const BF & arg4, const BF & arg5)
 	: BF( AVM_ASSIGN_EXPR_DEBUG_BFCODE_PTR(
 			new AvmCode(anOperator, arg1, arg2, arg3, arg4, arg5) ) )
@@ -785,19 +873,28 @@ public:
 //protected:
 	inline operator AvmCode * () const
 	{
-		return( static_cast< AvmCode * >( mPTR )  );
+		return( static_cast< AvmCode * >( mPTR ) );
 	}
-
 
 	inline AvmCode * raw_pointer() const
 	{
-		return( static_cast< AvmCode * >( mPTR )  );
+		return( static_cast< AvmCode * >( mPTR ) );
+	}
+
+	inline AvmCode & raw_reference() const
+	{
+		return( static_cast< AvmCode & >( * mPTR ) );
 	}
 
 
 	/**
 	 * OPERATORS
 	 */
+	inline  const AvmCode & operator * () const
+	{
+		return( static_cast< AvmCode & >( *mPTR ) );
+	}
+
 	inline AvmCode * operator-> () const
 	{
 		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
@@ -860,10 +957,10 @@ public:
 		return( other.operator==( raw_pointer() ) );
 	}
 
-	inline bool operator==(AvmCode * other) const
+	inline bool operator==(const AvmCode * other) const
 	{
 		return( (mPTR == other)
-				|| ((mPTR != NULL)
+				|| ((mPTR != nullptr)
 					&& raw_pointer()->operator==( other ) ) );
 	}
 
@@ -871,14 +968,14 @@ public:
 	inline bool operator==(const BFCode & other) const
 	{
 		return( (mPTR == other.raw_pointer())
-				|| ((mPTR != NULL)
+				|| ((mPTR != nullptr)
 					&& raw_pointer()->operator==( other.raw_pointer() ) ) );
 	}
 
 	inline bool operator==(const BF & other) const
 	{
 		return( (mPTR == other.raw_pointer())
-				|| ((mPTR != NULL)
+				|| ((mPTR != nullptr)
 					&& other.is< AvmCode >()
 					&& raw_pointer()->operator==(
 							other.to_ptr< AvmCode >() ) ) );
@@ -890,10 +987,10 @@ public:
 		return( other.operator!=( raw_pointer() ) );
 	}
 
-	inline bool operator!=(AvmCode * other) const
+	inline bool operator!=(const AvmCode * other) const
 	{
 		return( (mPTR != other)
-				&& ((mPTR == NULL)
+				&& ((mPTR == nullptr)
 					|| raw_pointer()->operator!=( other ) ) );
 	}
 
@@ -901,14 +998,14 @@ public:
 	inline bool operator!=(const BFCode & other) const
 	{
 		return( (mPTR != other.raw_pointer())
-				&& ((mPTR == NULL)
+				&& ((mPTR == nullptr)
 					|| raw_pointer()->operator!=( other.raw_pointer() ) ) );
 	}
 
 	inline bool operator!=(const BF & other) const
 	{
 		return( (mPTR != other.raw_pointer())
-				&& ((mPTR == NULL)
+				&& ((mPTR == nullptr)
 					|| (other.is< AvmCode >()
 						&& raw_pointer()->operator!=(
 								other.to_ptr< AvmCode >() ) ) ) );
@@ -925,7 +1022,7 @@ public:
 	inline bool isEQ(const BFCode & other) const
 	{
 		return( (mPTR == other.mPTR)
-				|| ((mPTR != NULL)
+				|| ((mPTR != nullptr)
 					&& raw_pointer()->isEQ( other.raw_pointer() ) ) );
 	}
 
@@ -945,7 +1042,7 @@ public:
 
 	/**
 	 * SETTER
-	 * this_container_type
+	 * mOperands
 	 */
 	inline void append(const BF & anElement)
 	{
@@ -977,7 +1074,7 @@ public:
 		static_cast< AvmCode * >( mPTR )->append( anElement );
 	}
 
-	inline void append(AvmCode::this_container_type & anElement)
+	inline void append(const AvmCode::OperandCollectionT & anElement)
 	{
 		AVM_OS_ASSERT_FATAL_ERROR_EXIT( isWritable() )
 				<< "ILLEGAL MODIFICATION OF A NON UNIQUE REFERENCE :> "
@@ -999,35 +1096,42 @@ public:
 	}
 
 
-	inline AvmCode::this_container_type & getArgs()
+	inline const AvmCode::OperandCollectionT & getOperands() const
 	{
-		return( static_cast< AvmCode * >( mPTR )->getArgs() );
+		return( static_cast< AvmCode * >( mPTR )->getOperands() );
+	}
+
+	inline AvmCode::OperandCollectionT & getOperands()
+	{
+		return( static_cast< AvmCode * >( mPTR )->getOperands() );
 	}
 
 
-	inline void set(avm_size_t index, const BF & anElement)
+	/**
+	 * GETTER - SETTER
+	 * for element in mOperands
+	 */
+	inline BF & operator[](std::size_t offset)
+	{
+		return( static_cast< AvmCode * >( mPTR )->at(offset) );
+	}
+
+	inline  const BF & operator[](std::size_t offset) const
+	{
+		return( static_cast< AvmCode * >( mPTR )->at(offset) );
+	}
+
+
+	inline void set(std::size_t offset, const BF & anElement)
 	{
 		AVM_OS_ASSERT_FATAL_ERROR_EXIT( isWritable() )
 				<< "ILLEGAL MODIFICATION OF A NON UNIQUE REFERENCE :> "
 				<< strRefCount() << " " << str() << " !!!"
 				<< SEND_EXIT;
 
-		static_cast< AvmCode * >( mPTR )->set( index , anElement );
+		static_cast< AvmCode * >( mPTR )->set( offset , anElement );
 	}
 
-	/**
-	 * GETTER
-	 * for BFCode
-	 */
-	inline virtual BFCode & codeAt(avm_size_t offset)
-	{
-		return( static_cast< AvmCode * >( mPTR )->at(offset).bfCode() );
-	}
-
-	inline virtual const BFCode & codeAt(avm_size_t offset) const
-	{
-		return( static_cast< AvmCode * >( mPTR )->at(offset).bfCode() );
-	}
 
 	/**
 	 * GETTER
@@ -1055,35 +1159,10 @@ public:
 
 
 	/**
-	 * GETTER
-	 * for reverse_iterators
-	 */
-	inline AvmCode::reverse_iterator rbegin()
-	{
-		return( static_cast< AvmCode * >( mPTR )->rbegin() );
-	}
-
-	inline AvmCode::reverse_iterator rend()
-	{
-		return( static_cast< AvmCode * >( mPTR )->rend() );
-	}
-
-	inline AvmCode::const_reverse_iterator rbegin() const
-	{
-		return( static_cast< AvmCode * >( mPTR )->rbegin() );
-	}
-
-	inline AvmCode::const_reverse_iterator rend() const
-	{
-		return( static_cast< AvmCode * >( mPTR )->rend() );
-	}
-
-
-	/**
 	 * GETTER - SETTER
 	 * for mOperator
 	 */
-	inline Operator * getOperator() const
+	inline const Operator * getOperator() const
 	{
 		return( static_cast< AvmCode * >( mPTR )->getOperator() );
 	}
@@ -1091,16 +1170,6 @@ public:
 	inline AVM_OPCODE getAvmOpCode() const
 	{
 		return( static_cast< AvmCode * >( mPTR )->getAvmOpCode() );
-	}
-
-	inline bool hasOperator() const
-	{
-		return( static_cast< AvmCode * >( mPTR )->hasOperator() );
-	}
-
-	inline void setOperator(Operator * anOperator)
-	{
-		static_cast< AvmCode * >( mPTR )->setOperator( anOperator );
 	}
 
 
@@ -1114,9 +1183,9 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	inline virtual void toStream(OutStream & out) const
+	inline virtual void toStream(OutStream & out) const override
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			static_cast< AvmCode * >( mPTR )->toStream(out);
 		}
@@ -1126,9 +1195,12 @@ public:
 		}
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using BF::toStream;
+
 
 	inline virtual std::string toString(
-			const AvmIndent & indent = AVM_TAB_INDENT) const
+			const AvmIndent & indent = AVM_TAB_INDENT) const override
 	{
 		StringOutStream oss(indent);
 
@@ -1137,16 +1209,16 @@ public:
 		return( oss.str() );
 	}
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
-		return( ( mPTR == NULL ) ?  "BFCode<null>" :
+		return( ( mPTR == nullptr ) ?  "BFCode<null>" :
 				static_cast< AvmCode * >( mPTR )->str() );
 	}
 
 
-	inline virtual void AVM_DEBUG_REF_COUNTER(OutStream & out) const
+	inline virtual void AVM_DEBUG_REF_COUNTER(OutStream & out) const override
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
 			mPTR->AVM_DEBUG_REF_COUNTER(out);
 		}
@@ -1156,15 +1228,15 @@ public:
 		}
 	}
 
-	inline virtual std::string AVM_DEBUG_REF_COUNTER() const
+	inline virtual std::string AVM_DEBUG_REF_COUNTER() const override
 	{
-		return( ( mPTR != NULL )  ?  mPTR->AVM_DEBUG_REF_COUNTER() :
+		return( ( mPTR != nullptr )  ?  mPTR->AVM_DEBUG_REF_COUNTER() :
 				"BFCode<null, ref:0>" );
 	}
 
 	inline virtual std::string strRefCount() const
 	{
-		return( ( mPTR != NULL )  ?  mPTR->strRefCount() :
+		return( ( mPTR != nullptr )  ?  mPTR->strRefCount() :
 				"BFCode<null, ref:0>" );
 	}
 

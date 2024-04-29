@@ -27,7 +27,7 @@
 
 #include <fml/executable/ExecutableForm.h>
 #include <fml/executable/InstanceOfBuffer.h>
-#include <fml/executable/InstanceOfConnect.h>
+#include <fml/executable/InstanceOfConnector.h>
 #include <fml/executable/InstanceOfData.h>
 #include <fml/executable/InstanceOfMachine.h>
 #include <fml/executable/Router.h>
@@ -60,7 +60,7 @@ namespace sep
 CompilerOfInteraction::CompilerOfInteraction(Compiler & aCompiler)
 : BaseCompiler(aCompiler),
 mNextRouteID( 0 ),
-mNextConnectID( 0 )
+mNextConnectorID( 0 )
 {
 	//!! NOTHING
 }
@@ -78,48 +78,48 @@ mNextConnectID( 0 )
  */
 
 BF CompilerOfInteraction::precompileParameter(
-		ExecutableForm * aContainer, TableOfInstanceOfData & tableOfVariable,
-		Variable * aParameter, avm_offset_t offset)
+		ExecutableForm & aContainer, TableOfInstanceOfData & tableOfVariable,
+		const Variable & aParameter, avm_offset_t offset)
 {
 	// #bind parameter
-	if( aParameter->getModifier().hasNatureParameterBind() )
+	if( aParameter.getModifier().hasNatureParameterBind() )
 	{
 		InstanceOfData * bindInstance = new InstanceOfData(
-				IPointerDataNature::POINTER_STANDARD_NATURE,
-				aContainer, aParameter, TypeManager::UNIVERSAL,
-				offset, aParameter->getModifier() );
-		if( aParameter->getNameID().empty() )
+				IPointerVariableNature::POINTER_STANDARD_NATURE,
+				(& aContainer), aParameter, TypeManager::UNIVERSAL,
+				offset, aParameter.getModifier() );
+		if( aParameter.getNameID().empty() )
 		{
 			bindInstance->setNameID( OSS() << "$" << offset );
 		}
 		else
 		{
-			bindInstance->setNameID( aParameter->getNameID() );
+			bindInstance->setNameID( aParameter.getNameID() );
 		}
-		bindInstance->setValue( aParameter->getValue() );
+		bindInstance->setValue( aParameter.getValue() );
 
 		return( BF( bindInstance ) );
 	}
 
 	// variable parameter
-	else if( aParameter->getModifier().hasNatureParameter() )
+	else if( aParameter.getModifier().hasNatureParameter() )
 	{
 		TypeSpecifier aTypeSpecifier =
-				compileTypeSpecifier(aContainer, aParameter->getType());
+				compileTypeSpecifier(aContainer, aParameter.getType());
 
 		InstanceOfData * paramInstance = new InstanceOfData(
-				IPointerDataNature::POINTER_STANDARD_NATURE, aContainer,
-				aParameter, aTypeSpecifier, offset,
-				aParameter->getModifier() );
-		if( aParameter->getNameID().empty() )
+				IPointerVariableNature::POINTER_STANDARD_NATURE,
+				(& aContainer), aParameter, aTypeSpecifier, offset,
+				aParameter.getModifier() );
+		if( aParameter.getNameID().empty() )
 		{
 			paramInstance->setNameID( OSS() << "$" << offset );
 		}
 		else
 		{
-			paramInstance->setNameID( aParameter->getNameID() );
+			paramInstance->setNameID( aParameter.getNameID() );
 		}
-		paramInstance->setValue( aParameter->getValue() );
+		paramInstance->setValue( aParameter.getValue() );
 
 		return( BF( paramInstance ) );
 	}
@@ -128,23 +128,23 @@ BF CompilerOfInteraction::precompileParameter(
 }
 
 
-void CompilerOfInteraction::precompileComPoint(ExecutableForm * aContainer,
-		PropertyPart & theDeclaration, TableOfInstanceOfData & tableOfVariable)
+void CompilerOfInteraction::precompileComPoint(ExecutableForm & aContainer,
+		const PropertyPart & theDeclaration, TableOfInstanceOfData & tableOfVariable)
 {
 	PropertyPart::TableOfPort listOfInputPort;
 	PropertyPart::TableOfPort listOfInoutPort;
 	PropertyPart::TableOfPort listOfOutputPort;
 
 	BF aParameter;
-	TableOfVariable::const_raw_iterator itParam;
-	TableOfVariable::const_raw_iterator endParam;
+	TableOfVariable::const_ref_iterator itParam;
+	TableOfVariable::const_ref_iterator endParam;
 
-	avm_size_t inoutPortCount = 0;
+	std::size_t inoutPortCount = 0;
 
 	// Classification of signals
-	PropertyPart::TableOfSignal::const_raw_iterator its =
+	PropertyPart::TableOfSignal::const_ref_iterator its =
 			theDeclaration.getSignals().begin();
-	PropertyPart::TableOfSignal::const_raw_iterator endIts =
+	PropertyPart::TableOfSignal::const_ref_iterator endIts =
 			theDeclaration.getSignals().end();
 	for( ; its != endIts ; ++its )
 	{
@@ -163,12 +163,12 @@ void CompilerOfInteraction::precompileComPoint(ExecutableForm * aContainer,
 		}
 	}
 
-	aContainer->setMessageSignalCount( theDeclaration.getSignals().size() );
+	aContainer.setMessageSignalCount( theDeclaration.getSignals().size() );
 
 	// Classification of ports
-	PropertyPart::TableOfPort::const_raw_iterator itp =
+	PropertyPart::TableOfPort::const_ref_iterator itp =
 			theDeclaration.getPorts().begin();
-	PropertyPart::TableOfPort::const_raw_iterator endItp =
+	PropertyPart::TableOfPort::const_ref_iterator endItp =
 			theDeclaration.getPorts().end();
 	for( ; itp != endItp ; ++itp )
 	{
@@ -199,35 +199,35 @@ void CompilerOfInteraction::precompileComPoint(ExecutableForm * aContainer,
 }
 
 
-void CompilerOfInteraction::precompileComPoint(ExecutableForm * aContainer,
+void CompilerOfInteraction::precompileComPoint(ExecutableForm & aContainer,
 		const PropertyPart::TableOfPort & listOfComPoint,
-		avm_size_t ioPortOffset, TableOfInstanceOfData & tableOfVariable)
+		std::size_t ioPortOffset, TableOfInstanceOfData & tableOfVariable)
 {
-	InstanceOfPort * newPortInstance = NULL;
+	InstanceOfPort * newPortInstance = nullptr;
 
 	BF aParameter;
-	TableOfVariable::const_raw_iterator itParam;
-	TableOfVariable::const_raw_iterator endParam;
+	TableOfVariable::const_ref_iterator itParam;
+	TableOfVariable::const_ref_iterator endParam;
 
 	avm_offset_t typeOffset = 0;
 
-	PropertyPart::TableOfPort::const_raw_iterator it = listOfComPoint.begin();
-	PropertyPart::TableOfPort::const_raw_iterator endIt = listOfComPoint.end();
-	for( avm_offset_t offset = ioPortOffset ; it != endIt ; ++it , ++offset )
+	PropertyPart::TableOfPort::const_ref_iterator itPort = listOfComPoint.begin();
+	PropertyPart::TableOfPort::const_ref_iterator endPort = listOfComPoint.end();
+	for( avm_offset_t offset = ioPortOffset ; itPort != endPort ; ++itPort , ++offset )
 	{
-		newPortInstance = new InstanceOfPort(aContainer, (it), offset,
-				(it)->getParameters().size(), (it)->getComPointNature());
+		newPortInstance = new InstanceOfPort((& aContainer), (itPort), offset,
+				(itPort)->getParameters().size(), (itPort)->getComPointNature());
 
 		getSymbolTable().addPortInstance(
-				aContainer->savePort(newPortInstance) );
+				aContainer.savePort(newPortInstance) );
 
 		if( newPortInstance->isSignal() )
 		{
 			newPortInstance->setRouteOffset( mNextRouteID++ );
 		}
 
-		itParam = (it)->getParameters().begin();
-		endParam = (it)->getParameters().end();
+		itParam = (itPort)->getParameters().begin();
+		endParam = (itPort)->getParameters().end();
 		for( typeOffset = 0 ; itParam != endParam ; ++itParam , ++typeOffset )
 		{
 			aParameter = precompileParameter(aContainer,
@@ -239,53 +239,47 @@ void CompilerOfInteraction::precompileComPoint(ExecutableForm * aContainer,
 
 
 
-void CompilerOfInteraction::precompileChannel(ExecutableForm * aContainer,
-		PropertyPart & theDeclaration, TableOfInstanceOfData & tableOfVariable)
+void CompilerOfInteraction::precompileChannel(
+		ExecutableForm & aContainer, const PropertyPart & theDeclaration,
+		TableOfInstanceOfData & tableOfVariable)
 {
 	InstanceOfPort * newInstanceOfChannel;
 	InstanceOfPort * newInstanceOfPort;
 
-	PropertyPart::const_owned_iterator it;
-	PropertyPart::const_owned_iterator endIt;
-
-	PropertyPart::TableOfChannel::const_raw_iterator itChannel =
+	PropertyPart::TableOfChannel::const_ref_iterator itChannel =
 			theDeclaration.getChannels().begin();
-	PropertyPart::TableOfChannel::const_raw_iterator endChannel =
+	PropertyPart::TableOfChannel::const_ref_iterator endChannel =
 			theDeclaration.getChannels().end();
 	avm_offset_t offset = 0;
 	for( ; itChannel != endChannel ; ++itChannel, ++offset )
 	{
 		newInstanceOfChannel = InstanceOfPort::newChannel(
-				aContainer, (itChannel), offset);
+				(& aContainer), (itChannel), offset);
 
-		aContainer->saveChannel(newInstanceOfChannel);
+		aContainer.saveChannel(newInstanceOfChannel);
 
-		if( (itChannel)->hasContents() )
+		for( const auto & itOwned :
+				(itChannel)->getParameterPart().getOwnedElements() )
 		{
-			it = (itChannel)->getContents()->owned_begin();
-			endIt = (itChannel)->getContents()->owned_end();
-			for( ; it != endIt ; ++it )
+			// case of Signal
+			if( itOwned.is< Signal >() )
 			{
-				// case of Signal
-				if( (*it).is< Signal >() )
+				const Symbol & aPort = getSymbolTable().searchPortInstance(
+						itOwned.to< Port >().getSignalModel() );
+				if( aPort.valid() )
 				{
-					const Symbol & aPort = getSymbolTable().searchPortInstance(
-							(*it).to_ptr< Port >()->getSignalModel() );
-					if( aPort.valid() )
-					{
-						newInstanceOfPort = new InstanceOfPort(
-								aContainer, (*it).to_ptr< Port >(),
-								newInstanceOfChannel, aPort.rawPort() );
+					newInstanceOfPort = new InstanceOfPort(
+							(& aContainer), itOwned.to< Port >(),
+							newInstanceOfChannel, aPort.asPort() );
 
-						newInstanceOfChannel->appendContent(
-								Symbol(newInstanceOfPort) );
-					}
+					newInstanceOfChannel->appendContent(
+							Symbol(newInstanceOfPort) );
 				}
+			}
 
-				else if( (*it).is< Variable >() )
-				{
-
-				}
+			else if( itOwned.is< Variable >() )
+			{
+				//!@?UNSUPPORTED:
 			}
 		}
 	}
@@ -297,13 +291,13 @@ void CompilerOfInteraction::precompileChannel(ExecutableForm * aContainer,
  * buffer
  */
 void CompilerOfInteraction::precompileBuffer(
-		ExecutableForm * aContainer, Buffer * aBuffer)
+		ExecutableForm & aContainer, const Buffer & aBuffer)
 {
 	InstanceOfBuffer * newBufferInstance = new InstanceOfBuffer(
-			aContainer, aBuffer, aContainer->getBuffer().size());
+			aContainer, aBuffer, aContainer.getBuffer().size());
 
 	getSymbolTable().addBufferInstance(
-			aContainer->saveBuffer(newBufferInstance) );
+			aContainer.saveBuffer(newBufferInstance) );
 }
 
 
@@ -328,27 +322,22 @@ void CompilerOfInteraction::precompileBuffer(
  */
 
 
-void CompilerOfInteraction::compilePort(ExecutableForm * anExecutable)
+void CompilerOfInteraction::compilePort(ExecutableForm & anExecutable)
 {
-	TableOfSymbol::const_iterator itPort = anExecutable->getPort().begin();
-	TableOfSymbol::const_iterator endPort = anExecutable->getPort().end();
-	for( ; itPort != endPort ; ++itPort )
+	for( const auto & itPort : anExecutable.getPort() )
 	{
-		compilePort(anExecutable, (*itPort).port());
+		compilePort(anExecutable, itPort.asPort());
 	}
 }
 
-void CompilerOfInteraction::compilePort(ExecutableForm * anExecutable,
+void CompilerOfInteraction::compilePort(ExecutableForm & anExecutable,
 		const InstanceOfPort & aPortInstance)
 {
-	ArrayOfBF::const_iterator it = aPortInstance.getParameters().begin();
-	ArrayOfBF::const_iterator endIt = aPortInstance.getParameters().end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itParam : aPortInstance.getParameters() )
 	{
-		if( (*it).is< InstanceOfData >() )
+		if( itParam.is< InstanceOfData >() )
 		{
-			InstanceOfData * aVar = (*it).to_ptr< InstanceOfData >();
-
+			InstanceOfData * aVar = itParam.to_ptr< InstanceOfData >();
 			// #bind parameter
 			if( aVar->getModifier().hasNatureParameterBind()
 				&& aVar->hasValue() )
@@ -376,34 +365,34 @@ void CompilerOfInteraction::compilePort(ExecutableForm * anExecutable,
  *******************************************************************************
  */
 
-Router CompilerOfInteraction::newMachineRouter(InstanceOfMachine * aMachine)
+Router CompilerOfInteraction::newMachineRouter(
+		const InstanceOfMachine & aMachine)
 {
 	Router aRouter(aMachine, mNextRouteID, mNextRouteID);
 
-	ExecutableForm * anExecutable = aMachine->getExecutable();
+	ExecutableForm & anExecutable =
+			const_cast< ExecutableForm & >( aMachine.refExecutable() );
 
-	TableOfSymbol::iterator itPort = anExecutable->getPort().begin();
-	TableOfSymbol::iterator endPort = anExecutable->getPort().end();
-	for( ; itPort != endPort ; ++itPort )
+	for( auto & itPort : anExecutable.getPort() )
 	{
-		if( (*itPort).port().isPort() )
+		if( itPort.asPort().isPort() )
 		{
 			// the route offset of local port w.r.t. global route offset
-			(*itPort).setRouteOffset( mNextRouteID + (*itPort).getOffset() -
-					anExecutable->getMessageSignalCount() );
+			itPort.setRouteOffset( mNextRouteID + itPort.getOffset() -
+					anExecutable.getMessageSignalCount() );
 
-			if( (*itPort).getModifier().hasDirectionInput() )
+			if( itPort.getModifier().hasDirectionInput() )
 			{
 				aRouter.appendInputRouting( RoutingData::_NULL_ );
 			}
 			// NO ELSE because of INOUT PORT
-			if( (*itPort).getModifier().hasDirectionOutput() )
+			if( itPort.getModifier().hasDirectionOutput() )
 			{
 				aRouter.appendOutputRouting( RoutingData::_NULL_ );
 			}
 		}
 
-		else// if( (*itPort).isSignal() )
+		else// if( itPort.isSignal() )
 		{
 			//!! NOTHING
 		}
@@ -414,16 +403,16 @@ Router CompilerOfInteraction::newMachineRouter(InstanceOfMachine * aMachine)
 
 
 Router CompilerOfInteraction::addMachineModelRouter(
-		ExecutableForm * theExecutable, InstanceOfMachine * aMachine)
+		ExecutableForm & theExecutable, const InstanceOfMachine & aMachine)
 {
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( aMachine->getOffset() == 0 )
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( aMachine.getOffset() == 0 )
 			<< "Unexpected the first machine model "
 				"for router with offset > 0 !!!"
 			<< SEND_EXIT;
 
 	Router aRouter = newMachineRouter(aMachine);
 
-	theExecutable->appendRouter4Model( aRouter );
+	theExecutable.appendRouter4Model( aRouter );
 
 	return( aRouter );
 }
@@ -434,49 +423,43 @@ Router CompilerOfInteraction::addMachineModelRouter(
  * compile
  * statemachine interaction
  */
-void CompilerOfInteraction::compileCommunication(ExecutableForm * theExecutable,
+void CompilerOfInteraction::compileCommunication(ExecutableForm & theExecutable,
 		bool & hasSynchronizeMachine, bool & hasUpdateBuffer)
 {
-	const Machine * aMachine = theExecutable->getAstMachine();
+	const Machine & aMachine = theExecutable.getAstMachine();
 
-	if( aMachine->hasInteraction() )
+	if( aMachine.hasInteraction() )
 	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT( theExecutable->hasInstanceStaticThis() )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( theExecutable.hasInstanceStaticThis() )
 				<< "Unexpected communicated Machine without submachine THIS !!!"
 				<< SEND_EXIT;
 
-		avm_size_t nbComMachineCount = 0;
+		std::size_t nbComMachineCount = 0;
 
 		TableOfRouter & theTableOfRouter4Instance =
-				theExecutable->getRouters4Instance();
+				theExecutable.getRouters4Instance();
 
 		// Attention: the offset of routing table of an instance machine is
 		// the same than the offset of this instance
-		TableOfSymbol::const_iterator itMachine =
-				theExecutable->getInstanceStatic().begin();
-		TableOfSymbol::const_iterator endMachine =
-				theExecutable->getInstanceStatic().end();
-		for( ; itMachine != endMachine ; ++itMachine )
+		for( const auto & itMachine : theExecutable.getInstanceStatic() )
 		{
-			if( (*itMachine).getExecutable()->hasPort() )
+			if( itMachine.getExecutable().hasPort() )
 			{
 				++nbComMachineCount;
 				theTableOfRouter4Instance.append(
-						newMachineRouter((*itMachine).rawMachine()) );
-//@debug:
-//				AVM_OS_TRACE << "compileCommunication :> INIT "
-//						<< str_header( theExecutable ) << std::endl;
-//				theRouterTable->last()->toStream(AVM_OS_TRACE);
+						newMachineRouter(itMachine.machine()) );
+//!@?DEBUG:
+//AVM_OS_TRACE << "compileCommunication :> INIT " << str_header( theExecutable ) << std::endl;
+//theTableOfRouter4Instance->last()->toStream(AVM_OS_TRACE);
 			}
-			else if( (*itMachine).getAstMachine()->hasInteraction() )
+			else if( itMachine.getAstMachine().hasInteraction() )
 			{
 				++nbComMachineCount;
 				theTableOfRouter4Instance.append(
-						newMachineRouter((*itMachine).rawMachine()) );
-//@debug:
-//				AVM_OS_TRACE << "compileCommunication :> INIT "
-//						<< str_header( theExecutable ) << std::endl;
-//				theRouterTable->last()->toStream(AVM_OS_TRACE);
+						newMachineRouter(itMachine.machine()) );
+//!@?DEBUG:
+//AVM_OS_TRACE << "compileCommunication :> INIT " << str_header( theExecutable ) << std::endl;
+//theTableOfRouter4Instance->last()->toStream(AVM_OS_TRACE);
 			}
 			else
 			{
@@ -486,34 +469,34 @@ void CompilerOfInteraction::compileCommunication(ExecutableForm * theExecutable,
 
 		// For MACHINE MODEL
 		TableOfRouter & theTableOfRouter4Model =
-				theExecutable->getRouters4Model();
+				theExecutable.getRouters4Model();
 
 		// Router for instance machine THIS
-		theTableOfRouter4Model.append( theExecutable->getRouter4This() );
+		theTableOfRouter4Model.append( theExecutable.getRouter4This() );
 
-		itMachine = theExecutable->instance_model_begin();
-		endMachine = theExecutable->instance_model_end();
+		TableOfSymbol::const_iterator itMachine =
+				theExecutable.instance_model_begin();
+		TableOfSymbol::const_iterator endMachine =
+				theExecutable.instance_model_end();
 		for( ; itMachine != endMachine ; ++itMachine )
 		{
-			if( (*itMachine).getExecutable()->hasPort() )
+			if( (*itMachine).getExecutable().hasPort() )
 			{
 				++nbComMachineCount;
 				theTableOfRouter4Model.append(
-						newMachineRouter((*itMachine).rawMachine()) );
-//@debug:
-//				AVM_OS_TRACE << "compileCommunication :> INIT "
-//						<< str_header( theExecutable ) << std::endl;
-//				theRouterTable->last()->toStream(AVM_OS_TRACE);
+						newMachineRouter((*itMachine).machine()) );
+//!@?DEBUG:
+//AVM_OS_TRACE << "compileCommunication :> INIT " << str_header( theExecutable ) << std::endl;
+//theTableOfRouter4Model->last()->toStream(AVM_OS_TRACE);
 			}
-			else if( (*itMachine).getAstMachine()->hasInteraction() )
+			else if( (*itMachine).getAstMachine().hasInteraction() )
 			{
 				++nbComMachineCount;
 				theTableOfRouter4Model.append(
-						newMachineRouter((*itMachine).rawMachine()) );
-//@debug:
-//				AVM_OS_TRACE << "compileCommunication :> INIT "
-//						<< str_header( theExecutable ) << std::endl;
-//				theRouterTable->last()->toStream(AVM_OS_TRACE);
+						newMachineRouter((*itMachine).machine()) );
+//!@?DEBUG:
+//AVM_OS_TRACE << "compileCommunication :> INIT " << str_header( theExecutable ) << std::endl;
+//theTableOfRouter4Model->last()->toStream(AVM_OS_TRACE);
 			}
 			else
 			{
@@ -530,34 +513,33 @@ void CompilerOfInteraction::compileCommunication(ExecutableForm * theExecutable,
 		}
 		else
 		{
-			theExecutable->getRouters4Instance().clear();
+			theExecutable.getRouters4Instance().clear();
 
-			theExecutable->getRouters4Model().clear();
+			theExecutable.getRouters4Model().clear();
 		}
 	}
 
-	else if( aMachine->hasPortSignal()
-			&& ( aMachine->getSpecifier().isComponentSystem()
-				|| (not aMachine->getContainerMachine()->hasInteraction()) ) )
+	else if( aMachine.hasPortSignal()
+			&& ( aMachine.getSpecifier().isComponentSystem()
+				|| (not aMachine.getContainerMachine()->hasInteraction()) ) )
 	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT( theExecutable->hasInstanceStaticThis() )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( theExecutable.hasInstanceStaticThis() )
 				<< "Unexpected communicated Machine without submachine THIS !!!"
 				<< SEND_EXIT;
 
 		Router bfRouter = newMachineRouter(
-				theExecutable->getInstanceStaticThis().rawMachine());
+				theExecutable.getInstanceStaticThis().machine());
 
-		theExecutable->appendRouter4Instance( bfRouter );
+		theExecutable.appendRouter4Instance( bfRouter );
 
-		if( not aMachine->getSpecifier().isComponentSystem() )
+		if( not aMachine.getSpecifier().isComponentSystem() )
 		{
-			theExecutable->appendRouter4Model( bfRouter );
+			theExecutable.appendRouter4Model( bfRouter );
 		}
 
-//@debug:
-//		AVM_OS_TRACE << "compileCommunication :> INIT "
-//				<< str_header( aMachine ) << std::endl;
-//		theRouterTable->last()->toStream(AVM_OS_TRACE);
+//!@?DEBUG:
+//AVM_OS_TRACE << "compileCommunication :> INIT " << str_header( aMachine ) << std::endl;
+//theRouterTable->last()->toStream(AVM_OS_TRACE);
 
 		postCompileCommunication(theExecutable);
 	}
@@ -567,46 +549,41 @@ void CompilerOfInteraction::compileCommunication(ExecutableForm * theExecutable,
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT
+ * COMPILE INTERACTION CONNECTOR
  *******************************************************************************
  */
-void CompilerOfInteraction::compileConnector(ExecutableForm * theExecutable,
+void CompilerOfInteraction::compileConnector(ExecutableForm & theExecutable,
 		bool & hasSynchronizeMachine, bool & hasUpdateBuffer)
 {
-	const Machine * aMachine = theExecutable->getAstMachine();
+	const Machine & aMachine = theExecutable.getAstMachine();
 
-	InstanceOfConnect * ioc = NULL;
+	InstanceOfConnector * newConnector = nullptr;
 
-	InteractionPart::const_connector_iterator itConnector;
-	InteractionPart::const_connector_iterator endConnector;
-
-	const InteractionPart * theInteractionPart = aMachine->getInteraction();
-	if( theInteractionPart != NULL )
+	const InteractionPart * theInteractionPart = aMachine.getInteraction();
+	if( theInteractionPart != nullptr )
 	{
-		itConnector  = theInteractionPart->connector_begin();
-		endConnector = theInteractionPart->connector_end();
-		for( ; itConnector != endConnector ; ++itConnector )
+		for( const auto & itConnector : theInteractionPart->getConnectors() )
 		{
-			ioc = new InstanceOfConnect( theExecutable,
-					(itConnector), theExecutable->getConnect().size(),
-					(itConnector)->getProtocol(), (itConnector)->getCast() );
+			newConnector = new InstanceOfConnector( (& theExecutable),
+					itConnector, theExecutable.getConnector().size(),
+					itConnector.getProtocol(), itConnector.getCast() );
 
-			getSymbolTable().addConnectInstance(
-					theExecutable->saveConnect(ioc) );
+			getSymbolTable().addConnectorInstance(
+					theExecutable.saveConnector(newConnector) );
 
 			////////////////////////////////////////////////////////////////////
 			// For PORT
-			if( (itConnector)->isPort() )
+			if( itConnector.isPort() )
 			{
-				compileConnector(theExecutable, (itConnector), ioc,
+				compileConnector(theExecutable, itConnector, *newConnector,
 						hasSynchronizeMachine, hasUpdateBuffer);
 			}
 
 			////////////////////////////////////////////////////////////////////
 			// For MESSAGE OR SIGNAL
-			else if( (itConnector)->isSignal() )
+			else if( itConnector.isSignal() )
 			{
-				compileRoute(theExecutable, (itConnector), ioc,
+				compileRoute(theExecutable, itConnector, *newConnector,
 						hasSynchronizeMachine, hasUpdateBuffer);
 			}
 		}
@@ -615,17 +592,17 @@ void CompilerOfInteraction::compileConnector(ExecutableForm * theExecutable,
 
 
 
-void CompilerOfInteraction::compileConnector(ExecutableForm * theExecutable,
-		Connector * aConnector, InstanceOfConnect * ioc,
+void CompilerOfInteraction::compileConnector(ExecutableForm & theExecutable,
+		const Connector & astConnector, InstanceOfConnector & aConnector,
 		bool & hasSynchronizeMachine, bool & hasUpdateBuffer)
 {
-	// One unique Connector ID per connection!
-	ioc->setMID( ++mNextConnectID );
-	switch( aConnector->getProtocol() )
+	// One unique Connector ID per connector!
+	aConnector.setMID( ++mNextConnectorID );
+	switch( astConnector.getProtocol() )
 	{
 		case ComProtocol::PROTOCOL_BUFFER_KIND:
 		{
-			compileConnectorBuffer(theExecutable, ioc);
+			compileConnectorBuffer(theExecutable, aConnector);
 			break;
 		}
 
@@ -633,34 +610,34 @@ void CompilerOfInteraction::compileConnector(ExecutableForm * theExecutable,
 		case ComProtocol::PROTOCOL_MULTIRDV_KIND:
 		{
 			hasSynchronizeMachine = true;
-			compileConnectorSynchronous(theExecutable, ioc);
+			compileConnectorSynchronous(theExecutable, aConnector);
 			break;
 		}
 
 		case ComProtocol::PROTOCOL_FLOW_KIND:
 		{
 			hasSynchronizeMachine = true;
-			compileConnectorFlow(theExecutable, ioc);
+			compileConnectorFlow(theExecutable, aConnector);
 			break;
 		}
 
 		case ComProtocol::PROTOCOL_BROADCAST_KIND:
 		{
 			hasUpdateBuffer = true;
-			compileConnectorBroadcast(theExecutable, ioc);
+			compileConnectorBroadcast(theExecutable, aConnector);
 			break;
 		}
 
 
 		case ComProtocol::PROTOCOL_TRANSFERT_KIND:
 		{
-			compileConnectorTransfert(theExecutable, ioc);
+			compileConnectorTransfert(theExecutable, aConnector);
 			break;
 		}
 
 		case ComProtocol::PROTOCOL_ENVIRONMENT_KIND:
 		{
-			compileConnectorEnvironment(theExecutable, ioc);
+			compileConnectorEnvironment(theExecutable, aConnector);
 			break;
 		}
 
@@ -668,7 +645,7 @@ void CompilerOfInteraction::compileConnector(ExecutableForm * theExecutable,
 		case ComProtocol::PROTOCOL_UNICAST_KIND:
 		case ComProtocol::PROTOCOL_ANYCAST_KIND:
 		{
-			compileConnectorRoutingCast(theExecutable, ioc);
+			compileConnectorRoutingCast(theExecutable, aConnector);
 			break;
 		}
 
@@ -677,9 +654,9 @@ void CompilerOfInteraction::compileConnector(ExecutableForm * theExecutable,
 		{
 			// ERROR REPORTING
 			incrErrorCount();
-			aConnector->errorLocation(AVM_OS_WARN)
-					<< "Unexpected for the connection<port> the protocol << "
-					<< aConnector->strProtocolCast(true) << " >>"
+			astConnector.errorLocation(AVM_OS_WARN)
+					<< "Unexpected for the connector<port> the protocol << "
+					<< astConnector.strProtocolCast(true) << " >>"
 					<< std::endl;
 
 			break;
@@ -687,15 +664,15 @@ void CompilerOfInteraction::compileConnector(ExecutableForm * theExecutable,
 	}
 }
 
-void CompilerOfInteraction::compileRoute(ExecutableForm * theExecutable,
-		Connector * aConnector, InstanceOfConnect * ioc,
+void CompilerOfInteraction::compileRoute(ExecutableForm & theExecutable,
+		const Connector & astConnector, InstanceOfConnector & aConnector,
 		bool & hasSynchronizeMachine, bool & hasUpdateBuffer)
 {
-	switch( aConnector->getProtocol() )
+	switch( astConnector.getProtocol() )
 	{
 		case ComProtocol::PROTOCOL_BUFFER_KIND:
 		{
-			compileRouteBuffer(theExecutable, ioc);
+			compileRouteBuffer(theExecutable, aConnector);
 			break;
 		}
 
@@ -703,27 +680,27 @@ void CompilerOfInteraction::compileRoute(ExecutableForm * theExecutable,
 		case ComProtocol::PROTOCOL_MULTIRDV_KIND:
 		{
 			hasSynchronizeMachine = true;
-			compileRouteSynchronous(theExecutable, ioc);
+			compileRouteSynchronous(theExecutable, aConnector);
 			break;
 		}
 
 		case ComProtocol::PROTOCOL_BROADCAST_KIND:
 		{
 			hasUpdateBuffer = true;
-			compileRouteBroadcast(theExecutable, ioc);
+			compileRouteBroadcast(theExecutable, aConnector);
 			break;
 		}
 
 
 		case ComProtocol::PROTOCOL_TRANSFERT_KIND:
 		{
-			compileRouteTransfert(theExecutable, ioc);
+			compileRouteTransfert(theExecutable, aConnector);
 			break;
 		}
 
 		case ComProtocol::PROTOCOL_ENVIRONMENT_KIND:
 		{
-			compileRouteEnvironment(theExecutable, ioc);
+			compileRouteEnvironment(theExecutable, aConnector);
 			break;
 		}
 
@@ -731,7 +708,7 @@ void CompilerOfInteraction::compileRoute(ExecutableForm * theExecutable,
 		case ComProtocol::PROTOCOL_UNICAST_KIND:
 		case ComProtocol::PROTOCOL_ANYCAST_KIND:
 		{
-			compileRouteRoutingCast(theExecutable, ioc);
+			compileRouteRoutingCast(theExecutable, aConnector);
 			break;
 		}
 
@@ -740,10 +717,10 @@ void CompilerOfInteraction::compileRoute(ExecutableForm * theExecutable,
 		{
 			// ERROR REPORTING
 			incrErrorCount();
-			aConnector->errorLocation(AVM_OS_WARN)
-					<< "Unexpected for the connection<message|signal> "
+			astConnector.errorLocation(AVM_OS_WARN)
+					<< "Unexpected for the connector<message|signal> "
 							"the protocol << "
-					<< aConnector->strProtocolCast(true) << " >>"
+					<< astConnector.strProtocolCast(true) << " >>"
 					<< std::endl;
 
 			break;
@@ -754,96 +731,86 @@ void CompilerOfInteraction::compileRoute(ExecutableForm * theExecutable,
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT BROADCAST
+ * COMPILE INTERACTION CONNECTOR BROADCAST
  *******************************************************************************
  */
 void CompilerOfInteraction::compileConnectorBroadcast(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT BROADCAST" << std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+			<< "COMPILE INTERACTION CONNECTOR BROADCAST" << std::endl;
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
-	Buffer * buffer = NULL;
-	InstanceOfBuffer * theBufferInstance = NULL;
+	InstanceOfBuffer * theBufferInstance = nullptr;
 
-	if( aConnector->hasBuffer() )
+	if( astConnector.hasBuffer() )
 	{
-		buffer = aConnector->getBuffer();
+		const Buffer & buffer = astConnector.getBuffer();
 
-		if( buffer->isAnonymID() )
+		if( buffer.isAnonymID() )
 		{
 			theBufferInstance = new InstanceOfBuffer(
-					theExecutable, buffer, theExecutable->getBuffer().size());
+					theExecutable, buffer, theExecutable.getBuffer().size());
 
 			getSymbolTable().addBufferInstance(
-					theExecutable->saveBuffer(theBufferInstance) );
+					theExecutable.saveBuffer(theBufferInstance) );
 		}
 		else
 		{
 			theBufferInstance = getSymbolTable().searchBufferInstance(
-					theExecutable, buffer).rawBuffer();
+					(& theExecutable), buffer).rawBuffer();
 		}
 	}
-	else if( aConnector->hasBufferUfid() )
+	else if( astConnector.hasBufferUfid() )
 	{
-		theBufferInstance =
-				getSymbolTable().searchBufferInstanceByQualifiedNameID(
-					theExecutable, aConnector->strBufferUfid()).rawBuffer();
+		theBufferInstance = getSymbolTable().searchBufferInstance(
+				theExecutable, astConnector.strBufferUfid()).rawBuffer();
 
-		if( theBufferInstance == NULL )
+		if( theBufferInstance == nullptr )
 		{
 			incrErrorCount();
-			aConnector->errorLocation(AVM_OS_WARN)
-					<< "Unfound in the COM POINT the buffer instance < "
-					<< aConnector->strBufferUfid() << " > !" << std::endl;
+			astConnector.errorLocation(AVM_OS_WARN)
+					<< "Unfound in the CONNECTOR the buffer instance < "
+					<< astConnector.strBufferUfid() << " > !" << std::endl;
 		}
 	}
-	else //if( buffer == NULL )
+	else //if( buffer == nullptr )
 	{
 		theBufferInstance = new InstanceOfBuffer(
-				theExecutable,	NULL, theExecutable->getBuffer().size(),
-				TYPE_FIFO_SPECIFIER, -1 );
+				theExecutable, Buffer::nullref(),
+				theExecutable.getBuffer().size(), TYPE_FIFO_SPECIFIER, -1 );
 
 		getSymbolTable().addBufferInstance(
-				theExecutable->saveBuffer(theBufferInstance) );
+				theExecutable.saveBuffer(theBufferInstance) );
 	}
-
-
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
 
 	List< RoutingData > listOfRoutingData;
 	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 			while( listOfRoutingData.nonempty() )
 			{
 				listOfRoutingData.pop_first_to( theRoutingData );
 
 				// for buffer port
-				if( theBufferInstance != NULL )
+				if( theBufferInstance != nullptr )
 				{
 					theRoutingData.appendBuffer(theBufferInstance);
 				}
 
-				if( (*itComRoute)->hasProtocol() )
+				if( itComRoute.hasProtocol() )
 				{
 					// TODO for other COM_PROTOCOL
 				}
@@ -852,9 +819,9 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	}
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT BROADCAST"
+			<< "END COMPILE INTERACTION CONNECTOR BROADCAST"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -862,7 +829,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT BUFFER
+ * COMPILE INTERACTION CONNECTOR BUFFER
  *******************************************************************************
  */
 
@@ -873,187 +840,178 @@ static void bufferCompletion(
 	List< RoutingData >::iterator inRD;
 	List< RoutingData >::iterator outRD;
 
-	bool hasntBuffer;
+	bool hasnoBuffer;
 
 	inRD = listOfInRoutingData.begin();
 	for( ; inRD != listOfInRoutingData.end() ; ++inRD )
 	{
-		hasntBuffer = inRD->getBufferInstance().empty();
+		hasnoBuffer = inRD->getBufferInstance().empty();
 
-		outRD = listOfOutRoutingData.begin();
-		for( ; outRD != listOfOutRoutingData.end() ; ++outRD )
+		if( listOfOutRoutingData.nonempty() )
 		{
-			if( hasntBuffer && outRD->getBufferInstance().nonempty() )
+			outRD = listOfOutRoutingData.begin();
+			for( ; outRD != listOfOutRoutingData.end() ; ++outRD )
 			{
-				inRD->getBufferInstance().append(
-						outRD->getBufferInstance() );
+				if( hasnoBuffer && outRD->getBufferInstance().nonempty() )
+				{
+					inRD->getBufferInstance().append(
+							outRD->getBufferInstance() );
+				}
 			}
-		}
 
-		inRD->getBufferInstance().makeUnique();
+			inRD->getBufferInstance().makeUnique();
+		}
 	}
 
 	outRD = listOfOutRoutingData.begin();
 	for( ; outRD != listOfOutRoutingData.end() ; ++outRD )
 	{
-		hasntBuffer = (outRD)->getBufferInstance().empty();
+		hasnoBuffer = (outRD)->getBufferInstance().empty();
 
-		inRD = listOfInRoutingData.begin();
-		for( ; inRD != listOfInRoutingData.end() ; ++inRD )
+		if( listOfInRoutingData.nonempty() )
 		{
-			if( hasntBuffer && (inRD)->getBufferInstance().nonempty() )
+			inRD = listOfInRoutingData.begin();
+			for( ; inRD != listOfInRoutingData.end() ; ++inRD )
 			{
-				(outRD)->getBufferInstance().append(
-						(inRD)->getBufferInstance() );
+				if( hasnoBuffer && (inRD)->getBufferInstance().nonempty() )
+				{
+					(outRD)->getBufferInstance().append(
+							(inRD)->getBufferInstance() );
+				}
 			}
-		}
 
-		(outRD)->getBufferInstance().makeUnique();
+			(outRD)->getBufferInstance().makeUnique();
+		}
 	}
 }
 
 
 void CompilerOfInteraction::compileConnectorBuffer(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT BUFFER" << std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+			<< "COMPILE INTERACTION CONNECTOR BUFFER" << std::endl;
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
-	Buffer * buffer = NULL;
-	InstanceOfBuffer * theBufferInstance = NULL;
-	InstanceOfBuffer * localBufferInstance = NULL;
+	InstanceOfBuffer * theBufferInstance = nullptr;
+	InstanceOfBuffer * localBufferInstance = nullptr;
 
-	if( aConnector->hasBuffer() )
+	if( astConnector.hasBuffer() )
 	{
-		buffer = aConnector->getBuffer();
+		const Buffer & buffer = astConnector.getBuffer();
 
-		if( buffer->isAnonymID() )
+		if( buffer.isAnonymID() )
 		{
 			theBufferInstance = new InstanceOfBuffer(theExecutable,
-					buffer, theExecutable->getBuffer().size() );
+					buffer, theExecutable.getBuffer().size() );
 
 			getSymbolTable().addBufferInstance(
-					theExecutable->saveBuffer(theBufferInstance) );
+					theExecutable.saveBuffer(theBufferInstance) );
 		}
 		else
 		{
 			theBufferInstance = getSymbolTable().searchBufferInstance(
-					theExecutable, buffer).rawBuffer();
+					(& theExecutable), buffer).rawBuffer();
 		}
 	}
-	else if( aConnector->hasBufferUfid() )
+	else if( astConnector.hasBufferUfid() )
 	{
-		theBufferInstance =
-				getSymbolTable().searchBufferInstanceByQualifiedNameID(
-					theExecutable, aConnector->strBufferUfid()).rawBuffer();
+		theBufferInstance = getSymbolTable().searchBufferInstance(
+				theExecutable, astConnector.strBufferUfid()).rawBuffer();
 
-		if( theBufferInstance == NULL )
+		if( theBufferInstance == nullptr )
 		{
 			incrErrorCount();
-			aConnector->errorLocation(AVM_OS_WARN)
-					<< "Unfound in the COM POINT the buffer instance < "
-					<< aConnector->strBufferUfid() << " > !" << std::endl;
+			astConnector.errorLocation(AVM_OS_WARN)
+					<< "Unfound in the CONNECTOR the buffer instance < "
+					<< astConnector.strBufferUfid() << " > !" << std::endl;
 		}
 	}
-	else //if( buffer == NULL )
+	else //if( buffer == nullptr )
 	{
 		theBufferInstance = new InstanceOfBuffer(
-				theExecutable,	NULL, theExecutable->getBuffer().size(),
-				TYPE_FIFO_SPECIFIER, -1 );
+				theExecutable,	Buffer::nullref(),
+				theExecutable.getBuffer().size(), TYPE_FIFO_SPECIFIER, -1 );
 
 		getSymbolTable().addBufferInstance(
-				theExecutable->saveBuffer(theBufferInstance) );
+				theExecutable.saveBuffer(theBufferInstance) );
 	}
 
 	// lists for update input port connector list
 	List< RoutingData > listOfOutRoutingData;
 	List< RoutingData > listOfInRoutingData;
 
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
-
 	List< RoutingData > listOfRoutingData;
 	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 			while( listOfRoutingData.nonempty() )
 			{
 				listOfRoutingData.pop_first_to( theRoutingData );
 
-				if( theBufferInstance != NULL )
+				if( theBufferInstance != nullptr )
 				{
 					// for buffer port
 					theRoutingData.appendBuffer(theBufferInstance);
 				}
 
-				// for buffer port
-				if( not (*itComRoute)->hasProtocol() )
-				{
-					continue;
-				}
-
-				switch( (*itComRoute)->getProtocol() )
+				switch( itComRoute.getProtocol() )
 				{
 					case ComProtocol::PROTOCOL_BUFFER_KIND:
 					{
 						localBufferInstance = theBufferInstance;
 
-						if( (*itComRoute)->hasBuffer() )
+						if( itComRoute.hasBuffer() )
 						{
-							buffer = (*itComRoute)->getBuffer();
-							if( buffer->isAnonymID() )
+							const Buffer & buffer = itComRoute.getBuffer();
+							if( buffer.isAnonymID() )
 							{
 								localBufferInstance = new InstanceOfBuffer(
 										theExecutable, buffer,
-										theExecutable->getBuffer().size());
+										theExecutable.getBuffer().size());
 
 								getSymbolTable().addBufferInstance(
-									theExecutable->saveBuffer(
+									theExecutable.saveBuffer(
 											localBufferInstance) );
 							}
 							else
 							{
 								localBufferInstance = getSymbolTable().
 									searchBufferInstance(
-										theExecutable, buffer).rawBuffer();
+										(& theExecutable), buffer).rawBuffer();
 							}
 						}
-						else if( (*itComRoute)->hasBufferUfid() )
+						else if( itComRoute.hasBufferUfid() )
 						{
 							localBufferInstance = getSymbolTable().
-								searchBufferInstanceByQualifiedNameID(
-									theExecutable,
-									(*itComRoute)->strBufferUfid()).rawBuffer();
+								searchBufferInstance(theExecutable,
+									itComRoute.strBufferUfid()).rawBuffer();
 
-							if( localBufferInstance == NULL )
+							if( localBufferInstance == nullptr )
 							{
 								incrErrorCount();
-								aConnector->errorLocation(AVM_OS_WARN)
+								astConnector.errorLocation(AVM_OS_WARN)
 										<< "Unfound in the COM POINT "
 												"the buffer instance < "
-										<< aConnector->strBufferUfid() << " > !"
+										<< astConnector.strBufferUfid()
+										<< " > !"
 										<< std::endl;
 							}
 						}
 
-						if( localBufferInstance != NULL )
+						if( localBufferInstance != nullptr )
 						{
 							theRoutingData.appendBuffer(localBufferInstance);
 						}
@@ -1073,7 +1031,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 				}
 
 				// list for update all buffer and port connector list
-				if( (*itComRoute)->getModifier().isDirectionOutput() )
+				if( itComRoute.getModifier().isDirectionOutput() )
 				{
 					listOfOutRoutingData.append(theRoutingData);
 				}
@@ -1091,9 +1049,9 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT BUFFER"
+			<< "END COMPILE INTERACTION CONNECTOR BUFFER"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -1102,45 +1060,37 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT ROUTING CAST
+ * COMPILE INTERACTION CONNECTOR ROUTING CAST
  *******************************************************************************
  */
 void CompilerOfInteraction::compileConnectorRoutingCast(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT ROUTING CAST" << std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+			<< "COMPILE INTERACTION CONNECTOR ROUTING CAST" << std::endl;
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
-	Buffer * buffer = NULL;
-	InstanceOfBuffer * theBufferInstance = NULL;
+	InstanceOfBuffer * theBufferInstance = nullptr;
 
 	// lists for update input port connector list
 	List< RoutingData > listOfOutRoutingData;
 	List< RoutingData > listOfInRoutingData;
 
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
-
 	List< RoutingData > listOfRoutingData;
 	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 			while( listOfRoutingData.nonempty() )
 			{
@@ -1149,54 +1099,49 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 				// list for update input buffer and port connector list
 				listOfOutRoutingData.append(theRoutingData);
 
-				// for buffer port
-				if( not (*itComRoute)->hasProtocol() )
-				{
-					continue;
-				}
-
-				switch( (*itComRoute)->getProtocol() )
+				switch( itComRoute.getProtocol() )
 				{
 					case ComProtocol::PROTOCOL_BUFFER_KIND:
 					{
-						if( (*itComRoute)->hasBuffer() )
+						if( itComRoute.hasBuffer() )
 						{
-							buffer = (*itComRoute)->getBuffer();
-							if( buffer->isAnonymID() )
+							const Buffer & buffer = itComRoute.getBuffer();
+
+							if( buffer.isAnonymID() )
 							{
 								theBufferInstance = new InstanceOfBuffer(
 										theExecutable, buffer,
-										theExecutable->getBuffer().size());
+										theExecutable.getBuffer().size());
 
 								getSymbolTable().addBufferInstance(
-										theExecutable->saveBuffer(
+										theExecutable.saveBuffer(
 												theBufferInstance) );
 							}
 							else
 							{
 								theBufferInstance = getSymbolTable().
 									searchBufferInstance(
-											theExecutable, buffer).rawBuffer();
+										(& theExecutable), buffer).rawBuffer();
 							}
 						}
-						else if( (*itComRoute)->hasBufferUfid() )
+						else if( itComRoute.hasBufferUfid() )
 						{
 							theBufferInstance = getSymbolTable().
 								searchBufferInstance(theExecutable,
-									(*itComRoute)->strBufferUfid()).rawBuffer();
+									itComRoute.strBufferUfid()).rawBuffer();
 
-							if( theBufferInstance == NULL )
+							if( theBufferInstance == nullptr )
 							{
 								incrErrorCount();
-								aConnector->errorLocation(AVM_OS_WARN)
+								astConnector.errorLocation(AVM_OS_WARN)
 										<< "Unfound in the COM POINT "
 												"the buffer instance < "
-										<< (*itComRoute)->strBufferUfid()
+										<< itComRoute.strBufferUfid()
 										<< " > !" << std::endl;
 							}
 						}
 
-						if( theBufferInstance != NULL )
+						if( theBufferInstance != nullptr )
 						{
 							theRoutingData.appendBuffer(theBufferInstance);
 						}
@@ -1228,7 +1173,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 				}
 
 				// list for update all buffer and port connector list
-				if( (*itComRoute)->getModifier().isDirectionOutput() )
+				if( itComRoute.getModifier().isDirectionOutput() )
 				{
 					listOfOutRoutingData.append(theRoutingData);
 				}
@@ -1244,10 +1189,10 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	// buffer completion
 	bufferCompletion(listOfOutRoutingData, listOfInRoutingData);
 
-
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-	<< "END COMPILE INTERACTION CONNECT ROUTING CAST"
+			<< "END COMPILE INTERACTION CONNECTOR ROUTING CAST"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -1255,80 +1200,71 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT SYNCHRONOUS
+ * COMPILE INTERACTION CONNECTOR SYNCHRONOUS
  *******************************************************************************
  */
 void CompilerOfInteraction::compileConnectorSynchronous(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT SYNCHRONOUS"
+			<< "COMPILE INTERACTION CONNECTOR SYNCHRONOUS"
 			<< std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
 
 	List< RoutingData > listOfRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		if( (*itComRoute)->hasCast() )
+		if( itComRoute.hasCast() )
 		{
-			if( (*itComRoute)->getModifier().isDirectionOutput() )
+			if( itComRoute.getModifier().isDirectionOutput() )
 			{
-				ioc->getOutputComRouteData().setCast((*itComRoute)->getCast());
+				aConnector.setOutputProtocolCast( itComRoute.getCast() );
 			}
 			else
 			{
-				ioc->getInputComRouteData().setCast((*itComRoute)->getCast());
+				aConnector.setInputProtocolCast( itComRoute.getCast() );
 			}
 		}
 
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
-			if( (*itComRoute)->hasProtocol() )
+			if( itComRoute.hasProtocol() )
 			{
 				// TODO for other COM_PROTOCOL
 			}
 		}
 	}
 
-	if( ioc->getProtocol() == ComProtocol::PROTOCOL_MULTIRDV_KIND )
+	if( aConnector.getProtocol() == ComProtocol::PROTOCOL_MULTIRDV_KIND )
 	{
-		if( (not ioc->getOutputComRouteData().hasCast()) &&
-				ioc->getOutputComRouteData().getMachinePorts().singleton() )
+		if( (not aConnector.hasOutputProtocolCast())
+			&& aConnector.singletonOutputMachinePort() )
 		{
-			ioc->getOutputComRouteData().setCast(
-					ComProtocol::PROTOCOL_UNICAST_KIND );
+			aConnector.setOutputProtocolCast( ComProtocol::PROTOCOL_UNICAST_KIND );
 		}
 
-		if( (not ioc->getInputComRouteData().hasCast()) &&
-				ioc->getInputComRouteData().getMachinePorts().singleton() )
+		if( (not aConnector.hasInputProtocolCast())
+			&& aConnector.singletonInputMachinePort() )
 		{
-			ioc->getInputComRouteData().setCast(
-					ComProtocol::PROTOCOL_UNICAST_KIND );
+			aConnector.setInputProtocolCast( ComProtocol::PROTOCOL_UNICAST_KIND );
 		}
 	}
 
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT SYNCHRONOUS"
+			<< "END COMPILE INTERACTION CONNECTOR SYNCHRONOUS"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -1336,40 +1272,33 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT FLOW
+ * COMPILE INTERACTION CONNECTOR FLOW
  *******************************************************************************
  */
 void CompilerOfInteraction::compileConnectorFlow(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT FLOW"
+			<< "COMPILE INTERACTION CONNECTOR FLOW"
 			<< std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
 
 	List< RoutingData > listOfRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
-			if( (*itComRoute)->hasProtocol() )
+			if( itComRoute.hasProtocol() )
 			{
 				// TODO for other COM_PROTOCOL
 			}
@@ -1378,9 +1307,9 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT FLOW"
+			<< "END COMPILE INTERACTION CONNECTOR FLOW"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -1388,39 +1317,32 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT TRANSFERT
+ * COMPILE INTERACTION CONNECTOR TRANSFERT
  *******************************************************************************
  */
 void CompilerOfInteraction::compileConnectorTransfert(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT TRANSFERT"
+			<< "COMPILE INTERACTION CONNECTOR TRANSFERT"
 			<< std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
 
 	List< RoutingData > listOfRoutingData;
 //	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 //			while( listOfRoutingData.nonempty() )
 //			{
@@ -1428,19 +1350,19 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 //
 //				if( theRoutingData.getComPoint()->is< OutputComPoint >() )
 //				{
-//					theExecutable->getRouter4Instance(
+//					theExecutable.getRouter4Instance(
 //						theInstanceStatic->getOffset())->setOutputRouting(
 //								theComPointInstance, theRoutingData);
-//					ioc->getOutputComRouteData().appendMachineComPoint(
+//					aConnector.getOutputComRouteData().appendMachineComPoint(
 //							theRoutingData.getMachinePort() );
 //				}
 //
 //				if( theRoutingData.getComPoint()->is< InputComPoint >() )
 //				{
-//					theExecutable->getRouter4Instance(
+//					theExecutable.getRouter4Instance(
 //						theInstanceStatic->getOffset())->setInputRouting(
 //								theComPointInstance, theRoutingData);
-//					ioc->getInputComRouteData().appendMachineComPoint(
+//					aConnector.getInputComRouteData().appendMachineComPoint(
 //							theRoutingData.getMachinePort() );
 //				}
 //			}
@@ -1449,69 +1371,63 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT TRANSFERT"
+			<< "END COMPILE INTERACTION CONNECTOR TRANSFERT"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT ENVIRONMENT
+ * COMPILE INTERACTION CONNECTOR ENVIRONMENT
  *******************************************************************************
  */
 
 void CompilerOfInteraction::compileConnectorEnvironment(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT ENVIRONMENT"
+			<< "COMPILE INTERACTION CONNECTOR ENVIRONMENT"
 			<< std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
 
 	List< RoutingData > listOfRoutingData;
 	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 			while( listOfRoutingData.nonempty() )
 			{
 				listOfRoutingData.pop_first_to( theRoutingData );
 
 				// ERROR REPORTING
-				if( theRoutingData.getPort()->getModifier().isnotDirectionKind(
-						(*itComRoute)->getModifier().getDirectionKind() )
-					&& (not theRoutingData.getPort()->
+				if( theRoutingData.getPort().getModifier().isnotDirectionKind(
+						itComRoute.getModifier().getDirectionKind() )
+					&& (not theRoutingData.getPort().
 							getModifier().isDirectionInout()) )
 				{
 					incrErrorCount();
-					AVM_OS_WARN << (*itComRoute)->errorLocation(aConnector)
+					AVM_OS_WARN << itComRoute.errorLocation(astConnector)
 						<< "Unexpected a "
-						<< theRoutingData.getPort()->getModifier().strDirection()
+						<< theRoutingData.getPort().getModifier().strDirection()
 						<< " PORT << "
-						<< theRoutingData.getPort()->getFullyQualifiedNameID()
+						<< theRoutingData.getPort().getFullyQualifiedNameID()
 						<< " >> in an "
-						<< (*itComRoute)->getModifier().strDirection()
-						<< " BUS << " << aConnector->getFullyQualifiedNameID()
+						<< itComRoute.getModifier().strDirection()
+						<< " CONNECTOR << "
+						<< astConnector.getFullyQualifiedNameID()
 						<< " >>" << std::endl;
 				}
 			}
@@ -1519,9 +1435,9 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	}
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT ENVIRONMENT"
+			<< "END COMPILE INTERACTION CONNECTOR ENVIRONMENT"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -1535,97 +1451,87 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT BROADCAST
+ * COMPILE INTERACTION CONNECTOR BROADCAST
  *******************************************************************************
  */
 void CompilerOfInteraction::compileRouteBroadcast(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT BROADCAST"
+			<< "COMPILE INTERACTION CONNECTOR BROADCAST"
 			<< std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
-	Buffer * buffer = NULL;
-	InstanceOfBuffer * theBufferInstance = NULL;
+	const Buffer * buffer = nullptr;
+	InstanceOfBuffer * theBufferInstance = nullptr;
 
-	if( aConnector->hasBuffer() )
+	if( astConnector.hasBuffer() )
 	{
-		buffer = aConnector->getBuffer();
+		buffer = &( astConnector.getBuffer() );
 
 		if( buffer->isAnonymID() )
 		{
-			theBufferInstance = new InstanceOfBuffer(
-					theExecutable, buffer, theExecutable->getBuffer().size());
+			theBufferInstance = new InstanceOfBuffer(theExecutable,
+					(* buffer), theExecutable.getBuffer().size());
 
 			getSymbolTable().addBufferInstance(
-					theExecutable->saveBuffer(theBufferInstance) );
+					theExecutable.saveBuffer(theBufferInstance) );
 		}
 		else
 		{
 			theBufferInstance = getSymbolTable().searchBufferInstance(
-					theExecutable, buffer).rawBuffer();
+					(& theExecutable), (*buffer)).rawBuffer();
 		}
 	}
-	else if( aConnector->hasBufferUfid() )
+	else if( astConnector.hasBufferUfid() )
 	{
-		theBufferInstance =
-			getSymbolTable().searchBufferInstanceByQualifiedNameID(
-				theExecutable, aConnector->strBufferUfid()).rawBuffer();
+		theBufferInstance = getSymbolTable().searchBufferInstance(
+				theExecutable, astConnector.strBufferUfid()).rawBuffer();
 
-		if( theBufferInstance == NULL )
+		if( theBufferInstance == nullptr )
 		{
 			incrErrorCount();
-			aConnector->errorLocation(AVM_OS_WARN)
-					<< "Unfound in the COM POINT the buffer instance < "
-					<< aConnector->strBufferUfid() << " > !" << std::endl;
+			astConnector.errorLocation(AVM_OS_WARN)
+					<< "Unfound in the CONNECTOR the buffer instance < "
+					<< astConnector.strBufferUfid() << " > !" << std::endl;
 		}
 	}
-	else if( buffer == NULL )
+	else if( buffer == nullptr )
 	{
-		theBufferInstance = new InstanceOfBuffer(
-				theExecutable,	buffer, theExecutable->getBuffer().size(),
-				TYPE_FIFO_SPECIFIER, -1 );
+		theBufferInstance = new InstanceOfBuffer( theExecutable, (* buffer),
+				theExecutable.getBuffer().size(), TYPE_FIFO_SPECIFIER, -1 );
 
 		getSymbolTable().addBufferInstance(
-				theExecutable->saveBuffer(theBufferInstance) );
+				theExecutable.saveBuffer(theBufferInstance) );
 	}
-
-
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
 
 	List< RoutingData > listOfRoutingData;
 	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 			while( listOfRoutingData.nonempty() )
 			{
 				listOfRoutingData.pop_first_to( theRoutingData );
 
 				// for buffer port
-				if( theBufferInstance != NULL )
+				if( theBufferInstance != nullptr )
 				{
 					theRoutingData.appendBuffer(theBufferInstance);
 				}
 
-				if( (*itComRoute)->hasProtocol() )
+				if( itComRoute.hasProtocol() )
 				{
 					// TODO for other COM_PROTOCOL
 				}
@@ -1634,9 +1540,9 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	}
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT BROADCAST"
+			<< "END COMPILE INTERACTION CONNECTOR BROADCAST"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -1644,149 +1550,140 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT BUFFER
+ * COMPILE INTERACTION CONNECTOR BUFFER
  *******************************************************************************
  */
 void CompilerOfInteraction::compileRouteBuffer(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT BUFFER" << std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+			<< "COMPILE INTERACTION CONNECTOR BUFFER" << std::endl;
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
-	Buffer * buffer = NULL;
-	InstanceOfBuffer * theBufferInstance = NULL;
-	InstanceOfBuffer * localBufferInstance = NULL;
+	const Buffer * buffer = nullptr;
+	InstanceOfBuffer * theBufferInstance = nullptr;
+	InstanceOfBuffer * localBufferInstance = nullptr;
 
-	if( aConnector->hasBuffer() )
+	if( astConnector.hasBuffer() )
 	{
-		buffer = aConnector->getBuffer();
+		buffer = &( astConnector.getBuffer() );
 		if( buffer->isAnonymID() )
 		{
-			theBufferInstance = new InstanceOfBuffer(
-					theExecutable, buffer, theExecutable->getBuffer().size());
+			theBufferInstance = new InstanceOfBuffer(theExecutable,
+					(* buffer), theExecutable.getBuffer().size());
 
 			getSymbolTable().addBufferInstance(
-					theExecutable->saveBuffer(theBufferInstance) );
+					theExecutable.saveBuffer(theBufferInstance) );
 		}
 		else
 		{
 			theBufferInstance = getSymbolTable().searchBufferInstance(
-					theExecutable, buffer).rawBuffer();
+					(& theExecutable), (* buffer)).rawBuffer();
 		}
 	}
-	else if( aConnector->hasBufferUfid() )
+	else if( astConnector.hasBufferUfid() )
 	{
-		theBufferInstance =
-			getSymbolTable().searchBufferInstanceByQualifiedNameID(
-				theExecutable, aConnector->strBufferUfid()).rawBuffer();
+		theBufferInstance = getSymbolTable().searchBufferInstance(
+				theExecutable, astConnector.strBufferUfid()).rawBuffer();
 
-		if( theBufferInstance == NULL )
+		if( theBufferInstance == nullptr )
 		{
 			incrErrorCount();
-			aConnector->errorLocation(AVM_OS_WARN)
-					<< "Unfound in the COM POINT the buffer instance < "
-					<< aConnector->strBufferUfid() << " > !" << std::endl;
+			astConnector.errorLocation(AVM_OS_WARN)
+					<< "Unfound in the ROUTE the buffer instance < "
+					<< astConnector.strBufferUfid() << " > !" << std::endl;
 		}
 	}
-	else if( buffer == NULL )
+	else if( buffer == nullptr )
 	{
-		theBufferInstance = new InstanceOfBuffer(
-				theExecutable,	buffer, theExecutable->getBuffer().size(),
-				TYPE_FIFO_SPECIFIER, -1 );
+		theBufferInstance = new InstanceOfBuffer( theExecutable, (* buffer),
+				theExecutable.getBuffer().size(), TYPE_FIFO_SPECIFIER, -1 );
 
 		getSymbolTable().addBufferInstance(
-				theExecutable->saveBuffer(theBufferInstance) );
+				theExecutable.saveBuffer(theBufferInstance) );
 	}
 
 	// lists for update input port connector list
 	List< RoutingData > listOfOutRoutingData;
 	List< RoutingData > listOfInRoutingData;
 
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
-
 	List< RoutingData > listOfRoutingData;
 	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 			while( listOfRoutingData.nonempty() )
 			{
 				listOfRoutingData.pop_first_to( theRoutingData );
 
-				if( theBufferInstance != NULL )
+				if( theBufferInstance != nullptr )
 				{
 					// for buffer port
 					theRoutingData.appendBuffer(theBufferInstance);
 				}
 
 				// for buffer port
-				if( not (*itComRoute)->hasProtocol() )
+				if( not itComRoute.hasProtocol() )
 				{
 					continue;
 				}
 
-				switch( (*itComRoute)->getProtocol() )
+				switch( itComRoute.getProtocol() )
 				{
 					case ComProtocol::PROTOCOL_BUFFER_KIND:
 					{
 						localBufferInstance = theBufferInstance;
 
-						if( (*itComRoute)->hasBuffer() )
+						if( itComRoute.hasBuffer() )
 						{
-							buffer = (*itComRoute)->getBuffer();
+							const Buffer & buffer = itComRoute.getBuffer();
 
-							if( buffer->isAnonymID() )
+							if( buffer.isAnonymID() )
 							{
 								localBufferInstance = new InstanceOfBuffer(
 										theExecutable, buffer,
-										theExecutable->getBuffer().size());
+										theExecutable.getBuffer().size());
 
 								getSymbolTable().addBufferInstance(
-									theExecutable->saveBuffer(
+									theExecutable.saveBuffer(
 											localBufferInstance) );
 							}
 							else
 							{
 								localBufferInstance = getSymbolTable().
-									searchBufferInstance(theExecutable, buffer).
-										rawBuffer();
+									searchBufferInstance((& theExecutable),
+											buffer).rawBuffer();
 							}
 						}
-						else if( (*itComRoute)->hasBufferUfid() )
+						else if( itComRoute.hasBufferUfid() )
 						{
 							localBufferInstance = getSymbolTable().
 								searchBufferInstance(theExecutable,
-									(*itComRoute)->strBufferUfid()).rawBuffer();
+									itComRoute.strBufferUfid()).rawBuffer();
 
-							if( localBufferInstance == NULL )
+							if( localBufferInstance == nullptr )
 							{
 								incrErrorCount();
-								aConnector->errorLocation(AVM_OS_WARN)
+								astConnector.errorLocation(AVM_OS_WARN)
 										<< "Unfound in the COM POINT "
 												"the buffer instance < "
-										<< (*itComRoute)->strBufferUfid()
+										<< itComRoute.strBufferUfid()
 										<< " > !" << std::endl;
 							}
 						}
 
-						if( localBufferInstance != NULL )
+						if( localBufferInstance != nullptr )
 						{
 							theRoutingData.appendBuffer(localBufferInstance);
 						}
@@ -1806,7 +1703,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 				}
 
 				// list for update all buffer and port connector list
-				if( (*itComRoute)->getModifier().isDirectionOutput() )
+				if( itComRoute.getModifier().isDirectionOutput() )
 				{
 					listOfOutRoutingData.append(theRoutingData);
 				}
@@ -1824,9 +1721,9 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT BUFFER"
+			<< "END COMPILE INTERACTION CONNECTOR BUFFER"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -1835,46 +1732,47 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT ROUTING CAST
+ * COMPILE INTERACTION CONNECTOR ROUTING CAST
  *******************************************************************************
  */
 void CompilerOfInteraction::compileRouteRoutingCast(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT ROUTING CAST"
+			<< "COMPILE INTERACTION CONNECTOR ROUTING CAST"
 			<< std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
-	Buffer * buffer = NULL;
-	InstanceOfBuffer * theBufferInstance = NULL;
+	InstanceOfBuffer * theBufferInstance = nullptr;
 
 	// lists for update input port connector list
 	List< RoutingData > listOfOutRoutingData;
 	List< RoutingData > listOfInRoutingData;
 
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
-
 	List< RoutingData > listOfRoutingData;
 	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		if( itComRoute.getModifier().isDirectionOutput() )
+		{
+			aConnector.setOutputProtocolCast( itComRoute.getCast() );
+		}
+		else
+		{
+			aConnector.setInputProtocolCast( itComRoute.getCast() );
+		}
+
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 			while( listOfRoutingData.nonempty() )
 			{
@@ -1883,54 +1781,48 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 				// list for update input buffer and port connector list
 				listOfOutRoutingData.append(theRoutingData);
 
-				// for buffer port
-				if( not (*itComRoute)->hasProtocol() )
-				{
-					continue;
-				}
-
-				switch( (*itComRoute)->getProtocol() )
+				switch( itComRoute.getProtocol() )
 				{
 					case ComProtocol::PROTOCOL_BUFFER_KIND:
 					{
-						if( (*itComRoute)->hasBuffer() )
+						if( itComRoute.hasBuffer() )
 						{
-							buffer = (*itComRoute)->getBuffer();
+							const Buffer & buffer = itComRoute.getBuffer();
 
-							if( buffer->isAnonymID() )
+							if( buffer.isAnonymID() )
 							{
 								theBufferInstance = new InstanceOfBuffer(
 										theExecutable, buffer,
-										theExecutable->getBuffer().size());
+										theExecutable.getBuffer().size());
 
 								getSymbolTable().addBufferInstance(
-									theExecutable->saveBuffer(theBufferInstance));
+									theExecutable.saveBuffer(theBufferInstance));
 							}
 							else
 							{
 								theBufferInstance = getSymbolTable().
-									searchBufferInstance(theExecutable, buffer).
-										rawBuffer();
+									searchBufferInstance((& theExecutable),
+											buffer).rawBuffer();
 							}
 						}
-						else if( (*itComRoute)->hasBufferUfid() )
+						else if( itComRoute.hasBufferUfid() )
 						{
 							theBufferInstance = getSymbolTable().
 								searchBufferInstance(theExecutable,
-									(*itComRoute)->strBufferUfid()).rawBuffer();
+									itComRoute.strBufferUfid()).rawBuffer();
 
-							if( theBufferInstance == NULL )
+							if( theBufferInstance == nullptr )
 							{
 								incrErrorCount();
-								aConnector->errorLocation(AVM_OS_WARN)
+								astConnector.errorLocation(AVM_OS_WARN)
 										<< "Unfound in the COM POINT "
 												"the buffer instance < "
-										<< (*itComRoute)->strBufferUfid()
+										<< itComRoute.strBufferUfid()
 										<< " > !" << std::endl;
 							}
 						}
 
-						if( theBufferInstance != NULL )
+						if( theBufferInstance != nullptr )
 						{
 							theRoutingData.appendBuffer(theBufferInstance);
 						}
@@ -1943,26 +1835,33 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 					}
 
 					case ComProtocol::PROTOCOL_MULTICAST_KIND:
-					{
-						break;
-					}
 					case ComProtocol::PROTOCOL_UNICAST_KIND:
-					{
-						break;
-					}
 					case ComProtocol::PROTOCOL_ANYCAST_KIND:
 					{
 						break;
 					}
+
+					case ComProtocol::PROTOCOL_UNDEFINED_KIND:
+					{
+						break;
+					}
+
 					default:
 					{
-						// TODO for other COM_PROTOCOL
+						incrErrorCount();
+						astConnector.errorLocation(AVM_OS_WARN)
+								<< "Unexpected protocol < "
+								<< ComProtocol::strProtocol(
+										itComRoute.getProtocol() )
+								<< " > in CAST routing in the "
+									"COM ROUTE the buffer instance < "
+								<< itComRoute.str() << " > !" << std::endl;
 						break;
 					}
 				}
 
 				// list for update all buffer and port connector list
-				if( (*itComRoute)->getModifier().isDirectionOutput() )
+				if( itComRoute.getModifier().isDirectionOutput() )
 				{
 					listOfOutRoutingData.append(theRoutingData);
 				}
@@ -1978,10 +1877,10 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	// buffer completion
 	bufferCompletion(listOfOutRoutingData, listOfInRoutingData);
 
-
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT ROUTING CAST"
+			<< "END COMPILE INTERACTION CONNECTOR ROUTING CAST"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -1989,58 +1888,49 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT SYNCHRONOUS
+ * COMPILE INTERACTION CONNECTOR SYNCHRONOUS
  *******************************************************************************
  */
 void CompilerOfInteraction::compileRouteSynchronous(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT SYNCHRONOUS" << std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+			<< "COMPILE INTERACTION CONNECTOR SYNCHRONOUS" << std::endl;
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
 
 	List< RoutingData > listOfRoutingData;
 //	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		if( (*itComRoute)->hasCast() )
+		if( itComRoute.hasCast() )
 		{
-			if( (*itComRoute)->getModifier().isDirectionOutput() )
+			if( itComRoute.getModifier().isDirectionOutput() )
 			{
-				ioc->getOutputComRouteData().setCast(
-						(*itComRoute)->getCast() );
+				aConnector.setOutputProtocolCast( itComRoute.getCast() );
 			}
 			else
 			{
-				ioc->getInputComRouteData().setCast(
-						(*itComRoute)->getCast() );
+				aConnector.setInputProtocolCast( itComRoute.getCast() );
 			}
 		}
 
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 //			while( listOfRoutingData.nonempty() )
 //			{
 //				listOfRoutingData.pop_first_to( theRoutingData );
 //
-//				if( (*itComRoute)->hasProtocol() )
+//				if( itComRoute.hasProtocol() )
 //				{
 //					// TODO for other COM_PROTOCOL
 //				}
@@ -2048,28 +1938,26 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 		}
 	}
 
-	if( ioc->getProtocol() == ComProtocol::PROTOCOL_MULTIRDV_KIND )
+	if( aConnector.getProtocol() == ComProtocol::PROTOCOL_MULTIRDV_KIND )
 	{
-		if( (not ioc->getOutputComRouteData().hasCast()) &&
-				ioc->getOutputComRouteData().getMachinePorts().singleton() )
+		if( (not aConnector.hasOutputProtocolCast())
+			&& aConnector.singletonOutputMachinePort() )
 		{
-			ioc->getOutputComRouteData().setCast(
-					ComProtocol::PROTOCOL_UNICAST_KIND );
+			aConnector.setOutputProtocolCast( ComProtocol::PROTOCOL_UNICAST_KIND );
 		}
 
-		if( (not ioc->getInputComRouteData().hasCast()) &&
-				ioc->getInputComRouteData().getMachinePorts().singleton() )
+		if( (not aConnector.hasInputProtocolCast())
+			&& aConnector.singletonInputMachinePort() )
 		{
-			ioc->getInputComRouteData().setCast(
-					ComProtocol::PROTOCOL_UNICAST_KIND );
+			aConnector.setInputProtocolCast( ComProtocol::PROTOCOL_UNICAST_KIND );
 		}
 	}
 
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT SYNCHRONOUS"
+			<< "END COMPILE INTERACTION CONNECTOR SYNCHRONOUS"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -2078,38 +1966,31 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT TRANSFERT
+ * COMPILE INTERACTION CONNECTOR TRANSFERT
  *******************************************************************************
  */
 void CompilerOfInteraction::compileRouteTransfert(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT TRANSFERT" << std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+			<< "COMPILE INTERACTION CONNECTOR TRANSFERT" << std::endl;
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
 
 	List< RoutingData > listOfRoutingData;
 //	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 //
 //			while( listOfRoutingData.nonempty() )
 //			{
@@ -2117,19 +1998,19 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 //
 //				if( theRoutingData.getComPoint()->is< OutputComPoint >() )
 //				{
-//					theExecutable->getRouter4Instance(
+//					theExecutable.getRouter4Instance(
 //						theInstanceStatic->getOffset())->setOutputRouting(
 //								theComPointInstance, theRoutingData);
-//					ioc->getOutputComRouteData().appendMachineComPoint(
+//					aConnector.getOutputComRouteData().appendMachineComPoint(
 //							theRoutingData.getMachinePort() );
 //				}
 //
 //				if( theRoutingData.getComPoint()->is< InputComPoint >() )
 //				{
-//					theExecutable->getRouter4Instance(
+//					theExecutable.getRouter4Instance(
 //						theInstanceStatic->getOffset())->setInputRouting(
 //								theComPointInstance, theRoutingData);
-//					ioc->getInputComRouteData().appendMachineComPoint(
+//					aConnector.getInputComRouteData().appendMachineComPoint(
 //							theRoutingData.getMachinePort() );
 //				}
 //			}
@@ -2138,68 +2019,62 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT TRANSFERT"
+			<< "END COMPILE INTERACTION CONNECTOR TRANSFERT"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
 
 /*
  *******************************************************************************
- * COMPILE INTERACTION CONNECT ENVIRONMENT
+ * COMPILE INTERACTION CONNECTOR ENVIRONMENT
  *******************************************************************************
  */
 
 void CompilerOfInteraction::compileRouteEnvironment(
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector)
 {
-	const Connector * aConnector = ioc->getAstConnector();
+	const Connector & astConnector = aConnector.getAstConnector();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "COMPILE INTERACTION CONNECT ENVIRONMENT" << std::endl;
-	aConnector->toStream(AVM_OS_TRACE);
+			<< "COMPILE INTERACTION CONNECTOR ENVIRONMENT" << std::endl;
+	astConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-
-	BFList::const_raw_iterator< ComPoint > itComPoint;
-	BFList::const_raw_iterator< ComPoint > endItComPoint;
 
 	List< RoutingData > listOfRoutingData;
 	RoutingData theRoutingData;
 
 	// Routing for all port
-	Connector::route_iterator itComRoute = aConnector->begin();
-	Connector::route_iterator endItComRoute = aConnector->end();
-	for( ; itComRoute != endItComRoute ; ++itComRoute )
+	for( const auto & itComRoute : astConnector.getComRoutes() )
 	{
-		itComPoint = (*itComRoute)->getComPoints().begin();
-		endItComPoint = (*itComRoute)->getComPoints().end();
-		for( ; itComPoint != endItComPoint ; ++itComPoint )
+		for( const auto & itComPoint : itComRoute.getComPoints() )
 		{
 			createRoutingData(listOfRoutingData, theExecutable,
-					ioc, (*itComRoute), (itComPoint));
+					aConnector, itComRoute, (itComPoint));
 
 			while( listOfRoutingData.nonempty() )
 			{
 				listOfRoutingData.pop_first_to( theRoutingData );
 
 				// ERROR REPORTING
-				if( theRoutingData.getPort()->getModifier().isnotDirectionKind(
-						(*itComRoute)->getModifier().getDirectionKind() )
-					&& (not theRoutingData.getPort()->
+				if( theRoutingData.getPort().getModifier().isnotDirectionKind(
+						itComRoute.getModifier().getDirectionKind() )
+					&& (not theRoutingData.getPort().
 							getModifier().isDirectionInout()) )
 				{
 					incrErrorCount();
-					AVM_OS_WARN << (*itComRoute)->errorLocation(aConnector)
+					AVM_OS_WARN << itComRoute.errorLocation(astConnector)
 						<< "Unexpected a "
-						<< theRoutingData.getPort()->getModifier().strDirection()
+						<< theRoutingData.getPort().getModifier().strDirection()
 						<< " PORT << "
-						<< theRoutingData.getPort()->getFullyQualifiedNameID()
+						<< theRoutingData.getPort().getFullyQualifiedNameID()
 						<< " >> in an "
-						<< (*itComRoute)->getModifier().strDirection()
-						<< " BUS << " << aConnector->getFullyQualifiedNameID()
+						<< itComRoute.getModifier().strDirection()
+						<< " CONNECTOR << "
+						<< astConnector.getFullyQualifiedNameID()
 						<< " >>" << std::endl;
 				}
 			}
@@ -2207,9 +2082,9 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 	}
 
 AVM_IF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
-	ioc->toStream(AVM_OS_TRACE);
+	aConnector.toStream(AVM_OS_TRACE);
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "END COMPILE INTERACTION CONNECT ENVIRONMENT"
+			<< "END COMPILE INTERACTION CONNECTOR ENVIRONMENT"
 			<< std::endl << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
 }
@@ -2223,44 +2098,44 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , COMMUNICATION )
  *******************************************************************************
  */
 RoutingData CompilerOfInteraction::addRoutingData(
-		ExecutableForm * theExecutable, bool isInstanceStaticFlag,
-		InstanceOfConnect * ioc, InstanceOfMachine * theInstanceStatic,
-		InstanceOfPort * thePortInstance,
-		Modifier::DIRECTION_KIND aDirection)
+		ExecutableForm & theExecutable, bool isInstanceStaticFlag,
+		InstanceOfConnector & aConnector,
+		const InstanceOfMachine & theInstanceStatic,
+		const InstanceOfPort & thePortInstance, const ComRoute & aComRoute)
 {
-	RoutingData theRoutingData(ioc, theInstanceStatic, thePortInstance);
+	RoutingData theRoutingData(aConnector, theInstanceStatic, thePortInstance);
 
-	if( thePortInstance->isPort() )
+	if( thePortInstance.isPort() )
 	{
 		Router & theRouter = ( isInstanceStaticFlag )
-			? theExecutable->getRouter4Instance(theInstanceStatic->getOffset())
-			: theExecutable->getRouter4Model(theInstanceStatic->getOffset());
+			? theExecutable.getRouter4Instance(theInstanceStatic.getOffset())
+			: theExecutable.getRouter4Model(theInstanceStatic.getOffset());
 
-		return( addRoutingData(theRouter, theRoutingData, aDirection) );
+		return( addRoutingData(aConnector,
+				theRouter, theRoutingData, aComRoute) );
 	}
-	else// if( thePortInstance->isSignal() )
+	else// if( thePortInstance.isSignal() )
 	{
-		theRoutingData.setMID( thePortInstance->getRouteOffset() + 1 );
+		theRoutingData.setMID( thePortInstance.getRouteOffset() + 1 );
 
-		return( addRoutingData(theExecutable->getRouter4This(),
-				theRoutingData, aDirection) );
+		return( addRoutingData(aConnector,
+				theExecutable.getRouter4This(), theRoutingData, aComRoute ) );
 	}
 }
 
 
 RoutingData CompilerOfInteraction::addRoutingData(
-		Router & theRouter, RoutingData & theRoutingData,
-		Modifier::DIRECTION_KIND aDirection)
+		InstanceOfConnector & aConnector, Router & theRouter,
+		RoutingData & theRoutingData, const ComRoute & aComRoute)
 {
-	switch( aDirection )
+	switch( aComRoute.getModifier().getDirectionKind() )
 	{
 		case Modifier::DIRECTION_INPUT_KIND:
 		{
 			theRouter.appendInputRouting(
 					theRoutingData.getPort(), theRoutingData);
 
-			theRoutingData.getConnect()->getInputComRouteData().
-					appendMachinePort( theRoutingData.getMachinePort() );
+			aConnector.appendInputRoutingData( theRoutingData );
 
 			break;
 		}
@@ -2270,8 +2145,7 @@ RoutingData CompilerOfInteraction::addRoutingData(
 			theRouter.appendOutputRouting(
 					theRoutingData.getPort(), theRoutingData);
 
-			theRoutingData.getConnect()->getOutputComRouteData().
-					appendMachinePort( theRoutingData.getMachinePort() );
+			aConnector.appendOutputRoutingData( theRoutingData );
 
 			break;
 		}
@@ -2281,23 +2155,21 @@ RoutingData CompilerOfInteraction::addRoutingData(
 			theRouter.appendInputRouting(
 					theRoutingData.getPort(), theRoutingData);
 
-			theRoutingData.getConnect()->getInputComRouteData().
-					appendMachinePort( theRoutingData.getMachinePort() );
+			aConnector.appendInputRoutingData( theRoutingData );
 
 
 			theRouter.appendOutputRouting(
 					theRoutingData.getPort(), theRoutingData);
 
-			theRoutingData.getConnect()->getOutputComRouteData().
-					appendMachinePort( theRoutingData.getMachinePort() );
+			aConnector.appendOutputRoutingData( theRoutingData );
 
 			break;
 		}
 
 		default:
 		{
-			theRoutingData.getConnect()->
-					getAstElement()->errorLocation(AVM_OS_WARN)
+			theRoutingData.getConnector().
+					safeAstElement().errorLocation(AVM_OS_WARN)
 					<< "Routing Data for < "
 					<< str_header( theRoutingData.getPort() ) << " > !"
 					<< std::endl;
@@ -2317,22 +2189,22 @@ RoutingData CompilerOfInteraction::addRoutingData(
 
 /*
  *******************************************************************************
- * SEARCH PORT CONNECT INSTANCE
+ * SEARCH PORT CONNECTOR INSTANCE
  *******************************************************************************
  */
 
 ExecutableForm * CompilerOfInteraction::compileComPointMachine(
-		ExecutableForm * theExecutable, ComPoint * aComPoint,
+		ExecutableForm & theExecutable, const ComPoint & aComPoint,
 		bool & isInstanceStaticFlag, InstanceOfMachine * & aMachine)
 {
-	if( aComPoint->hasMachine() )
+	if( aComPoint.hasMachine() )
 	{
-		Machine * comMachine = aComPoint->getMachine();
+		const Machine & comMachine = aComPoint.getMachine();
 
-		ExecutableForm * anExecutable4Port = theExecutable;
-		while( anExecutable4Port != NULL )
+		ExecutableForm * anExecutable4Port = (& theExecutable);
+		while( anExecutable4Port != nullptr )
 		{
-			if( anExecutable4Port->isAstElement( comMachine )
+			if( anExecutable4Port->isAstElement(comMachine)
 				&& anExecutable4Port->hasInstanceStaticThis() )
 			{
 				isInstanceStaticFlag = true;
@@ -2344,42 +2216,42 @@ ExecutableForm * CompilerOfInteraction::compileComPointMachine(
 			anExecutable4Port = anExecutable4Port->getExecutableContainer();
 		}
 
-		if( comMachine->getSpecifier().hasDesignInstanceStatic() )
+		if( comMachine.getSpecifier().hasDesignInstanceStatic() )
 		{
 			isInstanceStaticFlag = true;
 
-			aMachine = theExecutable->
-					getByAstInstanceStatic( comMachine ).rawMachine();
+			aMachine = theExecutable.
+					getByAstInstanceStatic(comMachine).rawMachine();
 		}
 		else
 		{
 			isInstanceStaticFlag = false;
 
-			aMachine = theExecutable->getInstanceModel().
-					getByAstElement( comMachine ).rawMachine();
+			aMachine = theExecutable.getInstanceModel().
+					getByAstElement(comMachine).rawMachine();
 
-			if( aMachine == NULL )
+			if( aMachine == nullptr )
 			{
 				ExecutableForm * aMachineExec = getSymbolTable().
 					searchExecutable(comMachine).to_ptr< ExecutableForm >();
 
-				if( aMachineExec != NULL )
+				if( aMachineExec != nullptr )
 				{
-					if( aMachineExec->isAncestorOf(theExecutable) )
+					if( aMachineExec->isAncestorOf(& theExecutable) )
 					{
 						isInstanceStaticFlag = true;
-						aMachine = theExecutable->
+						aMachine = theExecutable.
 								getInstanceStaticThis().rawMachine();
 					}
 					else
 					{
-						aMachine = new InstanceOfMachine(theExecutable,
-							aMachineExec->getAstMachine(), aMachineExec,
-							NULL, theExecutable->getInstanceModel().size());
+						aMachine = new InstanceOfMachine((& theExecutable),
+							aMachineExec->getAstMachine(), (* aMachineExec),
+							nullptr, theExecutable.getInstanceModel().size());
 
-						theExecutable->saveInstanceModel(aMachine);
+						theExecutable.saveInstanceModel(aMachine);
 
-						addMachineModelRouter(theExecutable, aMachine);
+						addMachineModelRouter(theExecutable, (* aMachine));
 					}
 
 					return( aMachineExec );
@@ -2388,17 +2260,17 @@ ExecutableForm * CompilerOfInteraction::compileComPointMachine(
 				else
 				{
 					incrErrorCount();
-					AVM_OS_WARN << aComPoint->errorLocation( aComPoint )
+					AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
 							<< "Unfound in the COM POINT < "
 							<< str_header( comMachine ) << " > !"
 							<< std::endl;
 
-					return( NULL );
+					return( nullptr );
 				}
 			}
 		}
 
-		if( aMachine != NULL )
+		if( aMachine != nullptr )
 		{
 			if( aMachine->hasExecutable() )
 			{
@@ -2408,43 +2280,43 @@ ExecutableForm * CompilerOfInteraction::compileComPointMachine(
 			{
 				incrErrorCount();
 				AVM_OS_WARN
-					<< aComPoint->errorLocation( aComPoint )
+					<< aComPoint.errorLocation( aComPoint )
 					<< "Unexpected in the COMP POINT < "
 					<< str_header( comMachine )
 					<< " > without a model with an interface !"
 					<< std::endl;
 
-				return( NULL );
+				return( nullptr );
 			}
 		}
 		else
 		{
 			incrErrorCount();
-			AVM_OS_WARN << aComPoint->errorLocation( aComPoint )
+			AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
 					<< "Unfound in the COM POINT < "
 					<< str_header( comMachine ) << " > !"
 					<< std::endl;
 
-			return( NULL );
+			return( nullptr );
 		}
 	}
 
-	else if( aComPoint->hasMachinePortQualifiedNameID() )
+	else if( aComPoint.hasMachinePortQualifiedNameID() )
 	{
-		if( aComPoint->getMachinePortQualifiedNameID().is< Identifier >() )
+		if( aComPoint.getMachinePortQualifiedNameID().is< Identifier >() )
 		{
-			if( theExecutable->hasInstanceStaticThis() )
+			if( theExecutable.hasInstanceStaticThis() )
 			{
 				isInstanceStaticFlag = true;
-				aMachine = theExecutable->getInstanceStaticThis().rawMachine();
+				aMachine = theExecutable.getInstanceStaticThis().rawMachine();
 
-				ExecutableForm * comExec = theExecutable;
-				while( comExec != NULL )
+				ExecutableForm * comExec = (& theExecutable);
+				while( comExec != nullptr )
 				{
-					if( comExec->getPort().getByNameID( aComPoint->
+					if( comExec->getPort().getByNameID( aComPoint.
 							getMachinePortQualifiedNameID().str() ).valid() )
 					{
-						aMachine = theExecutable->
+						aMachine = theExecutable.
 								getInstanceStaticThis().rawMachine();
 						return( comExec );
 					}
@@ -2453,57 +2325,57 @@ ExecutableForm * CompilerOfInteraction::compileComPointMachine(
 			}
 
 			incrErrorCount();
-			AVM_OS_WARN << aComPoint->errorLocation( aComPoint )
+			AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
 					<< "Unfound in the COM POINT the port contained machine < "
-					<< aComPoint->getMachinePortQualifiedNameID() << " > !"
+					<< aComPoint.getMachinePortQualifiedNameID() << " > !"
 					<< std::endl;
 
-			return( NULL );
+			return( nullptr );
 		}
 
 
 		std::string machineFQN;
 
-		if( aComPoint->getMachinePortQualifiedNameID().
+		if( aComPoint.getMachinePortQualifiedNameID().
 				is< QualifiedIdentifier >() )
 		{
-			machineFQN = aComPoint->getMachinePortQualifiedNameID().to_ptr<
-					QualifiedIdentifier >()->getContainerQualifiedNameID();
+			machineFQN = aComPoint.getMachinePortQualifiedNameID().to<
+					QualifiedIdentifier >().getContainerQualifiedNameID();
 		}
-		else if( aComPoint->getMachinePortQualifiedNameID().
+		else if( aComPoint.getMachinePortQualifiedNameID().
 					is< UniFormIdentifier >() )
 		{
-			machineFQN = aComPoint->getMachinePortQualifiedNameID().
-					to_ptr< UniFormIdentifier >()->toStringContainer();
+			machineFQN = aComPoint.getMachinePortQualifiedNameID().
+					to< UniFormIdentifier >().toStringContainer();
 		}
 
 		if( not machineFQN.empty() )
 		{
-			aMachine = theExecutable->getInstanceStatic().
+			aMachine = theExecutable.getInstanceStatic().
 					getByFQNameID( machineFQN ).rawMachine();
 
-			if( aMachine == NULL )
+			if( aMachine == nullptr )
 			{
 				isInstanceStaticFlag = false;
 
-				aMachine = theExecutable->getInstanceModel().
+				aMachine = theExecutable.getInstanceModel().
 						getByFQNameID( machineFQN ).rawMachine();
 
-				if( aMachine == NULL )
+				if( aMachine == nullptr )
 				{
 					ExecutableForm * theMachineModel = getSymbolTable().
 						searchExecutable(machineFQN).to_ptr< ExecutableForm >();
 
-					if( theMachineModel != NULL )
+					if( theMachineModel != nullptr )
 					{
-						aMachine = new InstanceOfMachine(theExecutable,
+						aMachine = new InstanceOfMachine((& theExecutable),
 								theMachineModel->getAstMachine(),
-								theMachineModel, NULL,
-								theExecutable->getInstanceModel().size());
+								(* theMachineModel), nullptr,
+								theExecutable.getInstanceModel().size());
 
-						theExecutable->saveInstanceModel(aMachine);
+						theExecutable.saveInstanceModel(aMachine);
 
-						addMachineModelRouter(theExecutable, aMachine);
+						addMachineModelRouter(theExecutable, (* aMachine));
 
 						return( theMachineModel );
 					}
@@ -2511,17 +2383,17 @@ ExecutableForm * CompilerOfInteraction::compileComPointMachine(
 					else
 					{
 						incrErrorCount();
-						AVM_OS_WARN << aComPoint->errorLocation( aComPoint )
+						AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
 								<< "Unfound in the COM POINT the machine < "
 								<< machineFQN << " > !" << std::endl;
 
-						return( NULL );
+						return( nullptr );
 					}
 				}
 			}
 		}
 
-		if( aMachine != NULL )
+		if( aMachine->isnotNullref() )
 		{
 			if( aMachine->hasExecutable() )
 			{
@@ -2531,92 +2403,104 @@ ExecutableForm * CompilerOfInteraction::compileComPointMachine(
 			{
 				incrErrorCount();
 				AVM_OS_WARN
-					<< aComPoint->errorLocation( aComPoint )
+					<< aComPoint.errorLocation( aComPoint )
 					<< "Unexpected in the COMP POINT < "
-					<< aComPoint->getMachinePortQualifiedNameID().str()
+					<< aComPoint.getMachinePortQualifiedNameID().str()
 					<< " > a machine without a model with an interface !"
 					<< std::endl;
 
-				return( NULL );
+				return( nullptr );
 			}
 		}
 		else
 		{
 			incrErrorCount();
-			AVM_OS_WARN << aComPoint->errorLocation( aComPoint )
+			AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
 					<< "Unfound in the COM POINT < "
-					<< aComPoint->getMachinePortQualifiedNameID().str()
+					<< aComPoint.getMachinePortQualifiedNameID().str()
 					<< " >  a machine !" << std::endl;
 
-			return( NULL );
+			return( nullptr );
 		}
 
 	}
 
-	return( (aMachine != NULL) ? aMachine->getExecutable() : NULL );
+	return( aMachine->isnotNullref() ? aMachine->getExecutable() : nullptr );
 }
 
 
 bool CompilerOfInteraction::compileComPointPort(
-		ExecutableForm * theExecutable4Port,
-		ComPoint * aComPoint, InstanceOfPort * & thePortInstance)
+		ExecutableForm & theExecutableOfConnector,
+		ExecutableForm & theExecutable4Port,
+		const ComPoint & aComPoint, InstanceOfPort * & thePortInstance)
 {
-	if( aComPoint->hasPort() )
+	if( aComPoint.hasPort() )
 	{
-		if( aComPoint->getPort()->isBasic() )
+		if( aComPoint.getPort().isBasic() )
 		{
-			thePortInstance = getSymbolTable().searchPortConnectorInstance(
-					theExecutable4Port, aComPoint->getPort());
+			thePortInstance = getSymbolTable().searchPortConnectorPoint(
+					(& theExecutable4Port), aComPoint.getPort());
 
-			if( thePortInstance == NULL )
+			if( thePortInstance == nullptr )
 			{
 				incrErrorCount();
 				AVM_OS_WARN
-					<< aComPoint->errorLocation( aComPoint )
-					<< "Unfound in the COM POINT the port < "
-					<< aComPoint->getPort()->getFullyQualifiedNameID()
+					<< aComPoint.errorLocation( aComPoint )
+					<< "Unfound in the connector the port < "
+					<< aComPoint.getPort().getFullyQualifiedNameID()
 					<< " > in the model "
-					<< str_header( aComPoint->getMachine() )
+					<< str_header( aComPoint.getMachine() )
 					<< std::endl;
 			}
+			else if( (not thePortInstance->getModifier().isVisibilityPublic())
+					&& theExecutableOfConnector.isNTEQ(theExecutable4Port) )
+			{
+				incrErrorCount();
+				AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
+							<< "Unexpected a non-public port << "
+							<< str_header( thePortInstance )
+							<< " >> in a connector !"
+							<< std::endl << std::endl;
+			}
 		}
-		else //if( aComPoint->getPort()->isComposite() )
+		else //if( aComPoint.getPort().isComposite() )
 		{
 			incrErrorCount();
-			AVM_OS_WARN << aComPoint->errorLocation( aComPoint )
+			AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
 						<< "Unexpected the COMPOSITE PORT << "
-						<< str_header( thePortInstance ) << " >> as COM POINT "
+						<< str_header( thePortInstance )
+						<< " >> in a connector !"
 						<< std::endl << std::endl;
 
 			return( false );
 		}
 	}
-	else if( aComPoint->hasMachinePortQualifiedNameID() )
+	else if( aComPoint.hasMachinePortQualifiedNameID() )
 	{
 		std::string portId;
 
-		if( aComPoint->getMachinePortQualifiedNameID().is< Identifier >() )
+		if( aComPoint.getMachinePortQualifiedNameID().is< Identifier >() )
 		{
-			portId= aComPoint->getMachinePortQualifiedNameID().str();
+			portId = aComPoint.getMachinePortQualifiedNameID().str();
 		}
-		if( aComPoint->getMachinePortQualifiedNameID().
+		if( aComPoint.getMachinePortQualifiedNameID().
 				is< QualifiedIdentifier >() )
 		{
-			portId = aComPoint->getMachinePortQualifiedNameID().
-					to_ptr< QualifiedIdentifier >()->getNameID();
+			portId = aComPoint.getMachinePortQualifiedNameID().
+					to< QualifiedIdentifier >().getNameID();
 		}
-		else if( aComPoint->getMachinePortQualifiedNameID().
+		else if( aComPoint.getMachinePortQualifiedNameID().
 				is< UniFormIdentifier >() )
 		{
-			portId = aComPoint->getMachinePortQualifiedNameID().
-					to_ptr< UniFormIdentifier >()->toStringId();
+			portId = aComPoint.getMachinePortQualifiedNameID().
+					to< UniFormIdentifier >().toStringId();
 		}
 		else
 		{
 			incrErrorCount();
-			AVM_OS_WARN << aComPoint->errorLocation( aComPoint )
-					<< "Unfound in the CONNECT the port < "
-					<< aComPoint->getMachinePortQualifiedNameID()
+			AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
+					<< "Unfound in the connector the port < "
+					<< aComPoint.getMachinePortQualifiedNameID()
 					<< " > in the model of < "
 					<< str_header( theExecutable4Port ) << " > !"
 					<< std::endl;
@@ -2625,71 +2509,77 @@ bool CompilerOfInteraction::compileComPointPort(
 		}
 
 		std::string portUfi =
-			theExecutable4Port->getAstFullyQualifiedNameID() + "." + portId;
+			theExecutable4Port.getAstFullyQualifiedNameID() + "." + portId;
 
-		thePortInstance = getSymbolTable().searchPortConnectorInstance(
-				theExecutable4Port, portUfi);
+		thePortInstance = getSymbolTable().searchPortConnectorPoint(
+				(& theExecutable4Port), portUfi);
 
-		if( thePortInstance == NULL )
+		if( thePortInstance == nullptr )
 		{
 			incrErrorCount();
-			AVM_OS_WARN << aComPoint->errorLocation( aComPoint )
-					<< "Unfound in the CONNECT the port < "
+			AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
+					<< "Unfound in the connector the port < "
 					<< portUfi << " > in the model of < "
-					<< str_header( aComPoint->getMachine() ) << " > !"
+					<< str_header( aComPoint.getMachine() ) << " > !"
 					<< std::endl;
 
 			return( false );
 		}
+		else if( (not thePortInstance->getModifier().isVisibilityPublic())
+				&& theExecutableOfConnector.isNTEQ(theExecutable4Port) )
+		{
+			incrErrorCount();
+			AVM_OS_WARN << aComPoint.errorLocation( aComPoint )
+						<< "Unexpected a non-public port << "
+						<< str_header( thePortInstance )
+						<< " >> in a connector !"
+						<< std::endl << std::endl;
+		}
 	}
 
-	return( thePortInstance != NULL );
+	return( thePortInstance != nullptr );
 }
 
 
 
 void CompilerOfInteraction::createRoutingData(
 		List< RoutingData > & listOfRoutingData,
-		ExecutableForm * theExecutable, InstanceOfConnect * ioc,
-		ComRoute * aComRoute, ComPoint * aComPoint)
+		ExecutableForm & theExecutable, InstanceOfConnector & aConnector,
+		const ComRoute & aComRoute, const ComPoint & aComPoint)
 {
 	bool isInstanceStaticFlag = true;
 
-	InstanceOfMachine * anInstanceStatic = NULL;
+	InstanceOfMachine * anInstanceStatic = nullptr;
 
 	ExecutableForm * anExecutable4Port = compileComPointMachine(
 			theExecutable, aComPoint, isInstanceStaticFlag, anInstanceStatic);
-	if( anExecutable4Port != NULL )
+	if( anExecutable4Port != nullptr )
 	{
-		if( aComPoint->isMachineAllPort() )
+		if( aComPoint.isMachineAllPort() )
 		{
-			TableOfSymbol::const_iterator itPort;
-			TableOfSymbol::const_iterator endPort;
-
 			do
 			{
-				itPort = anExecutable4Port->getPort().begin();
-				endPort = anExecutable4Port->getPort().end();
-				for( ; itPort != endPort ; ++itPort)
+				for( const auto & itPort : anExecutable4Port->getPort() )
 				{
-					if( (*itPort).port().isSignal()
-						|| ((*itPort).getContainer() == theExecutable) )
+					if( itPort.asPort().isSignal()
+						|| (itPort.getContainer() == (& theExecutable)) )
 					{
-						if( (*itPort).getModifier().hasDirectionKind(
-								aComRoute->getModifier().getDirectionKind() ) )
+						if( itPort.getModifier().hasDirectionKind(
+								aComRoute.getModifier().getDirectionKind() ) )
 						{
-							listOfRoutingData.append( addRoutingData(
-								theExecutable, isInstanceStaticFlag, ioc,
-								anInstanceStatic, (*itPort).rawPort(),
-								aComRoute->getModifier().getDirectionKind()) );
+							listOfRoutingData.append(
+									addRoutingData(theExecutable,
+											isInstanceStaticFlag, aConnector,
+											(* anInstanceStatic),
+											itPort.asPort(), aComRoute) );
 						}
 						else
 						{
 							incrWarningCount();
-							AVM_OS_WARN << aComPoint->warningLocation(aComPoint)
+							AVM_OS_WARN << aComPoint.warningLocation(aComPoint)
 								<< "Incompatibility between the ComRoute << "
-								<< aComRoute->str() << " >> & the ComPoint << "
-								<< str_header( *itPort ) << " >> NATURE "
+								<< aComRoute.str() << " >> & the ComPoint << "
+								<< str_header( itPort ) << " >> NATURE "
 								<< std::endl << std::endl;
 						}
 					}
@@ -2697,30 +2587,31 @@ void CompilerOfInteraction::createRoutingData(
 
 				anExecutable4Port = anExecutable4Port->getExecutableContainer();
 			}
-			while( anExecutable4Port != NULL );
+			while( anExecutable4Port != nullptr );
 		}
 		else
 		{
-			InstanceOfPort * aPortInstance = NULL;
+			InstanceOfPort * aPortInstance = nullptr;
 
-			if( compileComPointPort(
-					anExecutable4Port, aComPoint, aPortInstance) )
+			if( compileComPointPort(theExecutable,
+					(* anExecutable4Port), aComPoint, aPortInstance) )
 			{
 				if( aPortInstance->getModifier().isDirectionKind(
-						aComRoute->getModifier().getDirectionKind() )
+						aComRoute.getModifier().getDirectionKind() )
 					|| aPortInstance->getModifier().isDirectionInout() )
 				{
-					listOfRoutingData.append( addRoutingData(
-							theExecutable, isInstanceStaticFlag,
-							ioc, anInstanceStatic, aPortInstance,
-							aComRoute->getModifier().getDirectionKind()) );
+					listOfRoutingData.append(
+							addRoutingData(
+									theExecutable, isInstanceStaticFlag,
+									aConnector, (* anInstanceStatic),
+									(* aPortInstance), aComRoute ) );
 				}
 				else
 				{
 					incrWarningCount();
-					AVM_OS_WARN << aComPoint->warningLocation( aComPoint )
+					AVM_OS_WARN << aComPoint.warningLocation( aComPoint )
 							<< "Incompatibility between the ComRoute << "
-							<< aComRoute->str() << " >> & the ComPoint << "
+							<< aComRoute.str() << " >> & the ComPoint << "
 							<< str_header( aPortInstance ) << " >> NATURE "
 							<< std::endl << std::endl;
 				}
@@ -2738,31 +2629,48 @@ void CompilerOfInteraction::createRoutingData(
 
 void CompilerOfInteraction::setUndefinedLocalRouteToEnv(const Router & aRouter)
 {
-	InstanceOfMachine * aMachine = aRouter.getMachine();
+	const InstanceOfMachine & aMachine = aRouter.getMachine();
 
-	TableOfSymbol::const_iterator itPort =
-			aMachine->getExecutable()->getPort().begin();
-	TableOfSymbol::const_iterator endPort =
-			aMachine->getExecutable()->getPort().end();
-
-	for( ; itPort != endPort ; ++itPort )
+	for( const auto & itPort : aMachine.refExecutable().getPort() )
 	{
-		if( (*itPort).port().isPort() )
+		if( itPort.asPort().isPort()
+			&& itPort.getModifier().isnotVisibilityPublic()
+			&& aMachine.getSpecifier().isnotComponentSystem() )
 		{
-			if( (*itPort).getModifier().hasDirectionInput()
-				&& aRouter.hasntInputRouting( (*itPort).getRouteOffset() ) )
+			if( itPort.getModifier().hasDirectionInput()
+				&& aRouter.hasnoInputRouting( itPort.getRouteOffset() ) )
 			{
-				aRouter.setInputRouting((*itPort).getRouteOffset(),
-						RoutingData(0, aMachine, (*itPort).rawPort(),
+				aRouter.setInputRouting(itPort.getRouteOffset(),
+						RoutingData(0, aMachine, itPort.asPort(),
 								ComProtocol::PROTOCOL_ENVIRONMENT_KIND) );
+
+				// ERROR REPORTING
+				incrErrorCount();
+				itPort.getAstElement().errorLocation(AVM_OS_WARN)
+						<< "Unexpected a input port << "
+						<< itPort.getFullyQualifiedNameID()
+						<< " >> without routing data in the router of the "
+							"machine << " << aMachine.getFullyQualifiedNameID()
+						<< " >> "
+						<< std::endl;
 			}
 			// NO ELSE because of INOUT PORT
-			if( (*itPort).getModifier().hasDirectionOutput()
-				&& aRouter.hasntOutputRouting( (*itPort).getRouteOffset() ) )
+			if( itPort.getModifier().hasDirectionOutput()
+				&& aRouter.hasnoOutputRouting( itPort.getRouteOffset() ) )
 			{
-				aRouter.setOutputRouting((*itPort).getRouteOffset(),
-						RoutingData(0, aMachine, (*itPort).rawPort(),
+				aRouter.setOutputRouting(itPort.getRouteOffset(),
+						RoutingData(0, aMachine, itPort.asPort(),
 								ComProtocol::PROTOCOL_ENVIRONMENT_KIND) );
+
+				// ERROR REPORTING
+				incrErrorCount();
+				itPort.getAstElement().errorLocation(AVM_OS_WARN)
+						<< "Unexpected an output port << "
+						<< itPort.getFullyQualifiedNameID()
+						<< " >> without routing data in the router of the "
+							"machine << " << aMachine.getFullyQualifiedNameID()
+						<< " >> "
+						<< std::endl;
 			}
 		}
 	}
@@ -2772,7 +2680,7 @@ void CompilerOfInteraction::setUndefinedLocalRouteToEnv(const Router & aRouter)
 void CompilerOfInteraction::updateGlobalRoute(
 		const Router & refRouter, const Router & newRouter)
 {
-	for( avm_size_t offset = 0 ; offset < mNextRouteID ; ++offset )
+	for( std::size_t offset = 0 ; offset < mNextRouteID ; ++offset )
 	{
 		if( newRouter.getInputRouting(offset).invalid() )
 		{
@@ -2781,97 +2689,80 @@ void CompilerOfInteraction::updateGlobalRoute(
 				newRouter.setInputRouting(offset,
 						refRouter.getInputRouting(offset));
 			}
-//			else
-//			{
-//				newRouter.setInputRouting(offset, RoutingData(0, aMachine,
-//						theMessage, ComProtocol::PROTOCOL_ENVIRONMENT_KIND)) );
-//			}
 		}
 		// NO ELSE because of INOUT PORT
-		if( newRouter.hasntOutputRouting(offset) )
+		if( newRouter.hasnoOutputRouting(offset) )
 		{
 			if( refRouter.hasOutputRouting(offset) )
 			{
 				newRouter.setOutputRouting(offset,
 						refRouter.getOutputRouting(offset));
 			}
-//			else
-//			{
-//				newRouter.setOutputRouting(offset, RoutingData(0, aMachine,
-//						theMessage, ComProtocol::PROTOCOL_ENVIRONMENT_KIND)) );
-//			}
 		}
 	}
 }
 
 void CompilerOfInteraction::updateLocalModelUsingLocalPrototype(
-		ExecutableForm * theExecutable, const Router & aRouter4Model)
+		ExecutableForm & theExecutable, const Router & aRouter4Model)
 {
-	InstanceOfMachine * aMachine = aRouter4Model.getMachine();
+	const InstanceOfMachine & aMachine = aRouter4Model.getMachine();
 
-//@debug:
-//	AVM_OS_TRACE << "updateLocalModelUsingLocalPrototype: "
-//			<< theExecutable->getFullyQualifiedNameID() << std::endl
-//			<< " >>==>> " << str_header( aMachine ) << std::endl;
-//	AVM_OS_TRACE << "INIT :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
-//	aRouter4Model.toStream(AVM_OS_TRACE);
+//!@?DEBUG:
+//AVM_OS_TRACE << "updateLocalModelUsingLocalPrototype: "
+//		<< theExecutable.getFullyQualifiedNameID() << std::endl
+//		<< " >>==>> " << str_header( aMachine ) << std::endl;
+//AVM_OS_TRACE << "INIT :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+//aRouter4Model.toStream(AVM_OS_TRACE);
 
-	Router aRouter4Prototype;
-	if( aMachine->getSpecifier().isDesignPrototypeStatic() )
+	if( aMachine.getSpecifier().isDesignPrototypeStatic() )
 	{
-		aRouter4Prototype = theExecutable->getRouter4Prototype(aMachine);
-	}
+		const Router & aRouter4Prototype =
+				theExecutable.getRouter4Prototype(aMachine);
 
-	if( aRouter4Prototype.valid() )
-	{
-//@debug:
-//		aRouter4Prototype.toStream(AVM_OS_TRACE);
-//		aRouter4Model.toStream(AVM_OS_TRACE);
+//!@?DEBUG:
+//aRouter4Prototype.toStream(AVM_OS_TRACE);
+//aRouter4Model.toStream(AVM_OS_TRACE);
 
 		// UPDATE GLOBAL ROUTE
 		updateGlobalRoute(aRouter4Prototype, aRouter4Model);
 
-//@debug:
-//		AVM_OS_TRACE << "AVANT :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
-//		aRouter4Model.toStream(AVM_OS_TRACE);
+//!@?DEBUG:
+//AVM_OS_TRACE << "AVANT :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+//aRouter4Model.toStream(AVM_OS_TRACE);
 
-		TableOfSymbol::const_iterator itPort =
-				aMachine->getExecutable()->getPort().begin();
-		TableOfSymbol::const_iterator endPort =
-				aMachine->getExecutable()->getPort().end();
-		for( ; itPort != endPort ; ++itPort )
+		for( const auto & itPort : aMachine.refExecutable().getPort() )
 		{
-			if( (*itPort).getModifier().hasDirectionInput()
+			if( itPort.getModifier().hasDirectionInput()
 				&& aRouter4Model.getInputRouting(
-						(*itPort).getRouteOffset()).invalid() )
+						itPort.getRouteOffset()).invalid() )
 			{
 				if( aRouter4Prototype.getInputRouting(
-						(*itPort).getRouteOffset()).valid() )
+						itPort.getRouteOffset()).valid() )
 				{
-					aRouter4Model.setInputRouting((*itPort).getRouteOffset(),
+					aRouter4Model.setInputRouting(itPort.getRouteOffset(),
 							aRouter4Prototype.getInputRouting(
-									(*itPort).getRouteOffset()));
+									itPort.getRouteOffset()));
 				}
 			}
 			// NO ELSE because of INOUT PORT
-			if( (*itPort).getModifier().hasDirectionOutput()
-				&& aRouter4Model.hasntOutputRouting(
-						(*itPort).getRouteOffset()) )
+			if( itPort.getModifier().hasDirectionOutput()
+				&& aRouter4Model.hasnoOutputRouting(
+						itPort.getRouteOffset()) )
 			{
 				if( aRouter4Prototype.getOutputRouting(
-						(*itPort).getRouteOffset()).valid() )
+						itPort.getRouteOffset()).valid() )
 				{
-					aRouter4Model.setOutputRouting((*itPort).getRouteOffset(),
+					aRouter4Model.setOutputRouting(itPort.getRouteOffset(),
 							aRouter4Prototype.getOutputRouting(
-									(*itPort).getRouteOffset()));
+									itPort.getRouteOffset()));
 				}
 			}
 		}
 
-//@debug:
-//		AVM_OS_TRACE << "APRES :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
-//		aRouter4Model.toStream(AVM_OS_TRACE);
-//		AVM_OS_TRACE << std::endl;
+//!@?DEBUG:
+//AVM_OS_TRACE << "APRES :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+//aRouter4Model.toStream(AVM_OS_TRACE);
+//AVM_OS_TRACE << std::endl;
 	}
 }
 
@@ -2879,107 +2770,108 @@ void CompilerOfInteraction::updateLocalModelUsingLocalPrototype(
 void CompilerOfInteraction::updateLocalModelUsingGlobalModel(
 		const Router & aRouter4Model)
 {
-	InstanceOfMachine * aMachine = aRouter4Model.getMachine();
+	const InstanceOfMachine & aMachine = aRouter4Model.getMachine();
 
-	ExecutableForm * anExecutable = aMachine->getExecutable();
+	ExecutableForm & anExecutable =
+			const_cast< ExecutableForm & >( aMachine.refExecutable() );
 
-//@debug:
-//	AVM_OS_TRACE << "updateLocalModelUsingGlobalModel: "
-//			<< theExecutable->getFullyQualifiedNameID() << std::endl
-//			<< " >>==>> " << str_header( aMachine ) << std::endl;
-//	AVM_OS_TRACE << "INIT :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
-//	aRouter4Model.toStream(AVM_OS_TRACE);
+//!@?DEBUG:
+//AVM_OS_TRACE << "updateLocalModelUsingGlobalModel: "
+//		<< theExecutable.getFullyQualifiedNameID() << std::endl
+//		<< " >>==>> " << str_header( aMachine ) << std::endl;
+//AVM_OS_TRACE << "INIT :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+//aRouter4Model.toStream(AVM_OS_TRACE);
 
 	Router aRouter4ModelThis;
 
-	if( aMachine->getSpecifier().isDesignPrototypeStatic()
-		&& anExecutable->hasRouter4Instance() )
+	if( aMachine.getSpecifier().isDesignModel()
+		&& anExecutable.hasRouter4Model() )
 	{
-		aRouter4ModelThis = anExecutable->getRouter4This();
+		aRouter4ModelThis = anExecutable.getRouter4Model(& anExecutable);
 	}
-	else if( not anExecutable->hasRouter4Instance() )
+	else if( aMachine.getSpecifier().isDesignPrototypeStatic()
+		&& anExecutable.hasRouter4Instance() )
 	{
-		anExecutable->appendRouter4Instance( aRouter4Model );
+		aRouter4ModelThis = anExecutable.getRouter4This();
+	}
+	else if( not anExecutable.hasRouter4Instance() )
+	{
+		anExecutable.appendRouter4Instance( aRouter4Model );
 
-		aRouter4ModelThis = anExecutable->getRouter4This();
+		aRouter4ModelThis = anExecutable.getRouter4This();
 
-		if( not anExecutable->hasRouter4Model() )
+		if( not anExecutable.hasRouter4Model() )
 		{
-			anExecutable->setRouters4Model(
-					anExecutable->getRouters4Instance() );
+			anExecutable.setRouters4Model(
+					anExecutable.getRouters4Instance() );
 		}
 	}
-	else if( not anExecutable->hasRouter4Model() )
+	else if( not anExecutable.hasRouter4Model() )
 	{
-		anExecutable->setRouters4Model(
-				anExecutable->getRouters4Instance() );
+		anExecutable.setRouters4Model(
+				anExecutable.getRouters4Instance() );
 	}
 
 
 	if( aRouter4ModelThis.valid() )
 	{
-//@debug:
-//		aRouter4ModelThis.toStream(AVM_OS_TRACE);
-//		aRouter4Model.toStream(AVM_OS_TRACE);
+//!@?DEBUG:
+//aRouter4ModelThis.toStream(AVM_OS_TRACE);
+//aRouter4Model.toStream(AVM_OS_TRACE);
 
 		// UPDATE GLOBAL ROUTE
 		updateGlobalRoute(aRouter4ModelThis, aRouter4Model);
 
 
-//@debug:
-//		AVM_OS_TRACE << "AVANT :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
-//		aRouter4Model.toStream(AVM_OS_TRACE);
+//!@?DEBUG:
+//AVM_OS_TRACE << "AVANT :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+//aRouter4Model.toStream(AVM_OS_TRACE);
 
-		TableOfSymbol::const_iterator itPort =
-				aMachine->getExecutable()->getPort().begin();
-		TableOfSymbol::const_iterator endPort =
-				aMachine->getExecutable()->getPort().end();
-
-		for( ; itPort != endPort ; ++itPort )
+		for( const auto & itPort : aMachine.refExecutable().getPort() )
 		{
-			if( (*itPort).getModifier().hasDirectionInput()
+			if( itPort.getModifier().hasDirectionInput()
 				&& aRouter4Model.getInputRouting(
-						(*itPort).getRouteOffset()).invalid() )
+						itPort.getRouteOffset()).invalid() )
 			{
 				if( aRouter4ModelThis.getInputRouting(
-						(*itPort).getRouteOffset()).valid() )
+						itPort.getRouteOffset()).valid() )
 				{
-					aRouter4Model.setInputRouting((*itPort).getRouteOffset(),
+					aRouter4Model.setInputRouting(itPort.getRouteOffset(),
 							aRouter4ModelThis.getInputRouting(
-									(*itPort).getRouteOffset()));
+									itPort.getRouteOffset()));
 				}
-				else if( (*itPort).port().isPort() )
+				else if( itPort.asPort().isPort() )
 				{
-					aRouter4Model.setInputRouting((*itPort).getRouteOffset(),
-							RoutingData(0, aMachine, (*itPort).rawPort(),
+					aRouter4Model.setInputRouting(itPort.getRouteOffset(),
+							RoutingData(0, aMachine, itPort.asPort(),
 									ComProtocol::PROTOCOL_ENVIRONMENT_KIND) );
 				}
 			}
 			// NO ELSE because of INOUT PORT
-			if( (*itPort).getModifier().hasDirectionOutput()
-				&& aRouter4Model.hasntOutputRouting(
-						(*itPort).getRouteOffset()) )
+			if( itPort.getModifier().hasDirectionOutput()
+				&& aRouter4Model.hasnoOutputRouting(
+						itPort.getRouteOffset()) )
 			{
 				if( aRouter4ModelThis.getOutputRouting(
-						(*itPort).getRouteOffset()).valid() )
+						itPort.getRouteOffset()).valid() )
 				{
-					aRouter4Model.setOutputRouting((*itPort).getRouteOffset(),
+					aRouter4Model.setOutputRouting(itPort.getRouteOffset(),
 							aRouter4ModelThis.getOutputRouting(
-									(*itPort).getRouteOffset()));
+									itPort.getRouteOffset()));
 				}
-				else if( (*itPort).port().isPort() )
+				else if( itPort.asPort().isPort() )
 				{
-					aRouter4Model.setOutputRouting((*itPort).getRouteOffset(),
-							RoutingData(0, aMachine, (*itPort).rawPort(),
+					aRouter4Model.setOutputRouting(itPort.getRouteOffset(),
+							RoutingData(0, aMachine, itPort.asPort(),
 									ComProtocol::PROTOCOL_ENVIRONMENT_KIND) );
 				}
 			}
 		}
 
-//@debug:
-//		AVM_OS_TRACE << "APRES :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
-//		aRouter4Model.toStream(AVM_OS_TRACE);
-//		AVM_OS_TRACE << std::endl;
+//!@?DEBUG:
+//AVM_OS_TRACE << "APRES :>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+//aRouter4Model.toStream(AVM_OS_TRACE);
+//AVM_OS_TRACE << std::endl;
 	}
 	else
 	{
@@ -2989,79 +2881,66 @@ void CompilerOfInteraction::updateLocalModelUsingGlobalModel(
 
 
 void CompilerOfInteraction::postCompileCommunication(
-		ExecutableForm * theExecutable)
+		ExecutableForm & theExecutable)
 {
-	TableOfRouter::iterator itRouter;
-	TableOfRouter::iterator endRouter;
-
 	// UPDATE DEFAULT MODEL ROUTER TO ENVIRONMENT
-	if( theExecutable->hasRouter4Model() )
+	if( theExecutable.hasRouter4Model() )
 	{
-		itRouter = theExecutable->getRouters4Model().begin();
-		endRouter = theExecutable->getRouters4Model().end();
-		for( ; itRouter != endRouter ; ++itRouter )
+		for( const auto & itRouter : theExecutable.getRouters4Model() )
 		{
-			if( (*itRouter).valid() )
+			if( itRouter.valid() )
 			{
-				updateLocalModelUsingLocalPrototype(theExecutable, *itRouter);
+				updateLocalModelUsingLocalPrototype(theExecutable, itRouter);
 
-				updateLocalModelUsingGlobalModel( *itRouter );
+				updateLocalModelUsingGlobalModel( itRouter );
 
-				updateGlobalRoute(theExecutable->getRouter4This(), *itRouter);
+				updateGlobalRoute(theExecutable.getRouter4This(), itRouter);
 			}
 		}
 
-		// UPDATE DEFAULT INSTANCE ROUTER AS MODEL'S
-		TableOfRoutingData::iterator itRdInst;
+		// UPDATE DEFAULT INSTANCE ROUTER USING THE MODEL'S
 		TableOfRoutingData::const_iterator itRdModel;
+
+		TableOfRoutingData::iterator itRdInst;
 		TableOfRoutingData::iterator endRD;
 
-		itRouter = theExecutable->getRouters4Instance().begin();
-		endRouter = theExecutable->getRouters4Instance().end();
-		for( ; itRouter != endRouter ; ++itRouter )
+		for( auto & itRouter : theExecutable.getRouters4Instance() )
 		{
-			if( (*itRouter).valid() )
+			if( itRouter.valid() )
 			{
-				const Router & theRouter = theExecutable->
-						getRouter4Model((*itRouter).getMachine());
+				const Router & theRouter = theExecutable.
+						getRouter4Model(itRouter.getMachine());
 
-				if( theRouter == (*itRouter) )
+				if( theRouter == itRouter )
 				{
 					continue;
 				}
-//				if( theRouter == NULL )
-//				{
-//					// IDENTIFICATION ROUTER(machine prototype)
-//					// ==> ROUTER(machine instance)
-//					theRouter = theExecutable->getRouter4Prototype(
-//							(*itRouterInst)->getMachine() );
-//				}
 
-				if( theRouter != NULL )
+				else if( theRouter.valid() )
 				{
 					itRdModel = theRouter.getInputRoutingTable().begin();
 
-					itRdInst = (*itRouter).getInputRoutingTable().begin();
-					endRD = (*itRouter).getInputRoutingTable().end();
-					for( ; itRdInst != endRD ; ++itRdInst , ++itRdModel )
+					for( auto & itRdInst : itRouter.getInputRoutingTable() )
 					{
-						if( (*itRdInst).invalid() && (*itRdModel).valid())
+						if( itRdInst.invalid() && (*itRdModel).valid() )
 						{
-							(*itRdInst) = (*itRdModel);
+							itRdInst = (*itRdModel);
 						}
+						// Increment for itModel
+						++itRdModel;
 					}
 
 
 					itRdModel = theRouter.getOutputRoutingTable().begin();
 
-					itRdInst = (*itRouter).getOutputRoutingTable().begin();
-					endRD = (*itRouter).getOutputRoutingTable().end();
-					for( ; itRdInst != endRD ; ++itRdInst , ++itRdModel )
+					for( auto & itRdInst : itRouter.getOutputRoutingTable() )
 					{
-						if( (*itRdInst).invalid() && (*itRdModel).valid())
+						if( itRdInst.invalid() && (*itRdModel).valid() )
 						{
-							(*itRdInst) = (*itRdModel);
+							itRdInst = (*itRdModel);
 						}
+						// Increment for itModel
+						++itRdModel;
 					}
 				}
 			}
@@ -3069,13 +2948,11 @@ void CompilerOfInteraction::postCompileCommunication(
 	}
 	else
 	{
-		itRouter = theExecutable->getRouters4Instance().begin();
-		endRouter = theExecutable->getRouters4Instance().end();
-		for( ; itRouter != endRouter ; ++itRouter )
+		for( const auto & itRouter : theExecutable.getRouters4Instance() )
 		{
-			if( (*itRouter).valid() )
+			if( itRouter.valid() )
 			{
-				setUndefinedLocalRouteToEnv( (*itRouter) );
+				setUndefinedLocalRouteToEnv( itRouter );
 			}
 		}
 	}

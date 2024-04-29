@@ -52,7 +52,7 @@ public:
 	 */
 	TraceChecker(EvaluationEnvironment & anENV)
 	: ENV( anENV ),
-	theLocalExecutableForm( NULL ),
+	theLocalExecutableForm( nullptr ),
 	theSolverKind( SolverDef::DEFAULT_SOLVER_KIND )
 	{
 		//!! NOTHING
@@ -60,7 +60,7 @@ public:
 
 	TraceChecker(EvaluationEnvironment & anENV, SolverDef::SOLVER_KIND aSolver)
 	: ENV( anENV ),
-	theLocalExecutableForm( NULL ),
+	theLocalExecutableForm( nullptr ),
 	theSolverKind( aSolver )
 	{
 		//!! NOTHING
@@ -108,34 +108,34 @@ public:
 	bool isSat(const ExecutionContext & anEC, const AvmCode & aCode);
 	bool isSat(const ExecutionContext & anEC, AVM_OPCODE anOp, const BF & arg);
 
-	bool isSat(const ExecutionContext & anEC, TracePoint * aTP);
+	bool isSat(const ExecutionContext & anEC, const TracePoint & aTP);
 
-	bool isSatFormula(const ExecutionContext & anEC, TracePoint * aTP);
+	bool isSatFormula(const ExecutionContext & anEC, const TracePoint & aTP);
 
-	bool isSatTime(const ExecutionContext & anEC, TracePoint * aTP);
-	bool isSatVariable(const ExecutionContext & anEC, TracePoint * aTP);
+	bool isSatTime(const ExecutionContext & anEC, const TracePoint & aTP);
+	bool isSatVariable(const ExecutionContext & anEC, const TracePoint & aTP);
 
 
 	bool isSatCom(const ExecutionContext & anEC,
-			TracePoint * aTP, const BF & aTrace);
+			const TracePoint & aTP, const BF & aTrace);
 
 	bool isSatRunnable(const ExecutionContext & anEC,
-			TracePoint * aTP, const BF & aTrace);
+			const TracePoint & aTP, const BF & aTrace);
 
 	bool isSatRoutine(const ExecutionContext & anEC,
-			TracePoint * aTP, const BF & aTrace);
+			const TracePoint & aTP, const BF & aTrace);
 
 	bool isSatTransition(const ExecutionContext & anEC,
-			TracePoint * aTP, const BF & aTrace);
+			const TracePoint & aTP, const BF & aTrace);
 
 	bool isSatState(const ExecutionContext & anEC,
-			TracePoint * aTP, const BF & aTrace);
+			const TracePoint & aTP, const BF & aTrace);
 
 	bool isSatStatemachine(const ExecutionContext & anEC,
-			TracePoint * aTP, const BF & aTrace);
+			const TracePoint & aTP, const BF & aTrace);
 
 	bool isSatMachine(const ExecutionContext & anEC,
-			TracePoint * aTP, const BF & aTrace);
+			const TracePoint & aTP, const BF & aTrace);
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -149,19 +149,19 @@ public:
 	bool willNeverSat(
 			const ExecutionContext & anEC, AVM_OPCODE anOp, const BF & arg);
 
-	bool willNeverSat(const ExecutionContext & anEC, TracePoint * aTP);
+	bool willNeverSat(const ExecutionContext & anEC, const TracePoint & aTP);
 
 	bool willNeverSatTransition(
-			const ExecutionContext & anEC, TracePoint * aTP);
+			const ExecutionContext & anEC, const TracePoint & aTP);
 
 	bool willNeverSatState(
-			const ExecutionContext & anEC, TracePoint * aTP);
+			const ExecutionContext & anEC, const TracePoint & aTP);
 
 	bool willNeverSatStatemachine(
-			const ExecutionContext & anEC, TracePoint * aTP);
+			const ExecutionContext & anEC, const TracePoint & aTP);
 
 	bool willNeverSatMachine(
-			const ExecutionContext & anEC, TracePoint * aTP);
+			const ExecutionContext & anEC, const TracePoint & aTP);
 
 
 };

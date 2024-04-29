@@ -31,35 +31,47 @@ namespace sep
 
 bool ITypeSpecifier::weaklyTypedClockInteger() const
 {
-	return( (getTypeSpecifierKind() == TYPE_CLOCK_SPECIFIER) &&
-			( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-				thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedInteger() ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_CLOCK_SPECIFIER)
+			&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+				|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+					.getContentsTypeSpecifier().weaklyTypedInteger() ) );
 }
 
 bool ITypeSpecifier::weaklyTypedClockRational() const
 {
-	return( (getTypeSpecifierKind() == TYPE_CLOCK_SPECIFIER) &&
-			( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-				thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedRational() ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_CLOCK_SPECIFIER)
+			&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+				|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+					.getContentsTypeSpecifier().weaklyTypedRational() ) );
 }
 
 bool ITypeSpecifier::weaklyTypedClockFloat() const
 {
-	return( (getTypeSpecifierKind() == TYPE_CLOCK_SPECIFIER) &&
-			( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-				thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedFloat() ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_CLOCK_SPECIFIER)
+			&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+				|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+					.getContentsTypeSpecifier().weaklyTypedFloat() ) );
 }
 
 
 bool ITypeSpecifier::weaklyTypedClockReal() const
 {
-	return( (getTypeSpecifierKind() == TYPE_CLOCK_SPECIFIER) &&
-			( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-				thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedReal() ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_CLOCK_SPECIFIER)
+			&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+				|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+					.getContentsTypeSpecifier().weaklyTypedReal() ) );
 }
 
 
@@ -69,38 +81,50 @@ bool ITypeSpecifier::weaklyTypedClockReal() const
 
 bool ITypeSpecifier::weaklyTypedTimeInteger() const
 {
-	return( (getTypeSpecifierKind() == TYPE_DISCRETE_TIME_SPECIFIER) ||
-			( isTypedTime() &&
-			( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-			thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-				getContentsTypeSpecifier().weaklyTypedInteger() ) ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_DISCRETE_TIME_SPECIFIER)
+			|| ( referedTypeSpecifier.hasTypedTime()
+				&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+					|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().weaklyTypedInteger() ) ) );
 }
 
 
 bool ITypeSpecifier::weaklyTypedTimeRational() const
 {
-	return( hasTypedTime() &&
-			( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-				thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedRational() ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.hasTypedTime()
+			&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+				|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+					.getContentsTypeSpecifier().weaklyTypedRational() ) );
 }
 
 bool ITypeSpecifier::weaklyTypedTimeFloat() const
 {
-	return( (getTypeSpecifierKind() == TYPE_CONTINUOUS_TIME_SPECIFIER) ||
-			( isTypedTime() &&
-				( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-					thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedFloat() ) ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_DENSE_TIME_SPECIFIER)
+			|| ( referedTypeSpecifier.hasTypedTime()
+				&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+					|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().weaklyTypedFloat() ) ) );
 	}
 
 bool ITypeSpecifier::weaklyTypedTimeReal() const
 {
-	return( (getTypeSpecifierKind() == TYPE_CONTINUOUS_TIME_SPECIFIER) ||
-			( isTypedTime() &&
-				( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-				thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedReal() ) ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_DENSE_TIME_SPECIFIER)
+			|| ( referedTypeSpecifier.hasTypedTime()
+				&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+					|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().weaklyTypedReal() ) ) );
 }
 
 
@@ -110,37 +134,49 @@ bool ITypeSpecifier::weaklyTypedTimeReal() const
 
 bool ITypeSpecifier::weaklyTypedClockTimeInteger() const
 {
-	return( (getTypeSpecifierKind() == TYPE_DISCRETE_TIME_SPECIFIER) ||
-			( isTypedClockTime() &&
-				( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-					thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedInteger() ) ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_DISCRETE_TIME_SPECIFIER)
+			|| ( referedTypeSpecifier.hasTypedClockTime()
+				&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+					|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().weaklyTypedInteger() ) ) );
 }
 
 bool ITypeSpecifier::weaklyTypedClockTimeRational() const
 {
-	return( hasTypedClockTime() &&
-			( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-			thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-				getContentsTypeSpecifier().weaklyTypedRational() ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.hasTypedClockTime()
+			&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+				|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+					.getContentsTypeSpecifier().weaklyTypedRational() ) );
 }
 
 bool ITypeSpecifier::weaklyTypedClockTimeFloat() const
 {
-	return( (getTypeSpecifierKind() == TYPE_CONTINUOUS_TIME_SPECIFIER) ||
-			( isTypedClockTime() &&
-				( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() &&
-					thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedFloat() ) ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_DENSE_TIME_SPECIFIER)
+				|| ( referedTypeSpecifier.hasTypedClockTime()
+					&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+							&& referedTypeSpecifier.to< ContainerTypeSpecifier >()
+						.getContentsTypeSpecifier().weaklyTypedFloat() ) ) );
 }
 
 bool ITypeSpecifier::weaklyTypedClockTimeReal() const
 {
-	return( (getTypeSpecifierKind() == TYPE_CONTINUOUS_TIME_SPECIFIER) ||
-			( isTypedClockTime() &&
-				( thisTypeSpecifier()->isnot< ContainerTypeSpecifier >() ||
-					thisTypeSpecifier()->to< ContainerTypeSpecifier >()->
-					getContentsTypeSpecifier().weaklyTypedReal() ) ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( (referedTypeSpecifier.getTypeSpecifierKind() == TYPE_DENSE_TIME_SPECIFIER)
+				|| ( referedTypeSpecifier.hasTypedClockTime()
+					&& ( referedTypeSpecifier.isnot< ContainerTypeSpecifier >()
+						|| referedTypeSpecifier.to< ContainerTypeSpecifier >()
+							.getContentsTypeSpecifier().weaklyTypedReal() ) ) );
 }
 
 
@@ -150,20 +186,28 @@ bool ITypeSpecifier::weaklyTypedClockTimeReal() const
 
 bool ITypeSpecifier::weaklyTypedUInteger() const
 {
-	return( isTypedUInteger() ||
-			weaklyTypedClockTimeInteger() ||
-			(isTypedInterval() && (thisTypeSpecifier() != NULL) &&
-					thisTypeSpecifier()->as< IntervalTypeSpecifier >()->
-						getSupportTypeSpecifier().weaklyTypedUInteger()) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.isTypedUInteger()
+			||weaklyTypedClockTimeInteger()
+			|| ( referedTypeSpecifier.isTypedInterval()
+				&& referedTypeSpecifier.isnotNullref()
+				&& referedTypeSpecifier.as< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier().weaklyTypedUInteger()) );
 }
 
 bool ITypeSpecifier::weaklyTypedInteger() const
 {
-	return( isTypedInteger() || //isTypedUInteger() ||
-			weaklyTypedClockTimeInteger() ||
-			( isTypedInterval() && (thisTypeSpecifier() != NULL) &&
-			thisTypeSpecifier()->as< IntervalTypeSpecifier >()->
-				getSupportTypeSpecifier().weaklyTypedInteger() ) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.isTypedInteger() //|| isTypedUInteger()
+			|| referedTypeSpecifier.weaklyTypedClockTimeInteger()
+			|| ( referedTypeSpecifier.isTypedInterval()
+				&& referedTypeSpecifier.isnotNullref()
+				&& referedTypeSpecifier.as< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier().weaklyTypedInteger() ) );
 }
 
 
@@ -173,21 +217,28 @@ bool ITypeSpecifier::weaklyTypedInteger() const
 
 bool ITypeSpecifier::weaklyTypedURational() const
 {
-	return( isTypedURational() || weaklyTypedUInteger() ||
-			weaklyTypedClockTimeRational() ||
-			(isTypedInterval() &&
-			thisTypeSpecifier()->as< IntervalTypeSpecifier >()
-				->getSupportTypeSpecifier().weaklyTypedURational()) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.isTypedURational()
+			|| weaklyTypedUInteger()
+			|| weaklyTypedClockTimeRational()
+			|| ( referedTypeSpecifier.isTypedInterval()
+				&& referedTypeSpecifier.as< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier().weaklyTypedURational() ) );
 }
 
 bool ITypeSpecifier::weaklyTypedRational() const
 {
-	return( isTypedRational() || //isTypedURational() ||
-			weaklyTypedInteger() ||
-			weaklyTypedClockTimeRational() ||
-			( isTypedInterval() &&
-				thisTypeSpecifier()->as< IntervalTypeSpecifier >()
-					->getSupportTypeSpecifier().weaklyTypedRational()) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.isTypedRational() //|| isTypedURational()
+			|| weaklyTypedInteger()
+			|| weaklyTypedClockTimeRational()
+			|| ( referedTypeSpecifier.isTypedInterval()
+				&& referedTypeSpecifier.as< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier().weaklyTypedRational() ) );
 }
 
 
@@ -197,20 +248,28 @@ bool ITypeSpecifier::weaklyTypedRational() const
 
 bool ITypeSpecifier::weaklyTypedUFloat() const
 {
-	return( isTypedUFloat() || weaklyTypedURational() ||
-			weaklyTypedClockTimeFloat() ||
-			( isTypedInterval() &&
-			thisTypeSpecifier()->as< IntervalTypeSpecifier >()
-				->getSupportTypeSpecifier().weaklyTypedUFloat()) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.isTypedUFloat()
+			|| weaklyTypedURational()
+			|| weaklyTypedClockTimeFloat()
+			|| ( referedTypeSpecifier.isTypedInterval()
+				&& referedTypeSpecifier.as< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier().weaklyTypedUFloat()) );
 }
 
 bool ITypeSpecifier::weaklyTypedFloat() const
 {
-	return( isTypedFloat() || weaklyTypedRational() ||
-			weaklyTypedClockTimeFloat() ||
-			( isTypedInterval() &&
-			thisTypeSpecifier()->as< IntervalTypeSpecifier >()
-				->getSupportTypeSpecifier().weaklyTypedFloat()) );
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.isTypedFloat()
+			|| weaklyTypedRational()
+			|| weaklyTypedClockTimeFloat()
+			|| ( referedTypeSpecifier.isTypedInterval()
+			&& referedTypeSpecifier.as< IntervalTypeSpecifier >()
+				.getSupportTypeSpecifier().weaklyTypedFloat()) );
 }
 
 
@@ -220,16 +279,28 @@ bool ITypeSpecifier::weaklyTypedFloat() const
 
 bool ITypeSpecifier::weaklyTypedUReal() const
 {
-	return( isTypedUReal() || weaklyTypedUFloat() || weaklyTypedClockTimeReal() ||
-			(isTypedInterval() && thisTypeSpecifier()->as< IntervalTypeSpecifier >()
-					->getSupportTypeSpecifier().weaklyTypedUReal()));
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.isTypedUReal()
+			|| weaklyTypedUFloat()
+			|| weaklyTypedClockTimeReal()
+			|| ( referedTypeSpecifier.isTypedInterval()
+				&& referedTypeSpecifier.as< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier().weaklyTypedUReal()));
 }
 
 bool ITypeSpecifier::weaklyTypedReal() const
 {
-	return( isTypedReal() || weaklyTypedFloat() || weaklyTypedClockTimeReal() ||
-			(isTypedInterval() && thisTypeSpecifier()->as< IntervalTypeSpecifier >()
-					->getSupportTypeSpecifier().weaklyTypedReal()));
+	const BaseTypeSpecifier & referedTypeSpecifier =
+			thisTypeSpecifier().referedTypeSpecifier();
+
+	return( referedTypeSpecifier.isTypedReal()
+			|| weaklyTypedFloat()
+			|| weaklyTypedClockTimeReal()
+			|| ( referedTypeSpecifier.isTypedInterval()
+				&& referedTypeSpecifier.as< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier().weaklyTypedReal() ) );
 }
 
 
@@ -237,11 +308,13 @@ bool ITypeSpecifier::weaklyTypedReal() const
 // TYPE ALGEBRA
 //////////////////////////////
 
-bool ITypeSpecifier::isTypeFamily(avm_type_specifier_kind_t typeFamily)
+bool ITypeSpecifier::isTypeFamily(avm_type_specifier_kind_t typeFamily) const
 {
-	if( (getTypeSpecifierKind() == typeFamily)   ||
-		(typeFamily == TYPE_UNIVERSAL_SPECIFIER) ||
-		(typeFamily == TYPE_UNDEFINED_SPECIFIER) )
+	avm_type_specifier_kind_t typeSpecifierKind = getTypeSpecifierKind();
+
+	if( (typeFamily == typeSpecifierKind)
+		|| (typeFamily == TYPE_UNIVERSAL_SPECIFIER)
+		|| (typeFamily == TYPE_UNDEFINED_SPECIFIER) )
 	{
 		return( true );
 	}
@@ -257,7 +330,7 @@ bool ITypeSpecifier::isTypeFamily(avm_type_specifier_kind_t typeFamily)
 		case TYPE_SIGNAL_SPECIFIER:
 		case TYPE_MESSAGE_SPECIFIER:
 		{
-			switch( getTypeSpecifierKind() )
+			switch( typeSpecifierKind )
 			{
 				case TYPE_PORT_SPECIFIER:
 				case TYPE_SIGNAL_SPECIFIER:
@@ -275,6 +348,12 @@ bool ITypeSpecifier::isTypeFamily(avm_type_specifier_kind_t typeFamily)
 			return( false );
 		}
 
+		case TYPE_ALIAS_SPECIFIER:
+		{
+			return( thisTypeSpecifier().referedTypeSpecifier()
+					.isTypeFamily(typeFamily) );
+		}
+
 		default:
 		{
 			return( false );
@@ -283,18 +362,17 @@ bool ITypeSpecifier::isTypeFamily(avm_type_specifier_kind_t typeFamily)
 }
 
 
-bool ITypeSpecifier::weaklyTyped(avm_type_specifier_kind_t otherTSK)
+bool ITypeSpecifier::weaklyTyped(avm_type_specifier_kind_t otherTSK) const
 {
-	if( getTypeSpecifierKind() == otherTSK )
+	avm_type_specifier_kind_t typeSpecifierKind = getTypeSpecifierKind();
+
+	if( typeSpecifierKind == otherTSK )
 	{
 		return( true );
 	}
-	else switch( getTypeSpecifierKind() )
+	else switch( typeSpecifierKind )
 	{
 		case TYPE_POS_INTEGER_SPECIFIER:
-		{
-			return( weaklyTypedUInteger() );
-		}
 		case TYPE_UINTEGER_SPECIFIER:
 		{
 			return( weaklyTypedUInteger() );
@@ -304,6 +382,7 @@ bool ITypeSpecifier::weaklyTyped(avm_type_specifier_kind_t otherTSK)
 			return( weaklyTypedInteger() );
 		}
 
+		case TYPE_POS_RATIONAL_SPECIFIER:
 		case TYPE_URATIONAL_SPECIFIER:
 		{
 			return( weaklyTypedURational() );
@@ -313,6 +392,7 @@ bool ITypeSpecifier::weaklyTyped(avm_type_specifier_kind_t otherTSK)
 			return( weaklyTypedRational() );
 		}
 
+		case TYPE_POS_FLOAT_SPECIFIER:
 		case TYPE_UFLOAT_SPECIFIER:
 		{
 			return( weaklyTypedUFloat() );
@@ -322,6 +402,7 @@ bool ITypeSpecifier::weaklyTyped(avm_type_specifier_kind_t otherTSK)
 			return( weaklyTypedFloat() );
 		}
 
+		case TYPE_POS_REAL_SPECIFIER:
 		case TYPE_UREAL_SPECIFIER:
 		{
 			return( weaklyTypedUReal() );
@@ -333,7 +414,7 @@ bool ITypeSpecifier::weaklyTyped(avm_type_specifier_kind_t otherTSK)
 
 		case TYPE_CLOCK_SPECIFIER:
 		case TYPE_TIME_SPECIFIER:
-		case TYPE_CONTINUOUS_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
 		{
 			return( weaklyTypedReal() );
 		}
@@ -341,6 +422,13 @@ bool ITypeSpecifier::weaklyTyped(avm_type_specifier_kind_t otherTSK)
 		{
 			return( weaklyTypedInteger() );
 		}
+
+		case TYPE_ALIAS_SPECIFIER:
+		{
+			return( thisTypeSpecifier().referedTypeSpecifier()
+					.weaklyTyped(otherTSK) );
+		}
+
 		default:
 		{
 			return( false );
@@ -363,6 +451,9 @@ bool ITypeSpecifier::isTypedNumeric() const
 		case TYPE_REAL_SPECIFIER:
 
 		case TYPE_POS_INTEGER_SPECIFIER:
+		case TYPE_POS_RATIONAL_SPECIFIER:
+		case TYPE_POS_FLOAT_SPECIFIER:
+		case TYPE_POS_REAL_SPECIFIER:
 
 		case TYPE_UINTEGER_SPECIFIER:
 		case TYPE_URATIONAL_SPECIFIER:
@@ -371,19 +462,83 @@ bool ITypeSpecifier::isTypedNumeric() const
 
 		case TYPE_CLOCK_SPECIFIER:
 		case TYPE_TIME_SPECIFIER:
-		case TYPE_CONTINUOUS_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
 		case TYPE_DISCRETE_TIME_SPECIFIER:
 			return( true );
 
 		case TYPE_INTERVAL_SPECIFIER:
-			return( thisTypeSpecifier()->as< IntervalTypeSpecifier >()->
-					getSupportTypeSpecifier().isTypedNumeric() );
+			return( thisTypeSpecifier().as< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier().isTypedNumeric() );
 
-		default:
-			return( false );
+		case TYPE_ALIAS_SPECIFIER:
+			return( thisTypeSpecifier().referedTypeSpecifier().isTypedNumeric() );
+
+		default: return( false );
 	}
 }
 
+bool ITypeSpecifier::isTypedPositiveNumber() const
+{
+	switch( getTypeSpecifierKind() )
+	{
+		case TYPE_POS_INTEGER_SPECIFIER:
+		case TYPE_POS_RATIONAL_SPECIFIER:
+		case TYPE_POS_FLOAT_SPECIFIER:
+		case TYPE_POS_REAL_SPECIFIER:
+
+		case TYPE_UINTEGER_SPECIFIER:
+		case TYPE_URATIONAL_SPECIFIER:
+		case TYPE_UFLOAT_SPECIFIER:
+		case TYPE_UREAL_SPECIFIER:
+			return( true );
+
+		case TYPE_CLOCK_SPECIFIER:
+		case TYPE_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
+		case TYPE_DISCRETE_TIME_SPECIFIER:
+			return( thisTypeSpecifier().as< ContainerTypeSpecifier >()
+					.getContentsTypeSpecifier().isTypedPositiveNumber() );
+
+		case TYPE_INTERVAL_SPECIFIER:
+			return( thisTypeSpecifier().as< IntervalTypeSpecifier >()
+					.getSupportTypeSpecifier().isTypedPositiveNumber() );
+
+		case TYPE_ALIAS_SPECIFIER:
+			return( thisTypeSpecifier().referedTypeSpecifier()
+					.isTypedPositiveNumber() );
+
+		default: return( false );
+	}
+}
+
+bool ITypeSpecifier::isTypedStrictlyPositiveNumber() const
+{
+	switch( getTypeSpecifierKind() )
+	{
+		case TYPE_POS_INTEGER_SPECIFIER:
+		case TYPE_POS_RATIONAL_SPECIFIER:
+		case TYPE_POS_FLOAT_SPECIFIER:
+		case TYPE_POS_REAL_SPECIFIER:
+			return( true );
+
+		case TYPE_CLOCK_SPECIFIER:
+		case TYPE_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
+		case TYPE_DISCRETE_TIME_SPECIFIER:
+			return( thisTypeSpecifier().as< ContainerTypeSpecifier >()
+				.getContentsTypeSpecifier().isTypedStrictlyPositiveNumber() );
+
+		case TYPE_INTERVAL_SPECIFIER:
+			return( thisTypeSpecifier().as< IntervalTypeSpecifier >()
+				.getSupportTypeSpecifier().isTypedStrictlyPositiveNumber() );
+
+		case TYPE_ALIAS_SPECIFIER:
+			return( thisTypeSpecifier().referedTypeSpecifier()
+					.isTypedStrictlyPositiveNumber() );
+
+		default: return( false );
+	}
+}
 
 /**
  * TYPE SPECIFICER KIND TO STRING
@@ -395,6 +550,7 @@ std::string ITypeSpecifier::strSpecifierKind() const
 		case TYPE_##OBJ##_SPECIFIER : return( QUOTEME( TYPE_##OBJ ) )
 
 	switch ( getTypeSpecifierKind() )
+//	switch ( getTypeSpecifierKind() )
 	{
 		PRINT_TYPE_SPECIFIER_KIND( BOOLEAN     );
 
@@ -414,7 +570,7 @@ std::string ITypeSpecifier::strSpecifierKind() const
 		PRINT_TYPE_SPECIFIER_KIND( UREAL       );
 		PRINT_TYPE_SPECIFIER_KIND( REAL        );
 
-		PRINT_TYPE_SPECIFIER_KIND( CONTINUOUS_TIME );
+		PRINT_TYPE_SPECIFIER_KIND( DENSE_TIME    );
 		PRINT_TYPE_SPECIFIER_KIND( DISCRETE_TIME );
 
 		PRINT_TYPE_SPECIFIER_KIND( INTERVAL    );
@@ -425,7 +581,7 @@ std::string ITypeSpecifier::strSpecifierKind() const
 		PRINT_TYPE_SPECIFIER_KIND( QUALIFIED_IDENTIFIER );
 
 		PRINT_TYPE_SPECIFIER_KIND( BUFFER      );
-		PRINT_TYPE_SPECIFIER_KIND( CONNECTOR   );
+		PRINT_TYPE_SPECIFIER_KIND( CONNECTOR  );
 		PRINT_TYPE_SPECIFIER_KIND( PORT        );
 		PRINT_TYPE_SPECIFIER_KIND( MACHINE     );
 
@@ -450,13 +606,16 @@ std::string ITypeSpecifier::strSpecifierKind() const
 
 		PRINT_TYPE_SPECIFIER_KIND( RAM         );
 
-		PRINT_TYPE_SPECIFIER_KIND( ALIAS       );
-
 		PRINT_TYPE_SPECIFIER_KIND( UNIVERSAL   );
 
 		PRINT_TYPE_SPECIFIER_KIND( NULL        );
 
 		PRINT_TYPE_SPECIFIER_KIND( UNDEFINED   );
+
+//		PRINT_TYPE_SPECIFIER_KIND( ALIAS       );
+
+		case TYPE_ALIAS_SPECIFIER:
+			return( thisTypeSpecifier().referedTypeSpecifier().strSpecifierKind() );
 
 		default :  return( "TYPE_UNKNOWN_SPECIFIER" );
 	}

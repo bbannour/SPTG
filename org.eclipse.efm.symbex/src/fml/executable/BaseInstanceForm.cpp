@@ -25,6 +25,13 @@
 namespace sep
 {
 
+
+/**
+* GLOBALS
+* PRETTY PRINTER PROPERTIES
+*/
+bool BaseInstanceForm::EXPRESSION_PRETTY_PRINTER_FQN_BASED = true;
+
 /**
  * GETTER
  * mContainer
@@ -65,5 +72,14 @@ void BaseInstanceForm::updateFullyQualifiedNameID()
 	updateNameID();
 }
 
+
+/**
+ * Serialization
+ */
+std::string BaseInstanceForm::str() const
+{
+	return( EXPRESSION_PRETTY_PRINTER_FQN_BASED ?
+			getFullyQualifiedNameID() : getNameID() );
+}
 
 }

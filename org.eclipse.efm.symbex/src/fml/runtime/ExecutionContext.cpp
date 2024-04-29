@@ -26,22 +26,22 @@ namespace sep
 /**
  * ID_NUMBER
  */
-avm_uint32_t ExecutionContextHeader::ID_NUMBER = 0;
+std::uint32_t ExecutionContextHeader::ID_NUMBER = 0;
 
 
 /**
  * TRACE CONSTANT
  */
-avm_size_t ExecutionContext::EC_CHILD_TRACE_DEFAULT_SIZE = 42;
+std::size_t ExecutionContext::EC_CHILD_TRACE_DEFAULT_SIZE = 42;
 
-avm_size_t ExecutionContext::EXECUTION_CONTEXT_CHILD_TRACE_MAX =
+std::size_t ExecutionContext::EXECUTION_CONTEXT_CHILD_TRACE_MAX =
 		EC_CHILD_TRACE_DEFAULT_SIZE;
 
-
 /*
- * DEFAULT NULL REFERENCE
+ * DEFAULT NO CHILD EMPTY LIST
  */
-ExecutionContext ExecutionContext::_NULL_;
+ListOfExecutionContext ExecutionContext::NO_CHILD;
+
 
 /**
  * LCA -LCRA
@@ -81,12 +81,12 @@ void ExecutionContext::toDebug(OutStream & out) const
 		<< "Ev:" << getEvalNumber() << ";"
 		<<  "H:" << getHeight()     << ";"
 		<<  "W:" << getWidth()    //<< ";"
-//		<<  "Q:" << ((avm_uint32_t) getWeight())
+//		<<  "Q:" << ((std::uint32_t) getWeight())
 		<< ">{"  << INCR_INDENT;
 
 	if( hasExecutionData() )
 	{
-		out << " SC: " << refExecutionData().strStateConfToFscn() << EOL;
+		out << " SC: " << getExecutionData().strStateConfToFscn() << EOL;
 	}
 
 	if( hasRunnableElementTrace() )
@@ -142,8 +142,8 @@ void ExecutionContext::toDebug(OutStream & out) const
 	{
 		ScopeIncrIndent asii(out);
 
-		refExecutionData().toFscn(out, hasPrevious() ?
-				getPrevious()->getExecutionData() : NULL);
+		getExecutionData().toFscn(out, hasPrevious() ?
+				getPrevious()->getExecutionData() : ExecutionData::_NULL_);
 	}
 
 	out << DECR_INDENT_TAB << "}" << EOL;
@@ -199,7 +199,7 @@ void ExecutionContext::toDebugFet(OutStream & out) const
 
 	if( hasExecutionData() )
 	{
-		refExecutionData().toStream(out);
+		getExecutionData().toStream(out);
 	}
 
 
@@ -254,7 +254,7 @@ void ExecutionContext::toStream(OutStream & out) const
 
 	if( hasExecutionData() )
 	{
-		refExecutionData().toStream(out);
+		getExecutionData().toStream(out);
 	}
 
 	out << DECR_INDENT;
@@ -263,9 +263,9 @@ void ExecutionContext::toStream(OutStream & out) const
 	if( hasChildContext() )
 	{
 		out << EOL_TAB << "ec:" << EOL_INCR_INDENT;
-		for( child_iterator it = begin() ; it != end() ; ++it )
+		for( const auto & itChildEC : getChildContexts() )
 		{
-			(*it)->toStream(out);
+			itChildEC->toStream(out);
 		}
 		out << DECR_INDENT;
 	}
@@ -275,30 +275,30 @@ void ExecutionContext::toStream(OutStream & out) const
 
 
 void ExecutionContext::toFscn(OutStream & out,
-		const ExecutionData * aPreviousExecData) const
+		const ExecutionData & aPreviousExecData) const
 {
 	out << TAB << "EC:" << "<"
 		<< "Id:" << getIdNumber()   << ";"
 		<< "Ev:" << getEvalNumber() << ";"
 		<<  "H:" << getHeight()     << ";"
 		<<  "W:" << getWidth()    //<< ";"
-//		<<  "Q:" << ((avm_uint32_t) getWeight())
+//		<<  "Q:" << ((std::uint32_t) getWeight())
 		<<  ">{" ;
 
 	if( hasExecutionData() )
 	{
-		out << " SC: " << refExecutionData().strStateConfToFscn() << EOL;
+		out << " SC: " << getExecutionData().strStateConfToFscn() << EOL;
 
-		avm_size_t indexAlias = 0;
+		std::size_t indexAlias = 0;
 		bool isAlias = false;
-		if( (getPrevious() != NULL) )
+		if( (getPrevious() != nullptr) )
 		{
 			// Recherche des nouveaux PID
-			if(refExecutionData().getTableOfRuntime().size()
-				> getPrevious()->refExecutionData().getTableOfRuntime().size())
+			if(getExecutionData().getTableOfRuntime().size()
+				> getPrevious()->getExecutionData().getTableOfRuntime().size())
 			{
 				indexAlias = getPrevious()
-						->refExecutionData().getTableOfRuntime().size();
+						->getExecutionData().getTableOfRuntime().size();
 				isAlias = true;
 			}
 		}
@@ -311,14 +311,14 @@ void ExecutionContext::toFscn(OutStream & out,
 		{
 			out << TAB2 << "ALIAS{" << EOL;
 
-			for( avm_size_t i = indexAlias ;
-					i < refExecutionData().getTableOfRuntime().size() ; ++i)
+			for( std::size_t i = indexAlias ;
+					i < getExecutionData().getTableOfRuntime().size() ; ++i)
 			{
 				const RuntimeID & currentRID =
-					refExecutionData().getTableOfRuntime().at(i)->getRID();
+					getExecutionData().getTableOfRuntime().at(i)->getRID();
 
-				out << TAB3 << ":ppid#" << currentRID.getPRid()
-					<< ":" << "pid#" << currentRID.getRid();
+				out << TAB3 << ":" << currentRID.strPPid()
+					<< ":" << currentRID.strPid();
 
 				if( currentRID.getInstance()->
 						getSpecifier().isDesignPrototypeStatic() )
@@ -335,14 +335,14 @@ void ExecutionContext::toFscn(OutStream & out,
 						<< ";";
 
 					out << " // model is "
-						<< currentRID.getExecutable()->getAstFullyQualifiedNameID()
+						<< currentRID.refExecutable().getAstFullyQualifiedNameID()
 						<< ";" << EOL;
 				}
 				else
 				{
 					out << " = " << currentRID.getFullyQualifiedNameID() << ";"
 						<< " // model is "
-						<< currentRID.getExecutable()->getAstFullyQualifiedNameID()
+						<< currentRID.refExecutable().getAstFullyQualifiedNameID()
 						<< ";" << EOL;
 				}
 
@@ -350,64 +350,63 @@ void ExecutionContext::toFscn(OutStream & out,
 				if( currentRID.getInstance()->hasExecutable() )
 				{
 					const TableOfSymbol & rfBuffers =
-							currentRID.getExecutable()->getBuffer();
+							currentRID.refExecutable().getBuffer();
 					if(rfBuffers.nonempty()){
 						out << TAB4 << "BUFFER NUMBER = " << rfBuffers.size()
 								<< ";" << EOL;
 
 						out << TAB4 << "/*BUFFER{" << EOL;
 
-						TableOfSymbol::const_iterator itBuffer = rfBuffers.begin();
-						TableOfSymbol::const_iterator endBuffer = rfBuffers.end();
-						for( ; itBuffer != endBuffer ; ++itBuffer )
+						for( const auto & itBuffer : rfBuffers )
 						{
-							out << TAB5 << ":ppid#" << currentRID.getPRid()
-									<< ":" << "pid#" << currentRID.getRid()
-									<< ":" << (*itBuffer).getNameID() << " = ";
-							out << ( ((*itBuffer).hasAstElement()) ?
-									(*itBuffer).getAstFullyQualifiedNameID()
-									: (*itBuffer).getFullyQualifiedNameID() )
-									<< ";" << EOL;
+							out << TAB5
+								<< ":" << currentRID.strPPid()
+								<< ":" << currentRID.strPid()
+								<< ":" << itBuffer.getNameID()
+								<< " = "
+								<< ( (itBuffer.hasAstElement())
+									? itBuffer.getAstFullyQualifiedNameID()
+									: itBuffer.getFullyQualifiedNameID() )
+								<< ";" << EOL;
 						}
 
 						out << TAB4 << "}*/" << EOL;
 					}
 
-					if( currentRID.getExecutable()->hasData() )
+					if( currentRID.refExecutable().hasVariable() )
 					{
 						out << TAB4 << "DATA{" << EOL;
 
-						TableOfInstanceOfData::const_raw_iterator itData =
-								currentRID.getExecutable()->getBasicData().begin();
-						TableOfInstanceOfData::const_raw_iterator endData =
-								currentRID.getExecutable()->getBasicData().end();
-						for( ; (itData != endData) ; ++itData )
+						TableOfInstanceOfData::const_raw_iterator itVar =
+								currentRID.refExecutable().getBasicVariables().begin();
+						TableOfInstanceOfData::const_raw_iterator endVar =
+								currentRID.refExecutable().getBasicVariables().end();
+						for( ; (itVar != endVar) ; ++itVar )
 						{
-							out << TAB5 << ":ppid#" << currentRID.getPRid()
-								<< ":pid#" << currentRID.getRid() << ":"
-								<< (itData)->getNameID() << " = "
-								<< ( ( (itData)->hasAstElement() )
-										? (itData)->getAstFullyQualifiedNameID()
-										: (itData)->getFullyQualifiedNameID() )
+							out << TAB5 << ":" << currentRID.strPPid()
+								<< ":" << currentRID.strPid()
+								<< ":" << (itVar)->getNameID()
+								<< " = "
+								<< ( ( (itVar)->hasAstElement() )
+										? (itVar)->getAstFullyQualifiedNameID()
+										: (itVar)->getFullyQualifiedNameID() )
 								<< ";" << EOL;
 						}
 
 						out << TAB4 << "}" << EOL;
 					}
 
-					if( currentRID.getExecutable()->hasPort() )
+					if( currentRID.refExecutable().hasPort() )
 					{
 						out << TAB4 << "INTERFACE{" << EOL;
 
-						TableOfSymbol & rfInterface =
-								currentRID.getExecutable()->getPort();
-						TableOfSymbol::iterator itPort = rfInterface.begin();
-						for(  ; itPort != rfInterface.end() ; ++itPort )
+						for( const auto & itPort :
+								currentRID.refExecutable().getPort() )
 						{
-							out << TAB5 << ":ppid#" << currentRID.getPRid()
-								<< ":pid#" << currentRID.getRid() << ":"
-								<<  (*itPort).getNameID() << " = "
-								<<  (*itPort).getAstFullyQualifiedNameID()
+							out << TAB5 << ":" << currentRID.strPPid()
+								<< ":" << currentRID.strPid()
+								<< ":" <<  itPort.getNameID()
+								<< " = " << itPort.getAstFullyQualifiedNameID()
 								<< ";" << EOL;
 						}
 
@@ -474,7 +473,7 @@ void ExecutionContext::toFscn(OutStream & out,
 	{
 		ScopeIncrIndent asii(out);
 
-		refExecutionData().toFscn(out, aPreviousExecData);
+		getExecutionData().toFscn(out, aPreviousExecData);
 	}
 
 
@@ -482,9 +481,9 @@ void ExecutionContext::toFscn(OutStream & out,
 	{
 		out << INCR_INDENT;
 
-		for( child_iterator it = begin() ; it != end() ; ++it )
+		for( const auto & itChildEC : getChildContexts() )
 		{
-			(*it)->toFscn(out, getExecutionData());
+			itChildEC->toFscn(out, getExecutionData());
 		}
 
 		out << DECR_INDENT;
@@ -501,7 +500,7 @@ void ExecutionContext::toFscn(OutStream & out,
 std::string ExecutionContext::str_min() const
 {
 	return( OSS() << str_position() << " "
-			<< refExecutionData().strStateConf() );
+			<< getExecutionData().strStateConf() );
 }
 
 
@@ -546,7 +545,7 @@ void ExecutionContext::traceMinimum(OutStream & out) const
 	{
 		out << " Q:" << getStrWeight();
 	}
-	out << " " << refExecutionData().strStateConf() << EOL;
+	out << " " << getExecutionData().strStateConf() << EOL;
 }
 
 void ExecutionContext::traceDefault(OutStream & out) const
@@ -557,7 +556,7 @@ void ExecutionContext::traceDefault(OutStream & out) const
 		out << " Q:" << getStrWeight();
 	}
 
-	out << " " << refExecutionData().strStateConf() << "|=> fired ";
+	out << " " << getExecutionData().strStateConf() << "|=> fired ";
 
 	if( hasRunnableElementTrace() )
 	{
@@ -565,7 +564,7 @@ void ExecutionContext::traceDefault(OutStream & out) const
 	}
 	else
 	{
-		out << "nothing in " << refExecutionData().getSystemRID().str();
+		out << "nothing in " << getExecutionData().getSystemRID().str();
 	}
 
 	out << EOL;
@@ -578,7 +577,7 @@ void ExecutionContext::debugDefault(OutStream & out) const
 	{
 		out << " Q:" << getStrWeight();
 	}
-	out << " " << refExecutionData().strStateConf() << EOL;
+	out << " " << getExecutionData().strStateConf() << EOL;
 
 	if( hasRunnableElementTrace() )
 	{
@@ -592,28 +591,24 @@ void ExecutionContext::debugDefault(OutStream & out) const
 
 
 void ExecutionContext::traceMinimum(OutStream & out,
-		ListOfExecutionContext & listofEC, const std::string & header)
+		ListOfExecutionContext & listOfEC, const std::string & header)
 {
 	out << TAB << header << " {" << EOL_INCR_INDENT;
-	ListOfExecutionContext::const_iterator itEC = listofEC.begin();
-	ListOfExecutionContext::const_iterator endEC = listofEC.end();
-	for( ; itEC != endEC ; ++itEC )
+	for( const auto & itEC : listOfEC )
 	{
-		(*itEC)->traceMinimum(out);
+		itEC->traceMinimum(out);
 	}
 
 	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
 }
 
 void ExecutionContext::traceMinimum(OutStream & out,
-		VectorOfExecutionContext & listofEC, const std::string & header)
+		VectorOfExecutionContext & vecOfEC, const std::string & header)
 {
 	out << TAB << header << " {" << EOL_INCR_INDENT;
-	VectorOfExecutionContext::const_iterator itEC = listofEC.begin();
-	VectorOfExecutionContext::const_iterator endEC = listofEC.end();
-	for( ; itEC != endEC ; ++itEC )
+	for( const auto & itEC : vecOfEC )
 	{
-		(*itEC)->traceMinimum(out);
+		itEC->traceMinimum(out);
 	}
 
 	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
@@ -621,28 +616,24 @@ void ExecutionContext::traceMinimum(OutStream & out,
 
 
 void ExecutionContext::traceDefault(OutStream & out,
-		ListOfExecutionContext & listofEC, const std::string & header)
+		ListOfExecutionContext & listOfEC, const std::string & header)
 {
 	out << TAB << header << " {" << EOL_INCR_INDENT;
-	ListOfExecutionContext::const_iterator itEC = listofEC.begin();
-	ListOfExecutionContext::const_iterator endEC = listofEC.end();
-	for( ; itEC != endEC ; ++itEC )
+	for( const auto & itEC : listOfEC )
 	{
-		(*itEC)->traceDefault(out);
+		itEC->traceDefault(out);
 	}
 
 	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
 }
 
 void ExecutionContext::traceDefault(OutStream & out,
-		VectorOfExecutionContext & listofEC, const std::string & header)
+		VectorOfExecutionContext & vecOfEC, const std::string & header)
 {
 	out << TAB << header << " {" << EOL_INCR_INDENT;
-	VectorOfExecutionContext::const_iterator itEC = listofEC.begin();
-	VectorOfExecutionContext::const_iterator endEC = listofEC.end();
-	for( ; itEC != endEC ; ++itEC )
+	for( const auto & itEC : vecOfEC )
 	{
-		(*itEC)->traceDefault(out);
+		itEC->traceDefault(out);
 	}
 
 	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
@@ -650,28 +641,24 @@ void ExecutionContext::traceDefault(OutStream & out,
 
 
 void ExecutionContext::debugDefault(OutStream & out,
-		ListOfExecutionContext & listofEC, const std::string & header)
+		ListOfExecutionContext & listOfEC, const std::string & header)
 {
 	out << TAB << header << " {" << EOL_INCR_INDENT;
-	ListOfExecutionContext::const_iterator itEC = listofEC.begin();
-	ListOfExecutionContext::const_iterator endEC = listofEC.end();
-	for( ; itEC != endEC ; ++itEC )
+	for( const auto & itEC : listOfEC )
 	{
-		(*itEC)->debugDefault(out);
+		itEC->debugDefault(out);
 	}
 
 	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
 }
 
 void ExecutionContext::debugDefault(OutStream & out,
-		VectorOfExecutionContext & listofEC, const std::string & header)
+		VectorOfExecutionContext & vecOfEC, const std::string & header)
 {
 	out << TAB << header << " {" << EOL_INCR_INDENT;
-	VectorOfExecutionContext::const_iterator itEC = listofEC.begin();
-	VectorOfExecutionContext::const_iterator endEC = listofEC.end();
-	for( ; itEC != endEC ; ++itEC )
+	for( const auto & itEC : vecOfEC )
 	{
-		(*itEC)->debugDefault(out);
+		itEC->debugDefault(out);
 	}
 
 	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
@@ -683,7 +670,7 @@ void ExecutionContext::debugDefault(OutStream & out,
  */
 void ExecutionContext::writeTraceAfterExec(OutStream & out) const
 {
-	avm_size_t count = 1;
+	std::size_t count = 1;
 	child_iterator it = begin();
 	child_iterator endIt = end();
 	for( ; (it != endIt) && (count < EXECUTION_CONTEXT_CHILD_TRACE_MAX);
@@ -697,7 +684,7 @@ void ExecutionContext::writeTraceAfterExec(OutStream & out) const
 		}
 		else
 		{
-			out << "machine#main " << refExecutionData().getSystemRID().str();
+			out << "machine#main " << getExecutionData().getSystemRID().str();
 		}
 
 		out << EOL;
@@ -714,7 +701,7 @@ void ExecutionContext::writeTraceAfterExec(OutStream & out) const
 		}
 		else
 		{
-			out << "machine#main " << refExecutionData().getSystemRID().str();
+			out << "machine#main " << getExecutionData().getSystemRID().str();
 		}
 
 		out << EOL;
@@ -730,7 +717,8 @@ void ExecutionContext::writeTraceAfterExec(OutStream & out) const
 		{
 			out << REPEAT("--------", 10) << EOL
 				<< "==> You could fix that limit using the integer attribute"
-				" << @ec_size = <integer>; >> in the section TRACE " << EOL;
+				" << @ec_size = <integer>; >> in the section 'console[ ... ]'"
+				<< EOL;
 		}
 	}
 
@@ -740,7 +728,7 @@ void ExecutionContext::writeTraceAfterExec(OutStream & out) const
 
 void ExecutionContext::traceDefaultPostEval(OutStream & out) const
 {
-	avm_size_t count = 1;
+	std::size_t count = 1;
 
 	child_iterator it = begin();
 	child_iterator endIt = end();
@@ -753,7 +741,7 @@ void ExecutionContext::traceDefaultPostEval(OutStream & out) const
 		{
 			out << " Q:" << (*it)->getStrWeight();
 		}
-		out << " " << (*it)->refExecutionData().strStateConf();
+		out << " " << (*it)->getExecutionData().strStateConf();
 
 		out << EOL_TAB << "|=> fired ";
 
@@ -763,7 +751,7 @@ void ExecutionContext::traceDefaultPostEval(OutStream & out) const
 		}
 		else
 		{
-			out << "nothing in " << refExecutionData().getSystemRID().str();
+			out << "nothing in " << getExecutionData().getSystemRID().str();
 		}
 
 		out << EOL;
@@ -776,7 +764,7 @@ void ExecutionContext::traceDefaultPostEval(OutStream & out) const
 		{
 			out << " Q:" << mChildContexts.last()->getStrWeight();
 		}
-		out << " " << mChildContexts.last()->refExecutionData().strStateConf();
+		out << " " << mChildContexts.last()->getExecutionData().strStateConf();
 
 		out << EOL_TAB << "|=> fired ";
 
@@ -786,7 +774,7 @@ void ExecutionContext::traceDefaultPostEval(OutStream & out) const
 		}
 		else
 		{
-			out << "nothing in " << refExecutionData().getSystemRID().str();
+			out << "nothing in " << getExecutionData().getSystemRID().str();
 		}
 
 		out << EOL;
@@ -802,7 +790,8 @@ void ExecutionContext::traceDefaultPostEval(OutStream & out) const
 		{
 			out << REPEAT("--------", 10) << EOL
 				<< "==> You could fix that limit using the integer attribute"
-				" << @ec_size = <integer>; >> in the section TRACE " << EOL;
+				" << @ec_size = <integer>; >> in the section 'console[ ... ]'"
+				<< EOL;
 		}
 	}
 
@@ -847,7 +836,7 @@ AVM_VERBOSITY_SWITCH_END
  * OK
  */
 void ExecutionContext::writeTraceForDeadlock(OutStream & out,
-		avm_uint32_t nDeadlockCounter) const
+		std::uint32_t nDeadlockCounter) const
 {
 	out << TAB << " ==> DEADLOCK : " << nDeadlockCounter << "<=="
 		<< TAB << " << NO FIREABLE TRANSITIONS FOUND >>" << EOL
@@ -859,7 +848,7 @@ void ExecutionContext::writeTraceForDeadlock(OutStream & out,
  */
 void ExecutionContext::writeTraceForRedundancy(OutStream & out,
 		ExecutionContext * aRedundantExecContext,
-		avm_uint32_t nRedundancyCounter) const
+		std::uint32_t nRedundancyCounter) const
 {
 	out << TAB << " ==> REDUNDANCE : " << nRedundancyCounter << " <=="
 		<< std::endl

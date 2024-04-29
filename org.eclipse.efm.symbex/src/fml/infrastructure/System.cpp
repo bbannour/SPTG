@@ -25,38 +25,40 @@
 namespace sep
 {
 
-
 /**
  * Serialization
  */
-
-void System::strHeader(OutStream & os) const
+void System::strHeader(OutStream & out) const
 {
-	os << getModifier().toString()
-			<< getSpecifier().strDesign_not(
-					Specifier::DESIGN_PROTOTYPE_STATIC_KIND)
-			<< getSpecifier().keywordComponent();
+	out << getSpecifier().strFeature(" ")
+		<< getModifier().toString()
+		<< getSpecifier().strDesign_not(
+				Specifier::DESIGN_PROTOTYPE_STATIC_KIND)
+		<< getSpecifier().keywordComponent();
 
 	if( getSpecifier().isDefined(Specifier::DISABLE_COMPONENT_DESIGN_FIELD) )
 	{
-		os << "< " << getSpecifier().str(
-				Specifier::DISABLE_COMPONENT_DESIGN_FIELD) << " >";
+		out << "< " << getSpecifier().str(
+				Specifier::DISABLE_FCOMPONENT_EATURE_DESIGN_FIELD ) << " >";
 	}
 
-	os << " " << getNameID();
+	out << " " << getNameID();
 }
 
 
-void System::toStream(OutStream & os) const
+void System::toStream(OutStream & out) const
 {
-	if( hasWObject() )
+//	out << TAB << "@FormalML< system , 1.0 >:" << EOL2_FLUSH;
+	out << TAB << "@xlia< system , 1.0 >:" << EOL2_FLUSH;
+
+	if( hasWObject() &&
+		(  getWObject()->isWProperty()
+		|| getWObject()->hasOwnedElement()) )
 	{
-		getWObject()->toStream(os);
+		getWObject()->toStream(out);
 	}
 
-	os << TAB << "@FormalML< system , 1.0 >:" << EOL2_FLUSH;
-
-	Machine::toStream(os);
+	Machine::toStream(out);
 }
 
 

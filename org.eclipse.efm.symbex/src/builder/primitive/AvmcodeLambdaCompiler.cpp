@@ -41,7 +41,7 @@ namespace sep
 BF AvmcodeLambdaApplyCompiler::compileExpression(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( not aCode->populated() )
+	if( not aCode->hasManyOperands() )
 	{
 		AVM_OS_EXIT( FAILED )
 				<< "Unexpected APP EXPRESSION with less than 2 arguments "
@@ -66,11 +66,11 @@ BF AvmcodeLambdaApplyCompiler::compileExpression(
 
 	BF lambdaValue;
 
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
-	for( ++itArg ; itArg != itEndArg ; ++itArg )
+	AvmCode::const_iterator itOperand = aCode->begin();
+	AvmCode::const_iterator endOperand = aCode->end();
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
-		lambdaValue = compileArgRvalue(aCTX, (*itArg));
+		lambdaValue = compileArgRvalue(aCTX, *itOperand);
 		if( lambdaValue.valid() )
 		{
 			newCode->append( lambdaValue );
@@ -79,21 +79,21 @@ BF AvmcodeLambdaApplyCompiler::compileExpression(
 		{
 			AVM_OS_EXIT( FAILED )
 					<< "Error:> compiling LAMBDA VALUE << "
-					<< (*itArg).str() << " >> for compileAvmCodeApp\n"
+					<< (*itOperand).str() << " >> for compileAvmCodeApp\n"
 					<< aCode->toString()
 					<< SEND_EXIT;
 		}
 
-//		if( (*itArg).isnot< AvmCode >() )
+//		if( (*itOperand).isnot< AvmCode >() )
 //		{
 //			AVM_OS_EXIT( FAILED )
 //					<< "Unexpected AVMCODE as variable-value association << "
-//					<< (*itArg).str() << " >> for compileAvmCodeApp\n"
+//					<< (*itOperand).str() << " >> for compileAvmCodeApp\n"
 //					<< aCode->toString()
 //					<< SEND_EXIT;
 //		}
 //
-//		const BFCode & appAssign = (*itArg).bfAvmCode();
+//		const BFCode & appAssign = (*itOperand).bfAvmCode();
 //
 //		if( appAssign->isnotOperator( OperatorManager::OPERATOR_ASSIGN ) )
 //		{
@@ -130,7 +130,7 @@ BF AvmcodeLambdaApplyCompiler::compileExpression(
 BFCode AvmcodeLambdaApplyCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( not aCode->populated() )
+	if( not aCode->hasManyOperands() )
 	{
 		AVM_OS_EXIT( FAILED )
 				<< "Unexpected APP EXPRESSION with less than 2 arguments "
@@ -156,14 +156,14 @@ BFCode AvmcodeLambdaApplyCompiler::compileStatement(
 
 //	BF appVar;
 
-//	InstanceOfData * lambdaVar = NULL;
+//	InstanceOfData * lambdaVar = nullptr;
 	BF lambdaValue;
 
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
-	for( ++itArg ; itArg != itEndArg ; ++itArg )
+	AvmCode::const_iterator itOperand = aCode->begin();
+	AvmCode::const_iterator endOperand = aCode->end();
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
-		lambdaValue = AVMCODE_COMPILER.decode_compileStatement(aCTX, (*itArg));
+		lambdaValue = AVMCODE_COMPILER.decode_compileStatement(aCTX, (*itOperand));
 		if( lambdaValue.valid() )
 		{
 			newCode->append( lambdaValue );
@@ -172,21 +172,21 @@ BFCode AvmcodeLambdaApplyCompiler::compileStatement(
 		{
 			AVM_OS_EXIT( FAILED )
 					<< "Error:> compiling LAMBDA VALUE << "
-					<< (*itArg).str() << " >> for compileAvmCodeApp\n"
+					<< (*itOperand).str() << " >> for compileAvmCodeApp\n"
 					<< aCode->toString()
 					<< SEND_EXIT;
 		}
 
-//		if( (*itArg).isnot< AvmCode >() )
+//		if( (*itOperand).isnot< AvmCode >() )
 //		{
 //			AVM_OS_EXIT( FAILED )
 //					<< "Unexpected AVMCODE as variable-value "
-//					"association << " << (*itArg).str()
+//					"association << " << (*itOperand).str()
 //					<< " >> for compileAvmCodeApp\n" << aCode->toString()
 //					<< SEND_EXIT;
 //		}
 //
-//		const BFCode & appAssign = (*itArg).bfCode();
+//		const BFCode & appAssign = (*itOperand).bfCode();
 //
 //		if( appAssign->isnotOperator( OperatorManager::OPERATOR_ASSIGN ) )
 //		{
@@ -229,7 +229,7 @@ BFCode AvmcodeLambdaApplyCompiler::compileStatement(
 BF AvmcodeLambdaLetCompiler::compileExpression(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( not aCode->populated() )
+	if( not aCode->hasManyOperands() )
 	{
 		AVM_OS_EXIT( FAILED )
 				<< "Unexpected LAMBDA EXPRESSION without argument for "
@@ -239,7 +239,7 @@ BF AvmcodeLambdaLetCompiler::compileExpression(
 		return( BF::REF_NULL );
 	}
 
-	avm_size_t varCount = aCode->size() - 1;
+	std::size_t varCount = aCode->size() - 1;
 
 	AvmLambda * letAvmLambda = new AvmLambda(
 			aCTX->mCompileCtx, varCount, AVM_LAMBDA_LET_NATURE);
@@ -254,12 +254,12 @@ BF AvmcodeLambdaLetCompiler::compileExpression(
 	Variable * letVariable;
 	InstanceOfData * lambdaInstance;
 
-	AvmCode::iterator itArg = aCode->begin();
-	for( avm_size_t offset = 0 ; offset < varCount ; ++itArg , ++offset )
+	AvmCode::const_iterator itOperand = aCode->begin();
+	for( std::size_t offset = 0 ; offset < varCount ; ++itOperand , ++offset )
 	{
-		if( (*itArg).is< AvmCode >() )
+		if( (*itOperand).is< AvmCode >() )
 		{
-			letAssign = (*itArg).bfCode();
+			letAssign = (*itOperand).bfCode();
 
 			if( letAssign->getOperator() == OperatorManager::OPERATOR_ASSIGN )
 			{
@@ -278,7 +278,7 @@ BF AvmcodeLambdaLetCompiler::compileExpression(
 		}
 		else
 		{
-			letVar = (*itArg);
+			letVar = (*itOperand);
 
 			letValue.destroy();
 			letAssign.destroy();
@@ -289,16 +289,16 @@ BF AvmcodeLambdaLetCompiler::compileExpression(
 				letVar.is< UniFormIdentifier >() )
 		{
 			letVarForm = BF( letVariable = new Variable(
-					const_cast< ObjectElement * >(
-							aCTX->mCompileCtx->getAstElement() ),
+					const_cast< ObjectElement *>(
+							& aCTX->mCompileCtx->getAstElement() ),
 					TypeManager::UNIVERSAL, letVar.str(), letVar.str()) );
 
 			lambdaInstance = new InstanceOfData(
-					IPointerDataNature::POINTER_STANDARD_NATURE,
-					letAvmLambda, letVariable, TypeManager::UNIVERSAL,
+					IPointerVariableNature::POINTER_STANDARD_NATURE,
+					letAvmLambda, (* letVariable), TypeManager::UNIVERSAL,
 					offset, Modifier::PROPERTY_PARAMETER_MODIFIER );
 
-			letAvmLambda->setData(offset, lambdaInstance);
+			letAvmLambda->setVariable(offset, lambdaInstance);
 
 			if( letValue.valid() )
 			{
@@ -332,7 +332,7 @@ BF AvmcodeLambdaLetCompiler::compileExpression(
 BFCode AvmcodeLambdaLetCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( not aCode->populated() )
+	if( not aCode->hasManyOperands() )
 	{
 		AVM_OS_EXIT( FAILED )
 				<< "Unexpected LAMBDA EXPRESSION without argument "
@@ -342,7 +342,7 @@ BFCode AvmcodeLambdaLetCompiler::compileStatement(
 		return( BFCode::REF_NULL );
 	}
 
-	avm_size_t varCount = aCode->size() - 1;
+	std::size_t varCount = aCode->size() - 1;
 
 	AvmLambda * letAvmLambda = new AvmLambda(
 			aCTX->mCompileCtx, varCount, AVM_LAMBDA_LET_NATURE);
@@ -357,12 +357,12 @@ BFCode AvmcodeLambdaLetCompiler::compileStatement(
 	Variable * letVariable;
 	InstanceOfData * lambdaInstance;
 
-	AvmCode::iterator itArg = aCode->begin();
-	for( avm_size_t offset = 0 ; offset < varCount ; ++itArg , ++offset )
+	AvmCode::const_iterator itOperand = aCode->begin();
+	for( std::size_t offset = 0 ; offset < varCount ; ++itOperand , ++offset )
 	{
-		if( (*itArg).is< AvmCode >() )
+		if( (*itOperand).is< AvmCode >() )
 		{
-			letAssign = (*itArg).bfCode();
+			letAssign = (*itOperand).bfCode();
 
 			if( letAssign->getOperator() == OperatorManager::OPERATOR_ASSIGN )
 			{
@@ -381,7 +381,7 @@ BFCode AvmcodeLambdaLetCompiler::compileStatement(
 		}
 		else
 		{
-			letVar = (*itArg);
+			letVar = (*itOperand);
 
 			letValue.destroy();
 			letAssign.destroy();
@@ -392,15 +392,16 @@ BFCode AvmcodeLambdaLetCompiler::compileStatement(
 				letVar.is< UniFormIdentifier >() )
 		{
 			letVarForm = BF( letVariable = new Variable(
-					const_cast< ObjectElement * >(
-							aCTX->mCompileCtx->getAstElement() ),
+					const_cast< ObjectElement *>(
+							& aCTX->mCompileCtx->getAstElement() ),
 					TypeManager::UNIVERSAL, letVar.str(), letVar.str()) );
 
 			lambdaInstance = new InstanceOfData(
-					IPointerDataNature::POINTER_STANDARD_NATURE,
-					letAvmLambda, letVariable, TypeManager::UNIVERSAL,
+					IPointerVariableNature::POINTER_STANDARD_NATURE,
+					letAvmLambda, (* letVariable), TypeManager::UNIVERSAL,
 					offset, Modifier::PROPERTY_PARAMETER_MODIFIER );
-			letAvmLambda->setData(offset, lambdaInstance);
+
+			letAvmLambda->setVariable(offset, lambdaInstance);
 
 			if( letValue.valid() )
 			{
@@ -440,7 +441,7 @@ BFCode AvmcodeLambdaLetCompiler::compileStatement(
 BF AvmcodeLambdaExprCompiler::compileExpression(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		AVM_OS_EXIT( FAILED )
 				<< "Unexpected LAMBDA EXPRESSION without argument "
@@ -450,7 +451,7 @@ BF AvmcodeLambdaExprCompiler::compileExpression(
 		return( BF::REF_NULL );
 	}
 
-	avm_size_t varCount = aCode->size() - 1;
+	std::size_t varCount = aCode->size() - 1;
 
 	AvmLambda * funAvmLambda = new AvmLambda(
 			aCTX->mCompileCtx, varCount, AVM_LAMBDA_FUN_NATURE);
@@ -462,26 +463,26 @@ BF AvmcodeLambdaExprCompiler::compileExpression(
 	Variable * lambdaVariable;
 	InstanceOfData * lambdaInstance;
 
-	AvmCode::iterator itArg = aCode->begin();
-	for( avm_size_t offset = 0 ; offset < varCount ; ++itArg , ++offset )
+	AvmCode::const_iterator itOperand = aCode->begin();
+	for( std::size_t offset = 0 ; offset < varCount ; ++itOperand , ++offset )
 	{
-		lambdaVar = (*itArg);
+		lambdaVar = (*itOperand);
 
 		if( lambdaVar.isIdentifier() || lambdaVar.isUfi() ||
 				lambdaVar.is< UniFormIdentifier >() )
 		{
 			lambdaVarForm = BF( lambdaVariable = new Variable(
 					const_cast< ObjectElement * >(
-							aCTX->mCompileCtx->getAstElement() ),
+							& aCTX->mCompileCtx->getAstElement()),
 					TypeManager::UNIVERSAL, lambdaVar.str(), lambdaVar.str()) );
 			aCode->set(offset, lambdaVarForm);
 
 			lambdaInstance = new InstanceOfData(
-					IPointerDataNature::POINTER_STANDARD_NATURE,
-					funAvmLambda, lambdaVariable, TypeManager::UNIVERSAL,
+					IPointerVariableNature::POINTER_STANDARD_NATURE,
+					funAvmLambda, (* lambdaVariable), TypeManager::UNIVERSAL,
 					offset, Modifier::PROPERTY_PARAMETER_MODIFIER );
 
-			funAvmLambda->setData(offset, lambdaInstance);
+			funAvmLambda->setVariable(offset, lambdaInstance);
 		}
 		else
 		{
@@ -503,7 +504,7 @@ BF AvmcodeLambdaExprCompiler::compileExpression(
 BFCode AvmcodeLambdaExprCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		AVM_OS_EXIT( FAILED )
 				<< "Unexpected LAMBDA EXPRESSION without argument "
@@ -513,7 +514,7 @@ BFCode AvmcodeLambdaExprCompiler::compileStatement(
 		return( BFCode::REF_NULL );
 	}
 
-	avm_size_t varCount = aCode->size() - 1;
+	std::size_t varCount = aCode->size() - 1;
 
 	AvmLambda * funAvmLambda = new AvmLambda(
 			aCTX->mCompileCtx, varCount, AVM_LAMBDA_FUN_NATURE);
@@ -525,26 +526,26 @@ BFCode AvmcodeLambdaExprCompiler::compileStatement(
 	Variable * lambdaVariable;
 	InstanceOfData * lambdaInstance;
 
-	AvmCode::iterator itArg = aCode->begin();
-	for( avm_size_t offset = 0 ; offset < varCount ; ++itArg , ++offset )
+	AvmCode::const_iterator itOperand = aCode->begin();
+	for( std::size_t offset = 0 ; offset < varCount ; ++itOperand , ++offset )
 	{
-		lambdaVar = (*itArg);
+		lambdaVar = (*itOperand);
 
 		if( lambdaVar.isIdentifier() || lambdaVar.isUfi() ||
 				lambdaVar.is< UniFormIdentifier >() )
 		{
 			lambdaVarForm = BF( lambdaVariable = new Variable(
 					const_cast< ObjectElement * >(
-							aCTX->mCompileCtx->getAstElement() ),
+							& aCTX->mCompileCtx->getAstElement() ),
 					TypeManager::UNIVERSAL, lambdaVar.str(), lambdaVar.str()) );
 			aCode->set(offset, lambdaVarForm);
 
 			lambdaInstance = new InstanceOfData(
-					IPointerDataNature::POINTER_STANDARD_NATURE,
-					funAvmLambda, lambdaVariable, TypeManager::UNIVERSAL,
+					IPointerVariableNature::POINTER_STANDARD_NATURE,
+					funAvmLambda, (* lambdaVariable), TypeManager::UNIVERSAL,
 					offset, Modifier::PROPERTY_PARAMETER_MODIFIER );
 
-			funAvmLambda->setData(offset, lambdaInstance);
+			funAvmLambda->setVariable(offset, lambdaInstance);
 		}
 		else
 		{

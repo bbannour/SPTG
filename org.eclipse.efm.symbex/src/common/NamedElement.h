@@ -18,6 +18,9 @@
 
 #include <common/Element.h>
 
+#include <algorithm>
+#include <regex>
+
 #include <collection/Collection.h>
 
 
@@ -35,8 +38,7 @@ namespace sep
 #define FQN_ID_ROOT_SEPARATOR         "::"
 
 
-class NamedElement :
-		public Element ,
+class NamedElement : public Element ,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( NamedElement )
 {
 
@@ -44,7 +46,7 @@ public:
 /**
  * TYPEDEF
  */
-	typedef avm_uint8_t               op_comparer_t;
+	typedef std::uint8_t               op_comparer_t;
 
 	enum {
 		OP_STRICT_COMPARER            = 0x001,
@@ -72,6 +74,15 @@ public:
 		                              | OP_WEAK_COMPARER
 	};
 
+
+	/**
+	* GLOBALS
+	* NAME ID SEPARATOR
+	*/
+	static std::string NAME_ID_SEPARATOR;
+
+	static const std::regex REGEX_DOT_or_DIESE;
+	static const std::regex REGEX_DOT_or_COLON_or_DIESE;
 
 protected:
 	/**
@@ -140,7 +151,7 @@ public:
 		setAllName( anElement );
 	}
 
-	NamedElement(class_kind_t aClassKind, NamedElement * anElement)
+	NamedElement(class_kind_t aClassKind, const NamedElement * anElement)
 	: Element( aClassKind ),
 	mFullyQualifiedNameID( ),
 	mNameID( ),
@@ -173,6 +184,28 @@ public:
 
 
 	/**
+	 * Loacation
+	 * Locator
+	 */
+	inline static std::string location(const std::string & aQualifiedNameID)
+	{
+		std::string::size_type pos =
+				aQualifiedNameID.find(FQN_ID_ROOT_SEPARATOR);
+
+		return( (pos != std::string::npos) ?
+				aQualifiedNameID.substr(pos + 2 ) : aQualifiedNameID );
+	}
+
+	inline static std::string locator(const std::string & aQualifiedNameID)
+	{
+		std::string::size_type pos =
+				aQualifiedNameID.find(FQN_ID_ROOT_SEPARATOR);
+
+		return( (pos != std::string::npos) ?
+				aQualifiedNameID.substr(0, pos) : "" );
+	}
+
+	/**
 	 * GETTER - SETTER
 	 * mFullyQualifiedNameID
 	 */
@@ -191,14 +224,69 @@ public:
 	{
 		mFullyQualifiedNameID = aFullyQualifiedNameID;
 
-		extractSetNameID( aFullyQualifiedNameID );
+		updateNameID( aFullyQualifiedNameID );
 	}
 
-	inline void setFullyQualifiedNameContainer( NamedElement * anElement)
+	inline void setFullyQualifiedNameContainer(const NamedElement & anElement)
 	{
 		mFullyQualifiedNameID =
-				( OSS() << anElement->getFullyQualifiedNameID()
+				( OSS() << anElement.getFullyQualifiedNameID()
 						<< '.' << getNameID() );
+	}
+
+	// LocactionID
+	inline std::string getLocationID() const
+	{
+		return( NamedElement::location( mFullyQualifiedNameID ) );
+	}
+
+	inline bool isLocationID(const std::string & aLocationID) const
+	{
+		return( NamedElement::location(mFullyQualifiedNameID)
+				== NamedElement::location(aLocationID) );
+	}
+
+	/////////////////////////////////////////////
+	// ASSERT PORTABILITY or UNICITY for Solver...
+	inline virtual std::string getPortableQualifiedNameID() const
+	{
+		return std::regex_replace(
+				NamedElement::getQualifiedNameID(),
+				REGEX_DOT_or_COLON_or_DIESE, "__" );
+	}
+
+	inline virtual std::string getUniqFullyQualifiedNameID() const
+	{
+		return( OSS() << std::regex_replace(
+					NamedElement::getQualifiedNameID(),
+					REGEX_DOT_or_COLON_or_DIESE, "__")
+					  << "__" << raw_address() );
+	}
+
+	inline virtual std::string getUniqQualifiedNameID() const
+	{
+		std::string locationID = NamedElement::getLocationID();
+		std::string::size_type pos = locationID.find_first_of('.');
+		if( pos != std::string::npos )
+		{
+			locationID = locationID.substr(pos + 1);
+		}
+		return( OSS() << std::regex_replace(locationID,
+					REGEX_DOT_or_COLON_or_DIESE, "__")
+					  << "__" << raw_address() );
+	}
+
+
+	inline virtual std::string getPortableLocationdID() const
+	{
+		return std::regex_replace(getLocationID(),
+				REGEX_DOT_or_COLON_or_DIESE, "__");
+	}
+
+	inline virtual std::string getPortableFullyQualifiedNameID() const
+	{
+		return std::regex_replace(
+				mFullyQualifiedNameID, REGEX_DOT_or_COLON_or_DIESE, "__");
 	}
 
 
@@ -206,6 +294,7 @@ public:
 	 * GETTER - SETTER
 	 * mNameID
 	 */
+
 	inline virtual const std::string & getNameID() const
 	{
 		return( mNameID );
@@ -221,9 +310,45 @@ public:
 		mNameID = aNameID;
 	}
 
-	inline void extractSetNameID(const std::string & aQualifiedNameID)
+	inline void setNames(const std::string & aNameID)
+	{
+		mUnrestrictedName = mNameID = aNameID;
+	}
+
+	inline void setNames(const std::string & aNameID,
+			const std::string & aUnrestrictedName)
+	{
+		mNameID = aNameID;
+		mUnrestrictedName = aUnrestrictedName;
+	}
+
+	inline void updateNameID(const std::string & aQualifiedNameID)
 	{
 		mNameID = NamedElement::extractNameID( aQualifiedNameID );
+
+		if( mUnrestrictedName.empty() )
+		{
+			mUnrestrictedName = mNameID;
+		}
+	}
+
+
+	/////////////////////////////////////////////
+	// ASSERT PORTABILITY or UNICITY for Solver...
+	inline virtual std::string getPortableNameID() const
+	{
+		std::string name = mNameID;
+		std::replace(name.begin(), name.end(), '#', '_');
+
+		return( name );
+	}
+
+	inline virtual std::string getUniqNameID() const
+	{
+		std::string name = mNameID;
+		std::replace(name.begin(), name.end(), '#', '_');
+
+		return( OSS() << name << "__" << raw_address() );
 	}
 
 
@@ -242,22 +367,22 @@ public:
 	{
 		mFullyQualifiedNameID = aFullyQualifiedNameID;
 
-		setNameID( aNameID );
+		mUnrestrictedName = mNameID = aNameID;
 	}
 
 	inline void setAllNameID(const std::string & aFullyQualifiedNameID,
-			const std::string & aNameID, const std::string & name)
+			const std::string & aNameID, const std::string & unrestrictedName)
 	{
 		mFullyQualifiedNameID = aFullyQualifiedNameID;
 
 		mNameID = aNameID;
 
-		mUnrestrictedName = name;
+		mUnrestrictedName = unrestrictedName;
 	}
 
 
 	/**
-	 * UTIL
+	 * UTILS
 	 */
 	inline bool isNamed() const
 	{
@@ -278,15 +403,17 @@ public:
 		mUnrestrictedName = anElement.mUnrestrictedName;
 	}
 
-	inline void setAllName(NamedElement * anElement)
+	inline void setAllName(const NamedElement * anElement)
 	{
-		if( anElement != NULL )
+		if( anElement != nullptr )
 		{
 			mFullyQualifiedNameID = anElement->mFullyQualifiedNameID;
 			mNameID = anElement->mNameID;
 			mUnrestrictedName = anElement->mUnrestrictedName;
 		}
 	}
+
+	std::string relativeQualifiedNameID(const NamedElement & anElement) const;
 
 
 	/**
@@ -304,8 +431,7 @@ public:
 	{
 		return( (mFullyQualifiedNameID == aFullyQualifiedNameID)
 				|| (enabledOnlyLocationComparisonElse
-					&& NamedElement::compareLocation(
-							this, aFullyQualifiedNameID)) );
+					&& this->isLocationID(aFullyQualifiedNameID)) );
 	}
 
 	inline bool fqnEndsWith(const std::string & aQualifiedNameID) const
@@ -319,6 +445,14 @@ public:
 	{
 		return( mFullyQualifiedNameID.find(aQualifiedNameID) == 0 );
 	}
+
+
+	/**
+	 * REGEX MATCH
+	 */
+	bool fqnRegexMatch(const std::string & aRegex) const;
+
+	bool nameRegexMatch(const std::string & aRegex) const;
 
 	/**
 	 * GETTER
@@ -348,46 +482,16 @@ public:
 	static std::string makeQualifiedNameID(
 			const std::string & aQualifiedNameID, const std::string & aNameID);
 
+	static std::string makeFullyQualifiedNameID(
+			const std::string & aFullyQualifiedNameID,
+			const std::string & aQualifiedNameID, bool preserveLocator = true);
+
+	static std::string makeFullyRegexQualifiedNameID(
+			const std::string & aFullyQualifiedNameID,
+			const std::string & aQualifiedNameID, bool preserveLocator = true);
+
 	static std::string getContainerQualifiedNameID(
 			const std::string & aQualifiedNameID);
-
-	/**
-	 * Loacation
-	 * Locator
-	 */
-	inline static std::string location(const std::string & aQualifiedNameID)
-	{
-		std::string::size_type pos =
-				aQualifiedNameID.find(FQN_ID_ROOT_SEPARATOR);
-
-		return( (pos != std::string::npos) ?
-				aQualifiedNameID.substr(pos + 2 ) : aQualifiedNameID );
-	}
-
-	inline static std::string locator(const std::string & aQualifiedNameID)
-	{
-		std::string::size_type pos =
-				aQualifiedNameID.find(FQN_ID_ROOT_SEPARATOR);
-
-		return( (pos != std::string::npos) ?
-				aQualifiedNameID.substr(0, pos) : "" );
-	}
-
-
-	inline static bool compareID(
-			const std::string & aQualifiedNameID_1,
-			const std::string & aQualifiedNameID_2)
-	{
-		return( aQualifiedNameID_1 == aQualifiedNameID_2 );
-	}
-
-	inline static bool compareLocation(
-			const std::string & aQualifiedNameID_1,
-			const std::string & aQualifiedNameID_2)
-	{
-		return( NamedElement::location(aQualifiedNameID_1)
-				== NamedElement::location(aQualifiedNameID_2) );
-	}
 
 	/**
 	 * isAbsolute
@@ -406,7 +510,7 @@ public:
 	}
 
 
-	inline static bool isNull(const std::string & aQualifiedNameID)
+	inline static bool isNullNameID(const std::string & aQualifiedNameID)
 	{
 		return( (not aQualifiedNameID.empty())
 				&& (aQualifiedNameID[ 0 ] == '<')
@@ -414,7 +518,7 @@ public:
 						!= std::string::npos) );
 	}
 
-	inline static bool isSimplenameID(const std::string & aQualifiedNameID)
+	inline static bool isSimpleNameID(const std::string & aQualifiedNameID)
 	{
 		return( (aQualifiedNameID.find_last_of('.') == std::string::npos)
 				&& (aQualifiedNameID.find(FQN_ID_ROOT_SEPARATOR)
@@ -453,40 +557,9 @@ public:
 	 * COMPARER  FOR  QUALIFIED NAME ID  STRING
 	 ***************************************************************************
 	 */
-	bool compareID(const std::string & aQualifiedNameID,
+	bool isEqualsID(const std::string & aQualifiedNameID,
 			op_comparer_t op) const;
 
-	/*
-	 * !UNUSED!
-	static bool compareID(const std::string & aFullyQualifiedNameID,
-			const std::string & aQualifiedNameID, op_comparer_t op);
-
-	inline static bool compareFullyQualifiedNameID(
-			const NamedElement * anElement,
-			const std::string & aQualifiedNameID)
-	{
-		return( anElement->compareID(aQualifiedNameID, OP_STRONG_COMPARER) );
-	}
-	* !UNUSED!
-	*/
-
-	inline static bool compareLocation(const NamedElement * anElement,
-			const std::string & aQualifiedNameID)
-	{
-		return( anElement->compareID(aQualifiedNameID, OP_ABSOLUTE_COMPARER) );
-	}
-
-	/*
-	 * !UNUSED!
-	inline static bool compareQualifiedNameID(
-			const NamedElement * anElement,
-			const std::string & aQualifiedNameID)
-	{
-		return( compareID(anElement,
-				aQualifiedNameID, OP_QUALIFIED_NAME_ID_COMPARER) );
-	}
-	* !UNUSED!
-	*/
 
 	inline static bool fqnStartsWith(
 			const std::string & aFullyQualifiedNameID,
@@ -515,10 +588,10 @@ public:
 	 * LIST of ID of QUALIFIED NAME ID
 	 ***************************************************************************
 	 */
-	static avm_size_t collectNameID(Collection< std::string > & listNameID,
+	static std::size_t collectNameID(Collection< std::string > & listNameID,
 			const std::string & aQualifiedNameID, std::string::size_type pos);
 
-	inline static avm_size_t collectNameID(
+	inline static std::size_t collectNameID(
 			Collection< std::string > & listNameID,
 		const std::string & aQualifiedNameID, const std::string & ignorePrefix)
 	{
@@ -532,7 +605,7 @@ public:
 				aQualifiedNameID, ignorePrefix.size());
 	}
 
-	static avm_size_t collectNameID(Collection< std::string > & listNameID,
+	static std::size_t collectNameID(Collection< std::string > & listNameID,
 			const std::string & aQualifiedNameID);
 
 
@@ -550,7 +623,7 @@ public:
 		return( defaultFQN );
 	}
 
-	inline void virtual strFQN(OutStream & os) const
+	inline virtual void strFQN(OutStream & os) const
 	{
 		os << strFQN();
 	}
@@ -559,7 +632,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		if( not getFullyQualifiedNameID().empty() )
 		{

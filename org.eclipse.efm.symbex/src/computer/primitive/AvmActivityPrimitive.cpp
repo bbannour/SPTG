@@ -45,12 +45,36 @@ namespace sep
 
 /**
  ***************************************************************************
+ * execution of an SELF or SUPER program
+ ***************************************************************************
+ */
+bool AvmPrimitive_Self::seval(EvaluationEnvironment & ENV)
+{
+	ENV.outVAL = ( ENV.mARG->count == 0 ) ? ENV.mARG->outED.getRID()
+			: ENV.mARG->outED.getRID().getAncestorContaining(
+					ENV.mARG->at(0).to< InstanceOfMachine >() );
+
+	return( true );
+}
+
+bool AvmPrimitive_Super::seval(EvaluationEnvironment & ENV)
+{
+	ENV.outVAL = ( ENV.mARG->count == 0 ) ? ENV.mARG->outED.getRID().getParent()
+			: ENV.mARG->outED.getRID().getAncestorContaining(
+					ENV.mARG->at(0).to< InstanceOfMachine >() ).getParent();
+
+	return( true );
+}
+
+
+/**
+ ***************************************************************************
  * execution of an CONTEXT_SWITCHER program
  ***************************************************************************
  */
 bool AvmPrimitive_ContextSwitcher::run(ExecutionEnvironment & ENV)
 {
-	RuntimeID saveRID = ENV.mARG->outED->mRID;
+	RuntimeID saveRID = ENV.mARG->outED.getRID();
 
 	ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED,
 			ENV.mARG->at(0).bfRID(), ENV.mARG->at(1).bfCode() );
@@ -82,16 +106,16 @@ bool AvmPrimitive_Init::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & tmpRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isDestroyed( tmpRID ) )
+	if( ENV.mARG->outED.isDestroyed( tmpRID ) )
 	{
 		return( true );
 	}
-	else if( ENV.mARG->outED->isRunnable( tmpRID ) )
+	else if( ENV.mARG->outED.isRunnable( tmpRID ) )
 	{
-		if( tmpRID.getExecutable()->hasOnInit() )
+		if( tmpRID.refExecutable().hasOnInit() )
 		{
 			ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED,
-					tmpRID, tmpRID.getExecutable()->getOnInit());
+					tmpRID, tmpRID.refExecutable().getOnInit());
 
 			if( tmpENV.run(PROCESS_INITING_STATE) )
 			{
@@ -116,10 +140,10 @@ bool AvmPrimitive_Init::run(ExecutionEnvironment & ENV)
 	}
 	else
 	{
-		if( not ENV.mARG->outED->hasRunnableElementTrace() )
-//		if( ENV.mARG->outED->isCreated( tmpRID ) )
+		if( not ENV.mARG->outED.hasRunnableElementTrace() )
+//		if( ENV.mARG->outED.isCreated( tmpRID ) )
 		{
-			ENV.mARG->outED->mAEES = AEES_STMNT_NOTHING;
+			ENV.mARG->outED.setAEES( AEES_STMNT_NOTHING );
 		}
 
 		ENV.outEDS.append( ENV.mARG->outED );
@@ -138,33 +162,87 @@ bool AvmPrimitive_Final::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & tmpRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isunRunnable( tmpRID ) )
+	if( ENV.mARG->outED.isunRunnable( tmpRID ) )
 	{
 		return( true );
 	}
-	else if( ENV.mARG->outED->isRunnable( tmpRID ) )
+	else if( ENV.mARG->outED.isRunnable( tmpRID ) )
 	{
-		if( tmpRID.getExecutable()->hasOnFinal() )
+		const RuntimeForm & tmpRF = ENV.mARG->outED.getRuntime(tmpRID);
+
+		bool finalizeSelf = true;
+
+		if( tmpRID.getSpecifier().isMocCompositeStructure() )
 		{
-			ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, tmpRID,
-					tmpRID.getExecutable()->getOnFinal());
-
-			if( tmpENV.run(PROCESS_FINALIZING_STATE) )
+			TableOfRuntimeID::const_iterator itChildRID = tmpRF.beginChild();
+			TableOfRuntimeID::const_iterator endChildRID = tmpRF.endChild();
+			for( ; itChildRID != endChildRID ; ++itChildRID )
 			{
-				if( finalizedParent(ENV, tmpENV, tmpRID) )
+				if( not ENV.mARG->outED.isFinalizedOrDestroyed(*itChildRID) )
 				{
-					ENV.spliceNotOutput(tmpENV);
+					finalizeSelf = false;
+					break;
+				}
+			}
+		}
+		else if( tmpRID.getSpecifier().isMocStateTransitionStructure() )
+		{
+			List< RuntimeID > runnableRID;
+			StatementFactory::collectRID(tmpRF.getOnSchedule(), runnableRID);
 
+			for( const auto & itRunnableRID : runnableRID )
+			{
+				if( not ENV.mARG->outED.isFinalizedOrDestroyed(itRunnableRID) )
+				{
+					finalizeSelf = false;
+					break;
+				}
+			}
+		}
+
+		if( finalizeSelf )
+		{
+			if( tmpRID.refExecutable().hasOnFinal() )
+			{
+				ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, tmpRID,
+						tmpRID.refExecutable().getOnFinal());
+
+				if( tmpENV.run(PROCESS_FINALIZING_STATE) )
+				{
+//					if( finalizedParent(ENV, tmpENV, tmpRID) )
+					{
+//						ENV.mwsetPES(tmpRID, PROCESS_FINALIZED_STATE);
+
+//						ENV.spliceNotOutput(tmpENV);
+
+						if( ENV.appendOutput_mwsetPES_mwsetAEES(tmpENV, tmpRID,
+							PROCESS_FINALIZING_STATE, PROCESS_FINALIZED_STATE) )
+						{
+							ENV.spliceNotOutput( tmpENV );
+
+							return( true );
+						}
+						else
+						{
+							return( false );
+						}
+					}
+				}
+			}
+			else
+			{
+				ENV.outEDS.append( ENV.mARG->outED );
+//				if( finalizedParent(ENV, ENV.mARG->outED, tmpRID) )
+				{
 					return( true );
 				}
 			}
 		}
 		else
 		{
-			if( finalizedParent(ENV, ENV.mARG->outED, tmpRID) )
-			{
-				return( true );
-			}
+			ENV.outEDS.append( ENV.mARG->outED );
+
+			return( true );
 		}
 	}
 	else
@@ -178,127 +256,6 @@ bool AvmPrimitive_Final::run(ExecutionEnvironment & ENV)
 }
 
 
-bool AvmPrimitive_Final::finalizedParent(ExecutionEnvironment & ENV,
-		ExecutionEnvironment & tmpENV, const RuntimeID & aRID)
-{
-	ListOfAPExecutionData::iterator itED = tmpENV.outEDS.begin();
-	ListOfAPExecutionData::iterator endED = tmpENV.outEDS.end();
-	for( ; itED != endED ; ++itED )
-	{
-		if( not finalizedParent(ENV, (*itED), aRID) )
-		{
-			return( false );
-		}
-	}
-
-	return( true );
-}
-
-
-bool AvmPrimitive_Final::finalizedParent(ExecutionEnvironment & ENV,
-		APExecutionData & anED, const RuntimeID & aRID)
-{
-	anED.mwsetRuntimeFormState(aRID, PROCESS_FINALIZED_STATE);
-
-	anED->setAEES( RuntimeDef::PES_to_AEES(
-			PROCESS_FINALIZED_STATE, anED->getAEES()) );
-
-	List< RuntimeID > runnableRID;
-
-	RuntimeID tmpRID = aRID;
-	bool finalizeSelf;
-
-	while( (tmpRID = tmpRID.getPRID()).valid() )
-	{
-		const RuntimeForm & tmpRF = anED->getRuntime(tmpRID);
-		finalizeSelf = false;
-
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT( tmpRF.hasChild() )
-				<< "Unexpectded PRID RF with out child :> \n"
-				<< tmpRF.toString( AVM_TAB1_INDENT )
-				<< SEND_EXIT;
-
-		if( tmpRID.getSpecifier().isMocCompositeStructure() )
-		{
-			TableOfRuntimeID::const_iterator it = tmpRF.beginChild();
-			TableOfRuntimeID::const_iterator endIt = tmpRF.endChild();
-			for( ; it != endIt ; ++it )
-			{
-				if( not anED->isFinalizedOrDestroyed(*it) )
-				{
-					ENV.outEDS.append( anED );
-
-					return( true );
-				}
-			}
-			finalizeSelf = true;
-		}
-		else
-		{
-			StatementFactory::collectRID(tmpRF.getOnSchedule(), runnableRID);
-
-			List< RuntimeID >::const_iterator it = runnableRID.begin();
-			List< RuntimeID >::const_iterator endIt = runnableRID.end();
-			for( ; it != endIt ; ++it )
-			{
-				if( not anED->isFinalizedOrDestroyed(*it) )
-				{
-					ENV.outEDS.append( anED );
-
-					return( true );
-				}
-			}
-			finalizeSelf = true;
-		}
-
-		if( finalizeSelf )
-		{
-			if( tmpRID.getExecutable()->hasOnFinal() )
-			{
-				ExecutionEnvironment tmpENV(ENV, anED, tmpRID,
-						tmpRID.getExecutable()->getOnFinal());
-
-				if( tmpENV.run(PROCESS_FINALIZING_STATE) )
-				{
-					if( finalizedParent(ENV, tmpENV, tmpRID) )
-					{
-						ENV.spliceNotOutput(tmpENV);
-
-						return( true );
-					}
-				}
-
-				return( false );
-			}
-			else
-			{
-				ENV.mwsetPES_mwsetAEES(anED, tmpRID, PROCESS_FINALIZED_STATE);
-			}
-		}
-	}
-
-	if( tmpRID.invalid() )
-	{
-		if( anED->isunRunnableSystem() )
-		{
-			anED->setAEES(AEES_STMNT_EXIT);
-			ENV.exitEDS.append( anED );
-		}
-		else
-		{
-			ENV.outEDS.append( anED );
-		}
-	}
-	else
-	{
-		ENV.outEDS.append( anED );
-	}
-
-	return( true );
-}
-
-
-
 /**
  ***************************************************************************
  * execution of an DESTROY program
@@ -308,16 +265,16 @@ bool AvmPrimitive_Destroy::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & tmpRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isunRunnable( tmpRID ) )
+	if( ENV.mARG->outED.isunRunnable( tmpRID ) )
 	{
 		return( true );
 	}
-	else if( ENV.mARG->outED->isRunnable( tmpRID ) )
+	else if( ENV.mARG->outED.isRunnable( tmpRID ) )
 	{
-		if( tmpRID.getExecutable()->hasOnFinal() )
+		if( tmpRID.refExecutable().hasOnFinal() )
 		{
 			ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, tmpRID,
-					tmpRID.getExecutable()->getOnFinal());
+					tmpRID.refExecutable().getOnFinal());
 
 			if( tmpENV.run(PROCESS_FINALIZING_STATE) )
 			{
@@ -351,11 +308,9 @@ bool AvmPrimitive_Destroy::run(ExecutionEnvironment & ENV)
 bool AvmPrimitive_Destroy::destroyedParent(ExecutionEnvironment & ENV,
 		ExecutionEnvironment & tmpENV, const RuntimeID & aRID)
 {
-	ListOfAPExecutionData::iterator itED = tmpENV.outEDS.begin();
-	ListOfAPExecutionData::iterator endED = tmpENV.outEDS.end();
-	for( ; itED != endED ; ++itED )
+	for( auto & itED : tmpENV.outEDS )
 	{
-		if( not destroyedParent(ENV, (*itED), aRID) )
+		if( not destroyedParent(ENV, itED, aRID) )
 		{
 			return( false );
 		}
@@ -366,23 +321,23 @@ bool AvmPrimitive_Destroy::destroyedParent(ExecutionEnvironment & ENV,
 
 
 bool AvmPrimitive_Destroy::destroyedParent(ExecutionEnvironment & ENV,
-		APExecutionData & anED, const RuntimeID & aRID)
+		ExecutionData & anED, const RuntimeID & aRID)
 {
 	anED.mwsetRuntimeFormState(aRID, PROCESS_DESTROYED_STATE);
 	if( aRID.hasModel() )
 	{
-		anED->getWritableRuntime( aRID.getModel() ).decrInstanciationCount();
+		anED.getWritableRuntime( aRID.getModel() ).decrInstanciationCount();
 	}
 
-	anED->setAEES( RuntimeDef::PES_to_AEES(
-			PROCESS_DESTROYED_STATE, anED->getAEES()) );
+	anED.setAEES( RuntimeDef::PES_to_AEES(
+			PROCESS_DESTROYED_STATE, anED.getAEES()) );
 
 	RuntimeID tmpRID = aRID;
 	bool autoDestroy;
 
 	while( (tmpRID = tmpRID.getPRID()).valid() )
 	{
-		const RuntimeForm & tmpRF = anED->getRuntime(tmpRID);
+		const RuntimeForm & tmpRF = anED.getRuntime(tmpRID);
 		autoDestroy = false;
 
 		AVM_OS_ASSERT_FATAL_ERROR_EXIT( tmpRF.hasChild() )
@@ -392,11 +347,11 @@ bool AvmPrimitive_Destroy::destroyedParent(ExecutionEnvironment & ENV,
 
 		if( tmpRID.getSpecifier().isMocCompositeStructure() )
 		{
-			TableOfRuntimeID::const_iterator it = tmpRF.beginChild();
-			TableOfRuntimeID::const_iterator endIt = tmpRF.endChild();
-			for( ; it != endIt ; ++it )
+			TableOfRuntimeID::const_iterator itChildRID = tmpRF.beginChild();
+			TableOfRuntimeID::const_iterator endChildRID = tmpRF.endChild();
+			for( ; itChildRID != endChildRID ; ++itChildRID )
 			{
-				if( not anED->isFinalizedOrDestroyed(*it) )
+				if( not anED.isFinalizedOrDestroyed(*itChildRID) )
 				{
 					ENV.outEDS.append( anED );
 
@@ -412,10 +367,10 @@ bool AvmPrimitive_Destroy::destroyedParent(ExecutionEnvironment & ENV,
 
 		if( autoDestroy )
 		{
-			if( tmpRID.getExecutable()->hasOnFinal() )
+			if( tmpRID.refExecutable().hasOnFinal() )
 			{
 				ExecutionEnvironment tmpENV(ENV, anED, tmpRID,
-						tmpRID.getExecutable()->getOnFinal());
+						tmpRID.refExecutable().getOnFinal());
 
 				if( tmpENV.run(PROCESS_FINALIZING_STATE) )
 				{
@@ -434,7 +389,7 @@ bool AvmPrimitive_Destroy::destroyedParent(ExecutionEnvironment & ENV,
 				ENV.mwsetPES_mwsetAEES(anED, tmpRID, PROCESS_DESTROYED_STATE);
 				if( tmpRID.hasModel() )
 				{
-					anED->getWritableRuntime(
+					anED.getWritableRuntime(
 							tmpRID.getModel() ).decrInstanciationCount();
 				}
 			}
@@ -443,9 +398,9 @@ bool AvmPrimitive_Destroy::destroyedParent(ExecutionEnvironment & ENV,
 
 	if( tmpRID.invalid() )
 	{
-		if( anED->isunRunnableSystem() )
+		if( anED.isunRunnableSystem() )
 		{
-			anED->setAEES(AEES_STMNT_EXIT);
+			anED.setAEES(AEES_STMNT_EXIT);
 			ENV.exitEDS.append( anED );
 		}
 		else
@@ -471,21 +426,21 @@ bool AvmPrimitive_Start::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & tmpRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isDestroyed( tmpRID ) )
+	if( ENV.mARG->outED.isDestroyed( tmpRID ) )
 	{
 		return( true );
 	}
-	else if( ENV.mARG->outED->isCreatedOrRunnable( tmpRID ) ||
-			ENV.mARG->outED->isFinalized( tmpRID ) )
+	else if( ENV.mARG->outED.isCreatedOrRunnable( tmpRID ) ||
+			ENV.mARG->outED.isFinalized( tmpRID ) )
 	{
 		BFCode aProgram = tmpRID.getOnStart();
 		if( aProgram.invalid() )
 		{
-			aProgram = tmpRID.getExecutable()->getOnStart();
+			aProgram = tmpRID.refExecutable().getOnStart();
 
 			if( aProgram.invalid() )
 			{
-				aProgram = tmpRID.getExecutable()->getOnInit();
+				aProgram = tmpRID.refExecutable().getOnInit();
 			}
 		}
 
@@ -557,16 +512,16 @@ bool AvmPrimitive_Stop::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & tmpRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isunRunnable( tmpRID ) )
+	if( ENV.mARG->outED.isunRunnable( tmpRID ) )
 	{
 		return( true );
 	}
-	else if( ENV.mARG->outED->isRunnable( tmpRID ) )
+	else if( ENV.mARG->outED.isRunnable( tmpRID ) )
 	{
-		if( tmpRID.getExecutable()->hasOnStop() )
+		if( tmpRID.refExecutable().hasOnStop() )
 		{
 			ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, tmpRID,
-					tmpRID.getExecutable()->getOnStop());
+					tmpRID.refExecutable().getOnStop());
 
 			if( tmpENV.run(PROCESS_STOPPING_STATE) )
 			{
@@ -627,7 +582,7 @@ bool AvmPrimitive_Suspend::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & tmpRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isunRunnable( tmpRID ) )
+	if( ENV.mARG->outED.isunRunnable( tmpRID ) )
 	{
 		return( true );
 	}
@@ -650,7 +605,7 @@ bool AvmPrimitive_Resume::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & tmpRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isSuspended( tmpRID ) )
+	if( ENV.mARG->outED.isSuspended( tmpRID ) )
 	{
 		ENV.mARG->outED.mwsetRuntimeFormState(tmpRID, PROCESS_IDLE_STATE);
 
@@ -660,6 +615,42 @@ bool AvmPrimitive_Resume::run(ExecutionEnvironment & ENV)
 	return( true );
 }
 
+
+/**
+ ***************************************************************************
+ * execution of an RUNTIME#STATE#SET program
+ ***************************************************************************
+ */
+bool AvmPrimitive_ProcessStateSet::run(ExecutionEnvironment & ENV)
+{
+	ENV.mARG->outED.makeWritable();
+	ENV.mARG->outED.setPreserveRID( true );
+
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
+
+	AVM_OPCODE opcode = ENV.mARG->at(1).to< Operator >().getAvmOpCode();
+
+	switch( opcode )
+	{
+		case AVM_OPCODE_ENABLE_INVOKE:
+		{
+			ENV.mARG->outED.mwsetRuntimeFormOnScheduleAndIdle(
+					ENV.mARG->outED.getRID());
+			break;
+		}
+
+		default:
+		{
+			ENV.mARG->outED.mwsetRuntimeFormState(
+					RuntimeDef::Opcode_to_PES(opcode));
+			break;
+		}
+	}
+
+	ENV.appendOutput( ENV.mARG->outED );
+
+	return( true );
+}
 
 
 /**
@@ -671,18 +662,18 @@ bool AvmPrimitive_IEnableInvoke::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
 
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
 	const BFCode & onInvoke =
-			ENV.mARG->outED->mRID.getExecutable()->getOnIEnable();
+			ENV.mARG->outED.getRID().refExecutable().getOnIEnable();
 	if( onInvoke.valid() )
 	{
 
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 	ExecutionDataFactory::appendRunnableElementTrace(ENV.mARG->outED,
-			BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+			BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 					CONST_BF_OPERATOR(IENABLE_INVOKE))));
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
 		return( ENV.run(ENV.mARG->outED, onInvoke) );
 	}
@@ -703,22 +694,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 bool AvmPrimitive_EnableInvoke::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
-	ENV.mARG->outED->mPreserveRID = true;
+	ENV.mARG->outED.setPreserveRID( true );
 
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
-//	ENV.mARG->outED.mwsetRuntimeFormOnScheduleAndIdle(ENV.mARG->outED->mRID);
+//	ENV.mARG->outED.mwsetRuntimeFormOnScheduleAndIdle(ENV.mARG->outED.getRID());
 
 	const BFCode & onInvoke =
-			ENV.mARG->outED->mRID.getExecutable()->getOnEnable();
+			ENV.mARG->outED.getRID().refExecutable().getOnEnable();
 	if( onInvoke.valid() )
 	{
 
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 	ExecutionDataFactory::appendRunnableElementTrace(ENV.mARG->outED,
-			BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+			BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 					CONST_BF_OPERATOR(ENABLE_INVOKE))));
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
 		return( ENV.run(ENV.mARG->outED, onInvoke) );
 	}
@@ -739,11 +730,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 bool AvmPrimitive_EnableSet::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
-	ENV.mARG->outED->mPreserveRID = true;
+	ENV.mARG->outED.setPreserveRID( true );
 
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
-	ENV.mARG->outED.mwsetRuntimeFormOnScheduleAndIdle(ENV.mARG->outED->mRID);
+	ENV.mARG->outED.mwsetRuntimeFormOnScheduleAndIdle(ENV.mARG->outED.getRID());
 
 	ENV.appendOutput( ENV.mARG->outED );
 
@@ -764,7 +755,7 @@ bool AvmPrimitive_Goto::run(ExecutionEnvironment & ENV)
 			<< SEND_EXIT;
 
 //	if( ENV.run( StatementConstructor::newCode(
-//			OperatorManager::OPERATOR_DISABLE, ENV.mARG->outED->mRID) ) )
+//			OperatorManager::OPERATOR_DISABLE, ENV.mARG->outED.getRID()) ) )
 //	{
 //		return( ENV.runFromOutputs( StatementConstructor::newCode(
 //				OperatorManager::OPERATOR_ENABLE, ENV.mARG->at(0)) ) );
@@ -784,17 +775,17 @@ bool AvmPrimitive_IDisableInvoke::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
 
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
 	const BFCode & onInvoke =
-			ENV.mARG->outED->mRID.getExecutable()->getOnIDisable();
+			ENV.mARG->outED.getRID().refExecutable().getOnIDisable();
 	if( onInvoke.valid() )
 	{
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 	ExecutionDataFactory::appendRunnableElementTrace(ENV.mARG->outED,
-			BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+			BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 					CONST_BF_OPERATOR(IDISABLE_INVOKE))));
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
 		return( ENV.run(ENV.mARG->outED, onInvoke) );
 	}
@@ -815,20 +806,20 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 bool AvmPrimitive_DisableInvoke::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
-	ENV.mARG->outED->mPreserveRID = true;
+	ENV.mARG->outED.setPreserveRID( true );
 
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
 	const BFCode & onInvoke =
-			ENV.mARG->outED->mRID.getExecutable()->getOnDisable();
+			ENV.mARG->outED.getRID().refExecutable().getOnDisable();
 	if( onInvoke.valid() )
 	{
 
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 	ExecutionDataFactory::appendRunnableElementTrace(ENV.mARG->outED,
-			BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+			BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 					CONST_BF_OPERATOR(DISABLE_INVOKE))));
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
 		return( ENV.run(ENV.mARG->outED, onInvoke) );
 	}
@@ -836,7 +827,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 	{
 		ENV.mARG->outED.mwsetRuntimeFormState(PROCESS_DISABLED_STATE);
 
-		ENV.mARG->outED->mRID = ENV.mARG->outED->mRID.getPRID();
+		ENV.mARG->outED.setRID( ENV.mARG->outED.getRID().getPRID() );
 
 		ENV.outEDS.append( ENV.mARG->outED );
 
@@ -853,13 +844,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 bool AvmPrimitive_DisableSet::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
-	ENV.mARG->outED->mPreserveRID = true;
+	ENV.mARG->outED.setPreserveRID( true );
 
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
 	ENV.mARG->outED.mwsetRuntimeFormState(PROCESS_DISABLED_STATE);
 
-	ENV.mARG->outED->mRID = ENV.mARG->outED->mRID.getPRID();
+	ENV.mARG->outED.setRID( ENV.mARG->outED.getRID().getPRID() );
 
 	ENV.outEDS.append( ENV.mARG->outED );
 
@@ -875,29 +866,29 @@ bool AvmPrimitive_DisableSet::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_DisableChild::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 	outED.makeWritable();
-	outED->mPreserveRID = true;
+	outED.setPreserveRID( true );
 
-//	const BFCode & onDisable = ENV.inED->mRID.getExecutable()->getOnDisable();
+//	const BFCode & onDisable = ENV.inED.getRID().refExecutable().getOnDisable();
 //	if( onDisable.valid() )
 //	{
-//AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+//AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 //	ExecutionDataFactory::appendRunnableElementTrace(outED,
-//		BF(new ExecutionConfiguration(outED->mRID, CONST_BF_OPERATOR(DISABLE))));
-//AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+//		BF(new ExecutionConfiguration(outED.getRID(), CONST_BF_OPERATOR(DISABLE))));
+//AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 //
-//		ExecutionEnvironment tmpENV(ENV, outED, outED->mRID);
+//		ExecutionEnvironment tmpENV(ENV, outED, outED.getRID());
 //		if( tmpENV.run(onDisable) )
 //		{
 //			while( tmpENV.outEDS.nonempty() )
 //			{
 //				tmpENV.outEDS.pop_first_to( outED );
 //
-//				outED.mwsetRuntimeFormState(ENV.inED->mRID,
+//				outED.mwsetRuntimeFormState(ENV.inED.getRID(),
 //						PROCESS_DISABLED_STATE);
 //
-//				outED->mRID = ENV.inED->mRID.getPRID();
+//				outED.setRID( ENV.inED.getRID().getPRID() );
 //
 //				ENV.outEDS.append( outED );
 //			}
@@ -913,7 +904,7 @@ bool AvmPrimitive_DisableChild::run(ExecutionEnvironment & ENV)
 	{
 		outED.mwsetRuntimeFormState(PROCESS_DISABLED_STATE);
 
-//		outED->mRID = ENV.inED->mRID.getPRID();
+//		outED.setRID( ENV.inED.getRID().getPRID() );
 
 		ENV.outEDS.append( outED );
 	}
@@ -930,13 +921,13 @@ bool AvmPrimitive_DisableChild::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_DisableSelf::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 	outED.makeWritable();
-	outED->mPreserveRID = true;
+	outED.setPreserveRID( true );
 
 	outED.mwsetRuntimeFormState(PROCESS_DISABLED_STATE);
 
-	outED->mRID = ENV.inED->mRID.getPRID();
+	outED.setRID( ENV.inED.getRID().getPRID() );
 
 	ENV.outEDS.append( outED );
 
@@ -953,14 +944,14 @@ bool AvmPrimitive_DisableSelf::run(ExecutionEnvironment & ENV)
 bool AvmPrimitive_DisableSelves::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
-	ENV.mARG->outED->mPreserveRID = true;
+	ENV.mARG->outED.setPreserveRID( true );
 
-	for( avm_uinteger_t level = ENV.mARG->at(0).toInteger() ;
-			level > 0 ; --level )
+	avm_integer_t level = ENV.mARG->at(0).toInteger();
+	for( ; level > 0 ; --level )
 	{
 		ENV.mARG->outED.mwsetRuntimeFormState(PROCESS_DISABLED_STATE);
 
-		ENV.mARG->outED->mRID = ENV.mARG->outED->mRID.getPRID();
+		ENV.mARG->outED.setRID( ENV.mARG->outED.getRID().getPRID() );
 	}
 
 	ENV.outEDS.append( ENV.mARG->outED );
@@ -980,17 +971,17 @@ bool AvmPrimitive_IAbortInvoke::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
 
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
 	const BFCode & onInvoke =
-			ENV.mARG->outED->mRID.getExecutable()->getOnIAbort();
+			ENV.mARG->outED.getRID().refExecutable().getOnIAbort();
 	if( onInvoke.valid() )
 	{
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 	ExecutionDataFactory::appendRunnableElementTrace(ENV.mARG->outED,
-			BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+			BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 					CONST_BF_OPERATOR(IABORT_INVOKE))));
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
 		return( ENV.run(ENV.mARG->outED, onInvoke) );
 	}
@@ -1006,18 +997,18 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 bool AvmPrimitive_AbortInvoke::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
-	ENV.mARG->outED->mPreserveRID = true;
+	ENV.mARG->outED.setPreserveRID( true );
 
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
-	const BFCode & onInvoke = ENV.mARG->outED->mRID.getExecutable()->getOnAbort();
+	const BFCode & onInvoke = ENV.mARG->outED.getRID().refExecutable().getOnAbort();
 	if( onInvoke.valid() )
 	{
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 	ExecutionDataFactory::appendRunnableElementTrace(ENV.mARG->outED,
-			BF(new ExecutionConfiguration(ENV.mARG->outED->mRID,
+			BF(new ExecutionConfiguration(ENV.mARG->outED.getRID(),
 					CONST_BF_OPERATOR(ABORT_INVOKE))));
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
 		return( ENV.run(ENV.mARG->outED, onInvoke) );
 	}
@@ -1025,7 +1016,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 	{
 		ENV.mARG->outED.mwsetRuntimeFormState(PROCESS_ABORTED_STATE);
 
-		ENV.mARG->outED->mRID = ENV.mARG->outED->mRID.getPRID();
+		ENV.mARG->outED.setRID( ENV.mARG->outED.getRID().getPRID() );
 
 		ENV.outEDS.append( ENV.mARG->outED );
 
@@ -1041,16 +1032,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
  */
 bool AvmPrimitive_AbortSet::run(ExecutionEnvironment & ENV)
 {
-	RuntimeID anActiveID = ENV.mARG->outED->mRID;
-
 	ENV.mARG->outED.makeWritable();
-	ENV.mARG->outED->mPreserveRID = true;
+	ENV.mARG->outED.setPreserveRID( true );
 
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
 	ENV.mARG->outED.mwsetRuntimeFormState(PROCESS_ABORTED_STATE);
 
-	ENV.mARG->outED->mRID = ENV.mARG->outED->mRID.getPRID();
+	ENV.mARG->outED.setRID( ENV.mARG->outED.getRID().getPRID() );
 
 	ENV.outEDS.append( ENV.mARG->outED );
 
@@ -1066,29 +1055,29 @@ bool AvmPrimitive_AbortSet::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_AbortChild::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 	outED.makeWritable();
-	outED->mPreserveRID = true;
+	outED.setPreserveRID( true );
 
-//	const BFCode & onAbort = ENV.inED->mRID.getExecutable()->getOnAbort();
+//	const BFCode & onAbort = ENV.inED.getRID().refExecutable().getOnAbort();
 //	if( onAbort.valid() )
 //	{
-//AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+//AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 //	ExecutionDataFactory::appendRunnableElementTrace(outED,
-//		BF(new ExecutionConfiguration(outED->mRID, CONST_BF_OPERATOR(ABORT))));
-//AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+//		BF(new ExecutionConfiguration(outED.getRID(), CONST_BF_OPERATOR(ABORT))));
+//AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 //
-//		ExecutionEnvironment tmpENV(ENV, outED, outED->mRID);
+//		ExecutionEnvironment tmpENV(ENV, outED, outED.getRID());
 //		if( tmpENV.run(onAbort) )
 //		{
 //			while( tmpENV.outEDS.nonempty() )
 //			{
 //				tmpENV.outEDS.pop_first_to( outED );
 //
-//				outED.mwsetRuntimeFormState(ENV.inED->mRID,
+//				outED.mwsetRuntimeFormState(ENV.inED.getRID(),
 //						PROCESS_ABORTED_STATE);
 //
-//				outED->mRID = ENV.inED->mRID.getPRID();
+//				outED.setRID( ENV.inED.getRID().getPRID() );
 //
 //				ENV.outEDS.append( outED );
 //			}
@@ -1104,7 +1093,7 @@ bool AvmPrimitive_AbortChild::run(ExecutionEnvironment & ENV)
 	{
 		outED.mwsetRuntimeFormState(PROCESS_ABORTED_STATE);
 
-//		outED->mRID = ENV.inED->mRID.getPRID();
+//		outED.setRID( ENV.inED.getRID().getPRID() );
 
 		ENV.outEDS.append( outED );
 	}
@@ -1120,13 +1109,13 @@ bool AvmPrimitive_AbortChild::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_AbortSelf::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 	outED.makeWritable();
-	outED->mPreserveRID = true;
+	outED.setPreserveRID( true );
 
 	outED.mwsetRuntimeFormState(PROCESS_ABORTED_STATE);
 
-	outED->mRID = ENV.inED->mRID.getPRID();
+	outED.setRID( ENV.inED.getRID().getPRID() );
 
 	ENV.outEDS.append( outED );
 
@@ -1142,14 +1131,14 @@ bool AvmPrimitive_AbortSelf::run(ExecutionEnvironment & ENV)
 bool AvmPrimitive_AbortSelves::run(ExecutionEnvironment & ENV)
 {
 	ENV.mARG->outED.makeWritable();
-	ENV.mARG->outED->mPreserveRID = true;
+	ENV.mARG->outED.setPreserveRID( true );
 
-	for( avm_uinteger_t level = ENV.mARG->at(0).toInteger() ;
-			level > 0 ; --level )
+	avm_integer_t level = ENV.mARG->at(0).toInteger();
+	for( ; level > 0 ; --level )
 	{
 		ENV.mARG->outED.mwsetRuntimeFormState(PROCESS_ABORTED_STATE);
 
-		ENV.mARG->outED->mRID = ENV.mARG->outED->mRID.getPRID();
+		ENV.mARG->outED.setRID( ENV.mARG->outED.getRID().getPRID() );
 	}
 
 	ENV.outEDS.append( ENV.mARG->outED );
@@ -1180,12 +1169,12 @@ bool AvmPrimitive_Nop::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_HistoryClear::run(ExecutionEnvironment & ENV)
 {
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
-	if( ENV.mARG->outED->mRID.getSpecifier().isMocStateTransitionStructure() )
+	if( ENV.mARG->outED.getRID().getSpecifier().isMocStateTransitionStructure() )
 	{
-		ENV.mARG->outED.mwsetRuntimeFormOnSchedule(ENV.mARG->outED->mRID,
-				ENV.mARG->outED->mRID.getExecutable()->getOnEnable());
+		ENV.mARG->outED.mwsetRuntimeFormOnSchedule(ENV.mARG->outED.getRID(),
+				ENV.mARG->outED.getRID().refExecutable().getOnEnable());
 	}
 
 	ENV.outEDS.append( ENV.mARG->outED );
@@ -1201,19 +1190,19 @@ bool AvmPrimitive_HistoryClear::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_DeepHistoryInvoke::run(ExecutionEnvironment & ENV)
 {
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
-	if( ENV.mARG->outED->isunRunnable( ENV.mARG->outED->mRID ) )
+	if( ENV.mARG->outED.isunRunnable( ENV.mARG->outED.getRID() ) )
 	{
 		return( true );
 	}
 	else
 	{
-		const BFCode & onInvoke = ENV.mARG->outED->getRuntimeFormOnSchedule(
-				ENV.mARG->outED->mRID);
+		const BFCode & onInvoke = ENV.mARG->outED.getRuntimeFormOnSchedule(
+				ENV.mARG->outED.getRID());
 
 		if( onInvoke.valid() &&
-				ENV.mARG->outED->isRunnable( ENV.mARG->outED->mRID ) )
+				ENV.mARG->outED.isRunnable( ENV.mARG->outED.getRID() ) )
 		{
 			ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, onInvoke);
 			if( tmpENV.run(PROCESS_RUNNING_STATE) )
@@ -1247,19 +1236,19 @@ bool AvmPrimitive_DeepHistoryInvoke::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_ShallowHistoryInvoke::run(ExecutionEnvironment & ENV)
 {
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
-	if( ENV.mARG->outED->isunRunnable( ENV.mARG->outED->mRID ) )
+	if( ENV.mARG->outED.isunRunnable( ENV.mARG->outED.getRID() ) )
 	{
 		return( true );
 	}
 	else
 	{
-		const BFCode & onInvoke = ENV.mARG->outED->getRuntimeFormOnSchedule(
-				ENV.mARG->outED->mRID);
+		const BFCode & onInvoke = ENV.mARG->outED.getRuntimeFormOnSchedule(
+				ENV.mARG->outED.getRID());
 
 		if( onInvoke.valid() &&
-				ENV.mARG->outED->isRunnable( ENV.mARG->outED->mRID ) )
+				ENV.mARG->outED.isRunnable( ENV.mARG->outED.getRID() ) )
 		{
 			ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, onInvoke);
 			if( tmpENV.run(PROCESS_RUNNING_STATE) )
@@ -1293,12 +1282,12 @@ bool AvmPrimitive_ShallowHistoryInvoke::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_IRun::run(ExecutionEnvironment & ENV)
 {
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
-//	if( ENV.inED->isRunnable( ) )
+//	if( ENV.inED.isRunnable( ) )
 	{
 		ExecutionDataFactory::appendRunnableElementTrace(ENV.inED,
-				BF(new ExecutionConfiguration(ENV.inED->mRID,
+				BF(new ExecutionConfiguration(ENV.inED.getRID(),
 						CONST_BF_OPERATOR(IRUN))));
 
 		return( ENV.run() );
@@ -1312,7 +1301,7 @@ AVM_ELSE
 
 	return( ENV.run() );
 
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 }
 
 
@@ -1325,42 +1314,42 @@ bool AvmPrimitive_Run::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & tmpRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isunRunnable( tmpRID ) )
+	if( ENV.mARG->outED.isunRunnable( tmpRID ) )
 	{
 		return( true );
 	}
-	else if( tmpRID.getExecutable()->hasOnRun() &&
-			ENV.mARG->outED->isRunnable( tmpRID ) )
+	else if( tmpRID.refExecutable().hasOnRun() &&
+			ENV.mARG->outED.isRunnable( tmpRID ) )
 	{
-		const BFCode & aRunCode = tmpRID.getExecutable()->getOnRun();
+		const BFCode & aRunCode = tmpRID.refExecutable().getOnRun();
 
 		ENV.mARG->outED.mwsetRuntimeFormState(PROCESS_RUNNING_STATE);
 
 		ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, tmpRID, aRunCode);
 
-//AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+//AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 	ExecutionDataFactory::appendRunnableElementTrace(tmpENV.inED,
 			BF(new ExecutionConfiguration(tmpRID, CONST_BF_OPERATOR(RUN))));
 
 //	AVM_OS_TRACE << "run:> " << tmpRID.str() << std::endl;
-//AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+//AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
 		// Execution of Internal Run
-		if( tmpRID.getExecutable()->hasOnIRun() )
+		if( tmpRID.refExecutable().hasOnIRun() )
 		{
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 	ExecutionDataFactory::appendRunnableElementTrace(tmpENV.inED,
 			BF(new ExecutionConfiguration(tmpRID, CONST_BF_OPERATOR(IRUN))));
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
 			if( tmpENV.run(/*OperatorManager::OPERATOR_IRUN,*/
-					tmpRID.getExecutable()->getOnIRun()) )
+					tmpRID.refExecutable().getOnIRun()) )
 			{
 				ENV.spliceNotOutput( tmpENV );
 
 				if( tmpENV.outEDS.nonempty() )
 				{
-					ListOfAPExecutionData irunEDS( tmpENV.outEDS );
+					ListOfExecutionData irunEDS( tmpENV.outEDS );
 
 					if( tmpENV.runFromOutputs(aRunCode) )
 					{
@@ -1368,8 +1357,10 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 						{
 							ENV.spliceOutput(tmpENV);
 						}
-						else // Preserve Internal Run effect
+						else if( tmpENV.exitEDS.empty()
+								&& tmpENV.syncEDS.empty() )
 						{
+							// Preserve Internal Run effect
 							ENV.outEDS.append( irunEDS );
 						}
 
@@ -1384,7 +1375,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 				{
 					if( tmpENV.run(aRunCode) )
 					{
-						APExecutionData tmpED;
+						ExecutionData tmpED;
 
 						// IRQ EDS traitement
 						while( tmpENV.irqEDS.nonempty() )
@@ -1392,7 +1383,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 							tmpENV.irqEDS.pop_last_to( tmpED );
 
 							// Verification of EXECUTION ENDING STATUS
-							switch( tmpED->getAEES() )
+							switch( tmpED.getAEES() )
 							{
 								case AEES_STMNT_BREAK:
 								case AEES_STMNT_CONTINUE:
@@ -1410,7 +1401,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 									AVM_OS_FATAL_ERROR_EXIT
 											<< "Unexpected ENDIND EXECUTION "
 												"STATUS as irqEDS :> "
-											<< RuntimeDef::strAEES( tmpED->mAEES )
+											<< RuntimeDef::strAEES( tmpED.getAEES() )
 											<< " !!!"
 											<< SEND_EXIT;
 
@@ -1436,7 +1427,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 		{
 			if( tmpENV.run() )
 			{
-				APExecutionData tmpED;
+				ExecutionData tmpED;
 
 				// IRQ EDS traitement
 				while( tmpENV.irqEDS.nonempty() )
@@ -1444,7 +1435,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 					tmpENV.irqEDS.pop_last_to( tmpED );
 
 					// Verification of EXECUTION ENDING STATUS
-					switch( tmpED->getAEES() )
+					switch( tmpED.getAEES() )
 					{
 						case AEES_STMNT_BREAK:
 						case AEES_STMNT_CONTINUE:
@@ -1462,7 +1453,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 							AVM_OS_FATAL_ERROR_EXIT
 									<< "Unexpected ENDIND EXECUTION STATUS "
 										"as irqEDS :> "
-									<< RuntimeDef::strAEES( tmpED->mAEES )
+									<< RuntimeDef::strAEES( tmpED.getAEES() )
 									<< " !!!"
 									<< SEND_EXIT;
 
@@ -1481,10 +1472,10 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 	}
 	else
 	{
-		if( not ENV.mARG->outED->hasRunnableElementTrace() )
-//		if( ENV.mARG->outED->isCreated( tmpRID ) )
+		if( not ENV.mARG->outED.hasRunnableElementTrace() )
+//		if( ENV.mARG->outED.isCreated( tmpRID ) )
 		{
-			ENV.mARG->outED->mAEES = AEES_STMNT_NOTHING;
+			ENV.mARG->outED.setAEES( AEES_STMNT_NOTHING );
 		}
 
 		ENV.appendOutput(ENV.mARG->outED);
@@ -1504,26 +1495,25 @@ bool AvmPrimitive_Rtc::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & rtcRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isunRunnable( rtcRID ) )
+	if( ENV.mARG->outED.isunRunnable( rtcRID ) )
 	{
 		return( true );
 	}
-	else if( ENV.mARG->outED->isRunnable( rtcRID ) )
+	else if( ENV.mARG->outED.isRunnable( rtcRID ) )
 	{
-		const BFCode rctCode = rtcRID.getExecutable()->getOnRtc();
+		const BFCode rctCode = rtcRID.refExecutable().getOnRtc();
 
 		ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, rtcRID, rctCode);
 
-//AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+//AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 	ExecutionDataFactory::appendRunnableElementTrace(tmpENV.inED,
 			BF(new ExecutionConfiguration(rtcRID, CONST_BF_OPERATOR(RTC))));
 
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
-	AVM_OS_TRACE << "rtc:> " << rtcRID.str() << std::endl;
-	AVM_OS_COUT  << "rtc:> " << rtcRID.str() << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
+	AVM_OS_INFO << "rtc:> " << rtcRID.str() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
-//AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+//AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , ACTIVITY )
 
 		if( not tmpENV.run(PROCESS_RTC_STATE) )
 		{
@@ -1532,8 +1522,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 
 		if( tmpENV.hasOutput() )
 		{
-			ListOfAPExecutionData nextRTC;
-			ListOfAPExecutionData prevRTC;
+			ListOfExecutionData nextRTC;
+			ListOfExecutionData prevRTC;
 
 			if( tmpENV.extractOtherOutputED(ENV.mARG->outED, prevRTC) )
 			{
@@ -1543,21 +1533,20 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 				}
 			}
 
-			APExecutionData tmpED;
+			ExecutionData tmpED;
 
 			while( prevRTC.nonempty() )
 			{
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
-	AVM_OS_COUT << "rtc:> leaf count: " << prevRTC.size() << std::endl;
-
-	AVM_OS_COUT << "PRESS ENTER" << std::endl;
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , ACTIVITY )
+	AVM_OS_COUT << "rtc:> leaf count: " << prevRTC.size() << std::endl
+				<< "PRESS ENTER" << std::endl;
 	std::cin.get();
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , ACTIVITY )
 
 //				currentED.pop_first_to( tmpED );
 				prevRTC.pop_last_to( tmpED );
 
-				switch( tmpED->mAEES )
+				switch( tmpED.getAEES() )
 				{
 					case AEES_STMNT_NOTHING:
 					case AEES_STMNT_CONTINUE:
@@ -1566,14 +1555,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 					{
 						tmpED.mwsetAEES( AEES_OK );
 
-						//!!! NO << break >> for these statement
+						[[fallthrough]]; //!! No BREAK for that CASE statement
 					}
 
 					// Evaluation of NEXT SEQUENCIAL STATEMENT
 					case AEES_OK:
 					case AEES_STEP_RESUME:
 					{
-						tmpED->mRID = rtcRID;
+						tmpED.setRID( rtcRID );
 
 						if( tmpENV.run(tmpED, rctCode) )
 						{
@@ -1582,14 +1571,18 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 								if( tmpENV.extractOtherOutputED(tmpED, nextRTC) )
 								{
 									if( nextRTC.empty()
-										&& tmpED->isTNEQ( ENV.mARG->outED ) )
+										&& tmpED.isTNEQ( ENV.mARG->outED ) )
 									{
 										ENV.appendOutput_wrtAEES( tmpED );
 									}
 								}
 								prevRTC.splice( nextRTC );
 							}
-							else if( tmpED != ENV.mARG->outED )
+							else if( tmpENV.exitEDS.nonempty() )
+							{
+								ENV.spliceNotOutput(tmpENV);
+							}
+							else if( tmpED.isTNEQ( ENV.mARG->outED ) )
 							{
 								ENV.appendOutput_wrtAEES( tmpED );
 							}
@@ -1615,7 +1608,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 
 						AVM_OS_FATAL_ERROR_EXIT
 								<< "Unexpected ENDIND EXECUTION STATUS :> "
-								<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+								<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 								<< SEND_EXIT;
 
 						return( false );
@@ -1623,10 +1616,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 				}
 			}
 		}
+		else if( tmpENV.exitEDS.nonempty() )
+		{
+			ENV.spliceNotOutput(tmpENV);
+		}
 		else if( not ENV.appendOutput_mwsetPES(ENV.mARG->outED, rtcRID,
 				PROCESS_RUNNING_STATE) )
 		{
-			return( true );
+			return( false );
 		}
 
 		// Sync EDS traitement
@@ -1637,10 +1634,10 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , PROGRAM )
 	}
 	else
 	{
-		if( not ENV.mARG->outED->hasRunnableElementTrace() )
-//		if( ENV.mARG->outED->isCreated( tmpRID ) )
+		if( not ENV.mARG->outED.hasRunnableElementTrace() )
+//		if( ENV.mARG->outED.isCreated( tmpRID ) )
 		{
-			ENV.mARG->outED->mAEES = AEES_STMNT_NOTHING;
+			ENV.mARG->outED.setAEES( AEES_STMNT_NOTHING );
 		}
 
 		ENV.outEDS.append( ENV.mARG->outED );
@@ -1665,19 +1662,19 @@ bool AvmPrimitive_Rtc::resume(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_ScheduleInvoke::run(ExecutionEnvironment & ENV)
 {
-	ENV.mARG->outED->mRID = ENV.mARG->at(0).bfRID();
+	ENV.mARG->outED.setRID( ENV.mARG->at(0).bfRID() );
 
-	if( ENV.mARG->outED->isunRunnable( ENV.mARG->outED->mRID ) )
+	if( ENV.mARG->outED.isunRunnable( ENV.mARG->outED.getRID() ) )
 	{
 		return( true );
 	}
 	else
 	{
-		const BFCode & onInvoke = ENV.mARG->outED->getRuntimeFormOnSchedule(
-				ENV.mARG->outED->mRID);
+		const BFCode & onInvoke = ENV.mARG->outED.getRuntimeFormOnSchedule(
+				ENV.mARG->outED.getRID());
 
 		if( onInvoke.valid() &&
-				ENV.mARG->outED->isRunnable( ENV.mARG->outED->mRID ) )
+				ENV.mARG->outED.isRunnable( ENV.mARG->outED.getRID() ) )
 		{
 			ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, onInvoke);
 			if( tmpENV.run(PROCESS_RUNNING_STATE) )
@@ -1691,10 +1688,10 @@ bool AvmPrimitive_ScheduleInvoke::run(ExecutionEnvironment & ENV)
 		}
 		else
 		{
-			if( not ENV.mARG->outED->hasRunnableElementTrace() )
-//			if( ENV.mARG->outED->isCreated( tmpRID ) )
+			if( not ENV.mARG->outED.hasRunnableElementTrace() )
+//			if( ENV.mARG->outED.isCreated( tmpRID ) )
 			{
-				ENV.mARG->outED->mAEES = AEES_STMNT_NOTHING;
+				ENV.mARG->outED.setAEES( AEES_STMNT_NOTHING );
 			}
 
 			ENV.outEDS.append( ENV.mARG->outED );
@@ -1712,7 +1709,7 @@ bool AvmPrimitive_ScheduleInvoke::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_ScheduleGet::seval(EvaluationEnvironment & ENV)
 {
-	ENV.outVAL = ENV.mARG->outED->getRuntimeFormOnSchedule(ENV.mARG->at(0).bfRID());
+	ENV.outVAL = ENV.mARG->outED.getRuntimeFormOnSchedule(ENV.mARG->at(0).bfRID());
 
 	return( true );
 }
@@ -1725,7 +1722,7 @@ bool AvmPrimitive_ScheduleGet::seval(EvaluationEnvironment & ENV)
  */
 bool AvmPrimitive_ScheduleIn::seval(EvaluationEnvironment & ENV)
 {
-	const BFCode & scheduleCode = ENV.mARG->outED->getRuntimeFormOnSchedule(
+	const BFCode & scheduleCode = ENV.mARG->outED.getRuntimeFormOnSchedule(
 			ENV.mARG->at(1).bfRID() );
 
 	const RuntimeID & aRID = ENV.mARG->at(0).bfRID();
@@ -1734,7 +1731,7 @@ bool AvmPrimitive_ScheduleIn::seval(EvaluationEnvironment & ENV)
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
 				StatementFactory::containsOperationOnRID(
-						scheduleCode, AVM_OPCODE_RUN, aRID));
+						(* scheduleCode), AVM_OPCODE_RUN, aRID));
 
 		return( true );
 	}
@@ -1769,17 +1766,17 @@ bool AvmPrimitive_DeferInvoke::run(ExecutionEnvironment & ENV)
 {
 	const RuntimeID & deferRID = ENV.mARG->at(0).bfRID();
 
-	if( ENV.mARG->outED->isunRunnable( deferRID ) )
+	if( ENV.mARG->outED.isunRunnable( deferRID ) )
 	{
 		return( true );
 	}
 	else
 	{
-		const BFCode & aRunCode = ENV.mARG->outED->getRuntimeFormOnDefer(deferRID);
+		const BFCode & aRunCode = ENV.mARG->outED.getRuntimeFormOnDefer(deferRID);
 
-		if( aRunCode.valid() && ENV.mARG->outED->isRunnable( deferRID ) )
+		if( aRunCode.valid() && ENV.mARG->outED.isRunnable( deferRID ) )
 		{
-			BFCode aRunCode = ENV.mARG->outED->getRuntimeFormOnDefer(deferRID);
+			BFCode aRunCode = ENV.mARG->outED.getRuntimeFormOnDefer(deferRID);
 
 			ExecutionEnvironment tmpENV(ENV, ENV.mARG->outED, deferRID, aRunCode);
 			if( tmpENV.run(PROCESS_RUNNING_STATE) )
@@ -1808,7 +1805,7 @@ bool AvmPrimitive_DeferInvoke::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_DeferGet::seval(EvaluationEnvironment & ENV)
 {
-	ENV.outVAL = ENV.mARG->outED->getRuntimeFormOnDefer(ENV.mARG->at(0).bfRID());
+	ENV.outVAL = ENV.mARG->outED.getRuntimeFormOnDefer(ENV.mARG->at(0).bfRID());
 
 	return( true );
 }
@@ -1839,11 +1836,9 @@ bool AvmPrimitive_DeferSet::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_Fork::run(ExecutionEnvironment & ENV)
 {
-	AvmCode::const_iterator it = ENV.inCODE->begin();
-	AvmCode::const_iterator endIt = ENV.inCODE->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itArg : ENV.inCODE.getOperands() )
 	{
-		ENV.run( *it );
+		ENV.run( itArg );
 	}
 
 	return( true );
@@ -1869,23 +1864,21 @@ bool AvmPrimitive_Join::checksatJoin(
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			const BFCode & aCode = aJoinSpec.bfCode();
+			const AvmCode & aCode = aJoinSpec.to< AvmCode >();
 
-			switch ( aCode->getAvmOpCode() )
+			switch ( aCode.getAvmOpCode() )
 			{
 				case AVM_OPCODE_NOT:
 				{
-					return( not checksatJoin(ENV, aCode->first()) );
+					return( not checksatJoin(ENV, aCode.first()) );
 				}
 
 				case AVM_OPCODE_AND:
 				case AVM_OPCODE_STRONG_SYNCHRONOUS:
 				{
-					AvmCode::iterator itForm = aCode->begin();
-					AvmCode::iterator endForm = aCode->end();
-					for( ; itForm != endForm ; ++itForm )
+					for( const auto & itArg : aCode.getOperands() )
 					{
-						if( not checksatJoin(ENV, *itForm) )
+						if( not checksatJoin(ENV, itArg) )
 						{
 							return( false );
 						}
@@ -1896,11 +1889,9 @@ bool AvmPrimitive_Join::checksatJoin(
 				case AVM_OPCODE_OR:
 				case AVM_OPCODE_WEAK_SYNCHRONOUS:
 				{
-					AvmCode::iterator itForm = aCode->begin();
-					AvmCode::iterator endForm = aCode->end();
-					for( ; itForm != endForm ; ++itForm )
+					for( const auto & itArg : aCode.getOperands() )
 					{
-						if( checksatJoin(ENV, *itForm) )
+						if( checksatJoin(ENV, itArg) )
 						{
 							return( true );
 						}
@@ -1911,13 +1902,11 @@ bool AvmPrimitive_Join::checksatJoin(
 				case AVM_OPCODE_XOR:
 				case AVM_OPCODE_EXCLUSIVE:
 				{
-					avm_size_t nbTrue = 0;
+					std::size_t nbTrue = 0;
 
-					AvmCode::iterator itForm = aCode->begin();
-					AvmCode::iterator endForm = aCode->end();
-					for( ; itForm != endForm ; ++itForm )
+					for( const auto & itArg : aCode.getOperands() )
 					{
-						if( checksatJoin(ENV, *itForm) )
+						if( checksatJoin(ENV, itArg) )
 						{
 							++nbTrue;
 						}
@@ -1935,13 +1924,13 @@ bool AvmPrimitive_Join::checksatJoin(
 
 		case FORM_RUNTIME_ID_KIND:
 		{
-			return( ENV.inED->isWaitingJoin( aJoinSpec.bfRID() ) );
+			return( ENV.inED.isWaitingJoin( aJoinSpec.bfRID() ) );
 		}
 
 		case FORM_INSTANCE_MACHINE_KIND:
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			//return( ENV.inED->isWaitingJoin( ENV.evalMachine(aJoinSpec) ) );
+			//return( ENV.inED.isWaitingJoin( ENV.evalMachine(aJoinSpec) ) );
 			return( false );
 		}
 
@@ -1955,59 +1944,55 @@ bool AvmPrimitive_Join::checksatJoin(
 
 bool AvmPrimitive_Join::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 	outED.mwsetAEES( AEES_WAITING_JOIN_FORK );
 
 	if( tableOfWaitingJoin.empty() )
 	{
-		tableOfWaitingJoin.resize( ENV.inED->getTableOfRuntime().size() );
+		tableOfWaitingJoin.resize( ENV.inED.getTableOfRuntime().size() );
 
-		outED.mwsetRuntimeFormState(outED->mRID, PROCESS_WAITING_JOIN_STATE);
-		tableOfWaitingJoin[ outED->mRID.getOffset() ].append( outED );
+		outED.mwsetRuntimeFormState(outED.getRID(), PROCESS_WAITING_JOIN_STATE);
+		tableOfWaitingJoin[ outED.getRID().getOffset() ].append( outED );
 	}
-	else if( tableOfWaitingJoin[ outED->mRID.getOffset() ].empty() )
+	else if( tableOfWaitingJoin[ outED.getRID().getOffset() ].empty() )
 	{
-		outED.mwsetRuntimeFormState(outED->mRID, PROCESS_WAITING_JOIN_STATE);
-		tableOfWaitingJoin[ outED->mRID.getOffset() ].append( outED );
+		outED.mwsetRuntimeFormState(outED.getRID(), PROCESS_WAITING_JOIN_STATE);
+		tableOfWaitingJoin[ outED.getRID().getOffset() ].append( outED );
 	}
 
-	else if( tableOfWaitingJoin[ outED->mRID.getOffset() ].singleton() )
+	else if( tableOfWaitingJoin[ outED.getRID().getOffset() ].singleton() )
 	{
-		const APExecutionData & otherED =
-				tableOfWaitingJoin[ outED->mRID.getOffset() ].first();
+		const ExecutionData & otherED =
+				tableOfWaitingJoin[ outED.getRID().getOffset() ].first();
 
-		APExecutionData joinED = AvmSynchronizationFactory::fusion(
-				outED->getExecutionContext()->LCA(
-					otherED->getExecutionContext())->getAPExecutionData(),
+		ExecutionData joinED = AvmSynchronizationFactory::fusion(
+				outED.getExecutionContext()->LCA(
+					otherED.getExecutionContext())->getExecutionData(),
 				outED, otherED );
 		if( joinED.valid() )
 		{
-			joinED->setRuntimeFormState(outED->mRID, PROCESS_IDLE_STATE);
+			joinED.setRuntimeFormState(outED.getRID(), PROCESS_IDLE_STATE);
 			joinED.mwsetAEES( AEES_OK );
 			ENV.outEDS.append( joinED );
 
-			tableOfWaitingJoin[ outED->mRID.getOffset() ].clear();
+			tableOfWaitingJoin[ outED.getRID().getOffset() ].clear();
 		}
 	}
-	else if( tableOfWaitingJoin[ outED->mRID.getOffset() ].populated() )
+	else if( tableOfWaitingJoin[ outED.getRID().getOffset() ].populated() )
 	{
-		APExecutionData joinED = outED;
+		ExecutionData joinED = outED;
 
-		ListOfAPExecutionData::const_iterator itED =
-				tableOfWaitingJoin[ outED->mRID.getOffset() ].begin();
-		ListOfAPExecutionData::const_iterator endED =
-				tableOfWaitingJoin[ outED->mRID.getOffset() ].end();
-		for( ; itED != endED ; ++itED )
+		for( auto & itED : tableOfWaitingJoin[ outED.getRID().getOffset() ] )
 		{
 			joinED = AvmSynchronizationFactory::fusion(
-					outED->getExecutionContext()->LCA(
-						(*itED)->getExecutionContext())->getAPExecutionData(),
-					joinED, *itED);
+					outED.getExecutionContext()->LCA(
+							itED.getExecutionContext())->getExecutionData(),
+					joinED, itED);
 			if( joinED.invalid() )
 			{
 				break;
 			}
-			joinED->setRuntimeFormState(outED->mRID, PROCESS_IDLE_STATE);
+			joinED.setRuntimeFormState(outED.getRID(), PROCESS_IDLE_STATE);
 		}
 
 		if( joinED.valid() )
@@ -2015,7 +2000,7 @@ bool AvmPrimitive_Join::run(ExecutionEnvironment & ENV)
 			joinED.mwsetAEES( AEES_OK );
 			ENV.outEDS.append( joinED );
 
-			tableOfWaitingJoin[ outED->mRID.getOffset() ].clear();
+			tableOfWaitingJoin[ outED.getRID().getOffset() ].clear();
 		}
 	}
 

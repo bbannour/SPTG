@@ -17,6 +17,7 @@
 
 #include <fml/executable/AvmProgram.h>
 #include <fml/executable/BaseAvmProgram.h>
+#include <fml/executable/ExecutableForm.h>
 #include <fml/executable/InstanceOfMachine.h>
 
 #include <fml/expression/BuiltinArray.h>
@@ -28,6 +29,7 @@
 
 #include <fml/type/ContainerTypeSpecifier.h>
 #include <fml/type/EnumTypeSpecifier.h>
+#include <fml/type/TypeManager.h>
 
 
 namespace sep
@@ -35,10 +37,49 @@ namespace sep
 
 
 /**
+ * GETTER
+ * Unique Null Reference
+ */
+InstanceOfData & InstanceOfData::nullref()
+{
+	static InstanceOfData _NULL_(
+			POINTER_UNDEFINED_NATURE, ExecutableForm::nullref_ptr(),
+			Variable::nullref(), BaseTypeSpecifier::nullref(), 0 );
+	_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+
+	return( _NULL_ );
+}
+
+
+/**
  * DEFAULT
  * Empty TableOfSymbol
  */
 TableOfSymbol InstanceOfData::NULL_TABLE_OF_SYMBOL(0);
+
+
+std::string InstanceOfData::getUniqNameID() const
+{
+	std::string name = mNameID;
+	std::replace(name.begin(), name.end(), '#', '_');
+
+	const auto aContainer = getContainer();
+	avm_offset_t parentOffset = aContainer->getRuntimeOffset();
+	if( aContainer->is< ExecutableForm >() )
+	{
+		parentOffset = aContainer->to< ExecutableForm >().getOffset();
+	}
+
+	if( parentOffset == 0 )
+	{
+		return( OSS() << "_" << getOffset() << "_" << name );
+	}
+	else
+	{
+		return( OSS() << "_" << parentOffset
+					<< "_" << getOffset() << "_" << name );
+	}
+}
 
 
 /**
@@ -95,16 +136,16 @@ void InstanceOfData::updateNameID()
 		std::string ufiSuffix =
 				NamedElement::extractNameID( mFullyQualifiedNameID );
 
-		if( getParent()->getTypeSpecifier()->isTypedArray() )
+		if( getParent()->getTypeSpecifier().isTypedArray() )
 		{
-			InstanceOfData * aParent = getParent();
-			while( (aParent != NULL) &&
-					aParent->getTypeSpecifier()->isTypedArray() )
+			const InstanceOfData * aParent = getParent();
+			while( (aParent != nullptr)
+					&& aParent->getTypeSpecifier().isTypedArray() )
 			{
 				aParent = aParent->getParent();
 			}
 
-			if( aParent != NULL )
+			if( aParent != nullptr )
 			{
 				setNameID( aParent->getNameID() + "." + ufiSuffix );
 			}
@@ -128,19 +169,19 @@ void InstanceOfData::updateNameID()
 		{
 			switch( (*it).getPointerNature() )
 			{
-				case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-				case IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
-				case IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
 				{
 					oss << "." << NamedElement::extractNameID( (*it).getFullyQualifiedNameID() );
 					break;
 				}
-				case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 				{
 					oss << "[" << (*it).getOffset() << "]";
 					break;
 				}
-				case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+				case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 				{
 					oss << "[" << (*it).strValue() << "]";
 					break;
@@ -171,7 +212,7 @@ void InstanceOfData::updateNameID()
  */
 const BFCode & InstanceOfData::getOnWriteCode() const
 {
-	return( (mOnWriteRoutine != NULL) ?
+	return( (mOnWriteRoutine != nullptr) ?
 			mOnWriteRoutine->getCode() : BFCode::REF_NULL );
 }
 
@@ -213,10 +254,10 @@ std::string InstanceOfData::strOffsetPath(const std::string & tab) const
 		std::ostringstream oss;
 
 		// +1 for << this >> which is the root of the path
-		avm_size_t pathLength = mRelativeDataPath->size() + 1;
+		std::size_t pathLength = mRelativeDataPath->size() + 1;
 
 		oss << tab << "[ " << mRelativeOffsetPath[0];
-		for( avm_size_t k = 1 ; k < pathLength ; ++k )
+		for( std::size_t k = 1 ; k < pathLength ; ++k )
 		{
 			oss << " , " << mRelativeOffsetPath[k];
 		}
@@ -233,13 +274,13 @@ void InstanceOfData::updateOffsetPath()
 	if( isUfiOffsetPointer() && hasDataPath() )
 	{
 		// +1 for << this >> which is the root of the path
-		avm_size_t pathLength = mRelativeDataPath->size() + 1;
+		std::size_t pathLength = mRelativeDataPath->size() + 1;
 
-		mRelativeOffsetPath = new avm_size_t[ pathLength ];
+		mRelativeOffsetPath = new std::size_t[ pathLength ];
 
 		mRelativeOffsetPath[0] = this->getOffset();
 		TableOfSymbol::const_iterator itPath = getDataPath()->begin();
-		for( avm_size_t k = 1 ; k < pathLength ; ++k, ++itPath )
+		for( std::size_t k = 1 ; k < pathLength ; ++k, ++itPath )
 		{
 			mRelativeOffsetPath[k] = (*itPath).getOffset();
 		}
@@ -251,13 +292,13 @@ void InstanceOfData::updateOffsetPath()
  * GETTER - SETTER
  * mPointerNature
  */
-bool InstanceOfData::isConcreteArrayIndex()
+bool InstanceOfData::isConcreteArrayIndex() const
 {
 	return( isUfiOffsetPointer() && hasParent()
 			&& getParent()->isTypedArray() );
 }
 
-bool InstanceOfData::isConcreteStructAttribute()
+bool InstanceOfData::isConcreteStructAttribute() const
 {
 	return( hasParent() && isUfiOffsetPointer()
 			&& getParent()->hasTypeStructureOrChoiceOrUnion() );
@@ -272,11 +313,11 @@ void InstanceOfData::formatStream(
 {
 	if( bfValue.is< ArrayBF >() )
 	{
-		formatStream(out, bfValue.as_ref< ArrayBF >());
+		formatStream(out, bfValue.as< ArrayBF >());
 	}
 	else if( hasTypeSpecifier() )
 	{
-		getTypeSpecifier()->formatStream(out, bfValue);
+		getTypeSpecifier().formatStream(out, bfValue);
 	}
 	else
 	{
@@ -290,12 +331,12 @@ void InstanceOfData::formatStream(
 {
 	if( hasTypeSpecifier() )
 	{
-		getTypeSpecifier()->formatStream(out, arrayValue);
+		getTypeSpecifier().formatStream(out, arrayValue);
 	}
 	else
 	{
 		out << arrayValue[0].str();
-		for( avm_size_t offset = 1 ; offset < arrayValue.size() ; ++offset )
+		for( std::size_t offset = 1 ; offset < arrayValue.size() ; ++offset )
 		{
 			out << " , " << arrayValue[offset].str();
 		}
@@ -309,9 +350,9 @@ void InstanceOfData::formatStream(
 void InstanceOfData::strHeader(OutStream & out) const
 {
 	out << getModifier().toString() << "var< id:" << getOffset() << ", ptr:"
-		<< IPointerDataNature::strPointer( getPointerNature() )
+		<< IPointerVariableNature::strPointer( getPointerNature() )
 		<< ( hasOffsetPath() ? strOffsetPath(", mem:") : "" ) << " > "
-		<< ( hasTypeSpecifier() ? getTypeSpecifier()->strT() : "" )
+		<< ( hasTypeSpecifier() ? getTypeSpecifier().strT() : "" )
 		<< " " << getFullyQualifiedNameID();
 
 AVM_IF_DEBUG_FLAG2_AND( COMPILING , QUALIFIED_NAME_ID , hasValue() )
@@ -327,9 +368,9 @@ std::string InstanceOfData::strHeaderId() const
 	StringOutStream oss;
 
 	oss << getModifier().toString() << "var< id:" << getOffset() << ", ptr:"
-			<< IPointerDataNature::strPointer( getPointerNature() )
+			<< IPointerVariableNature::strPointer( getPointerNature() )
 			<< ( hasOffsetPath() ? strOffsetPath(", mem:") : "" ) << " > "
-			<< ( hasTypeSpecifier() ? getTypeSpecifier()->strT() : "" )
+			<< ( hasTypeSpecifier() ? getTypeSpecifier().strT() : "" )
 			<< " " << getNameID();
 
 AVM_IF_DEBUG_FLAG2_AND( COMPILING , QUALIFIED_NAME_ID , hasValue() )
@@ -357,13 +398,13 @@ void InstanceOfData::toStream(OutStream & out) const
 	out << TAB << getModifier().toString_not( Modifier::FEATURE_CONST_KIND )
 		<< ( getModifier().hasFeatureConst() ? "const" : "var" )
 		<< "< id:" << getOffset() << ", ptr:"
-		<< IPointerDataNature::strPointer( getPointerNature() )
+		<< IPointerVariableNature::strPointer( getPointerNature() )
 		<< ( hasOffsetPath() ? strOffsetPath(", mem:") : "" )
 		<< " > " ;
 
 	if( hasTypeSpecifier() )
 	{
-		out << getTypeSpecifier()->strT();
+		out << getTypeSpecifier().strT();
 	}
 
 	out << " " << getFullyQualifiedNameID() << " '" << getNameID() << "'";
@@ -380,7 +421,7 @@ AVM_IF_DEBUG_FLAG( COMPILING )
 	}
 
 	out << TAB2 << "//container = "
-		<< (hasContainer() ? getContainer()->getFullyQualifiedNameID() : "NULL")
+		<< (hasContainer() ? getContainer()->getFullyQualifiedNameID() : "nullptr")
 		<< ";" << EOL;
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
@@ -394,7 +435,7 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	{
 		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
 		out << TAB2 << "target = "
-			<< str_header( getAliasTarget()->as< InstanceOfData >() )
+			<< str_header( getAliasTarget()->as_ptr< InstanceOfData >() )
 			<< ";" << EOL;
 	}
 
@@ -415,10 +456,16 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	if( hasValue() )
 	{
 		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
+
 		out << TAB2 << "value =";
+
 		if( getValue().is< AvmCode >() )
 		{
 			out << str_indent( getValue().to_ptr< AvmCode >() ) << ";" << EOL;
+		}
+		else if( isTypedEnum() )
+		{
+			out << " " << getValue().str() << ";" << EOL;
 		}
 		else
 		{

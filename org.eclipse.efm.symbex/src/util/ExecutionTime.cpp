@@ -33,14 +33,14 @@ namespace sep
 void ExecutionTime::start_time()
 {
 #ifdef __AVM_UNIX__
-	gettimeofday(&start_t, NULL);
+	gettimeofday(&start_t, nullptr);
 	getrusage(0, &start_r);
 	clock();
 #endif /* __AVM_UNIX__ */
 
 	t_depart = getClock();
 
-	t_start = std::time(NULL);
+	t_start = std::time(nullptr);
 
 //!!! BOOST TODO
 //	time_start = boost::posix_time::microsec_clock::local_time();
@@ -53,13 +53,13 @@ void ExecutionTime::start_time()
 void ExecutionTime::finish_time()
 {
 #ifdef __AVM_UNIX__
-	gettimeofday(&finish_t, NULL);
+	gettimeofday(&finish_t, nullptr);
 	getrusage(0, &finish_r);
 	finish_clock = clock();
 #endif /* __AVM_UNIX__ */
 
 
-	t_end = std::time(NULL);
+	t_end = std::time(nullptr);
 
 	t_fin = getClock();
 
@@ -236,10 +236,10 @@ std::string  ExecutionTime::time_stat()
 		finish_clock = finish_clock / 1000;
 	}
 
-	osTime << "(realTime " << format_time_milli(rtime);
-	osTime << " cpuTime " << format_time_milli(finish_clock);
-	osTime << " userTime " << format_time_milli(utime);
-	osTime << " systemTime " << format_time_milli(stime) << ")";
+	osTime << "time:(real: " << format_time_milli(rtime);
+	osTime << " cpu: " << format_time_milli(finish_clock);
+	osTime << " user: " << format_time_milli(utime);
+	osTime << " system: " << format_time_milli(stime) << ")";
 
 //	osTime << "(realTime " << rtime << " cpuTime " << (finish_clock / 1000)
 //			<< " userTime " << utime << " systemTime " << stime << "")";
@@ -295,7 +295,7 @@ avm_ftime_t ExecutionTime::getClock ( void )
 #ifndef __linux
 #ifdef _WIN32
 	struct timeval tval ;
-	struct timezone * tz=(struct timezone *)NULL ;
+	struct timezone * tz = nullptr ;
 
 	timerclear(&tval);
 
@@ -327,7 +327,7 @@ avm_ftime_t ExecutionTime::getClock ( void )
 #endif
 #else
 	struct timeval tval ;
-	struct timezone * tz=(struct timezone *)NULL ;
+	struct timezone * tz = nullptr ;
 
 	timerclear(&tval);
 

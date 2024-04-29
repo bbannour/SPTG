@@ -51,14 +51,14 @@ BFCode AvmcodeContinueCompiler::compileStatement(
 BFCode AvmcodeReturnCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		return( aCode );
 	}
 	else
 	{
 		const AvmProgram * aProgram = aCTX->mCompileCtx->getAvmProgram();
-		for( ; aProgram != NULL ; aProgram = aProgram->getAvmProgramContainer() )
+		for( ; aProgram != nullptr ; aProgram = aProgram->getAvmProgramContainer() )
 		{
 			if( aProgram->hasReturn() )
 			{
@@ -66,7 +66,7 @@ BFCode AvmcodeReturnCompiler::compileStatement(
 			}
 		}
 
-		if( aProgram != NULL )
+		if( aProgram != nullptr )
 		{
 			BFCode retAssignCode( OperatorManager::OPERATOR_ASSIGN,
 					aProgram->getReturn(0), compileArgRvalue(
@@ -74,8 +74,8 @@ BFCode AvmcodeReturnCompiler::compileStatement(
 							aCode->first(), false) );
 
 //			if( aProgram->is< ExecutableForm >() &&
-//					( aProgram->to< ExecutableForm >()->hasKindProcedure() ||
-//							aProgram->to< ExecutableForm >()->hasOnReturn() ) )
+//					( aProgram->to_ptr< ExecutableForm >()->hasKindProcedure() ||
+//							aProgram->to_ptr< ExecutableForm >()->hasOnReturn() ) )
 //			{
 //				return( StatementConstructor::newCode(
 //						OperatorManager::OPERATOR_ATOMIC_SEQUENCE, retAssignCode,
@@ -99,7 +99,7 @@ BFCode AvmcodeReturnCompiler::compileStatement(
 BFCode AvmcodeReturnCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->nonempty() )
+	if( aCode->hasOperand() )
 	{
 		AvmInstruction * argsInstruction = aCode->genInstruction();
 
@@ -128,7 +128,7 @@ BFCode AvmcodeReturnCompiler::optimizeStatement(
 BFCode AvmcodeExitCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		return( aCode );
 	}
@@ -142,7 +142,7 @@ BFCode AvmcodeExitCompiler::compileStatement(
 BFCode AvmcodeExitCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->nonempty() )
+	if( aCode->hasOperand() )
 	{
 		AvmInstruction * argsInstruction = aCode->genInstruction();
 

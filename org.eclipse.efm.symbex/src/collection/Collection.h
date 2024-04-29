@@ -80,13 +80,15 @@ public:
 	virtual bool populated() const = 0;
 
 
-//	virtual avm_size_t size() const = 0;
+//	virtual std::size_t size() const = 0;
 
 
 	/**
 	 * contains a particular element
 	 */
 	virtual bool contains(const T & arg) const = 0;
+
+	virtual bool contains(const T * arg) const = 0;
 
 
 	/*
@@ -97,25 +99,121 @@ public:
 	 */
 	virtual void append(const T & arg) = 0;
 
-	virtual void append(const T & arg1, const T & arg2) = 0;
+	inline virtual void append(const T & arg1, const T & arg2)
+	{
+		append(arg1);
+		append(arg2);
+	}
 
-	virtual void append(T * anArrayOfArgument, int anArgSize) = 0;
+	inline virtual void append(const T & arg1, const T & arg2, const T & arg3)
+	{
+		append(arg1);
+		append(arg2);
+		append(arg3);
+	}
+
+	inline void append(const T & arg1,
+			const T & arg2, const T & arg3, const T & arg4)
+	{
+		append(arg1);
+		append(arg2);
+		append(arg3);
+		append(arg4);
+	}
+
+	inline void append(const T & arg1, const T & arg2,
+			const T & arg3, const T & arg4, const T & arg5)
+	{
+		append(arg1);
+		append(arg2);
+		append(arg3);
+		append(arg4);
+		append(arg5);
+	}
+
+	inline virtual void append(T * anArrayOfArgument, int anArgSize)
+	{
+		for (int i = 0 ; i < anArgSize ; ++i)
+		{
+			append(anArrayOfArgument[i]);
+		}
+	}
+
+
+	inline void append(const std::vector< T > & aCollection)
+	{
+		typename std::vector< T >::const_iterator it = aCollection.begin();
+		for( ; it != aCollection.end() ; ++it )
+		{
+			append( (*it) );
+		}
+	}
+
+	inline void append(const std::list< T > & aCollection)
+	{
+		typename std::list< T >::const_iterator it = aCollection.begin();
+		for( ; it != aCollection.end() ; ++it )
+		{
+			append( (*it) );
+		}
+	}
+
 
 
 	/*
 	 ***************************************************************************
 	 * GETTER - SETTER
-	 * add_union
+	 * add_unique
 	 ***************************************************************************
 	 */
-	virtual void add_union(const T & arg) = 0;
+	virtual void add_unique(const T & arg) = 0;
 
-	virtual void add_union(const T & arg1, const T & arg2) = 0;
+//	virtual void add_unique(T * arg) = 0;
+
+//	virtual void add_unique(const T & arg1, const T & arg2) = 0;
+
+	inline virtual void add_unique(const T & arg1, const T & arg2)
+	{
+		add_unique(arg1);
+		add_unique(arg2);
+	}
 
 
-	virtual void add_union(const std::list< T > & aCollection) = 0;
+	inline virtual void add_unique(const std::list< T > & aCollection)
+	{
+		typename std::list< T >::const_iterator it = aCollection.begin();
+		for( ; it != aCollection.end() ; ++it )
+		{
+			add_unique( (*it) );
+		}
+	}
 
-	virtual void add_union(const std::vector< T > & aCollection) = 0;
+//	template< typename _TOE >
+//	inline void add_unique(const std::list< _TOE > & aCollection)
+//	{
+//		typename std::list< T >::const_iterator it = aCollection.begin();
+//		for( ; it != aCollection.end() ; ++it )
+//		{
+//			add_unique( (*it) );
+//		}
+//	}
+
+	inline virtual void add_unique(const std::vector< T > & aCollection)
+	{
+		typename std::vector< T >::const_iterator it = aCollection.begin();
+		for( ; it != aCollection.end() ; ++it )
+		{
+			add_unique( (*it) );
+		}
+	}
+
+	inline virtual void add_unique(const T * anArrayOfArgument, int anArgSize)
+	{
+		for (int i = 0 ; i < anArgSize ; ++i)
+		{
+			add_unique( anArrayOfArgument[i] );
+		}
+	}
 
 
 	/*
@@ -148,12 +246,124 @@ public:
 	 * reset
 	 ***************************************************************************
 	 */
-	virtual void reset(const T & arg) = 0;
+	virtual void reset() = 0;
 
-	virtual void reset(const std::list< T > & aCollection) = 0;
+//	inline virtual void reset(const T & arg)
+//	{
+//		reset();
+//
+//		append(arg);
+//	}
+//
+//	inline void reset(const T & arg1, const T & arg2)
+//	{
+//		reset();
+//
+//		append(arg1);
+//		append(arg2);
+//	}
+//
+//	inline void reset(const T & arg1, const T & arg2, const T & arg3)
+//	{
+//		reset();
+//
+//		append(arg1);
+//		append(arg2);
+//		append(arg3);
+//	}
+//
+//	inline void reset(const T & arg1,
+//			const T & arg2, const T & arg3, const T & arg4)
+//	{
+//		reset();
+//
+//		append(arg1);
+//		append(arg2);
+//		append(arg3);
+//		append(arg4);
+//	}
+//
+//	inline void reset(const T & arg1, const T & arg2,
+//			const T & arg3, const T & arg4, const T & arg5)
+//	{
+//		reset();
+//
+//		append(arg1);
+//		append(arg2);
+//		append(arg3);
+//		append(arg4);
+//		append(arg5);
+//	}
+//
+//
+//	inline void reset(T* anArrayOfArgument, int anArgSize)
+//	{
+//		reset();
+//
+//		for (int i = 0 ; i < anArgSize ; ++i)
+//		{
+//			push_back(anArrayOfArgument[i]);
+//		}
+//	}
+//
+//
+//	inline virtual void reset(const std::list< T > & aCollection)
+//	{
+//		reset();
+//
+//		push_back(aCollection);
+//	}
+//
+//	inline virtual void reset(const std::vector< T > & aCollection)
+//	{
+//		reset();
+//
+//		push_back(aCollection);
+//	}
+//
+//
+//	template< typename _TOE >
+//	inline void reset(const std::list< _TOE > & aCollection)
+//	{
+//		reset();
+//
+//		push_back(aCollection);
+//	}
+//
+//	template< typename _TOE >
+//	inline void reset(const std::vector< _TOE > & aCollection)
+//	{
+//		reset();
+//
+//		push_back(aCollection);
+//	}
 
-	virtual void reset(const std::vector< T > & aCollection) = 0;
 
+	/*
+	 ***************************************************************************
+	 * SETTER
+	 * remove
+	 ***************************************************************************
+	 */
+	virtual void remove(const T & arg) = 0;
+
+	inline void remove(const std::vector< T > & aCollection)
+	{
+		typename std::vector< T >::const_iterator it = aCollection.begin();
+		for( ; it != aCollection.end() ; ++it )
+		{
+			remove( (*it) );
+		}
+	}
+
+	inline void remove(const std::list< T > & aCollection)
+	{
+		typename std::list< T >::const_iterator it = aCollection.begin();
+		for( ; it != aCollection.end() ; ++it )
+		{
+			remove( (*it) );
+		}
+	}
 
 
 //	virtual void makeUnique() = 0;

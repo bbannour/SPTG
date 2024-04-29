@@ -36,13 +36,11 @@ bool BaseBufferQueue::equals(const BaseBufferForm & aBuffer) const
 		&& (this->size() == aBuffer.size()) )
 	{
 		ListOfMessage::const_iterator itOther =
-				aBuffer.to< BaseBufferQueue >()->beginMessages();
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; it != itEnd ; ++it )
+				aBuffer.to< BaseBufferQueue >().beginMessages();
+		for( const auto & itMessage : mMessages )
 		{
-			if( ((*it) != (*itOther))
-				&& (not (*it).equals( *itOther )) )
+			if( (itMessage != (*itOther))
+				&& (not itMessage.equals( *itOther )) )
 			{
 				return( false );
 			}
@@ -58,44 +56,70 @@ bool BaseBufferQueue::equals(const BaseBufferForm & aBuffer) const
 /**
  * Serialization
  */
-void BaseBufferQueue::toStream(OutStream & os) const
+void BaseBufferQueue::toStream(OutStream & out) const
 {
-	os << TAB << "buffer ";
-	os << Buffer::str(getInstance()->getPolicySpecifierKind(), realCapacity());
-	os << " " << ( hasInstance() ? getInstance()->getFullyQualifiedNameID() : "_") << " {";
+	out << TAB << "buffer "
+		<< Buffer::str(getInstance().getPolicySpecifierKind(), realCapacity())
+		<< " " << getInstance().getFullyQualifiedNameID()
+		<< " {";
 
 	if( nonempty() )
 	{
-		AVM_DEBUG_REF_COUNTER(os);
-		os << EOL_INCR_INDENT;
+		AVM_DEBUG_REF_COUNTER(out);
+		out << EOL_INCR_INDENT;
 
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itMessage : mMessages )
 		{
 AVM_IF_DEBUG_LEVEL_GTE_MEDIUM
-			(*it).toStream(os);
+itMessage.toStream(out);
 AVM_ELSE
-			os << TAB << (*it).str() << EOL;
+			itMessage.toStreamValue(out);
 AVM_ENDIF_DEBUG_LEVEL_GTE_MEDIUM
 		}
-		os << DECR_INDENT_TAB << "}";
+		out << DECR_INDENT_TAB << "}";
 	}
 	else
 	{
-		os << " }";
-		AVM_DEBUG_REF_COUNTER(os);
+		out << " }";
+		AVM_DEBUG_REF_COUNTER(out);
 	}
-	os << EOL_FLUSH;
+	out << EOL_FLUSH;
+}
+
+
+void BaseBufferQueue::toStreamValue(OutStream & out) const
+{
+	out << TAB << Buffer::str(getInstance().getPolicySpecifierKind())
+//		<< "buffer "
+//		<< Buffer::str(getInstance().getPolicySpecifierKind(), realCapacity())
+		<< " {";
+
+	if( nonempty() )
+	{
+		AVM_DEBUG_REF_COUNTER(out);
+		out << EOL_INCR_INDENT;
+
+		for( const auto & itMessage : mMessages )
+		{
+			itMessage.toStreamValue(out);
+		}
+		out << DECR_INDENT_TAB << "}";
+	}
+	else
+	{
+		out << " }";
+		AVM_DEBUG_REF_COUNTER(out);
+	}
+	out << EOL_FLUSH;
 }
 
 
 void BaseBufferQueue::toFscn(OutStream & out,
 		const RuntimeID & aRID, const BaseBufferForm * prevBuf) const
 {
-	StringOutStream oss( out.INDENT );
+	StringOutStream oss( out.INDENT , out );
 
-	if(prevBuf == NULL)
+	if(prevBuf == nullptr)
 	{
 		if(size()==0)
 		{
@@ -103,18 +127,16 @@ void BaseBufferQueue::toFscn(OutStream & out,
 		}
 		else
 		{
-			ListOfMessage::const_iterator it = mMessages.begin();
-			ListOfMessage::const_iterator itEnd = mMessages.end();
-			for( ; it != itEnd ; ++it )
+			for( const auto & itMessage : mMessages )
 			{
-				(*it).toFscn(oss);
+				itMessage.toFscn(oss);
 			}
 		}
 	}
 	else if(prevBuf->is< BaseBufferQueue >())
 	{
 		bool hasDifference = false;
-		const BaseBufferQueue* prev = prevBuf->to< BaseBufferQueue >();
+		const BaseBufferQueue* prev = prevBuf->to_ptr< BaseBufferQueue >();
 		hasDifference = (size()!=prev->size());
 		if( not hasDifference )
 		{
@@ -136,11 +158,9 @@ void BaseBufferQueue::toFscn(OutStream & out,
 			}
 			else
 			{
-				ListOfMessage::const_iterator it = mMessages.begin();
-				ListOfMessage::const_iterator itEnd = mMessages.end();
-				for( ; it != itEnd ; ++it )
+				for( const auto & itMessage : mMessages )
 				{
-					(*it).toFscn(oss);
+					itMessage.toFscn(oss);
 				}
 			}
 		}
@@ -178,27 +198,19 @@ void BaseBufferQueue::toFscn(OutStream & out,
 		}
 
 		std::ostringstream osName;
-		if( hasInstance() )
+		if( getInstance().hasRuntimeContainerRID() )
 		{
-			if( getInstance()->hasRuntimeContainerRID() )
-			{
-				osName << getInstance()->getRuntimeContainerRID().
-								getInstance()->getNameID()
-						<< "." << getInstance()->getNameID();
-			}
-			else
-			{
-				osName << ":pid#" << aRID.getRid()
-						<< ":" << getInstance()->getNameID();
-			}
+			osName << getInstance().getRuntimeContainerRID().
+							getInstance()->getNameID()
+					<< "." << getInstance().getNameID();
 		}
 		else
 		{
-			osName << ":pid#" << aRID.getRid();
+			osName << ":" << aRID.strPid() << ":" << getInstance().getNameID();
 		}
 
 		out << TAB << osName.str() << ":"
-			<< "<" << bufferkind << ">#" << getInstance()->getOffset() << "{";
+			<< "<" << bufferkind << ">#" << getInstance().getOffset() << "{";
 
 		if(oss.str().compare(" ")==0)
 		{

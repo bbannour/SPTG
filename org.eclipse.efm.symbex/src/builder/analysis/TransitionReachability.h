@@ -17,7 +17,6 @@
 #define TRANSITIONREACHABILITY_H_
 
 #include <collection/List.h>
-#include <collection/Typedef.h>
 
 #include <fml/buffer/LifoBuffer.h>
 
@@ -64,12 +63,12 @@ protected:
 	const ExecutionContext & theEC;
 	const ExecutionData & theED;
 	RuntimeID theRID;
-	AvmTransition * theTransition;
+	const AvmTransition & theTransition;
 
 	TracePoint * theTransitionPoint;
 	TraceSequence theTraceElement;
 
-	avm_size_t theRuntimePathComputingCountLimit;
+	std::size_t theRuntimePathComputingCountLimit;
 
 	bool theGoalAchievedFlag;
 
@@ -85,7 +84,7 @@ public:
 	 * Default
 	 */
 	TransitionReachability(const ExecutionContext & anEC,
-			const RuntimeID & aRID, AvmTransition * aTransition);
+			const RuntimeID & aRID, const AvmTransition & aTransition);
 
 
 	/**
@@ -100,29 +99,34 @@ public:
 	void report(OutStream & os);
 
 
-	bool computePath(const RuntimeID & aRID, AvmTransition * aTransition);
+	bool computePath(const RuntimeID & aRID,
+			const AvmTransition & aTransition);
 
-	bool fireTransition(const RuntimeID & aRID, AvmTransition * aTransition);
+	bool fireTransition(const RuntimeID & aRID,
+			const AvmTransition & aTransition);
 
-	void traceTransition(const RuntimeID & aRID, AvmTransition * aTransition);
+	void traceTransition(const RuntimeID & aRID,
+			const AvmTransition & aTransition);
 
 	bool computePathToTransition(
-			const RuntimeID & aRID, AvmTransition * aTransition);
+			const RuntimeID & aRID, const AvmTransition & aTransition);
 
 	bool computePathFromRunnable(
-			const RuntimeID & aRID, AvmTransition * aTransition);
+			const RuntimeID & aRID, const AvmTransition & aTransition);
 
 	bool computePathToInput(
-			const RuntimeID & aRID, InstanceOfPort * anInputTrace);
+			const RuntimeID & aRID, const InstanceOfPort * anInputTrace);
 
 
 	bool computePathToTransition(const RuntimeID & aRID,
-			AvmTransition * aTransition, ListOfAvmTransition & oneTransitionPath);
+			const AvmTransition & aTransition,
+			ListOfAvmTransition & oneTransitionPath);
 
-	bool computePathToTransition(const RuntimeID & aRID,
-			AvmTransition * aTransition, ListOfListOfAvmTransition & allTransitionPaths);
+	bool computePathToTransition(
+			const RuntimeID & aRID, const AvmTransition & aTransition,
+			ListOfListOfAvmTransition & allTransitionPaths);
 
-	bool computeTargetMachine(RuntimeID & aRID, AvmCode * aCode);
+	bool computeTargetMachine(RuntimeID & aRID, const AvmCode & aCode);
 
 };
 

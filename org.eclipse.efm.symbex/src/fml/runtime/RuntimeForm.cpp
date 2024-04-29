@@ -56,96 +56,159 @@ const RuntimeID & RuntimeForm::getChild(
 }
 
 
+/**
+ * GETTER
+* Timestamp SymbeX value
+ */
+const BF & RuntimeForm::getTimeValue() const
+{
+	const InstanceOfData * timeVar = getExecutable()->getTimeVariable();
+
+	if( timeVar != nullptr )
+	{
+		return( getData( timeVar ) );
+	}
+	else
+	{
+		return( BF::REF_NULL );
+	}
+}
+
+const BF & RuntimeForm::getDeltaTimeValue() const
+{
+	const InstanceOfData * deltaTimeVar = getExecutable()->getDeltaTimeVariable();
+
+	if( deltaTimeVar != nullptr )
+	{
+		return( getData( deltaTimeVar ) );
+	}
+	else
+	{
+		return( BF::REF_NULL );
+	}
+}
+
+/**
+ * SYNC-SETTER
+ * Synchronization of Time Values
+ */
+void RuntimeForm::syncTimeValues(const ExecutionData & refED)
+{
+	makeWritableDataTable();
+
+	const InstanceOfData * timeVar = getExecutable()->getTimeVariable();
+
+	if( timeVar != nullptr )
+	{
+		assign(timeVar->getOffset(), refED.getTimeValue(getRID()));
+	}
+
+	const InstanceOfData * deltaTimeVar = getExecutable()->getDeltaTimeVariable();
+
+	if( deltaTimeVar != nullptr )
+	{
+		assign(deltaTimeVar->getOffset(), refED.getDeltaTimeValue(getRID()));
+	}
+}
+
 
 /**
  * Serialization
  */
-void RuntimeForm::toStream(const ExecutionData * anED, OutStream & os) const
+void RuntimeForm::toStream(OutStream & out) const
 {
-	if( os.preferablyFQN() )
+	toStream(ExecutionData::_NULL_, out);
+}
+
+
+void RuntimeForm::toStream(const ExecutionData & anED, OutStream & out) const
+{
+	if( out.preferablyFQN() )
 	{
-//		os << TAB << "rid#" << getRID().getRid();
-		os << TAB << getRID().str();
+//		out << TAB << "rid#" << getRID().getRid();
+		out << TAB << getRID().str();
 
 		return;
 	}
 
-	os << TAB << "runtime";
+	out << TAB << "runtime";
 	if( getInstanciationCount() != 1 )
 	{
-		os << "< count:" << getInstanciationCount() << " >";
+		out << "< count:" << getInstanciationCount() << " >";
 	}
-	os << " ppid#" << ((getRID().getPRid() >= 0)? getRID().getPRid() : 0 )
-			<< ".pid#" << getRID().getRid() << " " << getFullyQualifiedNameID()
-			<< " as &" << getRID().getInstance()->getFullyQualifiedNameID();
+	out << " " << RuntimeID::BASENAME_PARENT
+		<< ((getRID().getPRid() >= 0)? getRID().getPRid() : 0 )
+		<< "." << getRID().strPid()
+		<< " " << getFullyQualifiedNameID()
+		<< " as &" << getRID().getInstance()->getFullyQualifiedNameID();
 
 	if( hasChild() || hasOnSchedule() || hasOnDefer() || isInputEnabled() ||
 		(not isEnvironmentEnabledCommunication()) ||
 		hasData() || hasRouter() || hasBuffer() )
 	{
-		os << " {";
+		out << " {";
 	}
 	else
 	{
-		os << ";";
-		AVM_DEBUG_REF_COUNTER(os);
-		os << EOL_FLUSH;
+		out << ";";
+		AVM_DEBUG_REF_COUNTER(out);
+		out << EOL_FLUSH;
 
 		return;
 	}
 
 
-	AVM_DEBUG_REF_COUNTER(os);
-	os << EOL_FLUSH;
+	AVM_DEBUG_REF_COUNTER(out);
+	out << EOL_FLUSH;
 
-//	os << INCR_INDENT;
-//	getRID().toStream(os);
-//	os << DECR_INDENT;
+//	out << INCR_INDENT;
+//	getRID().toStream(out);
+//	out << DECR_INDENT;
 
 AVM_IF_DEBUG_ENABLED_AND( hasChild() )
 
-	os << incr_stream( getChildTable() );
+	out << incr_stream( getChildTable() );
 
 AVM_ENDIF_DEBUG_ENABLED_AND
 
 	if( hasOnSchedule() )
 	{
-		os << TAB2 << "@schedule{" << INCR2_INDENT;
-		getOnSchedule()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@schedule{" << INCR2_INDENT;
+		getOnSchedule()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnDefer() )
 	{
-		os << TAB2 << "@defer{" << INCR2_INDENT;
-		getOnDefer()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@defer{" << INCR2_INDENT;
+		getOnDefer()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	// the Input Enabled Flag
 	// MOC Attribute for Communication
 	if( isInputEnabled() )
 	{
-		os << TAB2 << "input_enabled = true;" << EOL_FLUSH;
+		out << TAB2 << "input_enabled = true;" << EOL_FLUSH;
 	}
 
 	if( not isEnvironmentEnabledCommunication() )
 	{
-		os << TAB2 << "environment_enabled = false;" << EOL_FLUSH;
+		out << TAB2 << "environment_enabled = false;" << EOL_FLUSH;
 	}
 
 	if( hasData() )
 	{
-		os << EOL_TAB << "data:";
-		getDataTable()->AVM_DEBUG_REF_COUNTER(os);
-		os << EOL;
+		out << EOL_TAB << "variable:";
+		getDataTable()->AVM_DEBUG_REF_COUNTER(out);
+		out << EOL;
 
 		avm_offset_t offset = 0;
 		TableOfData::iterator it = getDataTable()->begin();
 		for( ; it != getDataTable()->end() ; ++it , ++offset )
 		{
-//			os << TAB2 << getVariables().rawAt(i)->getFullyQualifiedNameID();
-			os << TAB2 << getVariables().rawAt(offset)->getNameID() << std::flush;
+//			out << TAB2 << getVariables().rawAt(i)->getFullyQualifiedNameID();
+			out << TAB2 << getVariables().rawAt(offset)->getNameID() << std::flush;
 
 //AVM_OS_ASSERT_FATAL_ERROR_EXIT(
 //	(offset == getVariables().rawAt(offset)->getOffset()) )
@@ -153,94 +216,97 @@ AVM_ENDIF_DEBUG_ENABLED_AND
 //		<< str_header( getVariables().rawAt(offset) )
 //		<< SEND_EXIT;
 
-			os << ( ((anED != NULL) &&
-					anED->isAssigned(getRID(), offset))? " :=" : " =" );
+			out << ( (anED.isnotNull()
+//					&& isAssigned(offset)) ? " :=" : " =" );
+					&& anED.isAssigned(getRID(), offset))? " :=" : " =" );
 
 			if( (*it).valid() )
 			{
-				os << (*it).AVM_DEBUG_REF_COUNTER();
+				out << (*it).AVM_DEBUG_REF_COUNTER();
 
-				getVariables().rawAt(offset)->strValue(os, (*it));
+				getVariables().rawAt(offset)->strValue(out, (*it));
 			}
 			else
 			{
-				os << " null< value >";
+				out << "  null<value >";
 			}
 
-			os << ";" << EOL_FLUSH;
+			out << ";" << EOL_FLUSH;
 		}
 	}
 
-AVM_IF_DEBUG_LEVEL_GT_MEDIUM
+AVM_IF_DEBUG_ENABLED
 	if( hasRouter() )
 	{
-		os << EOL_TAB << "router:" << EOL_INCR_INDENT;
-		getRouter().toStream(os);
-		os << DECR_INDENT;
+		out << EOL_TAB << "router:" << EOL_INCR_INDENT;
+		getRouter().toStream(out);
+		out << DECR_INDENT;
 	}
-AVM_ENDIF_DEBUG_LEVEL_GT_MEDIUM
+AVM_ENDIF_DEBUG_ENABLED
 
 	if( hasBuffer() )
 	{
-		os << EOL_TAB << "buffer:";
-		getBufferTable().AVM_DEBUG_REF_COUNTER(os);
+		out << EOL_TAB << "buffer:";
+		getBufferTable().AVM_DEBUG_REF_COUNTER(out);
 
-		os << EOL_INCR_INDENT;
-		getBufferTable().toStream(os);
-		os << DECR_INDENT;
+		out << EOL_INCR_INDENT;
+		getBufferTable().toStream(out);
+		out << DECR_INDENT;
 	}
 
-	os << TAB << "}" << EOL_FLUSH;
+	out << TAB << "}" << EOL_FLUSH;
 }
 
 
-void RuntimeForm::toStreamData(const ExecutionData * anED, OutStream & os) const
+void RuntimeForm::toStreamData(const ExecutionData & anED, OutStream & out) const
 {
-	if( os.preferablyFQN() )
+	if( out.preferablyFQN() )
 	{
-		os << TAB << "rid#" << getRID().getRid();
+		out << TAB << "rid" << NamedElement::NAME_ID_SEPARATOR
+			<< getRID().getRid();
 		return;
 	}
 
-	os << TAB << "runtime";
+	out << TAB << "runtime";
 	if( getInstanciationCount() != 1 )
 	{
-		os << "< count:" << getInstanciationCount() << " >";
+		out << "< count:" << getInstanciationCount() << " >";
 	}
-	os << " ppid#" << ((getRID().getPRid() >= 0)? getRID().getPRid() : 0 )
-			<< ".pid#" << getRID().getRid()
-			<< " \"" << getFullyQualifiedNameID() << "\" as &"
-			<< getRID().getInstance()->getFullyQualifiedNameID() << " is";
+	out << " " << RuntimeID::BASENAME_PARENT
+		<< ((getRID().getPRid() >= 0)? getRID().getPRid() : 0 )
+		<< "." << getRID().strPid()
+		<< " \"" << getFullyQualifiedNameID() << "\" as &"
+		<< getRID().getInstance()->getFullyQualifiedNameID() << " is";
 
-	AVM_DEBUG_REF_COUNTER(os);
-	os << EOL_FLUSH;
+	AVM_DEBUG_REF_COUNTER(out);
+	out << EOL_FLUSH;
 
 	if( hasOnSchedule() )
 	{
-		os << TAB2 << "@schedule{" << INCR2_INDENT;
-		getOnSchedule()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@schedule{" << INCR2_INDENT;
+		getOnSchedule()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasOnDefer() )
 	{
-		os << TAB2 << "@defer{" << INCR2_INDENT;
-		getOnDefer()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL;
+		out << TAB2 << "@defer{" << INCR2_INDENT;
+		getOnDefer()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL;
 	}
 
 	if( hasData() )
 	{
-		os << EOL_TAB << "data:";
-		getDataTable()->AVM_DEBUG_REF_COUNTER(os);
-		os << EOL;
+		out << EOL_TAB << "variable:";
+		getDataTable()->AVM_DEBUG_REF_COUNTER(out);
+		out << EOL;
 
 		avm_offset_t offset = 0;
 		TableOfData::iterator it = getDataTable()->begin();
 		for( ; it != getDataTable()->end() ; ++it , ++offset )
 		{
-//			os << TAB2 << getVariables().rawAt(i)->getFullyQualifiedNameID();
-			os << TAB2 << getVariables().rawAt(offset)->getNameID() << std::flush;
+//			out << TAB2 << getVariables().rawAt(i)->getFullyQualifiedNameID();
+			out << TAB2 << getVariables().rawAt(offset)->getNameID() << std::flush;
 
 //AVM_OS_ASSERT_FATAL_ERROR_EXIT(
 //	(offset == getVariables().rawAt(offset)->getOffset()) )
@@ -248,114 +314,113 @@ void RuntimeForm::toStreamData(const ExecutionData * anED, OutStream & os) const
 //		<< str_header( getVariables().rawAt(offset) )
 //		<< SEND_EXIT;
 
-			os << ( ((anED != NULL) &&
-						anED->isAssigned(getRID(), offset))? " :=" : " =" );
+			out << ( (anED.isnotNull()
+//					&& isAssigned(offset)) ? " :=" : " =" );
+					&& anED.isAssigned(getRID(), offset))? " :=" : " =" );
 
 			if( (*it).valid() )
 			{
-				os << (*it).AVM_DEBUG_REF_COUNTER();
+				out << (*it).AVM_DEBUG_REF_COUNTER();
 
-				getVariables().rawAt(offset)->strValue(os, (*it));
+				getVariables().rawAt(offset)->strValue(out, (*it));
 			}
 			else
 			{
-				os << " null< value >";
+				out << "  null<value >";
 			}
 
-			os << ";" << EOL_FLUSH;
+			out << ";" << EOL_FLUSH;
 		}
 	}
 
 AVM_IF_DEBUG_LEVEL_GT_MEDIUM
 	if( hasRouter() )
 	{
-		os << EOL_TAB << "router:" << EOL_INCR_INDENT;
-		getRouter().toStream(os);
-		os << DECR_INDENT;
+		out << EOL_TAB << "router:" << EOL_INCR_INDENT;
+		getRouter().toStream(out);
+		out << DECR_INDENT;
 	}
 AVM_ENDIF_DEBUG_LEVEL_GT_MEDIUM
 
 	if( hasBuffer() )
 	{
-		os << EOL_TAB << "buffer:";
-		getBufferTable().AVM_DEBUG_REF_COUNTER(os);
+		out << EOL_TAB << "buffer:";
+		getBufferTable().AVM_DEBUG_REF_COUNTER(out);
 
-		os << EOL_INCR_INDENT;
-		getBufferTable().toStream(os);
-		os << DECR_INDENT;
+		out << EOL_INCR_INDENT;
+		getBufferTable().toStream(out);
+		out << DECR_INDENT;
 	}
 
-	os << TAB << "}" << EOL_FLUSH;
+	out << TAB << "}" << EOL_FLUSH;
 }
 
 
-void RuntimeForm::toFscnData(OutStream & os,
-		const ExecutionData * anED, const RuntimeForm * aPreviousRF) const
+void RuntimeForm::toFscnData(OutStream & out,
+		const ExecutionData & anED, const RuntimeForm & aPreviousRF) const
 {
-	TableOfInstanceOfData::
-	const_raw_iterator itData = getExecutable()->getBasicData().begin();
-	TableOfInstanceOfData::
-	const_raw_iterator endData = getExecutable()->getBasicData().end();
-	for( avm_offset_t offset = 0 ; itData != endData ; ++itData , ++offset)
+	TableOfInstanceOfData::const_raw_iterator itVar =
+			refExecutable().getBasicVariables().begin();
+	TableOfInstanceOfData::const_raw_iterator endVar =
+			refExecutable().getBasicVariables().end();
+	for( avm_offset_t offset = 0 ; itVar != endVar ; ++itVar , ++offset)
 	{
-		const BF & aValue = (itData)->getModifier().hasNatureReference() ?
-				getData( (itData)->getOffset() ) : getData( (itData) );
+		const BF & aValue = (itVar)->getModifier().hasNatureReference() ?
+				getData( (itVar)->getOffset() ) : getData( (itVar) );
 
-		if( (aPreviousRF == NULL)
-			|| (aValue != ( (itData)->getModifier().hasNatureReference()
-							? aPreviousRF->getData((itData)->getOffset())
-							: aPreviousRF->getData((itData)) ))
-			/*|| ((anED != NULL) && anED->isAssigned(getRID(), i))*/ )
+		if( aPreviousRF.isNullref()
+			|| (aValue != ( (itVar)->getModifier().hasNatureReference()
+							? aPreviousRF.getData((itVar)->getOffset())
+							: aPreviousRF.getData((itVar)) )) )
+//			|| ((anED != nullptr) && anED.isAssigned(getRID(), i)) )
 		{
-			os << TAB << ":pid#" << getRID().getRid()<< ":";
+			out << TAB << ":" << getRID().strPid()<< ":";
 
 //AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-//	(offset == (itData)->getOffset()) || (not (itData)->isStandardPointer()) )
+//	(offset == (itVar)->getOffset()) || (not (itVar)->isStandardPointer()) )
 //		<< "Invalid variable offset< " << offset << " > in data table of "
 //		<< getRID().getFullyQualifiedNameID() << "!\n\t"
-//		<< str_header( *itData ) << " = " << aValue.str() << std::endl
+//		<< str_header( *itVar ) << " = " << aValue.str() << std::endl
 //		<< SEND_EXIT;
 
-			os << (itData)->getNameID() << " =";
+			out << (itVar)->getNameID() << " =";
 
 			if( aValue.valid() )
 			{
-				(itData)->strValue(os, aValue);
+				(itVar)->strValue(out, aValue);
 			}
 			else
 			{
-				os << " null< value >";
+				out << "  null<value >";
 			}
 
-			os << ";" << EOL_FLUSH;
+			out << ";" << EOL_FLUSH;
 		}
 	}
 }
 
 
-void RuntimeForm::toFscnBuffer(OutStream & os,
-		const ExecutionData * anED, const RuntimeForm * aPreviousRF) const
+void RuntimeForm::toFscnBuffer(OutStream & out,
+		const ExecutionData & anED, const RuntimeForm & aPreviousRF) const
 {
-	if( aPreviousRF != NULL )
+	if( aPreviousRF.isnotNullref() )
 	{
 		TableOfBufferT::
-		const_iterator itPrev = aPreviousRF->getBufferTable().begin();
+		const_iterator itPrev = aPreviousRF.getBufferTable().begin();
 		TableOfBufferT::
-		const_iterator itPrevEnd = aPreviousRF->getBufferTable().end();
+		const_iterator itPrevEnd = aPreviousRF.getBufferTable().end();
 		TableOfBufferT::const_iterator it = getBufferTable().begin();
 		TableOfBufferT::const_iterator itEnd = getBufferTable().end();
 		for(; (it != itEnd) && (itPrev != itPrevEnd) ; ++it , ++itPrev )
 		{
-			(*it)->toFscn(os, getRID(), (*itPrev));
+			(*it)->toFscn(out, getRID(), (*itPrev));
 		}
 	}
 	else
 	{
-		TableOfBufferT::const_iterator it = getBufferTable().begin();
-		TableOfBufferT::const_iterator itEnd = getBufferTable().end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itBuffer : getBufferTable() )
 		{
-			(*it)->toFscn(os, getRID(), NULL);
+			itBuffer->toFscn(out, getRID(), nullptr);
 		}
 	}
 }
@@ -372,7 +437,7 @@ void RuntimeForm::toFscnBuffer(OutStream & os,
  */
 const BF & ParametersRuntimeForm::saveParameter(InstanceOfData * anInstance)
 {
-	avm_size_t offset = mDataTable->size();
+	std::size_t offset = mDataTable->size();
 
 	anInstance->setContainer( getExecutable() );
 	anInstance->setOffset( offset );
@@ -391,9 +456,8 @@ const BF & ParametersRuntimeForm::saveParameter(InstanceOfData * anInstance)
 void ParametersRuntimeForm::appendParameter(
 		const BF & anInstance, const BF & rvalue )
 {
-	avm_size_t offset = mDataTable->size();
+	std::size_t offset = mDataTable->size();
 
-//	anInstance->setContainer( getExecutable() );
 	anInstance.to_ptr< InstanceOfData >()->setOffset( offset );
 	mParameters.append(anInstance);
 
@@ -401,14 +465,11 @@ void ParametersRuntimeForm::appendParameter(
 	mDataTable->resize( offset + 1 );
 
 	mDataTable->set(offset, rvalue);
-
-//	anInstance->setRuntimeContainerRID( mRID );
 }
-
 
 void ParametersRuntimeForm::appendParameters(const BFList & paramsList)
 {
-	avm_size_t offset = mDataTable->size();
+	std::size_t offset = mDataTable->size();
 	mDataTable.makeWritable();
 	mDataTable->resize( offset + paramsList.size() );
 
@@ -428,10 +489,9 @@ void ParametersRuntimeForm::appendParameters(const BFList & paramsList)
 	}
 }
 
-
 void ParametersRuntimeForm::appendParameters(const BFVector & paramsVector)
 {
-	avm_size_t offset = mDataTable->size();
+	std::size_t offset = mDataTable->size();
 	mDataTable.makeWritable();
 	mDataTable->resize( offset + paramsVector.size() );
 
@@ -449,6 +509,29 @@ void ParametersRuntimeForm::appendParameters(const BFVector & paramsVector)
 	}
 }
 
+void ParametersRuntimeForm::appendConstParameters(const BFVector & paramsVector)
+{
+	std::size_t offset = mDataTable->size();
+	mDataTable.makeWritable();
+	mDataTable->resize( offset + paramsVector.size() );
+
+	BFVector::const_iterator itParam = paramsVector.begin();
+	BFVector::const_iterator endParam = paramsVector.end();
+	for( InstanceOfData * pParam; itParam != endParam ; ++itParam , ++offset )
+	{
+		pParam = (*itParam).to_ptr< InstanceOfData >();
+
+		pParam->setContainer( getExecutable() );
+		mParameters.append( *itParam );
+
+		pParam->setOffset( offset );
+		mDataTable->set(offset,
+				pParam->hasValue() ? pParam->getValue() : *itParam);
+
+		pParam->setRuntimeContainerRID( mRID );
+	}
+}
+
 
 /**
  * RUNTIME UPDATE
@@ -458,14 +541,14 @@ void ParametersRuntimeForm::update(const BF & paramExpr)
 	BFVector tableOfParams;
 	ExpressionFactory::collectVariable(paramExpr, tableOfParams);
 
-	avm_size_t endThisParam = mParameters.size();
-	avm_size_t endParam = tableOfParams.size();
-	avm_size_t offset = 0;
+	std::size_t actualParametersSize = mParameters.size();
+	std::size_t endParam = tableOfParams.size();
+	std::size_t offset = 0;
 	for( InstanceOfData * pParam ; offset < endParam ; ++offset )
 	{
 		pParam = tableOfParams[offset].to_ptr< InstanceOfData >();
 
-		if( pParam->getOffset() >= endThisParam )
+		if( pParam->getOffset() >= actualParametersSize )
 		{
 			mParameters.append( tableOfParams[offset] );
 		}
@@ -491,12 +574,60 @@ AVM_ENDIF_DEBUG_FLAG( COMPUTING )
 	}
 
 	endParam = mParameters.size();
-	if( endThisParam < endParam )
+	if( actualParametersSize < endParam )
 	{
 		mDataTable.makeWritable();
 		mDataTable->resize( endParam );
 
-		for( offset = endThisParam ; offset < endParam ; ++offset )
+		for( offset = actualParametersSize ; offset < endParam ; ++offset )
+		{
+			mDataTable->set(offset, mParameters[offset]);
+		}
+	}
+}
+
+void ParametersRuntimeForm::update(TableOfInstanceOfData potentialNewParameters)
+{
+
+	std::size_t actualParametersSize = mParameters.size();
+	std::size_t newParametersSize = potentialNewParameters.size();
+	std::size_t offset = 0;
+	for( InstanceOfData * pParam ; offset < newParametersSize ; ++offset )
+	{
+		pParam = potentialNewParameters[offset].to_ptr< InstanceOfData >();
+
+		if( pParam->getOffset() >= actualParametersSize )
+		{
+			mParameters.append( potentialNewParameters[offset] );
+		}
+		else if( mParameters[pParam->getOffset()] != pParam )
+		{
+			if( mParameters.contains( potentialNewParameters[offset] ) )
+			{
+AVM_IF_DEBUG_FLAG( COMPUTING )
+
+	AVM_OS_WARNING_ALERT
+			<< "Unexpected parameter << "
+			<< str_header( potentialNewParameters[offset] ) << " >> in <<\n"
+			<< str_header( mParameters ) << " >> !!!"
+			<< SEND_ALERT;
+
+AVM_ENDIF_DEBUG_FLAG( COMPUTING )
+			}
+			else
+			{
+				mParameters.append( potentialNewParameters[offset] );
+			}
+		}
+	}
+
+	newParametersSize = mParameters.size();
+	if( actualParametersSize < newParametersSize )
+	{
+		mDataTable.makeWritable();
+		mDataTable->resize( newParametersSize );
+
+		for( offset = actualParametersSize ; offset < newParametersSize ; ++offset )
 		{
 			mDataTable->set(offset, mParameters[offset]);
 		}
@@ -507,57 +638,63 @@ AVM_ENDIF_DEBUG_FLAG( COMPUTING )
 /**
  * Serialization
  */
-void ParametersRuntimeForm::toStream(
-		const ExecutionData * anED, OutStream & os) const
+void ParametersRuntimeForm::toStream(OutStream & out) const
 {
-	if( os.preferablyFQN() )
+	toStream(ExecutionData::_NULL_, out);
+}
+
+void ParametersRuntimeForm::toStream(
+		const ExecutionData & anED, OutStream & out) const
+{
+	if( out.preferablyFQN() )
 	{
-		os << TAB << getRID().str();
+		out << TAB << getRID().str();
 		return;
 	}
 
-	os << TAB << "runtime" << " ppid#"
+	out << TAB << "runtime" << " " << RuntimeID::BASENAME_PARENT
 			<< ((getRID().getPRid() >= 0)? getRID().getPRid() : 0 )
-			<< ".pid#" << getRID().getRid() << " " << getFullyQualifiedNameID()
+			<< "." << getRID().strPid()
+			<< " " << getFullyQualifiedNameID()
 			<< " as &" << getRID().getInstance()->getFullyQualifiedNameID() << " {";
 
-	AVM_DEBUG_REF_COUNTER(os);
-	os << EOL_FLUSH;
+	AVM_DEBUG_REF_COUNTER(out);
+	out << EOL_FLUSH;
 
-//	os << INCR_INDENT;
-//	getRID().toStream(os);
-//	os << DECR_INDENT;
+//	out << INCR_INDENT;
+//	getRID().toStream(out);
+//	out << DECR_INDENT;
 
 AVM_IF_DEBUG_ENABLED_AND( hasChild() )
 
-	os << incr_stream( getChildTable() );
+	out << incr_stream( getChildTable() );
 
 AVM_ENDIF_DEBUG_ENABLED_AND
 
 	if( hasOnSchedule() )
 	{
-		os << TAB2 << "@schedule{" << INCR2_INDENT;
-		getOnSchedule()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}";
+		out << TAB2 << "@schedule{" << INCR2_INDENT;
+		getOnSchedule()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}";
 	}
 
 	if( hasOnDefer() )
 	{
-		os << TAB2 << "@defer{" << INCR2_INDENT;
-		getOnDefer()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}";
+		out << TAB2 << "@defer{" << INCR2_INDENT;
+		getOnDefer()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}";
 	}
 
 	// the Input Enabled Flag
 	// MOC Attribute for Communication
 	if( isInputEnabled() )
 	{
-		os << TAB2 << "input_enabled = true;" << EOL_FLUSH;
+		out << TAB2 << "input_enabled = true;" << EOL_FLUSH;
 	}
 
 	if( not isEnvironmentEnabledCommunication() )
 	{
-		os << TAB2 << "environment_enabled = false;" << EOL_FLUSH;
+		out << TAB2 << "environment_enabled = false;" << EOL_FLUSH;
 	}
 
 
@@ -566,19 +703,19 @@ AVM_IF_DEBUG_FLAG( DATA )
 	{
 		resetOffset();
 
-		os << TAB << "params:" << EOL_INCR_INDENT;
+		out << TAB << "params:" << EOL_INCR_INDENT;
 
-//		getParameters().strHeader(os);
-		getParameters().toStream(os);
+//		getParameters().strHeader(out);
+		getParameters().toStream(out);
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 	if( hasData() )
 	{
-		os << TAB << "data:";
-		getDataTable()->AVM_DEBUG_REF_COUNTER(os);
-		os << EOL;
+		out << TAB << "variable:";
+		getDataTable()->AVM_DEBUG_REF_COUNTER(out);
+		out << EOL;
 
 		TableOfInstanceOfData::const_raw_iterator itParam = getParameters().begin();
 		TableOfData::const_iterator itValue = getDataTable()->begin();
@@ -593,21 +730,21 @@ AVM_IF_DEBUG_FLAG( DATA )
 
 			//if( (*itValue) != (itParam) )
 			{
-				os << TAB2 << "//*@param<" << offset << ">*/ "
+				out << TAB2 << "//*@param<" << offset << ">*/ "
 						<< (itParam)->getNameID() << " =";
 
 				if( (*itValue).valid() )
 				{
-					os << (*itValue).AVM_DEBUG_REF_COUNTER();
-					(itParam)->strValue(os, (*itValue));
-					//					os << str_indent( *itValue );
+					out << (*itValue).AVM_DEBUG_REF_COUNTER();
+					(itParam)->strValue(out, (*itValue));
+					//					out << str_indent( *itValue );
 				}
 				else
 				{
-					os << " null< value >";
+					out << "  null<value >";
 				}
 
-				os << EOL_FLUSH;
+				out << EOL_FLUSH;
 			}
 		}
 	}
@@ -616,64 +753,66 @@ AVM_ENDIF_DEBUG_FLAG( DATA )
 AVM_IF_DEBUG_LEVEL_GT_MEDIUM
 	if( hasRouter() )
 	{
-		os << EOL_TAB << "router:" << EOL_INCR_INDENT;
-		getRouter().toStream(os);
-		os << DECR_INDENT;
+		out << EOL_TAB << "router:" << EOL_INCR_INDENT;
+		getRouter().toStream(out);
+		out << DECR_INDENT;
 	}
 AVM_ENDIF_DEBUG_LEVEL_GT_MEDIUM
 
 	if( hasBuffer() )
 	{
-		os << EOL_TAB << "buffer:";
-		getBufferTable().AVM_DEBUG_REF_COUNTER(os);
+		out << EOL_TAB << "buffer:";
+		getBufferTable().AVM_DEBUG_REF_COUNTER(out);
 
-		os << EOL_INCR_INDENT;
-		getBufferTable().toStream(os);
-		os << DECR_INDENT;
+		out << EOL_INCR_INDENT;
+		getBufferTable().toStream(out);
+		out << DECR_INDENT;
 	}
 
-	os << TAB << "}" << EOL_FLUSH;
+	out << TAB << "}" << EOL_FLUSH;
 }
 
 
 void ParametersRuntimeForm::toStreamData(
-		const ExecutionData * anED, OutStream & os) const
+		const ExecutionData & anED, OutStream & out) const
 {
-	if( os.preferablyFQN() )
+	if( out.preferablyFQN() )
 	{
-		os << TAB << "rid#" << getRID().getRid();
+		out << TAB << "rid#" << getRID().getRid();
 		return;
 	}
 
-	os << TAB << "runtime" << " ppid#"
-			<< ((getRID().getPRid() >= 0)? getRID().getPRid() : 0 )
-			<< ".pid#" << getRID().getRid() << " \"" << getFullyQualifiedNameID()
-			<< "\" as &" << getRID().getInstance()->getFullyQualifiedNameID() << " {";
+	out << TAB << "runtime" << " " << RuntimeID::BASENAME_PARENT
+		<< ((getRID().getPRid() >= 0)? getRID().getPRid() : 0 )
+		<< "." << getRID().strPid()
+		<< " \"" << getFullyQualifiedNameID()
+		<< "\" as &" << getRID().getInstance()->getFullyQualifiedNameID()
+		<< " {";
 
-	AVM_DEBUG_REF_COUNTER(os);
-	os << EOL_FLUSH;
+	AVM_DEBUG_REF_COUNTER(out);
+	out << EOL_FLUSH;
 
 	if( hasOnSchedule() )
 	{
-		os << TAB2 << "@schedule{" << INCR2_INDENT;
-		getOnSchedule()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}";
+		out << TAB2 << "@schedule{" << INCR2_INDENT;
+		getOnSchedule()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}";
 	}
 
 	if( hasOnDefer() )
 	{
-		os << TAB2 << "@defer{" << INCR2_INDENT;
-		getOnDefer()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}";
+		out << TAB2 << "@defer{" << INCR2_INDENT;
+		getOnDefer()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}";
 	}
 
 	if( hasData() )
 	{
 		resetOffset();
 
-		os << TAB << "data:";
-		getDataTable()->AVM_DEBUG_REF_COUNTER(os);
-		os << EOL;
+		out << TAB << "variable:";
+		getDataTable()->AVM_DEBUG_REF_COUNTER(out);
+		out << EOL;
 
 		TableOfInstanceOfData::const_raw_iterator itParam = getParameters().begin();
 		TableOfData::const_iterator itValue = getDataTable()->begin();
@@ -688,85 +827,85 @@ void ParametersRuntimeForm::toStreamData(
 
 //			if( (*itValue) != (itParam) )
 			{
-				os << TAB2 << "//*@param<" << offset << ">*/ "
-						<< (itParam)->getNameID() << " =";
+				out << TAB2 << "//*@param<" << offset << ">*/ "
+					<< (itParam)->getNameID() << " =";
 
 				if( (*itValue).valid() )
 				{
-					os << (*itValue).AVM_DEBUG_REF_COUNTER();
-					(itParam)->strValue(os, (*itValue));
-//					os << str_indent( *itValue );
+					out << (*itValue).AVM_DEBUG_REF_COUNTER();
+					(itParam)->strValue(out, (*itValue));
+//					out << str_indent( *itValue );
 				}
 				else
 				{
-					os << " null< value >";
+					out << " null<value >";
 				}
 
-				os << EOL_FLUSH;
+				out << EOL_FLUSH;
 			}
 		}
 	}
 
 	if( hasBuffer() )
 	{
-		os << EOL_TAB << "buffer:";
-		getBufferTable().AVM_DEBUG_REF_COUNTER(os);
+		out << EOL_TAB << "buffer:";
+		getBufferTable().AVM_DEBUG_REF_COUNTER(out);
 
-		os << EOL_INCR_INDENT;
-		getBufferTable().toStream(os);
-		os << DECR_INDENT;
+		out << EOL_INCR_INDENT;
+		getBufferTable().toStream(out);
+		out << DECR_INDENT;
 	}
 
-	os << TAB << "}" << EOL_FLUSH;
+	out << TAB << "}" << EOL_FLUSH;
 }
 
 
-void ParametersRuntimeForm::toFscnData(OutStream & os,
-		const ExecutionData * anED, const RuntimeForm * aPreviousRF) const
+void ParametersRuntimeForm::toFscnData(OutStream & out,
+		const ExecutionData & anED, const RuntimeForm & aPreviousRF) const
 {
 AVM_IF_DEBUG_FLAG( DATA )
 
 	resetOffset();
 
-	TableOfInstanceOfData::const_raw_iterator itData = getParameters().begin();
-	TableOfInstanceOfData::const_raw_iterator endData = getParameters().end();
+	TableOfInstanceOfData::const_raw_iterator itParam = getParameters().begin();
+	TableOfInstanceOfData::const_raw_iterator endParam = getParameters().end();
 
-//	for( ; itData != endData ; ++itData )
+//	for( ; itParam != endParam ; ++itParam )
 //	{
-//		os << TAB << str_header( *itData ) << ";" << EOL;
+//		out << TAB << str_header( *itParam ) << ";" << EOL;
 //	}
-//	itData = getParameters().begin();
+//	itParam = getParameters().begin();
 
-	avm_size_t previousParamsSize = (aPreviousRF == NULL) ? 0 :
-			aPreviousRF->getDataTable()->size();
-	for( avm_offset_t offset = 0 ; itData != endData ; ++itData , ++offset)
+	std::size_t previousParamsSize = aPreviousRF.isNullref() ? 0 :
+			aPreviousRF.getDataTable()->size();
+	for( avm_offset_t offset = 0 ; itParam != endParam ; ++itParam , ++offset)
 	{
-		const BF & aValue = getData( (itData) );
+		const BF & aValue = getData( (itParam) );
 
-		if( (aPreviousRF == NULL) || (offset >= previousParamsSize) ||
-			(aValue != aPreviousRF->getData( (itData) )) /*||
-			((anED != NULL) && anED->isAssigned(getRID(), i))*/ )
+		if( aPreviousRF.isNullref() || (offset >= previousParamsSize)
+			|| (aValue != aPreviousRF.getData( (itParam) )) )
+//			|| (anED.isNotNull() && anED.isAssigned(getRID(), i)) )
 		{
-//AVM_OS_ASSERT_FATAL_ERROR_EXIT( offset == (itData)->getOffset() )
+//AVM_OS_ASSERT_FATAL_ERROR_EXIT( offset == (itParam)->getOffset() )
 //		<< "Invalid parameter offset in parameters data table !\n\t"
-//		<< str_header( *itData )
+//		<< str_header( *itParam )
 //		<< SEND_EXIT;
 
-			os << TAB << "//*@param<" << offset << ">*/ ";
+			out << TAB << "//*@param<" << offset << ">*/ ";
 
-//			os << ":pid#" << getRID().getRid()<< ":" << (itData)->getNameID();
-			os << (itData)->getFullyQualifiedNameID() << " =";
+//			out << ":" << getRID().strPid() << ":" << (itParam)->getNameID();
+			out << (itParam)->getFullyQualifiedNameID() << " =";
 
 			if( aValue.valid() )
 			{
-				(itData)->strValue(os, aValue);
+				(itParam)->strValue(out, aValue);
 			}
 			else
 			{
-				os << " null< value >";
+				out << "  null<value >";
 			}
 
-			os << ";" << EOL_FLUSH;
+			out << ";" << EOL_FLUSH;
 		}
 	}
 

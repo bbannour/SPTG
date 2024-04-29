@@ -18,7 +18,7 @@
 #include <common/BF.h>
 
 #include <fml/executable/InstanceOfBuffer.h>
-#include <fml/executable/InstanceOfConnect.h>
+#include <fml/executable/InstanceOfConnector.h>
 #include <fml/executable/InstanceOfData.h>
 #include <fml/executable/InstanceOfMachine.h>
 #include <fml/executable/InstanceOfPort.h>
@@ -63,7 +63,7 @@ inline Symbol & Symbol::operator=(const BF & aSymbol)
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-InstanceOfBuffer & Symbol::buffer()
+InstanceOfBuffer & Symbol::asBuffer()
 {
 	AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
 			<< "Unexpected a <null> pointer as InstanceOfBuffer reference !!!"
@@ -72,7 +72,7 @@ InstanceOfBuffer & Symbol::buffer()
 	return( static_cast< InstanceOfBuffer & >( *mPTR ) );
 }
 
-const InstanceOfBuffer & Symbol::buffer() const
+const InstanceOfBuffer & Symbol::asBuffer() const
 {
 	AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
 			<< "Unexpected a <null> pointer as InstanceOfBuffer reference !!!"
@@ -94,12 +94,12 @@ InstanceOfBuffer * Symbol::rawBuffer() const
  */
 avm_type_specifier_kind_t Symbol::getPolicySpecifierKind() const
 {
-	return( buffer().getPolicySpecifierKind() );
+	return( asBuffer().getPolicySpecifierKind() );
 }
 
 void Symbol::setPolicySpecifierKind(avm_type_specifier_kind_t aSpecifierKind)
 {
-	buffer().setPolicySpecifierKind( aSpecifierKind );
+	asBuffer().setPolicySpecifierKind( aSpecifierKind );
 }
 
 
@@ -107,19 +107,19 @@ void Symbol::setPolicySpecifierKind(avm_type_specifier_kind_t aSpecifierKind)
  * GETTER - SETTER
  * mCapacity
  */
-avm_size_t Symbol::capacity() const
+std::size_t Symbol::getCapacity() const
 {
-	return( buffer().capacity() );
+	return( asBuffer().getCapacity() );
 }
 
 long Symbol::realCapacity() const
 {
-	return( buffer().realCapacity() );
+	return( asBuffer().realCapacity() );
 }
 
 void Symbol::setCapacity(long aCapacity)
 {
-	buffer().setCapacity( aCapacity );
+	asBuffer().setCapacity( aCapacity );
 }
 
 
@@ -157,48 +157,32 @@ InstanceOfPort * Symbol::rawChannel() const
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-// InstanceOfConnect
+// InstanceOfConnector
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-InstanceOfConnect & Symbol::connector()
+InstanceOfConnector & Symbol::asConnector()
 {
 	AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-			<< "Unexpected a <null> pointer as InstanceOfConnect reference !!!"
+			<< "Unexpected a <null> pointer as InstanceOfConnector reference !!!"
 			<< SEND_EXIT;
 
-	return( static_cast< InstanceOfConnect & >( *mPTR ) );
+	return( static_cast< InstanceOfConnector & >( *mPTR ) );
 }
 
-const InstanceOfConnect & Symbol::connector() const
+const InstanceOfConnector & Symbol::asConnector() const
 {
 	AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-			<< "Unexpected a <null> pointer as InstanceOfConnect reference !!!"
+			<< "Unexpected a <null> pointer as InstanceOfConnector reference !!!"
 			<< SEND_EXIT;
 
-	return( static_cast< const InstanceOfConnect & >( *mPTR ) );
+	return( static_cast< const InstanceOfConnector & >( *mPTR ) );
 }
 
 
-InstanceOfConnect * Symbol::rawConnect() const
+InstanceOfConnector * Symbol::rawConnector() const
 {
-	return( static_cast< InstanceOfConnect * >( mPTR )  );
-}
-
-
-/**
- * GETTER - SETTER
- * mOutputComRouteData
- * mInputComRouteData
- */
-const ComRouteData & Symbol::getOutputComRouteData() const
-{
-	return( connector().getOutputComRouteData() );
-}
-
-const ComRouteData & Symbol::getInputComRouteData() const
-{
-	return( connector().getInputComRouteData() );
+	return( static_cast< InstanceOfConnector * >( mPTR )  );
 }
 
 
@@ -208,7 +192,7 @@ const ComRouteData & Symbol::getInputComRouteData() const
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-InstanceOfData & Symbol::data()
+InstanceOfData & Symbol::variable()
 {
 	AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
 			<< "Unexpected a <null> pointer as InstanceOfData reference !!!"
@@ -217,7 +201,7 @@ InstanceOfData & Symbol::data()
 	return( static_cast< InstanceOfData & >( *mPTR ) );
 }
 
-const InstanceOfData & Symbol::data() const
+const InstanceOfData & Symbol::variable() const
 {
 	AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
 			<< "Unexpected a <null> pointer as InstanceOfData reference !!!"
@@ -227,7 +211,7 @@ const InstanceOfData & Symbol::data() const
 }
 
 
-InstanceOfData * Symbol::rawData() const
+InstanceOfData * Symbol::rawVariable() const
 {
 	return( static_cast< InstanceOfData * >( mPTR )  );
 }
@@ -240,7 +224,7 @@ InstanceOfData * Symbol::rawData() const
 void Symbol::updateFullyQualifiedNameID(
 		const std::string & aFullyQualifiedNameID, const std::string & aNameID)
 {
-	data().updateFullyQualifiedNameID(aFullyQualifiedNameID, aNameID);
+	variable().updateFullyQualifiedNameID(aFullyQualifiedNameID, aNameID);
 }
 
 
@@ -248,9 +232,9 @@ void Symbol::updateFullyQualifiedNameID(
  * GETTER - SETTER
  * mPointerNature
  */
-IPointerDataNature::POINTER_DATA_NATURE Symbol::getPointerNature() const
+IPointerVariableNature::POINTER_VARIABLE_NATURE Symbol::getPointerNature() const
 {
-	return( data().getPointerNature() );
+	return( variable().getPointerNature() );
 }
 
 
@@ -260,55 +244,55 @@ IPointerDataNature::POINTER_DATA_NATURE Symbol::getPointerNature() const
  */
 BF & Symbol::getValue()
 {
-	return( data().getValue() );
+	return( variable().getValue() );
 }
 
 const BF & Symbol::getValue() const
 {
-	return( data().getValue() );
+	return( variable().getValue() );
 }
 
 bool Symbol::hasValue() const
 {
-	return( data().hasValue() );
+	return( variable().hasValue() );
 }
 
 void Symbol::setValue(const BF & aValue)
 {
-	data().setValue( aValue );
+	variable().setValue( aValue );
 }
 
 
 // ArrayValue
 ArrayBF * Symbol::getArrayValue() const
 {
-	return( data().getArrayValue() );
+	return( variable().getArrayValue() );
 }
 
 bool Symbol::hasArrayValue() const
 {
-	return( data().hasArrayValue() );
+	return( variable().hasArrayValue() );
 }
 
 
 void Symbol::formatStream(OutStream & os, const BF & aValue) const
 {
-	data().formatStream(os, aValue);
+	variable().formatStream(os, aValue);
 }
 
 void Symbol::strValue(OutStream & os, const BF & aValue) const
 {
-	data().strValue(os, aValue);
+	variable().strValue(os, aValue);
 }
 
 std::string Symbol::strValue(const BF & aValue) const
 {
-	return( data().strValue(aValue) );
+	return( variable().strValue(aValue) );
 }
 
 std::string Symbol::strValue() const
 {
-	return( data().strValue() );
+	return( variable().strValue() );
 }
 
 
@@ -318,28 +302,28 @@ std::string Symbol::strValue() const
  */
 TableOfSymbol * Symbol::getAttribute() const
 {
-	return( data().getAttribute() );
+	return( variable().getAttribute() );
 }
 
 const Symbol & Symbol::getAttributeByNameID(const std::string & id) const
 {
-	return( data().hasAttribute() ?
-			data().getAttribute()->getByNameID(id) : Symbol::REF_NULL );
+	return( variable().hasAttribute() ?
+			variable().getAttribute()->getByNameID(id) : Symbol::REF_NULL );
 }
 
 bool Symbol::hasAttribute() const
 {
-	return( data().hasAttribute() );
+	return( variable().hasAttribute() );
 }
 
 void Symbol::setAttribute(TableOfSymbol * anAttributeTable)
 {
-	data().setAttribute( anAttributeTable );
+	variable().setAttribute( anAttributeTable );
 }
 
 void Symbol::setAttribute(avm_offset_t offset, const Symbol & aWProperty)
 {
-	data().setAttribute( offset , aWProperty );
+	variable().setAttribute( offset , aWProperty );
 }
 
 
@@ -350,23 +334,23 @@ void Symbol::setAttribute(avm_offset_t offset, const Symbol & aWProperty)
  */
 TableOfSymbol * Symbol::getDataPath() const
 {
-	return( data().getDataPath() );
+	return( variable().getDataPath() );
 }
 
 bool Symbol::hasDataPath() const
 {
-	return( data().hasDataPath() );
+	return( variable().hasDataPath() );
 }
 
 void Symbol::setDataPath(TableOfSymbol & aRelativeDataPath)
 {
-	data().setDataPath( aRelativeDataPath );
+	variable().setDataPath( aRelativeDataPath );
 }
 
 
-avm_size_t * Symbol::getOffsetPath() const
+std::size_t * Symbol::getOffsetPath() const
 {
-	return( data().getOffsetPath() );
+	return( variable().getOffsetPath() );
 }
 
 
@@ -414,7 +398,7 @@ const Specifier & Symbol::getSpecifier() const
  * GETTER
  * Compiled ObjectElement as Compiled Machine
  */
-const Machine * Symbol::getAstMachine() const
+const Machine & Symbol::getAstMachine() const
 {
 	return( machine().getAstMachine() );
 }
@@ -438,7 +422,17 @@ bool Symbol::isnotThis(const ExecutableForm * anExecutable) const
  * GETTER - SETTER
  * mExecutable
  */
-ExecutableForm * Symbol::getExecutable() const
+const ExecutableForm & Symbol::getExecutable() const
+{
+	return( machine().refExecutable() );
+}
+
+ExecutableForm & Symbol::getExecutable()
+{
+	return( machine().refExecutable() );
+}
+
+const ExecutableForm * Symbol::ptrExecutable() const
 {
 	return( machine().getExecutable() );
 }
@@ -448,10 +442,6 @@ bool Symbol::hasExecutable() const
 	return( machine().hasExecutable() );
 }
 
-void Symbol::setExecutable(ExecutableForm * anExecutable)
-{
-	machine().setExecutable( anExecutable );
-}
 
 /**
  * GETTER - SETTER
@@ -470,12 +460,6 @@ bool Symbol::hasInstanceModel() const
 bool Symbol::isInstanceModel(InstanceOfMachine * anInstanceModel) const
 {
 	return( machine().isInstanceModel(anInstanceModel) );
-}
-
-
-void Symbol::setInstanceModel(InstanceOfMachine * anInstanceModel)
-{
-	machine().setInstanceModel( anInstanceModel );
 }
 
 
@@ -516,7 +500,7 @@ void Symbol::setRuntimeRID(const RuntimeID & aRID)
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-InstanceOfPort & Symbol::port()
+InstanceOfPort & Symbol::asPort()
 {
 	AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
 			<< "Unexpected a <null> pointer as InstanceOfPort reference !!!"
@@ -525,7 +509,7 @@ InstanceOfPort & Symbol::port()
 	return( static_cast< InstanceOfPort & >( *mPTR ) );
 }
 
-const InstanceOfPort & Symbol::port() const
+const InstanceOfPort & Symbol::asPort() const
 {
 	AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
 			<< "Unexpected a <null> pointer as InstanceOfPort reference !!!"
@@ -545,14 +529,14 @@ InstanceOfPort * Symbol::rawPort() const
  * GETTER - SETTER
  * mRouteOffset
  */
-avm_size_t Symbol::getRouteOffset() const
+std::size_t Symbol::getRouteOffset() const
 {
-	return( port().getRouteOffset() );
+	return( asPort().getRouteOffset() );
 }
 
-void Symbol::setRouteOffset(avm_size_t aRouteOffset)
+void Symbol::setRouteOffset(std::size_t aRouteOffset)
 {
-	port().setRouteOffset( aRouteOffset );
+	asPort().setRouteOffset( aRouteOffset );
 }
 
 /**
@@ -562,33 +546,33 @@ void Symbol::setRouteOffset(avm_size_t aRouteOffset)
  */
 const RoutingData & Symbol::getInputRoutingData() const
 {
-	return( port().getInputRoutingData() );
+	return( asPort().getInputRoutingData() );
 }
 
 inline bool Symbol::hasInputRoutingData() const
 {
-	return( port().hasInputRoutingData() );
+	return( asPort().hasInputRoutingData() );
 }
 
 void Symbol::setInputRoutingData(const RoutingData & anInputRoutingData)
 {
-	port().setInputRoutingData( anInputRoutingData );
+	asPort().setInputRoutingData( anInputRoutingData );
 }
 
 
 const RoutingData & Symbol::getOutputRoutingData() const
 {
-	return( port().getOutputRoutingData() );
+	return( asPort().getOutputRoutingData() );
 }
 
 bool Symbol::hasOutputRoutingData() const
 {
-	return( port().hasOutputRoutingData() );
+	return( asPort().hasOutputRoutingData() );
 }
 
 void Symbol::setOutputRoutingData(const RoutingData & anOutputRoutingData)
 {
-	port().setOutputRoutingData( anOutputRoutingData );
+	asPort().setOutputRoutingData( anOutputRoutingData );
 }
 
 

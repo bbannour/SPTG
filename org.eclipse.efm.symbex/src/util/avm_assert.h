@@ -86,12 +86,12 @@ struct AvmExitException :  public std::exception
 	/**
 	 * API
 	 */
-	inline virtual const char* what() const throw()
+	inline virtual const char * what() const throw() override
 	{
 		return( mDescription.c_str() );
 	}
 
-	inline virtual std::string info() const throw()
+	inline virtual std::string info() const
 	{
 		return( OS.str() );
 	}
@@ -231,7 +231,7 @@ AVM_ENDIF_DEBUG_ENABLED
  * AVM OSTREAM EXIT
  */
 #define AVM_OS_EXIT( KIND )  \
-	osAssert( AVM_EXIT_##KIND##_CODE, QUOTEME(KIND), __FILE__, __LINE__ )
+	osAssert( AVM_EXIT_##KIND##_CODE, QUOTEME(SYMBEX_##KIND), __FILE__, __LINE__ )
 
 #define AVM_OS_FATAL_ERROR_EXIT  AVM_OS_EXIT( FATAL_ERROR )
 
@@ -245,7 +245,7 @@ AVM_ENDIF_DEBUG_ENABLED
 
 
 #define AVM_OS_ASSERT_OUT_OF_MEMORY_EXIT( aPtr )   \
-	AVM_OS_ASSERT_EXIT( OUT_OF_MEMORY , ((aPtr) != NULL) )
+	AVM_OS_ASSERT_EXIT( OUT_OF_MEMORY , ((aPtr) != nullptr) )
 
 
 #define AVM_OS_ASSERT_FATAL_ERROR_EXIT( assert_cond )  \
@@ -263,7 +263,7 @@ AVM_ENDIF_DEBUG_ENABLED
 			<< " offset:" << offset << " is not in [ 0, " << aSize << " [ : "
 
 #define AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aPtr )     \
-	AVM_OS_ASSERT_EXIT( FATAL_ERROR , ((aPtr) != NULL) )  \
+	AVM_OS_ASSERT_EXIT( FATAL_ERROR , ((aPtr) != nullptr) )  \
 			<< "Unexpected a <null> "
 
 #define AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( aPtr )  \

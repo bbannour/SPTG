@@ -21,6 +21,8 @@
 
 #include <builder/Builder.h>
 
+#include <collection/BFContainer.h>
+
 #include <computer/EvaluationEnvironment.h>
 
 #include <fml/expression/AvmCode.h>
@@ -31,6 +33,8 @@
 #include <fml/executable/AvmTransition.h>
 #include <fml/executable/ExecutableQuery.h>
 #include <fml/executable/ExecutableSystem.h>
+
+#include <fml/expression/StatementFactory.h>
 
 #include <fml/operator/OperatorManager.h>
 
@@ -117,6 +121,7 @@ static ENUM_TRACE_POINT::TRACE_NATURE to_nature(const std::string & id)
 	if( id.find("trace"     ) == 0 ) return ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE;
 	if( id.find("point"     ) == 0 ) return ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE;
 
+	if( id.find("communication") == 0 ) return ENUM_TRACE_POINT::TRACE_COM_NATURE;
 	if( id.find("com"       ) == 0 ) return ENUM_TRACE_POINT::TRACE_COM_NATURE;
 	if( id.find("inout"     ) == 0 ) return ENUM_TRACE_POINT::TRACE_COM_NATURE;
 
@@ -181,6 +186,13 @@ static ENUM_TRACE_POINT::TRACE_NATURE to_nature(const std::string & id)
 
 	if( id.find("runnable"  ) == 0 ) return ENUM_TRACE_POINT::TRACE_RUNNABLE_NATURE;
 
+	if( REGEX_MATCH(id, ENUM_TRACE_POINT::ATTRIBUTE_EXECUTION_INFORMATION_ID) ) {
+		return ENUM_TRACE_POINT::TRACE_EXECUTION_INFORMATION_NATURE;
+	}
+
+	if( id.find("trace") == 0 ) return ENUM_TRACE_POINT::TRACE_META_TRACE_NATURE;
+	if( id.find("debug") == 0 ) return ENUM_TRACE_POINT::TRACE_META_DEBUG_NATURE;
+
 	if( REGEX_MATCH(id, CONS_WID2("step", "header")) ) {
 		return ENUM_TRACE_POINT::TRACE_STEP_HEADER_NATURE;
 	}
@@ -224,12 +236,18 @@ static AVM_OPCODE  to_op(const std::string & id)
 	if( id.find("newfresh"  ) == 0 ) return AVM_OPCODE_ASSIGN_NEWFRESH;
 
 	if( REGEX_MATCH(id, CONS_WID2("input", "env")) ) return AVM_OPCODE_INPUT_ENV;
+	if( REGEX_MATCH(id, CONS_WID2("input", "buffer")) ) return AVM_OPCODE_INPUT_BUFFER;
+	if( REGEX_MATCH(id, CONS_WID2("input", "broadcast")) ) return AVM_OPCODE_INPUT_BROADCAST;
 	if( REGEX_MATCH(id, CONS_WID2("input", "rdv")) ) return AVM_OPCODE_INPUT_RDV;
+	if( REGEX_MATCH(id, CONS_WID3("input", "multi", "rdv")) ) return AVM_OPCODE_INPUT_MULTI_RDV;
 
 	if( id.find("input"     ) == 0 ) return AVM_OPCODE_INPUT;
 
 	if( REGEX_MATCH(id, CONS_WID2("output", "env")) ) return AVM_OPCODE_OUTPUT_ENV;
+	if( REGEX_MATCH(id, CONS_WID2("output", "buffer")) ) return AVM_OPCODE_OUTPUT_BUFFER;
+	if( REGEX_MATCH(id, CONS_WID2("output", "broadcast")) ) return AVM_OPCODE_OUTPUT_BROADCAST;
 	if( REGEX_MATCH(id, CONS_WID2("output", "rdv")) ) return AVM_OPCODE_OUTPUT_RDV;
+	if( REGEX_MATCH(id, CONS_WID3("output", "multi", "rdv")) ) return AVM_OPCODE_OUTPUT_MULTI_RDV;
 
 	if( id.find("output"    ) == 0 ) return AVM_OPCODE_OUTPUT;
 
@@ -240,7 +258,7 @@ static AVM_OPCODE  to_op(const std::string & id)
 bool TraceFactory::configure(
 		TraceSequence & aTraceElement, const ExecutionData * anED)
 {
-	WObject * thePOINT = Query::getRegexWSequence(
+	const WObject * thePOINT = Query::getRegexWSequence(
 			mParameterWObject, OR_WID2("point", "POINT"));
 	if( (thePOINT != WObject::_NULL_) && thePOINT->hasOwnedElement() )
 	{
@@ -271,7 +289,7 @@ bool TraceFactory::configure(
 		}
 	}
 
-	WObject * theTRACE = Query::getRegexWSequence(
+	const WObject * theTRACE = Query::getRegexWSequence(
 			mParameterWObject, OR_WID2("trace", "TRACE"));
 	if( (theTRACE != WObject::_NULL_) && theTRACE->hasOwnedElement() )
 	{
@@ -286,9 +304,9 @@ bool TraceFactory::configure(
 
 
 bool TraceFactory::configure(
-		AvmCode * aTraceExpression, const ExecutionData * anED)
+		AvmCode & aTraceExpression, const ExecutionData * anED)
 {
-	WObject * thePOINT = Query::getRegexWSequence(
+	const WObject * thePOINT = Query::getRegexWSequence(
 			mParameterWObject, OR_WID2("point", "POINT"));
 	if( (thePOINT != WObject::_NULL_) && thePOINT->hasOwnedElement() )
 	{
@@ -315,11 +333,11 @@ bool TraceFactory::configure(
 		}
 	}
 
-	WObject * theTRACE = Query::getRegexWSequence(
+	const WObject * theTRACE = Query::getRegexWSequence(
 			mParameterWObject, OR_WID2("trace", "TRACE"));
 	if( (theTRACE != WObject::_NULL_) && theTRACE->hasOwnedElement() )
 	{
-		if( configure(theTRACE, aTraceExpression, anED) )
+		if( configure(theTRACE, aTraceExpression.getOperands(), anED) )
 		{
 			//!! NOTHING
 		}
@@ -328,8 +346,41 @@ bool TraceFactory::configure(
 	return( true );
 }
 
+bool TraceFactory::collectIO(AvmCode & aTraceExpression, AvmCode & aTraceIO)
+{
+	for( const auto & itOperand : aTraceExpression.getOperands() )
+	{
+		if( itOperand.is< TracePoint >() )
+		{
+			const TracePoint & itTracePoint = itOperand.to< TracePoint >();
+			if( itTracePoint.isCom() )
+			{
+				aTraceIO.append(itOperand);
+			}
+			else if( itTracePoint.isTransition()
+					&& itTracePoint.object->is< AvmTransition >() )
+			{
+				BFList comStatement;
+				StatementFactory::collectCommunication(
+						itTracePoint.object->to< AvmTransition >().getCode(),
+						comStatement);
+				for( const auto & itStatement : comStatement )
+				{
+					const AvmCode & statement = itStatement.to< AvmCode >();
+					AVM_OPCODE opNature = statement.getAvmOpCode();
+					bfTP = aTracePoint = new TracePoint(
+							ENUM_TRACE_POINT::TRACE_COM_NATURE, opNature);
+					aTracePoint->object = statement.first().to_ptr< InstanceOfPort >();
+					aTraceIO.append(bfTP);
+				}
+			}
+		}
+	}
 
-bool TraceFactory::configure(WObject * aTraceSequence,
+	return true;
+}
+
+bool TraceFactory::configure(const WObject * aTraceSequence,
 		BFCollection & tracePoints, const ExecutionData * anED)
 {
 	if( aTraceSequence == WObject::_NULL_ )
@@ -360,10 +411,10 @@ bool TraceFactory::configure(WObject * aTraceSequence,
 }
 
 
-bool TraceFactory::configure(WObject * aTraceSequence,
+bool TraceFactory::configure(const WObject * aTraceSequence,
 		TraceSequence & aTraceElement, const ExecutionData * anED)
 {
-	if( aTraceSequence == NULL )
+	if( aTraceSequence == nullptr )
 	{
 		return( false );
 	}
@@ -404,10 +455,10 @@ bool TraceFactory::configure(WObject * aTraceSequence,
 }
 
 
-bool TraceFactory::configure(WObject * aTraceSequence,
+bool TraceFactory::configure(const WObject * aTraceSequence,
 		AvmCode * aTraceExpression, const ExecutionData * anED)
 {
-	if( aTraceSequence == NULL )
+	if( aTraceSequence == nullptr )
 	{
 		return( false );
 	}
@@ -425,7 +476,7 @@ bool TraceFactory::configure(WObject * aTraceSequence,
 	{
 		if( (*itWfO)->getNameID() == "combinator" )
 		{
-//			aTraceExpression->setOperator( OperatorManager::toOperator(
+//			aTraceExpression.setOperator( OperatorManager::toOperator(
 //					wfProperty->toStringValue(), OperatorManager::OPERATOR_OR) );
 
 			AvmCode * subFTP = new AvmCode( OperatorManager::toOperator(
@@ -450,7 +501,7 @@ bool TraceFactory::configure(WObject * aTraceSequence,
 				aTraceExpression = subFTP;
 			}
 
-			else if( configure(aTraceExpression->getArgs(), *itWfO) )
+			else if( configure(aTraceExpression->getOperands(), *itWfO) )
 			{
 				//!! NOTHING
 			}
@@ -462,7 +513,7 @@ bool TraceFactory::configure(WObject * aTraceSequence,
 
 
 bool TraceFactory::configure(
-		BFCollection & tracePoints, WObject * wfProperty)
+		BFCollection & tracePoints, const WObject * wfProperty)
 {
 	ENUM_TRACE_POINT::TRACE_NATURE nature = to_nature( wfProperty->getNameID() );
 
@@ -483,8 +534,48 @@ bool TraceFactory::configure(
 
 		if( not configureNodePathCondition(tracePoints, wfProperty->getValue()) )
 		{
+			AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 			wfProperty->warningLocation(AVM_OS_WARN)
 					<< "Failed to configure <Node Path Condition> with value: "
+					<< wfProperty->toStringValue() << std::endl;
+		}
+	}
+
+	else if( nature == ENUM_TRACE_POINT::TRACE_EXECUTION_INFORMATION_NATURE )
+	{
+		bfTP = aTracePoint = new TracePoint(nature, AVM_OPCODE_INFORMAL);
+
+		if( not configureNodeInformation(tracePoints, wfProperty->getValue()) )
+		{
+			AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
+			wfProperty->warningLocation(AVM_OS_WARN)
+					<< "Failed to configure <Node Exec Information> with value: "
+					<< wfProperty->toStringValue() << std::endl;
+		}
+	}
+
+	else if( nature == ENUM_TRACE_POINT::TRACE_META_TRACE_NATURE )
+	{
+		bfTP = aTracePoint = new TracePoint(nature, AVM_OPCODE_TRACE);
+
+		if( not configureNodeInformation(tracePoints, wfProperty->getValue()) )
+		{
+			AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
+			wfProperty->warningLocation(AVM_OS_WARN)
+					<< "Failed to configure <Node Exec Trace> with value: "
+					<< wfProperty->toStringValue() << std::endl;
+		}
+	}
+
+	else if( nature == ENUM_TRACE_POINT::TRACE_META_TRACE_NATURE )
+	{
+		bfTP = aTracePoint = new TracePoint(nature, AVM_OPCODE_DEBUG);
+
+		if( not configureNodeInformation(tracePoints, wfProperty->getValue()) )
+		{
+			AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
+			wfProperty->warningLocation(AVM_OS_WARN)
+					<< "Failed to configure <Node Exec Debug> with value: "
 					<< wfProperty->toStringValue() << std::endl;
 		}
 	}
@@ -508,13 +599,14 @@ bool TraceFactory::configure(
 
 			if( not configureFormula(tracePoints, wfProperty->getValue()) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Formula > with value: "
 						<< wfProperty->toStringValue() << std::endl;
 			}
 		}
 		else if( configureExpression(tracePoints, wfProperty,
-				wfProperty->getAvmCodeValue(), nature, opNature) )
+				wfProperty->getAvmCodeValue().raw_reference(), nature, opNature) )
 		{
 			//!! NOTHING
 		}
@@ -545,7 +637,7 @@ bool TraceFactory::configure(
 
 
 bool TraceFactory::configure(
-		BFCollection & tracePoints, WObject * wfProperty,
+		BFCollection & tracePoints, const WObject * wfProperty,
 		ENUM_TRACE_POINT::TRACE_NATURE nature, const std::string & object)
 {
 	switch( nature )
@@ -560,6 +652,7 @@ bool TraceFactory::configure(
 
 			if( not configurePort(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Port > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -574,6 +667,7 @@ bool TraceFactory::configure(
 
 			if( not configureTime(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Time > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -588,6 +682,7 @@ bool TraceFactory::configure(
 
 			if( not configureVariable(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Variable > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -602,6 +697,7 @@ bool TraceFactory::configure(
 
 			if( not configureBuffer(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Buffer > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -618,6 +714,7 @@ bool TraceFactory::configure(
 
 			if( not configureFormula(tracePoints, wfProperty->getValue()) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Formula > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -640,6 +737,7 @@ bool TraceFactory::configure(
 
 			if( not configureNodePathCondition(tracePoints, wfProperty->getValue()) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Node Path Condition > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -654,6 +752,7 @@ bool TraceFactory::configure(
 
 			if( not configureMachine(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Machine > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -668,6 +767,7 @@ bool TraceFactory::configure(
 
 			if( not configureStatemachine(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Statemachine > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -683,6 +783,7 @@ bool TraceFactory::configure(
 
 			if( not configureState(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < State > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -699,6 +800,7 @@ bool TraceFactory::configure(
 
 			if( not configureTransition(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Transition > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -714,6 +816,7 @@ bool TraceFactory::configure(
 
 			if( not configureRoutine(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Routine > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -728,6 +831,7 @@ bool TraceFactory::configure(
 
 			if( not configureRunnable(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Runnable > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -742,6 +846,7 @@ bool TraceFactory::configure(
 
 			if( not configureComposite(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Composite > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -756,7 +861,7 @@ bool TraceFactory::configure(
 		}
 	}
 
-	if( (mED != NULL) && (aTracePoint != NULL) )
+	if( (mED != nullptr) && (aTracePoint != nullptr) )
 	{
 		aTracePoint->updateRID( *mED );
 	}
@@ -766,7 +871,7 @@ bool TraceFactory::configure(
 
 
 bool TraceFactory::configure(
-		BFCollection & tracePoints, WObject * wfProperty,
+		BFCollection & tracePoints, const WObject * wfProperty,
 		AVM_OPCODE opNature, const std::string & object)
 {
 	switch( opNature )
@@ -781,6 +886,7 @@ bool TraceFactory::configure(
 
 			if( not configurePort(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Port > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -802,6 +908,7 @@ bool TraceFactory::configure(
 
 			if( not configureVariable(tracePoints, object) )
 			{
+				AVM_OS_WARN << EOL << EMPHASIS("Configure warning ...", '*', 80);
 				wfProperty->warningLocation(AVM_OS_WARN)
 						<< "Failed to configure < Variable > with value: "
 						<< wfProperty->toStringValue() << std::endl;
@@ -816,7 +923,7 @@ bool TraceFactory::configure(
 		}
 	}
 
-	if( (mED != NULL) && (aTracePoint != NULL) )
+	if( (mED != nullptr) && (aTracePoint != nullptr) )
 	{
 		aTracePoint->updateRID( *mED );
 	}
@@ -826,12 +933,12 @@ bool TraceFactory::configure(
 
 
 bool TraceFactory::configureArray(BFCollection & tracePoints,
-		WObject * wfProperty, BuiltinArray * anArray,
+		const WObject * wfProperty, BuiltinArray * anArray,
 		ENUM_TRACE_POINT::TRACE_NATURE nature, AVM_OPCODE opNature)
 {
 	BFVector tpArray;
 
-	for( avm_size_t offset = 0 ; offset < anArray->size() ; ++offset )
+	for( std::size_t offset = 0 ; offset < anArray->size() ; ++offset )
 	{
 		if( nature != ENUM_TRACE_POINT::TRACE_UNDEFINED_NATURE )
 		{
@@ -870,27 +977,25 @@ bool TraceFactory::configureArray(BFCollection & tracePoints,
 
 
 bool TraceFactory::configureExpression(BFCollection & tracePoints,
-		WObject * wfProperty, AvmCode * aCode,
+		const WObject * wfProperty, const AvmCode & aCode,
 		ENUM_TRACE_POINT::TRACE_NATURE nature, AVM_OPCODE opNature)
 {
 	BFVector tpArray;
 
-	AvmCode::const_iterator itArg = aCode->begin();
-	AvmCode::const_iterator endArg = aCode->end();
-	for( ; itArg != endArg ; ++itArg )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		if( (*itArg).is< AvmCode >() )
+		if( itOperand.is< AvmCode >() )
 		{
 			if( configureExpression(tpArray, wfProperty,
-					(*itArg).to_ptr< AvmCode >(), nature, opNature) )
+					itOperand.to< AvmCode >(), nature, opNature) )
 			{
 				//!! NOTHING
 			}
 		}
 		else if( nature != ENUM_TRACE_POINT::TRACE_UNDEFINED_NATURE )
 		{
-			if( configure(tpArray, wfProperty,
-					nature, wfProperty->toStringValue(*itArg)) )
+			if( configure(tpArray, wfProperty, nature,
+					wfProperty->toStringValue(itOperand)) )
 			{
 				//!! NOTHING
 			}
@@ -898,7 +1003,7 @@ bool TraceFactory::configureExpression(BFCollection & tracePoints,
 		else if( opNature != AVM_OPCODE_NULL )
 		{
 			if( configure(tpArray, wfProperty,
-					opNature, wfProperty->toStringValue(*itArg)) )
+					opNature, wfProperty->toStringValue(itOperand)) )
 			{
 				//!! NOTHING
 			}
@@ -913,7 +1018,7 @@ bool TraceFactory::configureExpression(BFCollection & tracePoints,
 	{
 		bfTP = aTracePoint = new TracePoint(
 				ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE,
-				aCode->getAvmOpCode());
+				aCode.getAvmOpCode());
 		aTracePoint->tpid = ++TP_ID;
 		aTracePoint->value = BF( new ArrayBF(tpArray) );
 
@@ -928,7 +1033,7 @@ bool TraceFactory::configureExpression(BFCollection & tracePoints,
 bool TraceFactory::configureComposite(
 		BFCollection & tracePoints, const std::string & object)
 {
-	for( avm_size_t offset = 0 ; offset < mDeclaredPoint.size() ; ++offset )
+	for( std::size_t offset = 0 ; offset < mDeclaredPoint.size() ; ++offset )
 	{
 		if( mDeclaredPointID[offset] == object )
 		{
@@ -957,6 +1062,7 @@ bool TraceFactory::configurePort(
 		listOfPortTracePoint.append( otherTracePoint );
 
 		tracePoints.append( bfTP );
+
 		while( otherTracePoint.nonempty() )
 		{
 			otherTracePoint.front()->tpid = ++TP_ID;
@@ -987,15 +1093,26 @@ bool TraceFactory::configureTime(
 
 		tracePoints.append( bfTP );
 	}
-	else if( aTracePoint->configureVariable(mConfiguration, object) )
+	else if( aTracePoint->configureVariable(
+			mConfiguration, object, otherTracePoint) )
 	{
 		aTracePoint->tpid = ++TP_ID;
 		aTracePoint->op = AVM_OPCODE_TIMED_GUARD;
-		mVarTime = aTracePoint->object->to< InstanceOfData >();
+		mVarTime = aTracePoint->object->to_ptr< InstanceOfData >();
 
 		listOfVariableTracePoint.append( aTracePoint );
+		listOfVariableTracePoint.append( otherTracePoint );
 
 		tracePoints.append( bfTP );
+
+		while( otherTracePoint.nonempty() )
+		{
+			otherTracePoint.front()->tpid = ++TP_ID;
+			otherTracePoint.front()->op = AVM_OPCODE_TIMED_GUARD;
+
+			tracePoints.append( BF(otherTracePoint.front()) );
+			otherTracePoint.pop_front();
+		}
 	}
 	else
 	{
@@ -1020,13 +1137,23 @@ bool TraceFactory::configureVariable(
 
 		tracePoints.append( bfTP );
 	}
-	else if( aTracePoint->configureVariable(mConfiguration, object) )
+	else if( aTracePoint->configureVariable(
+			mConfiguration, object, otherTracePoint) )
 	{
 		aTracePoint->tpid = ++TP_ID;
 
 		listOfVariableTracePoint.append( aTracePoint );
+		listOfVariableTracePoint.append( otherTracePoint );
 
 		tracePoints.append( bfTP );
+
+		while( otherTracePoint.nonempty() )
+		{
+			otherTracePoint.front()->tpid = ++TP_ID;
+
+			tracePoints.append( BF(otherTracePoint.front()) );
+			otherTracePoint.pop_front();
+		}
 	}
 	else
 	{
@@ -1044,6 +1171,8 @@ bool TraceFactory::configureBuffer(
 	{
 		aTracePoint->tpid = ++TP_ID;
 		tracePoints.append( bfTP );
+
+		listOfBufferTracePoint.append( aTracePoint );
 	}
 	else
 	{
@@ -1122,6 +1251,25 @@ bool TraceFactory::configureNodePathCondition(
 	}
 
 	else if( object.toBuiltinString() == "[*]" )
+	{
+		aTracePoint->any_object = true;
+	}
+	else
+	{
+		aTracePoint->value = object;
+	}
+
+	aTracePoint->tpid = ++TP_ID;
+	tracePoints.append( bfTP );
+
+	return( true );
+}
+
+
+bool TraceFactory::configureNodeInformation(
+		BFCollection & tracePoints, const BF & object)
+{
+	if( object.toBuiltinString() == "[*]" )
 	{
 		aTracePoint->any_object = true;
 	}
@@ -1294,8 +1442,8 @@ bool TraceFactory::appendTransitionPoint(const Configuration & aConfiguration,
 	{
 		BF newTransitionPoint( new TracePoint(
 				ENUM_TRACE_POINT::TRACE_TRANSITION_NATURE,
-				AVM_OPCODE_INVOKE_TRANSITION, NULL,
-				foundTransition.to_ptr< AvmTransition>()) );
+				AVM_OPCODE_INVOKE_TRANSITION, nullptr,
+				foundTransition.to_ptr< AvmTransition >()) );
 
 		aTraceElement.points.append( newTransitionPoint );
 
@@ -1313,11 +1461,9 @@ bool TraceFactory::appendTransitionPoint(const Configuration & aConfiguration,
 
 void TraceFactory::toStream(OutStream & os, ListOfTracePoint & listofTracePoint) const
 {
-	ListOfTracePoint::iterator itPoint = listofTracePoint.begin();
-	ListOfTracePoint::iterator endPoint = listofTracePoint.end();
-	for( ; itPoint != endPoint ; ++itPoint )
+	for( const auto & itTracePoint : listofTracePoint )
 	{
-		(*itPoint)->toStream(os);
+		itTracePoint->toStream(os);
 	}
 }
 

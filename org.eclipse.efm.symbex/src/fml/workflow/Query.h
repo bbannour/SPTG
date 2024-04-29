@@ -36,35 +36,6 @@ namespace sep
 {
 
 
-#define WID_SEPARATOR              "[^a-zA-Z\\s]?"
-
-#define CONS_WID2(w1, w2)          w1  WID_SEPARATOR  w2
-
-#define CONS_WID3(w1, w2, w3)      w1  WID_SEPARATOR  w2  WID_SEPARATOR  w3
-
-#define CONS_WID4(w1, w2, w3, w4)  \
-				w1  WID_SEPARATOR  w2  WID_SEPARATOR  w3  WID_SEPARATOR  w4
-
-
-#define PREFIX_WID(w1, w2)          "(" w1  WID_SEPARATOR ")?(" w2 ")"
-
-#define SUFFIX_WID(w1, w2)          "(" w1 ")(" WID_SEPARATOR  w2 ")?"
-
-
-#define OP_OR 					 "|"
-
-#define OR_WID2(w1, w2)          w1  OP_OR  w2
-
-#define OR_WID3(w1, w2, w3)      w1  OP_OR  w2  OP_OR  w3
-
-#define OR_WID4(w1, w2, w3, w4)  w1  OP_OR  w2  OP_OR  w3  OP_OR  w4
-
-
-
-
-class IProcessorUnitRegistration;
-
-
 class Query
 {
 
@@ -77,7 +48,7 @@ public:
 	inline static void reportErrorAttribute(const WObject * wfObject,
 			const std::string & anID, const std::string & msg)
 	{
-		WObject * wfProperty = Query::getWProperty(wfObject, anID);
+		const WObject * wfProperty = Query::getWProperty(wfObject, anID);
 
 		if( wfProperty != WObject::_NULL_ )
 		{
@@ -98,16 +69,16 @@ public:
 	 * FIND WOBJECT  BY NameID
 	 ***************************************************************************
 	 */
-	static WObject * getWObjectByNameID(
+	static const WObject * getWObjectByNameID(
 			const WObject * wfObject, const std::string & aNameID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
 
-	static WObject * getRegexWObjectByNameID(
+	static const WObject * getRegexWObjectByNameID(
 			const WObject * wfObject, const std::string & aRegexNameID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
 
 
-	static WObject * getWTypedObjectByFQNameID(
+	static const WObject * getWTypedObjectByFQNameID(
 			const WObject * wfObject, const std::string & fqnID);
 
 
@@ -117,8 +88,8 @@ public:
 	 ***************************************************************************
 	 */
 
-	static WObject * getRegisterWObject(const WObject * wfObject,
-			const IProcessorUnitRegistration & aRegisterTool);
+	static const WObject * getWObject(const WObject * wfObject,
+			bool (*isEqualFQN)(const WObject & wfObject));
 
 	static void getWObjectByTypeNameID(const WObject * wfObject,
 			const std::string & aTypeID, List< WObject * > & aContainer);
@@ -129,13 +100,25 @@ public:
 	 * GETTER for WSequence
 	 ***************************************************************************
 	 */
-	static WObject * getWSequence(
+	static const WObject * getWSequence(
 			const WObject * wfObject, const std::string & sectionID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
 
-	static WObject * getRegexWSequence(
+	static const WObject * getrecWSequence(
+			const WObject * wfObject, const std::string & sectionID,
+			const WObject * theDefaultValue = WObject::_NULL_);
+
+	static const WObject * getRegexWSequence(
 			const WObject * wfObject, const std::string & aRegexSectionID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
+
+	static const WObject * getparentRegexWSequence(
+			const WObject * wfObject, const std::string & aRegexSectionID,
+			const WObject * theDefaultValue = WObject::_NULL_);
+
+	static const WObject * getrecRegexWSequence(
+			const WObject * wfObject, const std::string & aRegexSectionID,
+			const WObject * theDefaultValue = WObject::_NULL_);
 
 
 	inline static bool hasWSequence(
@@ -147,9 +130,18 @@ public:
 
 
 	// For compatibility when ID has changed !!!
-	static WObject * getWSequenceOrElse(const WObject * wfObject,
+	static const WObject * getWSequenceOrElse(const WObject * wfObject,
 			const std::string & sectionID, const std::string & elseWSequenceID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
+
+	static const WObject * getRegexWSequenceOrElse(
+			const WObject * wfObject, const std::string & aRegexSectionID,
+			const std::string & elseRegexSectionID,
+			const WObject * theDefaultValue = WObject::_NULL_);
+
+	static const WObject * getrecWSequenceOrElse(const WObject * wfObject,
+			const std::string & sectionID, const std::string & elseWSequenceID,
+			const WObject * theDefaultValue = WObject::_NULL_);
 
 
 	/**
@@ -157,13 +149,13 @@ public:
 	 * GETTER for WSequence or WReference
 	 ***************************************************************************
 	 */
-	static WObject * getWSequenceOrReference(
+	static const WObject * getWSequenceOrReference(
 			const WObject * wfObject, const std::string & sectionID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
 
-	static WObject * getRegexWSequenceOrReference(
+	static const WObject * getRegexWSequenceOrReference(
 			const WObject * wfObject, const std::string & aRegexSectionID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
 
 
 	/**
@@ -185,17 +177,13 @@ public:
 	 ***************************************************************************
 	 */
 
-	static WObject * getWProperty(
+	static const WObject * getWProperty(
 			const WObject * wfObject, const std::string & anID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
 
-	static WObject * getRegexWProperty(
+	static const WObject * getRegexWProperty(
 			const WObject * wfObject, const std::string & anID,
-			WObject * theDefaultValue = WObject::_NULL_);
-
-	static WObject * getWPropertyOrElse(const WObject * wfObject,
-			const std::string & anID, const std::string & elseID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
 
 
 	inline static bool hasWProperty(
@@ -219,23 +207,22 @@ public:
 	 ***************************************************************************
 	 */
 
-	static WObject * getWProperty(const WObject * wfObject,
+	static const WObject * getWProperty(const WObject * wfObject,
 			WObject::ENUM_WOBJECT_KIND aKind, const std::string & anID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
 
-	static WObject * getWProperty(
-			const WObject * wfObject, WObject::ENUM_WOBJECT_KIND aKind,
-			const std::string & anID, const std::string & elseID,
-			WObject * theDefaultValue = WObject::_NULL_);
+	static const WObject * getrecWProperty(const WObject * wfObject,
+			WObject::ENUM_WOBJECT_KIND aKind, const std::string & anID,
+			const WObject * theDefaultValue = WObject::_NULL_);
 
-	static WObject * getWPropertyOrElse(
-			const WObject * wfObject, WObject::ENUM_WOBJECT_KIND aKind,
-			const std::string & anID, const std::string & elseID,
-			WObject * theDefaultValue = WObject::_NULL_);
 
-	static WObject * getRegexWProperty(const WObject * wfObject,
+	static const WObject * getRegexWProperty(const WObject * wfObject,
 			WObject::ENUM_WOBJECT_KIND aKind, const std::string & aRegex,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
+
+	static const WObject * getrecRegexWProperty(const WObject * wfObject,
+			WObject::ENUM_WOBJECT_KIND aKind, const std::string & aRegex,
+			const WObject * theDefaultValue = WObject::_NULL_);
 
 
 	template< class T , class U >
@@ -253,7 +240,7 @@ public:
 					if( (*itWfO)->getValue().is< T >()
 						&& ((*itWfO)->getNameID() == anID) )
 					{
-						return( (*itWfO)->getValue().to_ptr< T >()->getValue() );
+						return( (*itWfO)->getValue().to< T >().getValue() );
 					}
 				}
 			}
@@ -270,7 +257,7 @@ public:
 	{
 		if( wfObject != WObject::_NULL_ )
 		{
-			T * elseAttribute = NULL;
+			T * elseAttribute = nullptr;
 			WObject::const_iterator itWfO = wfObject->owned_begin();
 			WObject::const_iterator endWfO = wfObject->owned_end();
 			for( ; itWfO != endWfO ; ++itWfO )
@@ -280,9 +267,9 @@ public:
 					if( (*itWfO)->getValue().is< T >()
 						&& ((*itWfO)->getNameID() == anID) )
 					{
-						return( (*itWfO)->getValue().to_ptr< T >()->getValue() );
+						return( (*itWfO)->getValue().to< T >().getValue() );
 					}
-					else if( (elseAttribute == NULL)
+					else if( (elseAttribute == nullptr)
 							&& (*itWfO)->getValue().is< T >()
 							&& ((*itWfO)->getNameID() == elseID) )
 					{
@@ -291,7 +278,7 @@ public:
 				}
 			}
 
-			return( (elseAttribute != NULL) ?
+			return( (elseAttribute != nullptr) ?
 					elseAttribute->getValue() : theDefaultValue );
 		}
 
@@ -314,7 +301,7 @@ public:
 					if( (*itWfO)->getValue().is< T >()
 						&& REGEX_MATCH((*itWfO)->getNameID(), aRegex) )
 					{
-						return( (*itWfO)->getValue().to_ptr< T >()->getValue() );
+						return( (*itWfO)->getValue().to< T >().getValue() );
 					}
 				}
 			}
@@ -333,9 +320,8 @@ public:
 
 
 	template< class T , class U >
-	static void getBuiltinWProperty(
-			const WObject * wfObject, const std::string & anID,
-			Collection< U > & aContainer)
+	static void getBuiltinWProperty(const WObject * wfObject,
+			const std::string & anID, Collection< U > & aContainer)
 	{
 		if( wfObject != WObject::_NULL_ )
 		{
@@ -349,33 +335,7 @@ public:
 						&& ((*itWfO)->getNameID() == anID) )
 					{
 						aContainer.push_back(
-								(*itWfO)->getValue().to_ptr< T >()->getValue() );
-					}
-				}
-			}
-		}
-	}
-
-
-	template< class T , class U >
-	static void getBuiltinWProperty(const WObject * wfObject,
-			const std::string & anID, const std::string & elseID,
-			Collection< U > & aContainer)
-	{
-		if( wfObject != WObject::_NULL_ )
-		{
-			WObject::const_iterator itWfO = wfObject->owned_begin();
-			WObject::const_iterator endWfO = wfObject->owned_end();
-			for( ; itWfO != endWfO ; ++itWfO )
-			{
-				if( (*itWfO)->isWProperty() )
-				{
-					if( (*itWfO)->getValue().is< T >()
-						&& (((*itWfO)->getNameID() == anID)
-							|| ((*itWfO)->getNameID() == elseID)) )
-					{
-						aContainer.push_back(
-							(*itWfO)->getValue().to_ptr< T >()->getValue() );
+								(*itWfO)->getValue().to< T >().getValue() );
 					}
 				}
 			}
@@ -399,7 +359,7 @@ public:
 						&& REGEX_MATCH((*itWfO)->getNameID(), aRegex) )
 					{
 						aContainer.push_back(
-								(*itWfO)->getValue().to_ptr< T >()->getValue() );
+								(*itWfO)->getValue().to< T >().getValue() );
 					}
 				}
 			}
@@ -413,15 +373,6 @@ public:
 		return( (wfObject != WObject::_NULL_) &&
 				(getWProperty(wfObject, aKind, anID, WObject::_NULL_)
 				!= WObject::_NULL_) );
-	}
-
-	static bool hasWPropertyValue(
-			const WObject * wfObject, WObject::ENUM_WOBJECT_KIND aKind,
-			const std::string & anID, const std::string & elseID)
-	{
-		return( (wfObject != WObject::_NULL_) &&
-				(getWProperty(wfObject, aKind, anID, elseID, WObject::_NULL_)
-						!= WObject::_NULL_) );
 	}
 
 	static bool hasRegexWPropertyValue(const WObject * wfObject,
@@ -446,16 +397,12 @@ public:
 			const WObject * wfObject, const std::string & aRegexID,
 			const BF & theDefaultValue = BF::REF_NULL);
 
-	static const BF & getWPropertyValueOrElse(const WObject * wfObject,
-			const std::string & anID, const std::string & elseID,
-			const BF & theDefaultValue = BF::REF_NULL);
-
 
 	inline static const BF & getWPropertyValue(const WObject * wfObject,
 			WObject::ENUM_WOBJECT_KIND aKind, const std::string & anID,
 			const BF & theDefaultValue = BF::REF_NULL)
 	{
-		WObject * theAttribute = getWProperty(wfObject, aKind, anID);
+		const WObject * theAttribute = getWProperty(wfObject, aKind, anID);
 
 		return( ( theAttribute != WObject::_NULL_ ) ?
 			theAttribute->getValue() : theDefaultValue );
@@ -467,13 +414,13 @@ public:
 	 * GETTER  getWPropertyForm
 	 ***************************************************************************
 	 */
-	static WObject * getWPropertyWReference(
+	static const WObject * getWPropertyWReference(
 			const WObject * wfObject, const std::string & anID,
-			WObject * theDefaultValue = WObject::_NULL_);
+			const WObject * theDefaultValue = WObject::_NULL_);
 
-	static WObject * getWPropertyWReferenceOrElse(const WObject * wfObject,
-			const std::string & anID, const std::string & elseID,
-			WObject * theDefaultValue = WObject::_NULL_);
+	static const WObject * getRegexWPropertyWReference(
+			const WObject * wfObject, const std::string & aRegex,
+			const WObject * theDefaultValue = WObject::_NULL_);
 
 
 	/**
@@ -501,22 +448,22 @@ public:
 	 * GETTER getWPropertyInteger
 	 ***************************************************************************
 	 */
-	static avm_size_t getWPropertyPosSizeT(const WObject * wfObject,
-			const std::string & anID, avm_size_t theDefaultValue,
-			avm_size_t theNegativeValue = AVM_NUMERIC_MAX_SIZE_T);
+	static std::size_t getWPropertyPosSizeT(const WObject * wfObject,
+			const std::string & anID, std::size_t theDefaultValue,
+			std::size_t theNegativeValue = AVM_NUMERIC_MAX_SIZE_T);
 
-	static avm_size_t getRegexWPropertyPosSizeT(const WObject * wfObject,
-			const std::string & anID, avm_size_t theDefaultValue,
-			avm_size_t theNegativeValue = AVM_NUMERIC_MAX_SIZE_T);
+	static std::size_t getRegexWPropertyPosSizeT(const WObject * wfObject,
+			const std::string & anID, std::size_t theDefaultValue,
+			std::size_t theNegativeValue = AVM_NUMERIC_MAX_SIZE_T);
 
 
-	static avm_size_t getWPropertySizeT(const WObject * wfObject,
-			const std::string & anID, avm_size_t theDefaultValue,
-			avm_size_t theNegativeValue = AVM_NUMERIC_MAX_SIZE_T);
+	static std::size_t getWPropertySizeT(const WObject * wfObject,
+			const std::string & anID, std::size_t theDefaultValue,
+			std::size_t theNegativeValue = AVM_NUMERIC_MAX_SIZE_T);
 
-	static avm_size_t getRegexWPropertySizeT(const WObject * wfObject,
-			const std::string & anID, avm_size_t theDefaultValue,
-			avm_size_t theNegativeValue = AVM_NUMERIC_MAX_SIZE_T);
+	static std::size_t getRegexWPropertySizeT(const WObject * wfObject,
+			const std::string & anID, std::size_t theDefaultValue,
+			std::size_t theNegativeValue = AVM_NUMERIC_MAX_SIZE_T);
 
 
 	static avm_integer_t getWPropertyInteger(const WObject * wfObject,
@@ -544,13 +491,6 @@ public:
 	{
 		return( hasWPropertyValue(wfObject,
 				WObject::WOBJECT_PROPERTY_STRING_KIND, anID) );
-	}
-
-	static bool hasWPropertyString(const WObject * wfObject,
-			const std::string & anID, const std::string & elseID)
-	{
-		return( hasWPropertyValue(wfObject,
-				WObject::WOBJECT_PROPERTY_STRING_KIND, anID, elseID) );
 	}
 
 	static bool hasRegexWPropertyString(
@@ -589,12 +529,11 @@ public:
 		getBuiltinWProperty< String , std::string >(wfObject, anID, aContainer);
 	}
 
-	static void getWPropertyString(const WObject * wfObject,
-			const std::string & anID, const std::string & elseID,
-			Collection< std::string > & aContainer)
+	static void getRegexWPropertyString(const WObject * wfObject,
+			const std::string & regex, Collection< std::string > & aContainer)
 	{
-		getBuiltinWProperty< String , std::string >(
-				wfObject, anID, elseID, aContainer);
+		getRegexBuiltinWProperty< String , std::string >(
+				wfObject, regex, aContainer);
 	}
 
 };

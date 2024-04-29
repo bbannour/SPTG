@@ -34,7 +34,7 @@ namespace sep
 
 
 static const TypeSpecifier & getSpecifierType(
-		BaseAvmProgram * aContainer, Buffer * aBuffer)
+		BaseAvmProgram & aContainer, const Buffer & aBuffer)
 {
 //	TypeSpecifier bfTS( TypeManager::newCollection(
 //			aBuffer, aBuffer->getPolicySpecifierKind(),
@@ -45,8 +45,8 @@ static const TypeSpecifier & getSpecifierType(
 	return( TypeManager::BUFFER );
 }
 
-static const TypeSpecifier & getSpecifierType(BaseAvmProgram * aContainer,
-		avm_type_specifier_kind_t aSpecifierKind, avm_size_t aCapacity)
+static const TypeSpecifier & getSpecifierType(BaseAvmProgram & aContainer,
+		avm_type_specifier_kind_t aSpecifierKind, std::size_t aCapacity)
 {
 //	TypeSpecifier bfTS( TypeManager::newCollection(DataType::BUFFER,
 //			aSpecifierKind, TypeManager::UNIVERSAL, aCapacity) );
@@ -61,27 +61,42 @@ static const TypeSpecifier & getSpecifierType(BaseAvmProgram * aContainer,
  * CONSTRUCTOR
  * Default
  */
-InstanceOfBuffer::InstanceOfBuffer(
-		BaseAvmProgram * aContainer, Buffer * aBuffer, avm_offset_t anOffset)
-: BaseInstanceForm(CLASS_KIND_T( InstanceOfBuffer ), aContainer, aBuffer,
-		getSpecifierType(aContainer, aBuffer), anOffset),
-mPolicySpecifierKind( aBuffer->getPolicySpecifierKind() ),
-mCapacity( aBuffer->getCapacity() )
+InstanceOfBuffer::InstanceOfBuffer(BaseAvmProgram & aContainer,
+		const Buffer & astBuffer, avm_offset_t anOffset)
+: BaseInstanceForm(CLASS_KIND_T( InstanceOfBuffer ), (& aContainer), astBuffer,
+		getSpecifierType(aContainer, astBuffer), anOffset),
+mPolicySpecifierKind( astBuffer.getPolicySpecifierKind() ),
+mCapacity( astBuffer.getCapacity() )
 {
 
 }
 
 
-InstanceOfBuffer::InstanceOfBuffer(	BaseAvmProgram * aContainer,
-		Buffer * aCompiled, avm_offset_t anOffset,
+InstanceOfBuffer::InstanceOfBuffer(BaseAvmProgram & aContainer,
+		const Buffer & astBuffer, avm_offset_t anOffset,
 		avm_type_specifier_kind_t aSpecifierKind, long aCapacity)
-: BaseInstanceForm(CLASS_KIND_T( InstanceOfBuffer ), aContainer, aCompiled,
+: BaseInstanceForm(CLASS_KIND_T( InstanceOfBuffer ), (& aContainer), astBuffer,
 		getSpecifierType(aContainer, aSpecifierKind, aCapacity), anOffset),
 mPolicySpecifierKind( aSpecifierKind ),
 mCapacity( (aCapacity < 0) ? AVM_NUMERIC_MAX_SIZE_T : aCapacity )
 {
 	//!! NOTHING
 }
+
+
+/**
+ * GETTER
+ * Unique Null Reference
+ */
+InstanceOfBuffer & InstanceOfBuffer::nullref()
+{
+	static InstanceOfBuffer _NULL_(
+			ExecutableForm::nullref(), Buffer::nullref(), 0 );
+	_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+
+	return( _NULL_ );
+}
+
 
 
 /**
@@ -125,7 +140,7 @@ AVM_IF_DEBUG_FLAG( COMPILING )
 	}
 
 	out << TAB2 << "//container = "
-		<< (hasContainer() ? getContainer()->getFullyQualifiedNameID() : "NULL")
+		<< (hasContainer() ? getContainer()->getFullyQualifiedNameID() : "nullptr")
 		<< ";" << EOL;
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
@@ -133,7 +148,7 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	{
 		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
 		out << TAB2 << "target = "
-			<< str_header( getAliasTarget()->as< InstanceOfBuffer >() )
+			<< str_header( getAliasTarget()->as_ptr< InstanceOfBuffer >() )
 			<< ";" << EOL;
 	}
 
@@ -167,6 +182,19 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	( isEmpty ? (out << ";") : (out << TAB << "}") ) << EOL_FLUSH;
 }
 
+
+void InstanceOfBuffer::toStream(OutStream & out,
+		const ListOfInstanceOfBuffer & ieBuffers)
+{
+	for( const auto & itBuffer : ieBuffers )
+	{
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , COMMUNICATION )
+		out << TAB2 << str_header( itBuffer ) << EOL;
+AVM_ELSE
+		out << TAB2 << itBuffer->getFullyQualifiedNameID() << EOL;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , COMMUNICATION )
+	}
+}
 
 
 }

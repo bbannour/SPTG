@@ -17,7 +17,7 @@
 
 #include <builder/primitive/AvmcodeCompiler.h>
 
-#include <computer/instruction/AvmInstruction.h>
+#include <fml/executable/AvmInstruction.h>
 
 #include <fml/expression/AvmCode.h>
 #include <fml/expression/ExpressionFactory.h>
@@ -53,34 +53,35 @@ BFCode AvmcodeGuardCompiler::optimizeStatement(
 
 	argsInstruction->computeMainBytecode(0);
 
-
-	trivialAssignmentsSequence.clear();
-
-	ExpressionFactory::deduceTrivialAssignmentsFromConjonction(
-			aCode->first(), trivialAssignmentsSequence);
-	if( trivialAssignmentsSequence.nonempty() )
-	{
-		bool saveNeedTypeCheckingState = aCTX->mNeedTypeChecking;
-		aCTX->mNeedTypeChecking = false;
-
-		optimizeArgStatement(aCTX, trivialAssignmentsSequence);
-
-		aCTX->mNeedTypeChecking = saveNeedTypeCheckingState;
-
-AVM_IF_DEBUG_FLAG2_AND( COMPUTING , STATEMENT ,
-	AVM_DEBUG_LEVEL_OR_FLAG(HIGH , TEST_DECISION) )
-		trivialAssignmentsSequence.append(
-				StatementConstructor::newComment("end<guard>") );
-AVM_ENDIF_DEBUG_FLAG2_AND( COMPUTING , STATEMENT )
-
-		return( StatementConstructor::newCode(
-				OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
-				aCode, trivialAssignmentsSequence) );
-	}
-	else
-	{
-		return( aCode );
-	}
+	return( aCode );
+//!@!TODO
+//	trivialAssignmentsSequence.clear();
+//
+//	ExpressionFactory::deduceTrivialAssignmentsFromConjonction(
+//			aCode->first(), trivialAssignmentsSequence);
+//	if( trivialAssignmentsSequence.nonempty() )
+//	{
+//		bool saveNeedTypeCheckingState = aCTX->mNeedTypeChecking;
+//		aCTX->mNeedTypeChecking = false;
+//
+//		optimizeArgStatement(aCTX, trivialAssignmentsSequence);
+//
+//		aCTX->mNeedTypeChecking = saveNeedTypeCheckingState;
+//
+//AVM_IF_DEBUG_FLAG2_AND( COMPUTING , STATEMENT ,
+//	AVM_DEBUG_LEVEL_OR_FLAG(HIGH , TEST_DECISION) )
+//		trivialAssignmentsSequence.append(
+//				StatementConstructor::newComment("end<guard>") );
+//AVM_ENDIF_DEBUG_FLAG2_AND( COMPUTING , STATEMENT )
+//
+//		return( StatementConstructor::newCode(
+//				OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
+//				aCode, trivialAssignmentsSequence) );
+//	}
+//	else
+//	{
+//		return( aCode );
+//	}
 }
 
 
@@ -107,29 +108,31 @@ BFCode AvmcodeTimedGuardCompiler::optimizeStatement(
 
 	argsInstruction->computeMainBytecode(0);
 
-
-	trivialAssignmentsSequence.clear();
-
-	ExpressionFactory::deduceTrivialAssignmentsFromConjonction(
-			aCode->first(), trivialAssignmentsSequence);
-	if( trivialAssignmentsSequence.nonempty() )
-	{
-		optimizeArgStatement(aCTX, trivialAssignmentsSequence);
-
-AVM_IF_DEBUG_FLAG2_AND( COMPUTING , STATEMENT ,
-	AVM_DEBUG_LEVEL_OR_FLAG(HIGH , TEST_DECISION) )
-		trivialAssignmentsSequence.append(
-				StatementConstructor::newComment("end<guard>") );
-AVM_ENDIF_DEBUG_FLAG2_AND( COMPUTING , STATEMENT )
-
-		return( StatementConstructor::newCode(
-				OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
-				aCode, trivialAssignmentsSequence) );
-	}
-	else
-	{
-		return( aCode );
-	}
+	return( aCode );
+//!@!TODO
+//	trivialAssignmentsSequence.clear();
+//
+//	ExpressionFactory::deduceTrivialAssignmentsFromConjonction(
+//			aCode->first(), trivialAssignmentsSequence);
+//
+//	if( trivialAssignmentsSequence.nonempty() )
+//	{
+//		optimizeArgStatement(aCTX, trivialAssignmentsSequence);
+//
+//AVM_IF_DEBUG_FLAG2_AND( COMPUTING , STATEMENT ,
+//	AVM_DEBUG_LEVEL_OR_FLAG(HIGH , TEST_DECISION) )
+//		trivialAssignmentsSequence.append(
+//				StatementConstructor::newComment("end<guard>") );
+//AVM_ENDIF_DEBUG_FLAG2_AND( COMPUTING , STATEMENT )
+//
+//		return( StatementConstructor::newCode(
+//				OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
+//				aCode, trivialAssignmentsSequence) );
+//	}
+//	else
+//	{
+//		return( aCode );
+//	}
 }
 
 
@@ -167,7 +170,7 @@ BFCode AvmcodeEventCompiler::optimizeStatement(
 BFCode AvmcodeChecksatCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->populated() )
+	if( aCode->hasManyOperands() )
 	{
 		return( StatementConstructor::newCode(aCode->getOperator(),
 				compileArgRvalue(aCTX, TypeManager::STRING, aCode->first()),
@@ -185,7 +188,7 @@ BFCode AvmcodeChecksatCompiler::optimizeStatement(
 {
 	AvmInstruction * argsInstruction = aCode->genInstruction();
 
-	if( aCode->populated() )
+	if( aCode->hasManyOperands() )
 	{
 		argsInstruction->at(0).dtype = TypeManager::STRING;
 		setArgcodeRValue(aCTX, argsInstruction->at(0), aCode->first());

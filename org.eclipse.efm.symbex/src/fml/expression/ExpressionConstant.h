@@ -39,11 +39,17 @@ public:
 
 	static BF STRING_EMPTY;
 
+	static Numeric INTEGER_MIN;
+	static Numeric INTEGER_MAX;
+	static Numeric UINTEGER_MAX;
+
 	static Numeric INTEGER_MINUS_TWO;
 	static Numeric INTEGER_MINUS_ONE;
 	static Numeric INTEGER_ZERO;
 	static Numeric INTEGER_ONE;
 	static Numeric INTEGER_TWO;
+
+	static Numeric INTEGER_42;
 
 
 	////////////////////////////////////////////////////////////////////////////

@@ -38,7 +38,7 @@ namespace sep
  */
 bool AvmPrimitive_Break::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 
 	ENV.appendIrq_mwsetAEES(outED, AEES_STMNT_BREAK);
 
@@ -53,7 +53,7 @@ bool AvmPrimitive_Break::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_Continue::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 
 	ENV.appendIrq_mwsetAEES(outED, AEES_STMNT_CONTINUE);
 
@@ -68,15 +68,15 @@ bool AvmPrimitive_Continue::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_Return::run(ExecutionEnvironment & ENV)
 {
-	if( ENV.inCODE->nonempty() )
+	if( ENV.inCODE->hasOperand() )
 	{
-		ENV.mARG->outED->mVALUE = ENV.mARG->at(0);
+		ENV.mARG->outED.setValue( ENV.mARG->at(0) );
 
 		ENV.appendIrq_mwsetAEES(ENV.mARG->outED, AEES_STMNT_RETURN);
 	}
 	else
 	{
-		APExecutionData outED = ENV.inED;
+		ExecutionData outED = ENV.inED;
 
 		ENV.appendIrq_mwsetAEES(outED, AEES_STMNT_RETURN);
 	}
@@ -92,16 +92,26 @@ bool AvmPrimitive_Return::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_Exit::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 
-	if( ENV.inCODE->empty() )
-	{
-		ENV.appendExit_mwsetAEES(outED, AEES_STMNT_EXIT);
-	}
-	else
+	if( ENV.inCODE->noOperand() )
 	{
 		ENV.appendExit_mwsetAEES(outED, AEES_STMNT_EXIT_ALL);
 
+		ExecutionDataFactory::appendIOElementTrace(outED,
+				BF( new String( "@exit_all" )) );
+	}
+	else
+	{
+		if( ! outED.hasValue() )
+		{
+			outED.setValue( ENV.mARG->at(0) );
+		}
+
+		ExecutionDataFactory::appendIOElementTrace(outED,
+				BF( new String( "@exit{ " + ENV.mARG->at(0).str() + " }" )) );
+
+		ENV.appendExit_mwsetAEES(outED, AEES_STMNT_EXIT);
 	}
 
 	return( true );
@@ -115,9 +125,9 @@ bool AvmPrimitive_Exit::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_StepMark::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 
-	if( ENV.inCODE->nonempty() )
+	if( ENV.inCODE->hasOperand() )
 	{
 		if( ENV.inCODE->first().isBuiltinString() )
 		{

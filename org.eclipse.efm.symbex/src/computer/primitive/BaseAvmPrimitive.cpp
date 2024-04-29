@@ -55,11 +55,9 @@ bool BaseAvmPrimitive::seval(EvaluationEnvironment & ENV)
 {
 	BFCode regEXPR( ENV.inCODE->getOperator() );
 
-	AvmCode::const_iterator itArg = ENV.inCODE->begin();
-	AvmCode::const_iterator endArg = ENV.inCODE->end();
-	for( ; itArg != endArg ; ++itArg )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		ENV.seval(*itArg);
+		ENV.seval( itOperand );
 
 		regEXPR->append( ENV.outVAL );
 	}
@@ -81,11 +79,9 @@ bool BaseAvmPrimitive::meval(EvaluationEnvironment & ENV)
 				ENV.inCODE->getOperator() );
 	}
 
-	AvmCode::const_iterator itArg = ENV.inCODE->begin();
-	AvmCode::const_iterator endArg = ENV.inCODE->end();
-	for( ; itArg != endArg ; ++itArg )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		ENV.meval(*itArg);
+		ENV.meval( itOperand );
 
 		if( (long)(ENV.outEDS.size()) > endIdx )
 		{

@@ -262,39 +262,39 @@ BF ExpressionEval::min(const BFCode & aCode)
 		BFList symbolicValue;
 		BF minValue;
 
-		AvmCode::iterator itArg = aCode->begin();
-		AvmCode::iterator endArg = aCode->end();
-		for( ; itArg != endArg ; ++itArg )
+		AvmCode::const_iterator itOperand = aCode->begin();
+		AvmCode::const_iterator endOperand = aCode->end();
+		for( ; itOperand != endOperand ; ++itOperand )
 		{
-			if ( (*itArg).isNumeric() )
+			if ( (*itOperand).isNumeric() )
 			{
-				minValue = (*itArg);
+				minValue = (*itOperand);
 
 				// NEXT
-				++itArg;
+				++itOperand;
 
 				break;
 			}
-			else if( (*itArg) != ExecutableLib::_INFINITY_ )
+			else if( (*itOperand) != ExecutableLib::_INFINITY_ )
 			{
-				symbolicValue.add_union( (*itArg) );
+				symbolicValue.add_unique( (*itOperand) );
 			}
 		}
 
-		for( ; itArg != endArg ; ++itArg )
+		for( ; itOperand != endOperand ; ++itOperand )
 		{
-			if( (*itArg) == ExecutableLib::_INFINITY_ )
+			if( (*itOperand) == ExecutableLib::_INFINITY_ )
 			{
 //				continue;
 			}
 
-			else if ( (*itArg).isNumeric() )
+			else if ( (*itOperand).isNumeric() )
 			{
-				minValue = ExpressionEval::min(minValue, *itArg);
+				minValue = ExpressionEval::min(minValue, *itOperand);
 			}
 			else
 			{
-				symbolicValue.add_union( (*itArg) );
+				symbolicValue.add_unique( (*itOperand) );
 			}
 		}
 
@@ -313,7 +313,7 @@ BF ExpressionEval::min(const BFCode & aCode)
 		{
 			return( minValue );
 		}
-		else if( aCode->nonempty() )
+		else if( aCode->hasOperand() )
 		{
 			return( aCode->first() );
 		}
@@ -345,44 +345,44 @@ BF ExpressionEval::max(const BFCode & aCode)
 		BFList symbolicValue;
 		BF maxValue;
 
-		AvmCode::iterator itArg = aCode->begin();
-		AvmCode::iterator endArg = aCode->end();
-		for( ; itArg != endArg ; ++itArg )
+		AvmCode::const_iterator itOperand = aCode->begin();
+		AvmCode::const_iterator endOperand = aCode->end();
+		for( ; itOperand != endOperand ; ++itOperand )
 		{
-			if( (*itArg) == ExecutableLib::_INFINITY_ )
+			if( (*itOperand) == ExecutableLib::_INFINITY_ )
 			{
-				return( *itArg );
+				return( *itOperand );
 			}
 
-			else if ( (*itArg).isNumeric() )
+			else if ( (*itOperand).isNumeric() )
 			{
-				maxValue = (*itArg);
+				maxValue = (*itOperand);
 
 				// NEXT
-				++itArg;
+				++itOperand;
 
 				break;
 			}
 			else
 			{
-				symbolicValue.add_union( (*itArg) );
+				symbolicValue.add_unique( (*itOperand) );
 			}
 		}
 
-		for( ; itArg != endArg ; ++itArg )
+		for( ; itOperand != endOperand ; ++itOperand )
 		{
-			if( (*itArg) == ExecutableLib::_INFINITY_ )
+			if( (*itOperand) == ExecutableLib::_INFINITY_ )
 			{
-				return( (*itArg) );
+				return( (*itOperand) );
 			}
 
-			else if ( (*itArg).isNumeric() )
+			else if ( (*itOperand).isNumeric() )
 			{
-				maxValue = ExpressionEval::max(maxValue, *itArg);
+				maxValue = ExpressionEval::max(maxValue, *itOperand);
 			}
 			else
 			{
-				symbolicValue.add_union( (*itArg) );
+				symbolicValue.add_unique( (*itOperand) );
 			}
 		}
 
@@ -401,7 +401,7 @@ BF ExpressionEval::max(const BFCode & aCode)
 		{
 			return( maxValue );
 		}
-		else if( aCode->nonempty() )
+		else if( aCode->hasOperand() )
 		{
 			return( aCode->first() );
 		}
@@ -455,10 +455,10 @@ BF ExpressionEval::ln(const BF & aCode)
 	{
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			if( aCode.to_ptr< Integer >()->toInteger() > 0 )
+			if( aCode.to< Integer >().toInteger() > 0 )
 			{
 //				return( ExpressionConstructor::newFloat(
-//						::ln(aCode.to_ptr< Integer >()->toInteger())) );
+//						::ln(aCode.to< Integer >().toInteger())) );
 			}
 			break;
 		}

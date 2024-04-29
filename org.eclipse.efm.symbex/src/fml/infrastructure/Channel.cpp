@@ -34,7 +34,7 @@ Channel::Channel(const PropertyPart & aPropertyPart,
 : PropertyElement(CLASS_KIND_T( Channel ),
 		aPropertyPart.getContainer(), aModifier, aNameID),
 ComProtocol( PROTOCOL_UNDEFINED_KIND , IComPoint::IO_CHANNEL_NATURE ),
-mContents( new PropertyPart(this, "contents") )
+mParameterPart( new PropertyPart(this, "contents") )
 {
 	//!! NOTHING
 }
@@ -47,40 +47,42 @@ mContents( new PropertyPart(this, "contents") )
  */
 Machine * Channel::getContainerMachine() const
 {
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( getContainer()->is< Machine >() )
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( isContainerMachine() )
 			<< "Invalid << Channel Container >> Type <"
 			<< getContainer()->classKindName() << "> Cast !!!"
 			<< SEND_EXIT;
 
-	return( getContainer()->to< Machine >() );
+	return( getContainer()->to_ptr< Machine >() );
 }
 
 
 /**
  * GETTER
- * mContents
+ * mParameterPart
  */
-bool Channel::hasContents() const
+PropertyPart & Channel::getParameterPart() const
 {
-	return( (mContents != NULL) && mContents->nonempty() );
+	return( *mParameterPart );
 }
+
 
 /**
  * GETTER - SETTER
- * mContents
+ * mParameterPart
  * Signals
  */
 void Channel::appendSignal(const Modifier & aModifier, const BF & aSignal)
 {
-	mContents->appendSignal( BF( new Signal(this, aModifier, aSignal) ) );
+	mParameterPart->appendSignal( BF( new Signal(this, aModifier, aSignal) ) );
 }
 
-BF Channel::getSignal(Modifier::DIRECTION_KIND ioDirection, const BF & aSignal)
+BF Channel::getSignal(
+		Modifier::DIRECTION_KIND ioDirection, const BF & aSignal) const
 {
 	PropertyPart::TableOfSignal::const_raw_iterator itSignal =
-			mContents->getSignals().begin();
+			mParameterPart->getSignals().begin();
 	PropertyPart::TableOfSignal::const_raw_iterator endSignal =
-			mContents->getSignals().end();
+			mParameterPart->getSignals().end();
 	for( ; itSignal != endSignal ; ++itSignal )
 	{
 		if( (aSignal == (itSignal)->getSignalModel())
@@ -109,12 +111,16 @@ void Channel::toStream(OutStream & out) const
 		out << " " << getModifier().strDirection();
 	}
 
-	out << " " << getNameID() << " {" << EOL;
+	out << " " << getNameID();
 
-	if( hasContents() )
+	if( hasReallyUnrestrictedName() )
 	{
-		getContents()->toStream(out);
+		out << " \"" << getUnrestrictedName() << "\"";
 	}
+
+	out << " {" << EOL;
+
+	getParameterPart().toStream(out);
 
 	out << TAB << "}" << EOL_FLUSH;
 }

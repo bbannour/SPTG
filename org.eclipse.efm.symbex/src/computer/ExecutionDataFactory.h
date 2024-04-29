@@ -38,20 +38,20 @@ public:
 	 * IOElementTrace
 	 */
 	static void appendRunnableElementTrace(
-			APExecutionData & apED, const BF & aRunnableElementTrace);
+			ExecutionData & apED, const BF & aRunnableElementTrace);
 
 	static void appendIOElementTrace(
-			APExecutionData & apED, const BF & theIOElementTrace);
+			ExecutionData & apED, const BF & theIOElementTrace);
 
 
 	/**
 	 * COMPARISON
 	 */
-	static bool equalsStatus(
-			const ExecutionData & oneED, const ExecutionData & otherED);
-
-	static bool equalsData(
-			const ExecutionData & oneED, const ExecutionData & otherED);
+//	static bool equalsStatus(
+//			const ExecutionData & oneED, const ExecutionData & otherED);
+//
+//	static bool equalsData(
+//			const ExecutionData & oneED, const ExecutionData & otherED);
 
 
 

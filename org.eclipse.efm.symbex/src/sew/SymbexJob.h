@@ -56,7 +56,7 @@ public:
 	 * Default
 	 */
 	SymbexJob(SymbexDispatcher & aSymbexDispatcher,
-			WObject * wfParameterObject,
+			const WObject * wfParameterObject,
 			SymbexControllerUnitManager & aCentralControllerUnit)
 	: RunnableElement( wfParameterObject ),
 	mSymbexDispatcher( aSymbexDispatcher ),
@@ -80,13 +80,13 @@ public:
 	// INIT / EXIT  API
 	////////////////////////////////////////////////////////////////////////////
 
-	virtual bool initImpl()
+	inline virtual bool initImpl() override
 	{
 		//!! NOTHING
 		return true;
 	}
 
-	virtual bool exitImpl()
+	inline virtual bool exitImpl() override
 	{
 		//!! NOTHING
 		return true;
@@ -156,7 +156,7 @@ public:
 //				<< SEND_EXIT;
 	}
 
-	inline void handleRequestRelease()
+	inline virtual void handleRequestRelease()
 	{
 		RunnableElement::setLifecycleReleased();
 	}

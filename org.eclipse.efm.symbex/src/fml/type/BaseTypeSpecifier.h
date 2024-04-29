@@ -16,7 +16,6 @@
 #ifndef BASETYPESPECIFIER_H_
 #define BASETYPESPECIFIER_H_
 
-#include <common/AvmPointer.h>
 #include <common/BF.h>
 
 #include <fml/common/ObjectElement.h>
@@ -39,6 +38,7 @@ class ArrayBF;
 class BaseTypeSpecifier :
 		public BaseCompiledForm,
 		public ITypeSpecifier,
+		AVM_INJECT_STATIC_NULL_REFERENCE( BaseTypeSpecifier ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( BaseTypeSpecifier )
 {
 
@@ -51,13 +51,13 @@ protected:
 	 */
 	avm_type_specifier_kind_t mSpecifierKind;
 
-	avm_size_t mMinimumSize;
-	avm_size_t mMaximumSize;
+	std::size_t mMinimumSize;
+	std::size_t mMaximumSize;
 
 
-	avm_size_t mDataSize;
+	std::size_t mDataSize;
 
-	avm_size_t mBitSize;
+	std::size_t mBitSize;
 
 	BF mDefaultValue;
 
@@ -70,9 +70,10 @@ public:
 	 * Default
 	 */
 	BaseTypeSpecifier(avm_type_specifier_kind_t aSpecifierKind,
-			const std::string & aTypeID, avm_size_t maxSize,
-			avm_size_t aDataSize, avm_size_t aBitSize, const BF & defaultValue)
-	: BaseCompiledForm(CLASS_KIND_T( BaseTypeSpecifier ), aTypeID, aTypeID),
+			const std::string & aTypeID, std::size_t maxSize,
+			std::size_t aDataSize, std::size_t aBitSize, const BF & defaultValue)
+	: BaseCompiledForm(CLASS_KIND_T( BaseTypeSpecifier ),
+			DataType::nullref(), aTypeID, aTypeID),
 	mSpecifierKind( aSpecifierKind ),
 	mMinimumSize( 0 ),
 	mMaximumSize( maxSize ),
@@ -85,9 +86,10 @@ public:
 	}
 
 	BaseTypeSpecifier(avm_type_specifier_kind_t aSpecifierKind,
-			const std::string & aTypeID, avm_size_t minSize, avm_size_t maxSize,
-			avm_size_t aDataSize, avm_size_t aBitSize, const BF & defaultValue)
-	: BaseCompiledForm(CLASS_KIND_T( BaseTypeSpecifier ), aTypeID, aTypeID),
+			const std::string & aTypeID, std::size_t minSize, std::size_t maxSize,
+			std::size_t aDataSize, std::size_t aBitSize, const BF & defaultValue)
+	: BaseCompiledForm(CLASS_KIND_T( BaseTypeSpecifier ),
+			DataType::nullref(), aTypeID, aTypeID),
 	mSpecifierKind( aSpecifierKind ),
 	mMinimumSize( minSize ),
 	mMaximumSize( maxSize ),
@@ -122,23 +124,23 @@ public:
 	 */
 	BaseTypeSpecifier(class_kind_t aClassKind,
 			avm_type_specifier_kind_t aSpecifierKind,
-			const DataType * aCompiledType, BaseTypeSpecifier * aTypeSpecifier)
-	: BaseCompiledForm( aClassKind, NULL, aCompiledType ),
+			const DataType & astType, const BaseTypeSpecifier & aTypeSpecifier)
+	: BaseCompiledForm( aClassKind, nullptr, astType ),
 	mSpecifierKind( aSpecifierKind ),
-	mMinimumSize( aTypeSpecifier->mMinimumSize ),
-	mMaximumSize( aTypeSpecifier->mMaximumSize ),
-	mDataSize( aTypeSpecifier->mDataSize ),
-	mBitSize( aTypeSpecifier->mBitSize ),
-	mDefaultValue( aTypeSpecifier->mDefaultValue ),
-	mConstraint( aTypeSpecifier->mConstraint )
+	mMinimumSize( aTypeSpecifier.mMinimumSize ),
+	mMaximumSize( aTypeSpecifier.mMaximumSize ),
+	mDataSize( aTypeSpecifier.mDataSize ),
+	mBitSize( aTypeSpecifier.mBitSize ),
+	mDefaultValue( aTypeSpecifier.mDefaultValue ),
+	mConstraint( aTypeSpecifier.mConstraint )
 	{
 		updateFullyQualifiedNameID();
 	}
 
 	BaseTypeSpecifier(avm_type_specifier_kind_t aSpecifierKind,
-			const DataType * aCompiledType, avm_size_t maxSize,
-			avm_size_t aDataSize, avm_size_t aBitSize, const BF & defaultValue)
-	: BaseCompiledForm(CLASS_KIND_T( BaseTypeSpecifier ), NULL, aCompiledType),
+			const DataType & astType, std::size_t maxSize,
+			std::size_t aDataSize, std::size_t aBitSize, const BF & defaultValue)
+	: BaseCompiledForm(CLASS_KIND_T( BaseTypeSpecifier ), nullptr, astType),
 	mSpecifierKind( aSpecifierKind ),
 	mMinimumSize( 0 ),
 	mMaximumSize( maxSize ),
@@ -152,9 +154,9 @@ public:
 
 	BaseTypeSpecifier(class_kind_t aClassKind,
 			avm_type_specifier_kind_t aSpecifierKind,
-			const ObjectElement * aCompiledType, avm_size_t maxSize,
-			avm_size_t aDataSize, avm_size_t aBitSize)
-	: BaseCompiledForm(aClassKind, NULL, aCompiledType),
+			const ObjectElement & astType, std::size_t maxSize,
+			std::size_t aDataSize, std::size_t aBitSize)
+	: BaseCompiledForm(aClassKind, nullptr, astType),
 	mSpecifierKind( aSpecifierKind ),
 	mMinimumSize( 0 ),
 	mMaximumSize( maxSize ),
@@ -168,9 +170,9 @@ public:
 
 	BaseTypeSpecifier(class_kind_t aClassKind,
 			avm_type_specifier_kind_t aSpecifierKind,
-			const std::string & aTypeID, avm_size_t maxSize,
-			avm_size_t aDataSize, avm_size_t aBitSize)
-	: BaseCompiledForm(aClassKind, aTypeID, aTypeID),
+			const std::string & aTypeID, std::size_t maxSize,
+			std::size_t aDataSize, std::size_t aBitSize)
+	: BaseCompiledForm(aClassKind, DataType::nullref(), aTypeID, aTypeID),
 	mSpecifierKind( aSpecifierKind ),
 	mMinimumSize( 0 ),
 	mMaximumSize( maxSize ),
@@ -194,37 +196,56 @@ public:
 
 	/**
 	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static BaseTypeSpecifier & nullref()
+	{
+		static 	BaseTypeSpecifier _NULL_(TYPE_NULL_SPECIFIER,
+				"$null<type>", 0, 0, 0, BF::REF_NULL );
+		_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+
+		return( _NULL_ );
+	}
+
+
+	/**
+	 * GETTER
 	 * Compiled ObjectElement as Compiled Machine
 	 */
-	inline const DataType * getAstDataType() const
+	inline const DataType & getAstDataType() const
 	{
-		return( getAstElement()->as< DataType >() );
+		return( safeAstElement().as< DataType >() );
 	}
 
 	/**
 	 * GETTER - SETTER
 	 * mSpecifierKind
 	 */
-	inline virtual const BaseTypeSpecifier * thisTypeSpecifier() const
+	inline virtual const BaseTypeSpecifier & thisTypeSpecifier() const override
 	{
-		return( this );
+		return( * this );
 	}
 
-	inline virtual avm_type_specifier_kind_t getTypeSpecifierKind() const
+	inline virtual avm_type_specifier_kind_t getTypeSpecifierKind() const override
 	{
 		return( mSpecifierKind );
 	}
 
 	inline virtual bool isTypeSpecifierKind(
-			avm_type_specifier_kind_t aSpecifierKind) const
+			avm_type_specifier_kind_t aSpecifierKind) const override
 	{
 		return( mSpecifierKind == aSpecifierKind );
 	}
 
-	inline virtual bool isTypeSpecifierKind(BaseTypeSpecifier * aType) const
+	inline virtual bool isTypeSpecifierKind(
+			const BaseTypeSpecifier & aType) const
 	{
-		return( mSpecifierKind == aType->mSpecifierKind );
+		return( mSpecifierKind == aType.mSpecifierKind );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using ITypeSpecifier::isTypeSpecifierKind;
+
 
 	inline virtual bool hasTypeSpecifierKind(
 			avm_type_specifier_kind_t aSpecifierKind1,
@@ -249,24 +270,35 @@ public:
 		mSpecifierKind = aSpecifierKind;
 	}
 
+	/**
+	 * GETTER
+	 * Refered (as typedef) TypeSpecifier
+	 */
+	const BaseTypeSpecifier & referedTypeSpecifier() const;
+
+	inline virtual bool isTypeAlias() const
+	{
+		return( mSpecifierKind == TYPE_ALIAS_SPECIFIER );
+	}
+
 
 	/**
 	 * SETTER
 	 * mFullyQualifiedNameID
 	 */
-	virtual void updateFullyQualifiedNameID();
+	virtual void updateFullyQualifiedNameID() override;
 
 
 	/**
 	 * GETTER - SETTER
 	 * mMinimumSize
 	 */
-	inline avm_size_t getMinimumSize() const
+	inline std::size_t getMinimumSize() const
 	{
 		return( mMinimumSize );
 	}
 
-	inline void setMinimumSize(avm_size_t minSize)
+	inline void setMinimumSize(std::size_t minSize)
 	{
 		mMinimumSize = minSize;
 	}
@@ -275,23 +307,34 @@ public:
 	 * GETTER - SETTER
 	 * mMaximumSize
 	 */
-	inline avm_size_t getMaximumSize() const
+	inline std::size_t getMaximumSize() const
 	{
 		return( mMaximumSize );
 	}
 
-	inline void setMaximumSize(avm_size_t maxSize)
+	inline void setMaximumSize(std::size_t maxSize)
 	{
 		mMaximumSize = maxSize;
 	}
 
 
-	inline avm_size_t size() const
+	inline bool isBound() const
+	{
+		return( mMaximumSize < AVM_NUMERIC_MAX_SIZE_T );
+	}
+
+	inline bool isUnbound() const
+	{
+		return( mMaximumSize >= AVM_NUMERIC_MAX_SIZE_T );
+	}
+
+
+	inline virtual std::size_t size() const override
 	{
 		return( mMaximumSize );
 	}
 
-	inline void setSize(avm_size_t maxSize)
+	inline void setSize(std::size_t maxSize)
 	{
 		mMaximumSize = maxSize;
 	}
@@ -301,7 +344,7 @@ public:
 	 * mMinimumSize
 	 * mMaximumSize
 	 */
-	inline void setSize(avm_size_t minSize, avm_size_t maxSize)
+	inline void setSize(std::size_t minSize, std::size_t maxSize)
 	{
 		mMinimumSize = minSize;
 		mMaximumSize = maxSize;
@@ -312,12 +355,12 @@ public:
 	 * GETTER - SETTER
 	 * mDataSize
 	 */
-	inline avm_size_t getDataSize() const
+	inline std::size_t getDataSize() const
 	{
 		return( mDataSize );
 	}
 
-	inline void setDataSize(avm_size_t aDataSize)
+	inline void setDataSize(std::size_t aDataSize)
 	{
 		mDataSize = aDataSize;
 	}
@@ -326,12 +369,12 @@ public:
 	 * GETTER - SETTER
 	 * mBitSize
 	 */
-	inline avm_size_t getBitSize() const
+	inline std::size_t getBitSize() const
 	{
 		return( mBitSize );
 	}
 
-	inline void setBitSize(avm_size_t aBitSize)
+	inline void setBitSize(std::size_t aBitSize)
 	{
 		mBitSize = aBitSize;
 	}
@@ -353,18 +396,18 @@ public:
 	 * CONSTRAINT generation
 	 * for a given parameter
 	 */
-	bool couldGenerateConstraint() const;
+	virtual bool couldGenerateConstraint() const;
 
 	inline bool hasBitSizeConstraint() const
 	{
-		const avm_size_t dim = getBitSize();
+		const std::size_t dim = getBitSize();
 
 		return( (dim > 0) && (dim <= 64) );
 	}
 
-	avm_integer_t minIntegerValue() const;
+	BF minIntegerValue() const;
 
-	avm_uinteger_t maxIntegerValue() const;
+	BF maxIntegerValue() const;
 
 	virtual BF genConstraint(const BF & aParam) const;
 
@@ -415,13 +458,6 @@ public:
 
 
 	/**
-	 * GETTER
-	 * Refered (as typedef) TypeSpecifier
-	 */
-	BaseTypeSpecifier * referedTypeSpecifier();
-
-
-	/**
 	 * Format a value w.r.t. its type
 	 */
 	virtual void formatStream(OutStream & out, const BF & bfValue) const;
@@ -434,17 +470,21 @@ public:
 	 */
 	inline virtual std::string strT() const
 	{
-		if( (mBitSize == 0) || (! isTypedNumeric()) )
+		if( (mBitSize > 0) && isTypedNumeric()
+			&& (getNameID().rfind(to_string(mBitSize)) == std::string::npos) )
+		{
+			return( OSS() << getNameID() << ":" << mBitSize );
+		}
+		else
 		{
 			return( getNameID() );
 		}
-		return( OSS() << getNameID() << ":" << mBitSize );
 	}
 
 
-	virtual void strHeader(OutStream & out) const;
+	virtual void strHeader(OutStream & out) const override;
 
-	virtual void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
 
 	virtual void toFscn(OutStream & out) const
 	{

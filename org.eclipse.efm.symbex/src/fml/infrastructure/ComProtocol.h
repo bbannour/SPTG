@@ -81,7 +81,7 @@ public:
 	: mComPointNature( aNature ),
 	mProtocol( aProtocol ),
 	mCast( to_cast(aProtocol) ),
-	mBuffer( NULL ),
+	mBuffer( nullptr ),
 	mBufferUfid( )
 	{
 	}
@@ -178,14 +178,14 @@ public:
 	 * GETTER - SETTER
 	 * mBuffer
 	 */
-	inline Buffer * getBuffer() const
+	inline const Buffer & getBuffer() const
 	{
-		return( mBuffer );
+		return( * mBuffer );
 	}
 
 	inline bool hasBuffer() const
 	{
-		return( mBuffer != NULL );
+		return( mBuffer != nullptr );
 	}
 
 	inline void setBuffer(const BF & aBuffer)
@@ -199,6 +199,30 @@ public:
 		{
 			mBufferUfid = aBuffer;
 		}
+	}
+
+
+	void setBuffer(Machine * aContainer,
+			avm_type_specifier_kind_t policySpecifierKind, long aCapacity = -1)
+	{
+		if( mProtocol == PROTOCOL_UNDEFINED_KIND )
+		{
+			mProtocol = PROTOCOL_BUFFER_KIND;
+
+			if( mCast == PROTOCOL_UNDEFINED_KIND )
+			{
+				mCast = PROTOCOL_UNICAST_KIND;
+			}
+		}
+
+		mBufferUfid = BF( mBuffer = new Buffer(aContainer,
+				Buffer::ANONYM_ID, policySpecifierKind, aCapacity) );
+	}
+
+	inline void setBuffer(Machine * aContainer,
+			const std::string & strPolicySpecifierKind, long aCapacity = -1)
+	{
+		setBuffer( aContainer, to_policy(strPolicySpecifierKind) , aCapacity );
 	}
 
 
@@ -229,18 +253,26 @@ public:
 	/**
 	 * Update
 	 */
-	inline void update(ComProtocol * cp)
+	inline void updateProtocol(const ComProtocol & cp)
 	{
-		mProtocol   = cp->mProtocol;
-		mCast       = cp->mCast;
-		mBuffer     = cp->mBuffer;
-		mBufferUfid = cp->mBufferUfid;
+		mProtocol   = cp.mProtocol;
+		mCast       = cp.mCast;
+		mBuffer     = cp.mBuffer;
+		mBufferUfid = cp.mBufferUfid;
 	}
 
 
 	/**
 	 * Serialization
+	 * Deserialization
 	 */
+	static PROTOCOL_KIND to_protocol(const std::string & strProtocol);
+
+	static PROTOCOL_KIND to_cast(const std::string & strCast);
+
+	static avm_type_specifier_kind_t to_policy(const std::string & strPolicy);
+
+
 	static PROTOCOL_KIND to_cast(PROTOCOL_KIND protocol);
 
 	static std::string to_string(PROTOCOL_KIND protocol);

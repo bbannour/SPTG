@@ -90,12 +90,12 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 
 	std::ostringstream ossUFI;
 
-	const ObjectElement * TheMainObjectElement = NULL;
+	const ObjectElement * theMainObjectElement = nullptr;
 
 	// CHECKING FIRST ELEMENT
 	if( (*it).is< ObjectElement >() )
 	{
-		TheMainObjectElement = (*it).to_ptr< ObjectElement >();
+		theMainObjectElement = (*it).to_ptr< ObjectElement >();
 	}
 	else
 	{
@@ -106,11 +106,15 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 		}
 		ossUFI << (*it).str();
 
-		TheMainObjectElement = AVMCODE_COMPILER.getConfiguration().
-				getExecutableSystem().getSystemInstance().getAstElement();
+		if( AVMCODE_COMPILER.getConfiguration().
+				getExecutableSystem().getSystemInstance().hasAstElement() )
+		{
+			theMainObjectElement = &( AVMCODE_COMPILER.getConfiguration().
+					getExecutableSystem().getSystemInstance().getAstElement() );
+		}
 	}
 
-	if( TheMainObjectElement == NULL )
+	if( theMainObjectElement == nullptr )
 	{
 		bfInstance = getSymbolTable().searchDataInstance(aCTX, theUFI.str());
 		if( bfInstance.valid() )
@@ -122,19 +126,26 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 			bfInstance = getSymbolTable().searchSymbolByNameID(aCTX, (*it).str());
 			if( bfInstance.valid() )
 			{
-				TheMainObjectElement = bfInstance.to_ptr<
-						BaseInstanceForm >()->getAstElement();
+				if( bfInstance.to< BaseInstanceForm >().hasAstElement() )
+				{
+					theMainObjectElement =  &( bfInstance.to<
+							BaseInstanceForm >().getAstElement() );
+				}
+				else
+				{
+					theMainObjectElement = nullptr;
+				}
 			}
 		}
 	}
 
 
-	if( TheMainObjectElement != NULL )
+	if( theMainObjectElement != nullptr )
 	{
-		ObjectElement * objElement = NULL;
+		const ObjectElement * objElement = nullptr;
 
 		ossUFI.str("");
-		ossUFI << TheMainObjectElement->getFullyQualifiedNameID();
+		ossUFI << theMainObjectElement->getFullyQualifiedNameID();
 
 		// CHECKING MAIN FORM
 		for( ++it ; it != itEnd ; ++it )
@@ -143,12 +154,12 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 			{
 				objElement = (*it).to_ptr< ObjectElement >();
 
-				if( objElement->getContainer() == TheMainObjectElement )
+				if( objElement->getContainer() == theMainObjectElement )
 				{
-					TheMainObjectElement = objElement;
+					theMainObjectElement = objElement;
 
 					ossUFI.str("");
-					ossUFI << TheMainObjectElement->getFullyQualifiedNameID();
+					ossUFI << theMainObjectElement->getFullyQualifiedNameID();
 				}
 				else
 				{
@@ -164,9 +175,9 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 				break;
 			}
 
-			if( objElement != NULL )
+			if( objElement != nullptr )
 			{
-				TheMainObjectElement = objElement;
+				theMainObjectElement = objElement;
 
 				//!![MIGRATION] i.e. isArrayType() isContainerType() isClassType()
 				AVM_OS_FATAL_ERROR_EXIT
@@ -182,8 +193,8 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 	}
 	else if( (*it).isFieldInvokable() )
 	{
-		Operator * opExpr = AvmOperationFactory::get( (*it).str() );
-		if( opExpr != NULL )
+		const Operator * opExpr = AvmOperationFactory::get( (*it).str() );
+		if( opExpr != nullptr )
 		{
 			BFCode anInvokeExpression( opExpr );
 
@@ -245,7 +256,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 				<< " > of UFI < " << theUFI.str() << " > in the system << "
 				<< AVMCODE_COMPILER.getConfiguration().
 						getExecutableSystem().rawSystemInstance()->
-								getAstElement()->getFullyQualifiedNameID()
+								safeAstElement().getFullyQualifiedNameID()
 				<< " >>" << std::endl;
 
 		return( BF::REF_NULL );
@@ -253,9 +264,10 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 
 
 	// CHECKING FIRST INSTANCE
-	if( TheMainObjectElement != NULL )
+	if( theMainObjectElement != nullptr )
 	{
-		bfInstance = getSymbolTable().searchInstance(aCTX, TheMainObjectElement);
+		bfInstance = getSymbolTable().searchInstance(
+				aCTX, (* theMainObjectElement));
 	}
 	else
 	{
@@ -264,12 +276,11 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 				<< " > of UFI < " << theUFI.str() << " > in the system << "
 				<< AVMCODE_COMPILER.getConfiguration().
 						getExecutableSystem().rawSystemInstance()->
-								getAstElement()->getFullyQualifiedNameID()
+								safeAstElement().getFullyQualifiedNameID()
 				<< " >>" << std::endl;
 
 		return( BF::REF_NULL );
 	}
-
 
 	if( bfInstance.valid() )
 	{
@@ -284,7 +295,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 			InstanceOfMachine * theInstanceMachine =
 					bfInstance.to_ptr< InstanceOfMachine >();
 
-			InstanceOfMachine * ptrInstance = NULL;
+			InstanceOfMachine * ptrInstance = nullptr;
 
 			// CHECKING FOR MAIN MACHINE
 			for( ; it != itEnd ; ++it )
@@ -292,11 +303,13 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 				if( (*it).isIdentifier() )
 				{
 					ossUFI.str("");
-					ossUFI << theInstanceMachine->getExecutable()->
+					ossUFI << theInstanceMachine->refExecutable().
 							getAstFullyQualifiedNameID() << '.' << (*it).str();
+
 					bfInstance = getSymbolTable().searchInstance(
 							aCTX->newCTX(theInstanceMachine->getExecutable()),
 							ossUFI.str() );
+
 					if( bfInstance.valid() )
 					{
 						if( bfInstance.is< InstanceOfMachine >() )
@@ -359,7 +372,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 				{
 					getCompilerTable().incrErrorCount();
 					AVM_OS_WARN << theUFI.errorLocation(
-							aCTX->mCompileCtx->getAstElement() )
+							aCTX->mCompileCtx->safeAstElement() )
 							<< getSymbolTable().getErrorMessage()
 							<< std::endl << std::endl;
 				}
@@ -379,32 +392,36 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 			{
 				getCompilerTable().incrErrorCount();
 				AVM_OS_WARN << theUFI.errorLocation(
-						aCTX->mCompileCtx->getAstElement() )
+						aCTX->mCompileCtx->safeAstElement() )
 						<< getSymbolTable().getErrorMessage()
 						<< std::endl << std::endl;
 			}
 
 			Symbol symbolData( bfInstance );
 
-			InstanceOfData * ptrInstance = bfInstance.to_ptr< InstanceOfData >();
+			const InstanceOfData & ptrInstance = bfInstance.to< InstanceOfData >();
 
-			BaseTypeSpecifier * aTypeSpecifier = ptrInstance->getTypeSpecifier();
+			const BaseTypeSpecifier * aTypeSpecifier =
+					ptrInstance.ptrTypeSpecifier();
 
 			if( aTypeSpecifier->hasTypeStructureOrChoiceOrUnion() ||
 					aTypeSpecifier->hasTypeArrayVector() )
 			{
-				BaseSymbolTypeSpecifier * aStructTypeSpecifier = NULL;
+				const BaseSymbolTypeSpecifier * aStructTypeSpecifier = nullptr;
 
 				bool isArrayIndex = false;
 //				bool isNotArray = true;
+
+				IPointerVariableNature::POINTER_VARIABLE_NATURE aPointerNature =
+						IPointerVariableNature::POINTER_UNDEFINED_NATURE;
 
 				TableOfSymbol aRelativeDataPath;
 				std::ostringstream ossID;
 
 				ossUFI.str( "" );
-				ossUFI << ptrInstance->getFullyQualifiedNameID();
+				ossUFI << ptrInstance.getFullyQualifiedNameID();
 
-				ossID << ptrInstance->getNameID();
+				ossID << ptrInstance.getNameID();
 
 
 				for( ; it != itEnd ; ++it )
@@ -422,33 +439,69 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 							return( BF::REF_NULL );
 						}
 
-						aTypeSpecifier = aTypeSpecifier->
-								as< ContainerTypeSpecifier >()->
-								getContentsTypeSpecifier();
+						const BaseTypeSpecifier & contentTypeSpecifier =
+								aTypeSpecifier->as_ptr< ContainerTypeSpecifier >()
+								->getContentsTypeSpecifier();
+
+						aTypeSpecifier = (& contentTypeSpecifier);
 
 						BF index = compileArgRvalue(aCTX, (*it));
 						if( index.valid() )
 						{
 //							isNotArray = false;
-							if( index.isInteger() )
+							if( index.isUInteger() )
 							{
 								symbolData = new InstanceOfData(
-										IPointerDataNature::
+										IPointerVariableNature::
 											POINTER_FIELD_ARRAY_OFFSET_NATURE,
 										aCTX->mCompileCtx,
-										aTypeSpecifier->getAstElement(),
-										aTypeSpecifier, 0 );
+										contentTypeSpecifier.getAstElement(),
+										contentTypeSpecifier, 0 );
 								symbolData.setOffset( index.toInteger() );
+							}
+							else if( index.isInteger() )
+							{
+								isArrayIndex = true;
+								aPointerNature = ( isArrayIndex )
+									? IPointerVariableNature::POINTER_UFI_MIXED_NATURE
+									: IPointerVariableNature::POINTER_UFI_OFFSET_NATURE;
+
+								InstanceOfData * ptrSymbolIndex = nullptr;
+								BF symbolIndex = aRelativeDataPath.empty()
+										? bfInstance
+										: BF( ptrSymbolIndex = new InstanceOfData(
+												aPointerNature,
+												ptrInstance.getContainer(),
+												ptrInstance, aRelativeDataPath));
+
+								if( ptrSymbolIndex != nullptr )
+								{
+									ptrSymbolIndex->updateFullyQualifiedNameID(
+											ossUFI.str() , ossID.str() );
+								}
+
+								symbolData = new InstanceOfData(
+										IPointerVariableNature::
+											POINTER_FIELD_ARRAY_INDEX_NATURE,
+										aCTX->mCompileCtx,
+										contentTypeSpecifier.getAstElement(),
+										contentTypeSpecifier, 0 );
+								symbolData.setValue(
+										ExpressionConstructor::addExpr(
+											ExpressionConstructor::newCode(
+												OperatorManager::OPERATOR_SIZE,
+												symbolIndex ),
+											index ) );
 							}
 							else
 							{
 								isArrayIndex = true;
 								symbolData = new InstanceOfData(
-										IPointerDataNature::
+										IPointerVariableNature::
 											POINTER_FIELD_ARRAY_INDEX_NATURE,
 										aCTX->mCompileCtx,
-										aTypeSpecifier->getAstElement(),
-										aTypeSpecifier, 0 );
+										contentTypeSpecifier.getAstElement(),
+										contentTypeSpecifier, 0 );
 								symbolData.setValue( index );
 							}
 
@@ -456,7 +509,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 
 							ossUFI << "[" << index.str() << "]";
 							ossID  << "[" << ( index.is< BaseInstanceForm >() ?
-									index.to_ptr< BaseInstanceForm >()->getNameID() :
+									index.to< BaseInstanceForm >().getNameID() :
 									index.str() ) << "]";
 						}
 						else
@@ -477,7 +530,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 //								<< SEND_EXIT;
 
 						aStructTypeSpecifier =
-								aTypeSpecifier->to< BaseSymbolTypeSpecifier >();
+								aTypeSpecifier->to_ptr< BaseSymbolTypeSpecifier >();
 						if( (*it).isIdentifier() )
 						{
 							ossUFI << '.' << (*it).str();
@@ -502,7 +555,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 									aRelativeDataPath.append( symbolData );
 								}
 
-								aTypeSpecifier = symbolData.getTypeSpecifier();
+								aTypeSpecifier = &( symbolData.getTypeSpecifier() );
 							}
 							else
 							{
@@ -541,41 +594,33 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 //					}
 				}
 
-				IPointerDataNature::POINTER_DATA_NATURE aPointerNature =
-						IPointerDataNature::POINTER_UNDEFINED_NATURE;
-				if( isArrayIndex )
-				{
-					aPointerNature = IPointerDataNature::POINTER_UFI_MIXED_NATURE;
-				}
-				else
-				{
-					aPointerNature = IPointerDataNature::POINTER_UFI_OFFSET_NATURE;
-				}
-
+				aPointerNature = ( isArrayIndex )
+					? IPointerVariableNature::POINTER_UFI_MIXED_NATURE
+					: IPointerVariableNature::POINTER_UFI_OFFSET_NATURE;
 
 				if( aRelativeDataPath.nonempty() )
 				{
 					aRelativeDataPath.pop_last_to( symbolData );
 
 					symbolData = new InstanceOfData(aPointerNature,
-							ptrInstance->getContainer(), ptrInstance,
+							ptrInstance.getContainer(), ptrInstance,
 							aRelativeDataPath, symbolData);
 				}
 				else
 				{
 					VectorOfInstanceOfMachine aRelativeMachinePath;
 
-					symbolData = new InstanceOfData(ptrInstance->getContainer(),
-							symbolData.rawData(), aRelativeMachinePath);
+					symbolData = new InstanceOfData(ptrInstance.getContainer(),
+							symbolData.variable(), aRelativeMachinePath);
 				}
 
 				symbolData.updateFullyQualifiedNameID( ossUFI.str() , ossID.str() );
 
 //				if( isNotArray )
 				{
-					aCTX->mCompileCtx->getExecutable()->
-							appendDataAlias( symbolData );
-//					ptrInstance->getContainer()->appendDataAlias( symbolData );
+					aCTX->mCompileCtx->refExecutable().
+							appendVariableAlias( symbolData );
+//					ptrInstance.getContainer()->appendVariableAlias( symbolData );
 				}
 
 				if( it == itEnd )
@@ -590,9 +635,9 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 							<< (*it).str() << " >> as Invocable !!!"
 							<< SEND_EXIT;
 
-					Operator * op = AvmOperationFactory::get(
+					const Operator * op = AvmOperationFactory::get(
 							symbolData, (*it).toIdentifier());
-					if( op != NULL )
+					if( op != nullptr )
 					{
 						BFCode newCode(op, symbolData);
 						BF arg;
@@ -686,7 +731,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 						getCompilerTable().incrErrorCount();
 						AVM_OS_WARN << "Compilation Error of the parameter < "
 								<< (*it).str() << " > of the invokable < "
-								<< ptrInstance->getFullyQualifiedNameID() << " > in the UFI < "
+								<< ptrInstance.getFullyQualifiedNameID() << " > in the UFI < "
 								<< theUFI.str() << " >" << std::endl;
 
 						continue;
@@ -707,7 +752,8 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 			{
 				getCompilerTable().incrErrorCount();
 				AVM_OS_WARN << "Unexpected type < " << aTypeSpecifier->str()
-						<< " > for instance of data < " << ptrInstance->getFullyQualifiedNameID()
+						<< " > for instance of data < "
+						<< ptrInstance.getFullyQualifiedNameID()
 						<< " > int the UFI < " << theUFI.str() << " >"
 						<< std::endl;
 
@@ -720,7 +766,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 		{
 			getCompilerTable().incrErrorCount();
 			AVM_OS_WARN << "Unexpected a port instance < "
-					<< bfInstance.to_ptr< InstanceOfPort >()->getFullyQualifiedNameID()
+					<< bfInstance.to< InstanceOfPort >().getFullyQualifiedNameID()
 					<< " > int the UFI < " << theUFI.str() << " >" << std::endl;
 
 			return( BF::REF_NULL );
@@ -730,7 +776,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 		{
 			getCompilerTable().incrErrorCount();
 			AVM_OS_WARN << "Unexpected a base instance < "
-					<< bfInstance.to_ptr< BaseInstanceForm >()->getFullyQualifiedNameID()
+					<< bfInstance.to< BaseInstanceForm >().getFullyQualifiedNameID()
 					<< " > int the UFI < " << theUFI.str() << " >" << std::endl;
 
 			return( BF::REF_NULL );
@@ -740,14 +786,14 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 	else
 	{
 		const BF & tmpTransition =
-				getSymbolTable().searchTransition(aCTX, TheMainObjectElement);
+				getSymbolTable().searchTransition(aCTX, (* theMainObjectElement));
 		if( tmpTransition.valid() && (it == itEnd) )
 		{
 			return( tmpTransition );
 		}
 
 		const BF & tmpProgram =
-				getSymbolTable().searchProgram(aCTX, TheMainObjectElement);
+				getSymbolTable().searchProgram(aCTX, (* theMainObjectElement));
 		if( tmpProgram.valid() && (it == itEnd) )
 		{
 			return( tmpProgram );
@@ -756,7 +802,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 
 		const BF & aType = SymbolTable::searchTypeSpecifier(
 				AVMCODE_COMPILER.getConfiguration().getExecutableSystem(),
-				aCTX, TheMainObjectElement);
+				aCTX, (* theMainObjectElement));
 		if( aType.valid() )
 		{
 			if( it == itEnd )
@@ -794,7 +840,7 @@ BF AvmcodeUfiExpressionCompiler::compileUfiExpression(
 
 		getCompilerTable().incrErrorCount();
 		AVM_OS_WARN << "Unfound a runtime symbol for the form < "
-				<< TheMainObjectElement->getFullyQualifiedNameID()
+				<< theMainObjectElement->getFullyQualifiedNameID()
 				<< " > in the UFI < " << theUFI.str() << " >"
 				<< std::endl;
 
@@ -818,17 +864,17 @@ BF AvmcodeUfiExpressionCompiler::compileExpression(
 
 	COMPILE_CONTEXT * containerCTX = aCTX->clone();
 
-	AvmCode::iterator itArg = aCode->begin();
-	AvmCode::iterator itEndArg = aCode->end();
+	AvmCode::const_iterator itOperand = aCode->begin();
+	AvmCode::const_iterator endOperand = aCode->end();
 
-	for( ; itArg != itEndArg ; ++itArg )
+	for( ; itOperand != endOperand ; ++itOperand )
 	{
-		arg = compileArgRvalue(containerCTX, *itArg);
+		arg = compileArgRvalue(containerCTX, *itOperand);
 
 		if( arg.invalid() )
 		{
 			getCompilerTable().incrErrorCount();
-			AVM_OS_WARN << "Compilation Error of  < " << (*itArg).str()
+			AVM_OS_WARN << "Compilation Error of  < " << (*itOperand).str()
 					<< " > in the UFI < " << aCode->str() << " >" << std::endl;
 
 			continue;
@@ -838,9 +884,9 @@ BF AvmcodeUfiExpressionCompiler::compileExpression(
 
 		containerCTX->mCompileCtx = aCTX->mCompileCtx;
 
-		if( ExpressionTypeChecker::isCtor(arg) && (itArg != itEndArg) )
+		if( ExpressionTypeChecker::isCtor(arg) && (itOperand != endOperand) )
 		{
-			const BF & aCastType = arg.to_ptr< AvmCode >()->first();
+			const BF & aCastType = arg.to< AvmCode >().first();
 			if( aCastType.is< BaseAvmProgram >() )
 			{
 				containerCTX->mCompileCtx = aCastType.to_ptr< BaseAvmProgram >();

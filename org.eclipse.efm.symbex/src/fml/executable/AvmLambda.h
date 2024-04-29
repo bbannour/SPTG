@@ -20,11 +20,11 @@
 
 #include <fml/executable/BaseAvmProgram.h>
 
-#include <common/AvmPointer.h>
-
 #include <fml/executable/AvmProgram.h>
 
 #include <fml/expression/AvmCode.h>
+
+#include <fml/infrastructure/Routine.h>
 
 #include <collection/Typedef.h>
 
@@ -87,9 +87,10 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	AvmLambda(BaseAvmProgram * aContainer, avm_size_t aSize,
+	AvmLambda(BaseAvmProgram * aContainer, std::size_t aSize,
 			AVM_LAMBDA_NATURE aLambdaNature = AVM_LAMBDA_FUN_NATURE)
-	: BaseAvmProgram(CLASS_KIND_T( AvmLambda ), aContainer, NULL, aSize),
+	: BaseAvmProgram(CLASS_KIND_T( AvmLambda ),
+			aContainer, Routine::nullref(), aSize),
 	mLambdaNature( aLambdaNature ),
 	mExpression( ),
 	mClosureFlag( false )
@@ -141,7 +142,7 @@ public:
 	 * SETTER
 	 * mFullyQualifiedNameID
 	 */
-	virtual void updateFullyQualifiedNameID();
+	virtual void updateFullyQualifiedNameID() override;
 
 	inline bool isAnonym() const
 	{
@@ -199,26 +200,21 @@ public:
 	}
 
 
-	inline avm_size_t boundVarCount() const
+	inline std::size_t boundVarCount() const
 	{
-		return( getData().size() );
+		return( getVariables().size() );
 	}
-
-//	inline avm_size_t freeVarCount()
-//	{
-//		return( ( isClosed() )? 0 : '?' );
-//	}
 
 
 	/**
 	 * Serialization
 	 */
-	inline void strHeader(OutStream & os) const
+	inline void strHeader(OutStream & os) const override
 	{
 		os << str_indent( this );
 	}
 
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & os) const override;
 
 	void toStreamApp(OutStream & os) const;
 

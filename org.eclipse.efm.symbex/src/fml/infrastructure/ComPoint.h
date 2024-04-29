@@ -13,14 +13,13 @@
  *   - Initial API and implementation
  ******************************************************************************/
 
-#ifndef FML_INFRASTRUCTURE_CONNECTOR_END_H_
-#define FML_INFRASTRUCTURE_CONNECTOR_END_H_
+#ifndef FML_INFRASTRUCTURE_COMPOINT_END_H_
+#define FML_INFRASTRUCTURE_COMPOINT_END_H_
 
 #include <common/Element.h>
 #include <fml/infrastructure/ComProtocol.h>
 #include <fml/common/TraceableElement.h>
 
-#include <common/AvmPointer.h>
 #include <common/BF.h>
 
 #include <fml/common/ObjectElement.h>
@@ -66,12 +65,35 @@ public:
 	: Element( CLASS_KIND_T( ComPoint ) ),
 	ComProtocol( PROTOCOL_UNDEFINED_KIND ),
 	TraceableElement( ),
-	mMachine( NULL ),
-	mPort( NULL ),
+	mMachine( nullptr ),
+	mPort( nullptr ),
 	mMachinePortQualifiedNameID( )
 	{
 		//!! NOTHING
 	}
+
+	ComPoint(Machine * aMachine, Port * aPort)
+	: Element( CLASS_KIND_T( ComPoint ) ),
+	ComProtocol( PROTOCOL_UNDEFINED_KIND ),
+	TraceableElement( ),
+	mMachine( aMachine ),
+	mPort( aPort ),
+	mMachinePortQualifiedNameID( )
+	{
+		//!! NOTHING
+	}
+
+	ComPoint(Machine * aMachine, const BF & aPortQualifiedNameID)
+	: Element( CLASS_KIND_T( ComPoint ) ),
+	ComProtocol( PROTOCOL_UNDEFINED_KIND ),
+	TraceableElement( ),
+	mMachine( aMachine ),
+	mPort( nullptr ),
+	mMachinePortQualifiedNameID( aPortQualifiedNameID )
+	{
+		//!! NOTHING
+	}
+
 
 	/**
 	 * DESTRUCTOR
@@ -86,14 +108,14 @@ public:
 	 * GETTER - SETTER
 	 * mMachine
 	 */
-	inline Machine * getMachine()
+	inline const Machine & getMachine() const
 	{
-		return( mMachine );
+		return( * mMachine );
 	}
 
-	inline bool hasMachine()
+	inline bool hasMachine() const
 	{
-		return( mMachine != NULL );
+		return( mMachine != nullptr );
 	}
 
 	inline void setMachine(Machine * aMachine)
@@ -101,19 +123,18 @@ public:
 		mMachine = aMachine;
 	}
 
-
 	/**
 	 * GETTER - SETTER
 	 * mPort
 	 */
-	inline Port * getPort() const
+	inline const Port & getPort() const
 	{
-		return( mPort );
+		return( * mPort );
 	}
 
-	inline bool hasPort()
+	inline bool hasPort() const
 	{
-		return( mPort != NULL );
+		return( mPort != nullptr );
 	}
 
 
@@ -134,23 +155,23 @@ public:
 	 * GETTER - SETTER
 	 * mMachinePortQualifiedNameID
 	 */
-	inline BF & getMachinePortQualifiedNameID()
+	inline const BF & getMachinePortQualifiedNameID() const
 	{
 		return( mMachinePortQualifiedNameID );
 	}
 
-	inline bool hasMachinePortQualifiedNameID()
+	inline bool hasMachinePortQualifiedNameID() const
 	{
 		return( mMachinePortQualifiedNameID.valid() );
 	}
 
-	inline void setMachinePort(const BF & bf)
+	inline void setMachinePortID(const BF & bf)
 	{
 		mMachinePortQualifiedNameID = bf;
 	}
 
 
-	inline bool isMachineAllPort()
+	inline bool isMachineAllPort() const
 	{
 		return( mMachinePortQualifiedNameID == XLIA_SYNTAX::ID_ALL );
 	}
@@ -165,7 +186,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		StringOutStream oss( AVM_NO_INDENT );
 
@@ -174,11 +195,11 @@ public:
 		return( oss.str() );
 	}
 
-	void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
 
 };
 
 
 } /* namespace sep */
 
-#endif /* FML_INFRASTRUCTURE_CONNECTOR_END_H_ */
+#endif /* FML_INFRASTRUCTURE_COMPOINT_END_H_ */

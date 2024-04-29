@@ -97,7 +97,7 @@ public:
 		simplif();
 	}
 
-	// avm_integer_t / avm_integer_t  i.e.  avm_int64_t / avm_int64_t
+	// avm_integer_t / avm_integer_t  i.e.  std::int64_t / std::int64_t
 	Rational(avm_integer_t aNumerator, avm_integer_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -107,7 +107,7 @@ public:
 		simplif();
 	}
 
-	// avm_integer_t / avm_uinteger_t  i.e.  avm_int64_t / avm_uint64_t
+	// avm_integer_t / avm_uinteger_t  i.e.  std::int64_t / std::uint64_t
 	Rational(avm_integer_t aNumerator, avm_uinteger_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -117,7 +117,7 @@ public:
 		simplif();
 	}
 
-	// avm_uinteger_t / avm_integer_t  i.e.  avm_uint64_t / avm_int64_t
+	// avm_uinteger_t / avm_integer_t  i.e.  std::uint64_t / std::int64_t
 	Rational(avm_uinteger_t aNumerator, avm_integer_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -127,7 +127,7 @@ public:
 		simplif();
 	}
 
-	// avm_uinteger_t / avm_uinteger_t  i.e.  avm_uint64_t / avm_uint64_t
+	// avm_uinteger_t / avm_uinteger_t  i.e.  std::uint64_t / std::uint64_t
 	Rational(avm_uinteger_t aNumerator, avm_uinteger_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -137,7 +137,7 @@ public:
 		//!! NOTHING
 	}
 
-	// std::string / avm_integer_t  i.e.  std::string / avm_int64_t
+	// std::string / avm_integer_t  i.e.  std::string / std::int64_t
 	Rational(const std::string & aNumerator, avm_integer_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -147,7 +147,7 @@ public:
 		simplif();
 	}
 
-	// avm_integer_t / std::string  i.e.  avm_int64_t / std::string
+	// avm_integer_t / std::string  i.e.  std::int64_t / std::string
 	Rational(avm_integer_t aNumerator, const std::string & aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -191,7 +191,7 @@ public:
 		simplif();
 	}
 
-	// avm_integer_t i.e. avm_int64_t
+	// avm_integer_t i.e. std::int64_t
 	Rational(avm_integer_t aNumerator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType( Integer( aNumerator ).getValue() ) )
@@ -199,7 +199,7 @@ public:
 		simplif();
 	}
 
-	// avm_uinteger_t i.e. avm_uint64_t
+	// avm_uinteger_t i.e. std::uint64_t
 	Rational(avm_uinteger_t aNumerator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType( Integer( aNumerator ).getValue() ) )
@@ -268,18 +268,21 @@ public:
 
 	inline static void fromString(RawValueType & rop, const std::string & aValue)
 	{
-		std::string::size_type pos = aValue.find('/');
+		std::string::size_type pos = aValue.find_first_of("/.");
 		if( pos != std::string::npos)
 		{
-			rop = RawValueType( aValue );
-		}
-		else if( (pos = aValue.find('.')) != std::string::npos )
-		{
-			Integer aNumer( std::string(aValue).erase(pos, 1) );
+			if( aValue[pos] == '/' )
+			{
+				rop = RawValueType( aValue );
+			}
+			else //if( aValue[pos] == '.' )
+			{
+				Integer aNumer( std::string(aValue).erase(pos, 1) );
 
-			Integer aDenom = Integer::pow(10, aValue.size() - (pos + 1));
+				Integer aDenom = Integer::pow(10, aValue.size() - (pos + 1));
 
-			rop = RawValueType( aNumer.getValue(), aDenom.getValue() );
+				rop = RawValueType( aNumer.getValue(), aDenom.getValue() );
+			}
 		}
 		else
 		{
@@ -352,23 +355,23 @@ public:
 	/**
 	 * BASICS TESTS
 	 */
-	virtual inline int sign() const
+	inline virtual int sign() const override
 	{
 		return( mpq_sgn(ThisNumberClass::mValue.get_mpq_t()) );
 	}
 
-	virtual inline bool isZero() const
+	inline virtual bool isZero() const override
 	{
 		return( sign() == 0 );
 	}
 
-	virtual inline bool isOne() const
+	inline virtual bool isOne() const override
 	{
 		return( mpq_cmp_si(
 				ThisNumberClass::mValue.get_mpq_t(), 1, 1) == 0 );
 	}
 
-	virtual inline bool isNegativeOne() const
+	inline virtual bool isNegativeOne() const override
 	{
 		return( mpq_cmp_si(
 				ThisNumberClass::mValue.get_mpq_t(), -1, 1) == 0 );
@@ -390,93 +393,108 @@ public:
 	(mpz_cmp_ui(MPQ_NUM.get_mpz_t(), SUP) <= 0)
 
 
-	inline virtual bool isInt32() const
+	inline virtual bool isInt32() const override
 	{
-		return( MPQ_IS_INTEGER(rawNumerator(), rawDenominator(),
-				AVM_NUMERIC_MIN_INT32, AVM_NUMERIC_MAX_INT32) );
+//		return( MPQ_IS_INTEGER(rawNumerator(), rawDenominator(),
+//				INT32_MIN, INT32_MAX) );
+
+		return( (mpz_cmp_si(rawDenominator().get_mpz_t(), 1  ) == 0)
+				&& rawNumerator().fits_sint_p() );
 	}
 
-	inline virtual avm_int32_t toInt32() const
+	inline virtual std::int32_t toInt32() const override
 	{
-		return( static_cast< avm_int32_t >( rawNumerator().get_si() ) );
+		return( static_cast< std::int32_t >( rawNumerator().get_si() ) );
 	}
 
-	inline virtual bool isInt64() const
+	inline virtual bool isInt64() const override
 	{
-		return( MPQ_IS_INTEGER(rawNumerator(), rawDenominator(),
-				AVM_NUMERIC_MIN_INT64, AVM_NUMERIC_MAX_INT64) );
+//		return( MPQ_IS_INTEGER(rawNumerator(), rawDenominator(),
+//				INT64_MIN, INT64_MAX) );
+
+		return( (mpz_cmp_si(rawDenominator().get_mpz_t(), 1  ) == 0)
+				&& rawNumerator().fits_slong_p() );
 	}
 
-	inline virtual avm_int64_t toInt64() const
+	inline virtual std::int64_t toInt64() const override
 	{
-		return( static_cast< avm_int64_t >( rawNumerator().get_si() ) );
+		return( static_cast< std::int64_t >( rawNumerator().get_si() ) );
 	}
 
 
-	inline virtual bool isInteger() const
+	inline virtual bool isInteger() const override
 	{
-		return( MPQ_IS_INTEGER(rawNumerator(), rawDenominator(),
-				AVM_NUMERIC_MIN_INTEGER, AVM_NUMERIC_MAX_INTEGER) );
+//		return( MPQ_IS_INTEGER(rawNumerator(), rawDenominator(),
+//				AVM_NUMERIC_MIN_INTEGER, AVM_NUMERIC_MAX_INTEGER) );
+
+		return( (mpz_cmp_si(rawDenominator().get_mpz_t(), 1  ) == 0)
+				&& rawNumerator().fits_slong_p() );
 	}
 
-	inline virtual avm_integer_t toInteger() const
+	inline virtual avm_integer_t toInteger() const override
 	{
 		return( rawNumerator().get_si() );
 	}
 
 
-	inline virtual bool isPosInteger() const
+	inline bool isPosInteger() const
 	{
-		return( MPQ_IS_POSITIVE_INTEGER(rawNumerator(),
-				rawDenominator(), AVM_NUMERIC_MAX_UINTEGER) );
+//		return( MPQ_IS_POSITIVE_INTEGER(rawNumerator(),
+//				rawDenominator(), AVM_NUMERIC_MAX_UINTEGER) );
+
+		return( (mpz_cmp_si(rawDenominator().get_mpz_t(), 1  ) == 0)
+				&& rawNumerator().fits_ulong_p() );
 	}
 
 
-	inline virtual bool isUInteger() const
+	inline virtual bool isUInteger() const override
 	{
-		return( MPQ_IS_POSITIVE_INTEGER(rawNumerator(),
-				rawDenominator(), AVM_NUMERIC_MAX_UINTEGER) );
+//		return( MPQ_IS_POSITIVE_INTEGER(rawNumerator(),
+//				rawDenominator(), AVM_NUMERIC_MAX_UINTEGER) );
+
+		return( (mpz_cmp_si(rawDenominator().get_mpz_t(), 1  ) == 0)
+				&& rawNumerator().fits_ulong_p() );
 	}
 
-	inline virtual avm_uinteger_t toUInteger() const
+	inline virtual avm_uinteger_t toUInteger() const override
 	{
 		return( static_cast< avm_uinteger_t >( rawNumerator().get_ui() ) );
 	}
 
 
-	inline virtual bool isRational() const
+	inline virtual bool isRational() const override
 	{
 		return( true );
 	}
 
-	virtual avm_integer_t toDenominator() const
+	virtual avm_integer_t toDenominator() const override
 	{
 		return( rawDenominator().get_si() );
 	}
 
-	virtual avm_integer_t toNumerator() const
+	virtual avm_integer_t toNumerator() const override
 	{
 		return( rawNumerator().get_si() );
 	}
 
 
-	inline virtual bool isFloat() const
+	inline virtual bool isFloat() const override
 	{
 		return( true );
 	}
 
-	inline virtual avm_float_t toFloat() const
+	inline virtual avm_float_t toFloat() const override
 	{
 		return( static_cast< avm_float_t >( ThisNumberClass::mValue.get_d() ) );
 	}
 
 
-	inline virtual bool isReal() const
+	inline virtual bool isReal() const override
 	{
 		return( true );
 	}
 
-	inline virtual avm_real_t toReal() const
+	inline virtual avm_real_t toReal() const override
 	{
 		return( static_cast< avm_real_t >( ThisNumberClass::mValue.get_d() ) );
 	}
@@ -505,7 +523,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
 		os << TAB << rawNumerator();
 		if( rawDenominator() != 1 )
@@ -516,7 +534,7 @@ public:
 		os << EOL_FLUSH;
 	}
 
-	virtual std::string str() const
+	virtual std::string str() const override
 	{
 		if( rawDenominator() != 1 )
 		{
@@ -529,7 +547,7 @@ public:
 	}
 
 	inline virtual std::string strNum(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const override
 	{
 		if( rawDenominator() != 1 )
 		{
@@ -542,13 +560,13 @@ public:
 	}
 
 	inline virtual std::string strNumerator(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const
 	{
 		return( OSS() << rawNumerator() );
 	}
 
 	inline virtual std::string strDenominator(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const
 	{
 		return( OSS() << rawDenominator() );
 	}

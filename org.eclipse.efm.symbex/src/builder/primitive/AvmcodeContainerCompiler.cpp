@@ -39,19 +39,27 @@ BF AvmcodeUnaryContainerStatementCompiler::compileExpression(
 BF AvmcodeUnaryContainerStatementCompiler::optimizeExpression(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	BFCode optCode = optimizeStatement(aCTX, aCode);
+	AvmInstruction * argsInstruction = aCode->genInstruction();
 
-	avm_arg_processor_t arg_cpu = AVM_ARG_COLLECTION_CPU;
+	optimizeArgExpression(aCTX, aCode, 0);
+	argsInstruction->at(0).dtype = TypeManager::UNIVERSAL;
+	setArgcodeContainerRValue(aCTX, argsInstruction->at(0), aCode->first());
 
-	if( ExpressionTypeChecker::isVector( aCode->first() ) )
-	{
-		arg_cpu = AVM_ARG_VECTOR_CPU;
-	}
+	avm_arg_processor_t arg_cpu =
+			aCode->first().is< InstanceOfBuffer >()
+					? AVM_ARG_BUFFER_CPU
+					: ExpressionTypeChecker::isVector( aCode->first() )
+							? AVM_ARG_VECTOR_CPU
+							: AVM_ARG_COLLECTION_CPU;
 
-	optCode->getInstruction()->setMainProcessor( arg_cpu );
-	optCode->getInstruction()->setMainOperand( AVM_ARG_EXPRESSION_KIND );
+	argsInstruction->computeMainBytecode(
+			/*context  */ AVM_ARG_STANDARD_CTX,
+			/*processor*/ arg_cpu,
+			/*operation*/ AVM_ARG_SEVAL_RVALUE,
+			/*operand  */ AVM_ARG_EXPRESSION_KIND,
+			/*dtype    */ argsInstruction->at(0).dtype);
 
-	return( optCode );
+	return( aCode );
 }
 
 
@@ -98,12 +106,9 @@ BF AvmcodeUnaryWriteContainerStatementCompiler::optimizeExpression(
 {
 	BFCode optCode = optimizeStatement(aCTX, aCode);
 
-	avm_arg_processor_t arg_cpu = AVM_ARG_COLLECTION_CPU;
-
-	if( ExpressionTypeChecker::isVector( aCode->first() ) )
-	{
-		arg_cpu = AVM_ARG_VECTOR_CPU;
-	}
+	avm_arg_processor_t arg_cpu =
+			ExpressionTypeChecker::isVector( aCode->first() ) ?
+					AVM_ARG_VECTOR_CPU : AVM_ARG_COLLECTION_CPU;
 
 	optCode->getInstruction()->setMainProcessor( arg_cpu );
 	optCode->getInstruction()->setMainOperand( AVM_ARG_EXPRESSION_KIND );
@@ -156,15 +161,12 @@ BF AvmcodeBinaryContainerStatementCompiler::optimizeExpression(
 {
 	BFCode optCode = optimizeStatement(aCTX, aCode);
 
-	avm_arg_processor_t arg_cpu = AVM_ARG_COLLECTION_CPU;
-
 	BF optContainer = optCode->hasOpCode(AVM_OPCODE_IN, AVM_OPCODE_NOTIN) ?
 			aCode->second() : aCode->first();
 
-	if( ExpressionTypeChecker::isVector(optContainer) )
-	{
-		arg_cpu = AVM_ARG_VECTOR_CPU;
-	}
+	avm_arg_processor_t arg_cpu =
+			ExpressionTypeChecker::isVector( optContainer ) ?
+					AVM_ARG_VECTOR_CPU : AVM_ARG_COLLECTION_CPU;
 
 	optCode->getInstruction()->setMainProcessor( arg_cpu );
 	optCode->getInstruction()->setMainOperand( AVM_ARG_EXPRESSION_KIND );
@@ -191,20 +193,33 @@ BFCode AvmcodeBinaryContainerStatementCompiler::compileStatement(
 
 	container = compileArgRvalue(aCTX, TypeManager::UNIVERSAL, container);
 
-	InstanceOfData * instance = NULL;
+	bool requestTypeChecking = false;
+
 	if( container.is< InstanceOfData >() )
 	{
-		instance = container.to_ptr< InstanceOfData >();
-		if( instance->hasTypeContainer() &&
-			aCode->hasOpCode(AVM_OPCODE_CONTAINS,
+		InstanceOfData * anInstance = container.to_ptr< InstanceOfData >();
+		if( anInstance->hasTypeContainer()
+			&& aCode->hasOpCode(AVM_OPCODE_CONTAINS,
 					AVM_OPCODE_IN, AVM_OPCODE_NOTIN) )
 		{
-			aCTX = aCTX->clone( instance->getTypeSpecifier()->
-					to< ContainerTypeSpecifier >()->getContentsTypeSpecifier() );
+			aCTX = aCTX->clone( anInstance->getTypeSpecifier().
+					to< ContainerTypeSpecifier >().getContentsTypeSpecifier() );
+
+			requestTypeChecking = true;
+		}
+	}
+	else if( container.is< ArrayBF >() )
+	{
+		ArrayBF * anArray = container.to_ptr< ArrayBF >();
+		if( anArray->hasTypeSpecifier() )
+		{
+			aCTX = aCTX->clone( anArray->getTypeSpecifier() );
+
+			requestTypeChecking = true;
 		}
 	}
 
-	element = compileArgRvalue(aCTX, element, true);
+	element = compileArgRvalue(aCTX, element, requestTypeChecking);
 
 
 	if( aCode->hasOpCode(AVM_OPCODE_IN, AVM_OPCODE_NOTIN) )
@@ -256,15 +271,12 @@ BF AvmcodeBinaryWriteContainerStatementCompiler::optimizeExpression(
 {
 	BFCode optCode = optimizeStatement(aCTX, aCode);
 
-	avm_arg_processor_t arg_cpu = AVM_ARG_COLLECTION_CPU;
-
 	BF optContainer = optCode->hasOpCode(AVM_OPCODE_IN, AVM_OPCODE_NOTIN) ?
 			aCode->second() : aCode->first();
 
-	if( ExpressionTypeChecker::isVector(optContainer) )
-	{
-		arg_cpu = AVM_ARG_VECTOR_CPU;
-	}
+	avm_arg_processor_t arg_cpu =
+			ExpressionTypeChecker::isVector( optContainer ) ?
+					AVM_ARG_VECTOR_CPU : AVM_ARG_COLLECTION_CPU;
 
 	optCode->getInstruction()->setMainProcessor( arg_cpu );
 	optCode->getInstruction()->setMainOperand( AVM_ARG_EXPRESSION_KIND );
@@ -278,7 +290,7 @@ BFCode AvmcodeBinaryWriteContainerStatementCompiler::compileStatement(
 {
 	BF container = compileArgRvalue(aCTX, TypeManager::UNIVERSAL, aCode->first());
 
-	InstanceOfData * instance = NULL;
+	InstanceOfData * instance = nullptr;
 	if( container.is< InstanceOfData >() )
 	{
 		instance = container.to_ptr< InstanceOfData >();
@@ -286,8 +298,8 @@ BFCode AvmcodeBinaryWriteContainerStatementCompiler::compileStatement(
 		{
 			if( aCode->hasOpCode(AVM_OPCODE_APPEND, AVM_OPCODE_REMOVE) )
 			{
-				aCTX = aCTX->clone( instance->getTypeSpecifier()->
-					to< ContainerTypeSpecifier >()->getContentsTypeSpecifier() );
+				aCTX = aCTX->clone( instance->getTypeSpecifier().
+					to< ContainerTypeSpecifier >().getContentsTypeSpecifier() );
 			}
 			else if( aCode->isOpCode(AVM_OPCODE_RESIZE) )
 			{

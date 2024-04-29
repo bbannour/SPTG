@@ -19,11 +19,12 @@
 
 #include <printer/OutStream.h>
 
+#include <solver/CVC5Solver.h>
 #include <solver/CVC4Solver.h>
 #include <solver/Z3Solver.h>
 
 #if defined( _AVM_SOLVER_YICES_V2_ )
-#include <compat/solver/Yices2Solver.h>
+#include <solver/Yices2Solver.h>
 #endif /* _AVM_SOLVER_YICES_V2_ */
 
 // Mandatory after other Solver for compilation FIX
@@ -40,7 +41,8 @@ namespace sep
 bool SolverDef::DEFAULT_SOLVER_USAGE_FLAG = false;
 
 SolverDef::SOLVER_KIND SolverDef::DEFAULT_SOLVER_KIND =
-		SolverDef::SOLVER_CVC4_KIND;
+		SolverDef::SOLVER_Z3_KIND;
+//		SolverDef::SOLVER_CVC4_KIND;
 
 
 /**
@@ -86,13 +88,19 @@ std::string SolverDef::strSolver(SolverDef::SOLVER_KIND king)
 #endif /* _AVM_SOLVER_YICES_V2_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 		case SOLVER_Z3_KIND         :  return( Z3Solver::ID  );
 #endif /* _AVM_SOLVER_Z3_ */
 
 
+#if defined( _AVM_SOLVER_CVC5_ )
+		case SOLVER_CVC_KIND        :  return( CVC5Solver::ID );
+		case SOLVER_CVC5_KIND       :  return( CVC5Solver::ID );
+		case SOLVER_CVC5_BV32_KIND  :  return( CVC5Solver::ID + "_BV32" );
+#endif /* _AVM_SOLVER_CVC5_ */
+
 #if defined( _AVM_SOLVER_CVC4_ )
-		case SOLVER_CVC_KIND        :  return( CVC4Solver::ID );
+//		case SOLVER_CVC_KIND        :  return( CVC4Solver::ID );
 		case SOLVER_CVC4_KIND       :  return( CVC4Solver::ID );
 		case SOLVER_CVC4_BV32_KIND  :  return( CVC4Solver::ID + "_BV32" );
 #endif /* _AVM_SOLVER_CVC4_ */
@@ -117,6 +125,16 @@ SolverDef::SOLVER_KIND SolverDef::toSolver(
 #endif /* _AVM_SOLVER_OMEGA_ */
 
 
+#if defined( _AVM_SOLVER_CVC5_ )
+	if( strKing == "CVC"            )  return( SOLVER_CVC5_KIND      );
+	if( strKing == "CVC_INT"        )  return( SOLVER_CVC5_KIND      );
+	if( strKing == "CVC_BV32"       )  return( SOLVER_CVC5_BV32_KIND );
+	if( strKing == CVC5Solver::ID   )  return( SOLVER_CVC5_KIND      );
+	if( strKing == "CVC5_INT"       )  return( SOLVER_CVC5_KIND      );
+	if( strKing == "CVC5_BV32"      )  return( SOLVER_CVC5_BV32_KIND );
+#endif /* _AVM_SOLVER_CVC5_ */
+
+
 #if defined( _AVM_SOLVER_CVC4_ )
 	if( strKing == "CVC"            )  return( SOLVER_CVC4_KIND      );
 	if( strKing == "CVC_INT"        )  return( SOLVER_CVC4_KIND      );
@@ -135,7 +153,7 @@ SolverDef::SOLVER_KIND SolverDef::toSolver(
 #endif /* _AVM_SOLVER_YICES_V2_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 	if( strKing == Z3Solver::ID     )  return( SOLVER_Z3_KIND        );
 #endif /* _AVM_SOLVER_Z3_ */
 
@@ -163,13 +181,19 @@ bool SolverDef::isAvailableSolver(SOLVER_KIND king)
 #endif /* _AVM_SOLVER_YICES_V2_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 		case SOLVER_Z3_KIND         :  return( true  );
 #endif /* _AVM_SOLVER_Z3_ */
 
 
-#if defined( _AVM_SOLVER_CVC4_ )
+#if defined( _AVM_SOLVER_CVC5_ )
 		case SOLVER_CVC_KIND        :  return( true );
+		case SOLVER_CVC5_KIND       :  return( true );
+		case SOLVER_CVC5_BV32_KIND  :  return( true );
+#endif /* _AVM_SOLVER_CVC5_ */
+
+#if defined( _AVM_SOLVER_CVC4_ )
+//		case SOLVER_CVC_KIND        :  return( true );
 		case SOLVER_CVC4_KIND       :  return( true );
 		case SOLVER_CVC4_BV32_KIND  :  return( true );
 #endif /* _AVM_SOLVER_CVC4_ */
@@ -193,12 +217,17 @@ void SolverDef::toStreamSolverList(OutStream & os, const std::string & aHeader)
 	SOLVER_FACTORY_SHOW_DESCRIPTION( OmegaSolver )
 #endif /* _AVM_SOLVER_OMEGA_ */
 
+
+#if defined( _AVM_SOLVER_CVC5_ )
+	SOLVER_FACTORY_SHOW_DESCRIPTION( CVC5Solver )
+#endif /* _AVM_SOLVER_CVC5_ */
+
 #if defined( _AVM_SOLVER_CVC4_ )
 	SOLVER_FACTORY_SHOW_DESCRIPTION( CVC4Solver )
 #endif /* _AVM_SOLVER_CVC4_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 	SOLVER_FACTORY_SHOW_DESCRIPTION( Z3Solver )
 #endif /* _AVM_SOLVER_Z3_ */
 

@@ -45,7 +45,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	// avm_integer_t  i.e.  avm_int64_t
+	// avm_integer_t  i.e.  std::int64_t
 	Integer(avm_integer_t aValue)
 	: Number( CLASS_KIND_T( Integer ) ),
 	ThisNumberClass( avm_integer_t(aValue) )
@@ -53,12 +53,19 @@ public:
 		//!! NOTHING
 	}
 
-	// avm_uinteger_t  i.e.  avm_uint64_t
+	// avm_uinteger_t  i.e.  std::uint64_t
 	Integer(avm_uinteger_t aValue)
 	: Number( CLASS_KIND_T( Integer ) ),
 	ThisNumberClass( avm_integer_t(aValue) )
 	{
 		//!! NOTHING
+	}
+
+	Integer(avm_uinteger_t aValue, avm_uinteger_t anExponent)
+	: Number( CLASS_KIND_T( Integer ) ),
+	ThisNumberClass( avm_integer_t(aValue) )
+	{
+		set_pow( anExponent );
 	}
 
 #ifdef _AVM_NEED_INT64_T_OVERLOADS_
@@ -128,33 +135,33 @@ public:
 	/**
 	 * BASICS TESTS
 	 */
-	virtual inline int sign() const
+	inline virtual int sign() const
 	{
 		return( (ThisNumberClass::mValue < 0) ? -1 :
 				(ThisNumberClass::mValue > 0) );
 	}
 
-	virtual inline bool strictlyPositive() const
+	inline virtual bool strictlyPositive() const
 	{
 		return( ThisNumberClass::mValue > 0 );
 	}
 
-	virtual inline bool strictlyNegative() const
+	inline virtual bool strictlyNegative() const
 	{
 		return( ThisNumberClass::mValue < 0 );
 	}
 
-	virtual inline bool isZero() const
+	inline virtual bool isZero() const
 	{
 		return( ThisNumberClass::mValue == 0 );
 	}
 
-	virtual inline bool isOne() const
+	inline virtual bool isOne() const
 	{
 		return( ThisNumberClass::mValue == 1 );
 	}
 
-	virtual inline bool isNegativeOne() const
+	inline virtual bool isNegativeOne() const
 	{
 		return( ThisNumberClass::mValue == -1 );
 	}
@@ -165,25 +172,25 @@ public:
 	 */
 	inline virtual bool isInt32() const
 	{
-		return( (AVM_NUMERIC_MIN_INT32 <= ThisNumberClass::mValue) &&
-				(ThisNumberClass::mValue <= AVM_NUMERIC_MAX_INT32) );
+		return( (INT32_MIN <= ThisNumberClass::mValue) &&
+				(ThisNumberClass::mValue <= INT32_MAX) );
 	}
 
-	inline virtual avm_int32_t toInt32() const
+	inline virtual std::int32_t toInt32() const
 	{
-		return( static_cast< avm_int32_t >( ThisNumberClass::mValue ) );
+		return( static_cast< std::int32_t >( ThisNumberClass::mValue ) );
 	}
 
 
 	inline virtual bool isInt64() const
 	{
-		return( (AVM_NUMERIC_MIN_INT64 <= ThisNumberClass::mValue) &&
-				(ThisNumberClass::mValue <= AVM_NUMERIC_MAX_INT64) );
+		return( (INT64_MIN <= ThisNumberClass::mValue) &&
+				(ThisNumberClass::mValue <= INT64_MAX) );
 	}
 
-	inline virtual avm_int64_t toInt64() const
+	inline virtual std::int64_t toInt64() const
 	{
-		return( static_cast< avm_int64_t >( ThisNumberClass::mValue ) );
+		return( static_cast< std::int64_t >( ThisNumberClass::mValue ) );
 	}
 
 
@@ -312,13 +319,13 @@ public:
 		os << EOL << std::flush;
 	}
 
-	virtual std::string str() const
+	virtual std::string str() const override
 	{
 		return( OSS() << mValue );
 	}
 
 	inline virtual std::string strNum(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const
 	{
 		return( OSS() << mValue );
 	}

@@ -65,7 +65,7 @@ std::string CVC4Solver::DESCRIPTION = "CVC4 "
 		"'Cooperating Validity Checker 4, Efficient Automatic Theorem Prover "
 		"for Satisfiability Modulo Theories problems, BSD License'";
 
-avm_uint64_t CVC4Solver::SOLVER_SESSION_ID = 0;
+std::uint64_t CVC4Solver::SOLVER_SESSION_ID = 1;
 
 
 //For automatic destroy of these CVC4 object using assignment
@@ -83,22 +83,33 @@ mParamPrefix( "P_" ),
 mExprManager( ),
 mSmtEngine( & mExprManager )
 {
-	SMT_TYPE_BOOL = mExprManager.booleanType();
-	SMT_TYPE_INT  = mExprManager.integerType();
-	SMT_TYPE_BV32 = mExprManager.mkBitVectorType(32);
-	SMT_TYPE_BV64 = mExprManager.mkBitVectorType(64);
-	SMT_TYPE_REAL = mExprManager.realType();
+	mLogFolderLocation = VFS::ProjectDebugPath + "/cvc4/";
 
-	SMT_TYPE_NUMBER = mExprManager.realType();
+	SMT_TYPE_BOOL      = mExprManager.booleanType();
 
-	SMT_TYPE_STRING = mExprManager.stringType();
+	SMT_TYPE_ENUM      = mExprManager.integerType();
+
+	SMT_TYPE_UINTEGER  = mExprManager.integerType();
+	SMT_TYPE_INTEGER   = mExprManager.integerType();
+
+	SMT_TYPE_BV32      = mExprManager.mkBitVectorType(32);
+	SMT_TYPE_BV64      = mExprManager.mkBitVectorType(64);
+
+	SMT_TYPE_URATIONAL = mExprManager.realType();
+	SMT_TYPE_RATIONAL  = mExprManager.realType();
+
+	SMT_TYPE_UREAL     = mExprManager.realType();
+	SMT_TYPE_REAL      = mExprManager.realType();
+
+	SMT_TYPE_NUMBER    = mExprManager.realType();
+
+	SMT_TYPE_STRING    = mExprManager.stringType();
 
 	SMT_CST_BOOL_TRUE  = mExprManager.mkConst(true);
 	SMT_CST_BOOL_FALSE = mExprManager.mkConst(false);
 
-	SMT_CST_INT_ZERO = mExprManager.mkConst(CVC4::Rational(0));
-	SMT_CST_INT_ONE  = mExprManager.mkConst(CVC4::Rational(1));
-
+	SMT_CST_INT_ZERO   = mExprManager.mkConst(CVC4::Rational(0));
+	SMT_CST_INT_ONE    = mExprManager.mkConst(CVC4::Rational(1));
 
 //	// Set the logic : LINEAR ARITHMETIC
 //	mSmtEngine.setLogic("QF_LIRA");
@@ -114,7 +125,6 @@ mSmtEngine( & mExprManager )
 	mSmtEngine.setOption("default-dag-thresh", 0);
 	// Set the output-language to CVC's
 	mSmtEngine.setOption("output-language", "cvc4");
-
 }
 
 
@@ -123,36 +133,53 @@ mSmtEngine( & mExprManager )
  */
 CVC4Solver::~CVC4Solver()
 {
-	SMT_TYPE_BOOL = CVC4_TYPE_NULL;
-	SMT_TYPE_INT  = CVC4_TYPE_NULL;
-	SMT_TYPE_BV32 = CVC4_TYPE_NULL;
-	SMT_TYPE_BV64 = CVC4_TYPE_NULL;
-	SMT_TYPE_REAL = CVC4_TYPE_NULL;
+	SMT_TYPE_BOOL      = CVC4_TYPE_NULL;
 
-	SMT_TYPE_NUMBER = CVC4_TYPE_NULL;
+	SMT_TYPE_ENUM      = CVC4_TYPE_NULL;
 
-	SMT_TYPE_STRING = CVC4_TYPE_NULL;
+	SMT_TYPE_UINTEGER  = CVC4_TYPE_NULL;
+	SMT_TYPE_INTEGER   = CVC4_TYPE_NULL;
+
+	SMT_TYPE_BV32      = CVC4_TYPE_NULL;
+	SMT_TYPE_BV64      = CVC4_TYPE_NULL;
+
+	SMT_TYPE_URATIONAL = CVC4_TYPE_NULL;
+	SMT_TYPE_RATIONAL  = CVC4_TYPE_NULL;
+
+	SMT_TYPE_UREAL     = CVC4_TYPE_NULL;
+	SMT_TYPE_REAL      = CVC4_TYPE_NULL;
+
+	SMT_TYPE_NUMBER    = CVC4_TYPE_NULL;
+
+	SMT_TYPE_STRING    = CVC4_TYPE_NULL;
 
 	SMT_CST_BOOL_TRUE  = CVC4_EXPR_NULL;
 	SMT_CST_BOOL_FALSE = CVC4_EXPR_NULL;
 
-	SMT_CST_INT_ZERO = CVC4_EXPR_NULL;
-	SMT_CST_INT_ONE  = CVC4_EXPR_NULL;
+	SMT_CST_INT_ZERO   = CVC4_EXPR_NULL;
+	SMT_CST_INT_ONE    = CVC4_EXPR_NULL;
 }
 
 
 /**
  * CONFIGURE
  */
-bool CVC4Solver::configure(
-		Configuration & aConfiguration, WObject * wfFilterObject,
-		ListOfPairMachineData & listOfSelectedVariable)
+bool CVC4Solver::configure(const WObject * wfFilterObject)
 {
-	if( not SatSolver::configure(
-		aConfiguration, wfFilterObject, listOfSelectedVariable) )
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
+
+	std::string logFolderLocation = VFS::ProjectDebugPath + "/cvc4/";
+
+	if ( not VFS::checkWritingFolder(logFolderLocation, true) )
 	{
+		AVM_OS_LOG << " CVC4Solver::createChecker :> Error: The folder "
+				<< "`" << logFolderLocation	<< "' "
+				<< "---> doesn't exist or is not writable !!!"
+				<< std::endl << std::endl;
 		return( false );
 	}
+
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
 	return( true );
 }
@@ -182,42 +209,49 @@ bool CVC4Solver::createChecker()
 //	mSmtEngine.setOption("output-language", "cvc4");
 
 
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	++SOLVER_SESSION_ID;
-AVM_IF_DEBUG_LEVEL_GTE_HIGH
-		mLogFolderLocation = OSS() << VFS::ProjectLogPath << "/cvc4/";
-
-		if ( not VFS::checkWritingFolder(mLogFolderLocation) )
-		{
-			AVM_OS_LOG << " CVC4Solver::createChecker :> Error: The folder "
-					<< "`" << mLogFolderLocation	<< "' "
-					<< "---> doesn't exist or is not writable !!!"
-					<< std::endl << std::endl;
-			return( false );
-		}
+AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 
 		std::string logFileLocation = ( OSS() << mLogFolderLocation
 				<< "log_" << SOLVER_SESSION_ID << ".cvc4" );
 
 //CVC3	mSmtEngine.setOption("dump-log", logFileLocation);
-AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
+		mSmtEngine.setOption("dump-to", logFileLocation);
 
-//	SMT_TYPE_BOOL = mExprManager.boolType();
-//	SMT_TYPE_INT  = mExprManager.integerType();
-//	SMT_TYPE_BV32 = mExprManager.mkBitVectorType(32);
-//	SMT_TYPE_BV64 = mExprManager.mkBitVectorType(64);
-//	SMT_TYPE_REAL = mExprManager.realType();
+		mSmtEngine.setOption("dump", "raw-benchmark");
 
-//	SMT_TYPE_NUMBER = mExprManager.realType();
+//		mSmtEngine.setOption("dump", "declarations");
+//		mSmtEngine.setOption("dump", "assertions");
 
-//	SMT_TYPE_STRING = mExprManager.stringType();
+		mSmtEngine.setOption("output-lang", "smt2.6");
 
+AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+
+
+//	SMT_TYPE_BOOL      = mExprManager.boolType();
+//
+//	SMT_TYPE_ENUM      = mExprManager.integerType();
+//
+//	SMT_TYPE_UINTEGER  = mExprManager.integerType();
+//	SMT_TYPE_INTEGER   = mExprManager.integerType();
+//
+//	SMT_TYPE_BV32      = mExprManager.mkBitVectorType(32);
+//	SMT_TYPE_BV64      = mExprManager.mkBitVectorType(64);
+//
+//	SMT_TYPE_URATIONAL = mExprManager.realType();
+//	SMT_TYPE_RATIONAL  = mExprManager.realType();
+//
+//	SMT_TYPE_UREAL     = mExprManager.realType();
+//	SMT_TYPE_REAL      = mExprManager.realType();
+//
+//	SMT_TYPE_NUMBER    = mExprManager.realType();
+//
+//	SMT_TYPE_STRING    = mExprManager.stringType();
+//
 //	SMT_CST_BOOL_TRUE  = mExprManager.mkConst(true);
 //	SMT_CST_BOOL_FALSE = mExprManager.mkConst(false);
 //
-//	SMT_CST_INT_ZERO  = mExprManager.mkConst(0);
-//	SMT_CST_INT_ONE   = mExprManager.mkConst(1);
+//	SMT_CST_INT_ZERO   = mExprManager.mkConst(0);
+//	SMT_CST_INT_ONE    = mExprManager.mkConst(1);
 
 	resetTable();
 
@@ -228,24 +262,38 @@ bool CVC4Solver::destroyChecker()
 {
 	resetTable();
 
-//	SMT_TYPE_BOOL = CVC4_TYPE_NULL;
-//	SMT_TYPE_INT  = CVC4_TYPE_NULL;
-//	SMT_TYPE_BV32 = CVC4_TYPE_NULL;
-//	SMT_TYPE_BV64 = CVC4_TYPE_NULL;
-//	SMT_TYPE_REAL = CVC4_TYPE_NULL;
-
-//	SMT_TYPE_NUMBER = CVC4_TYPE_NULL;
-
-//	SMT_TYPE_STRING = CVC4_TYPE_NULL;
-
+//	SMT_TYPE_BOOL      = CVC4_TYPE_NULL;
+//
+//	SMT_TYPE_ENUM      = CVC4_TYPE_NULL;
+//
+//	SMT_TYPE_UINTEGER  = CVC4_TYPE_NULL;
+//	SMT_TYPE_INTEGER   = CVC4_TYPE_NULL;
+//
+//	SMT_TYPE_BV32      = CVC4_TYPE_NULL;
+//	SMT_TYPE_BV64      = CVC4_TYPE_NULL;
+//
+//	SMT_TYPE_URATIONAL = CVC4_TYPE_NULL;
+//	SMT_TYPE_RATIONAL  = CVC4_TYPE_NULL;
+//
+//	SMT_TYPE_UREAL     = CVC4_TYPE_NULL;
+//	SMT_TYPE_REAL      = CVC4_TYPE_NULL;
+//
+//	SMT_TYPE_NUMBER    = CVC4_TYPE_NULL;
+//
+//	SMT_TYPE_STRING    = CVC4_TYPE_NULL;
+//
 //	SMT_CST_BOOL_TRUE  = CVC4_EXPR_NULL;
 //	SMT_CST_BOOL_FALSE = CVC4_EXPR_NULL;
 //
-//	SMT_CST_INT_ZERO  = CVC4_EXPR_NULL;
-//	SMT_CST_INT_ONE   = CVC4_EXPR_NULL;
-
+//	SMT_CST_INT_ZERO   = CVC4_EXPR_NULL;
+//	SMT_CST_INT_ONE    = CVC4_EXPR_NULL;
+//
 //	delete( mExprManager );
-//	mExprManager = NULL;
+//	mExprManager = nullptr;
+
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
+	++SOLVER_SESSION_ID;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
 	return( true );
 }
@@ -254,7 +302,11 @@ bool CVC4Solver::resetTable()
 {
 	base_this_type::resetTable();
 
-	mTableOfParameterExpr.append( CVC4_EXPR_NULL );
+	mTableOfParameterExpr.push_back( CVC4_EXPR_NULL );
+
+	mBitsetOfConstrainedParameter.push_back( false );
+	mBitsetOfPositiveParameter.push_back( false );
+	mBitsetOfStrictlyPositiveParameter.push_back( false );
 
 	return( true );
 }
@@ -283,8 +335,8 @@ bool CVC4Solver::resetTable()
 //		// x1 = e'1 AND ---- AND xn = e'n AND
 //		// e1 = e'1 AND ---- AND en = e'n
 //		//
-//		edToExprWithVarEquality(newEC.refExecutionData(), newFormula,
-//				oldEC.refExecutionData(), oldFormula);
+//		edToExprWithVarEquality(newEC.getExecutionData(), newFormula,
+//				oldEC.getExecutionData(), oldFormula);
 //
 //AVM_IF_DEBUG_FLAG( SMT_SOLVING )
 //	oldEC.writeTraceBeforeExec(AVM_OS_TRACE << TAB);
@@ -344,8 +396,8 @@ bool CVC4Solver::resetTable()
 //		//
 //		CVC4::Expr newFormula;
 //		CVC4::Expr oldFormula;
-//		edToExprWithVarEquality(newEC.refExecutionData(),
-//				newFormula, oldEC.refExecutionData(), oldFormula);
+//		edToExprWithVarEquality(newEC.getExecutionData(),
+//				newFormula, oldEC.getExecutionData(), oldFormula);
 //
 //		if( oldFormula != SMT_CST_BOOL_FALSE )
 //		{
@@ -451,8 +503,8 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 		CVC4::Expr newFormula;
 		CVC4::Expr oldFormula;
 		CVC4::Expr equFormula;
-		edToExprWithVarEquality(newEC.refExecutionData(), newFormula,
-								oldEC.refExecutionData(), oldFormula,
+		edToExprWithVarEquality(newEC.getExecutionData(), newFormula,
+								oldEC.getExecutionData(), oldFormula,
 								equFormula);
 
 		bool bResult = false;
@@ -489,7 +541,9 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
 
 
-			CVC4::Result toto = mSmtEngine.query( oldFormula );
+//			CVC4::Result toto = mSmtEngine.query( oldFormula );
+			CVC4::Result toto = mSmtEngine.checkSat( oldFormula );
+
 // !!!!!!!!!!!!!!! 271009 : ESSAI AFA temporaire !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //			CVC4::Result toto = mSmtEngine.query(
 //					mExprManager.mkExpr(CVC4::kind::NOT, oldFormula) );
@@ -502,7 +556,8 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 //				int i = 2;
 //			}
 
-			bool result = ( toto == CVC4::Result::VALID );
+//			bool result = ( toto == CVC4::Result::VALID );
+			bool result = ( toto == CVC4::Result::SAT );
 
 			bResult = ( not result );
 		}
@@ -556,7 +611,7 @@ AVM_IF_DEBUG_FLAG( SMT_SOLVING )
 	AVM_OS_TRACE << std::endl << "new PC: " << aPC << std::endl;
 AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
-//	m_pTableOfParameterExpr = NULL;
+//	m_pTableOfParameterExpr = nullptr;
 	oldFormulaList.push_back( aPC =
 			safe_from_baseform(oldED.getPathCondition()) );
 
@@ -564,55 +619,47 @@ AVM_IF_DEBUG_FLAG( SMT_SOLVING )
 	AVM_OS_TRACE << "old PC: " << aPC << std::endl;
 AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
-	InstanceOfData * aVar = NULL;
-	BaseTypeSpecifier * varTypeSpecifier = NULL;
+	InstanceOfData * aVar = nullptr;
 
 	// compile DATAs
 	std::ostringstream oss;
-	ListOfInstanceOfData::iterator itVar;
-	ListOfInstanceOfData::iterator endVar;
 
-	ListOfPairMachineData::iterator itPairMachineData = getSelectedVariable().begin();
-	ListOfPairMachineData::iterator endPairMachineData = getSelectedVariable().end();
 	avm_offset_t varID = 1;
-	for( ; itPairMachineData != endPairMachineData ; ++itPairMachineData )
+	for( const auto & itPairMachineData : getSelectedVariable() )
 	{
-		if( (*itPairMachineData).second().nonempty() )
+		if( itPairMachineData.second().nonempty() )
 		{
 			const RuntimeForm & newRF = newED.getRuntime(
-					(*itPairMachineData).first() );
+					itPairMachineData.first() );
 			const RuntimeForm & oldRF = oldED.getRuntime(
-					(*itPairMachineData).first() );
+					itPairMachineData.first() );
 
-			itVar = (*itPairMachineData).second().begin();
-			endVar = (*itPairMachineData).second().end();
-			for( ; itVar != endVar ; ++itVar , ++varID )
+			for( const auto & itVar : itPairMachineData.second() )
 			{
 				//??? TABLEAUX
-				aVar = newRF.rawVariable((*itVar)->getOffset());
-				varTypeSpecifier = aVar->getTypeSpecifier();
+				aVar = newRF.rawVariable(itVar->getOffset());
+				
+				const BaseTypeSpecifier & varTypeSpecifier = aVar->getTypeSpecifier();
 
 				oss.str("");
 				oss << "V_" << varID;
 
 //				m_pTableOfParameterExpr = &mTableOfParameterExprForNewFormula;
-				CVC4::Expr newValue = safe_from_baseform(
-						newRF.getData(*itVar), varTypeSpecifier);
-//				m_pTableOfParameterExpr = NULL;
-				CVC4::Expr oldValue = safe_from_baseform(
-						oldRF.getData(*itVar), varTypeSpecifier);
+				CVC4::Expr newValue = safe_from_baseform(newRF.getData(itVar));
+//				m_pTableOfParameterExpr = nullptr;
+				CVC4::Expr oldValue = safe_from_baseform(oldRF.getData(itVar));
 
 AVM_IF_DEBUG_FLAG( SMT_SOLVING )
-	AVM_OS_TRACE << varTypeSpecifier->strT() << "  "
-			<< (*itVar)->getNameID() << " --> " << oss.str()
+	AVM_OS_TRACE << varTypeSpecifier.strT() << "  "
+			<< itVar->getNameID() << " --> " << oss.str()
 			<< std::endl << "\told: " << oldValue << "\tnew: " << newValue;
 AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
 
-				if( varTypeSpecifier->isTypedBoolean() )
+				if( varTypeSpecifier.isTypedBoolean() )
 				{
-					const BF & newElement = newRF.getData(*itVar);
-					const BF & oldElement = oldRF.getData(*itVar);
+					const BF & newElement = newRF.getData(itVar);
+					const BF & oldElement = oldRF.getData(itVar);
 					if( newElement.isBoolean() && oldElement.isBoolean() )
 					{
 						// On rajoute l'équivalence entre la nouvelle valeur
@@ -642,12 +689,12 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 								CVC4::kind::EQUAL, varExpr, oldValue) );
 					}
 				}
-				else if( varTypeSpecifier->weaklyTypedInteger() ||
-						varTypeSpecifier->isTypedEnum() ||
-						varTypeSpecifier->isTypedMachine() )
+				else if( varTypeSpecifier.weaklyTypedInteger()
+						|| varTypeSpecifier.isTypedEnum()
+						|| varTypeSpecifier.isTypedMachine() )
 				{
-					const BF & newElement = newRF.getData(*itVar);
-					const BF & oldElement = oldRF.getData(*itVar);
+					const BF & newElement = newRF.getData(itVar);
+					const BF & oldElement = oldRF.getData(itVar);
 					if ( newElement.isNumeric() && oldElement.isNumeric() )
 					{
 						// On rajoute l'égalité entre la nouvelle valeur
@@ -669,7 +716,7 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 					else
 					{
 						CVC4::Expr varExpr =
-								mExprManager.mkVar(oss.str(), SMT_TYPE_INT);
+								mExprManager.mkVar(oss.str(), SMT_TYPE_INTEGER);
 						mTableOfVariableExpr.push_back( varExpr );
 
 						newFormulaList.push_back( mExprManager.mkExpr(
@@ -679,10 +726,10 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 								CVC4::kind::EQUAL, varExpr, oldValue) );
 					}
 				}
-				else if( varTypeSpecifier->weaklyTypedReal() )
+				else if( varTypeSpecifier.weaklyTypedReal() )
 				{
-					const BF & newElement = newRF.getData(*itVar);
-					const BF & oldElement = oldRF.getData(*itVar);
+					const BF & newElement = newRF.getData(itVar);
+					const BF & oldElement = oldRF.getData(itVar);
 					if ( newElement.isNumeric() && oldElement.isNumeric() )
 					{
 						// On rajoute l'égalité entre la nouvelle valeur
@@ -718,7 +765,7 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 				{
 					AVM_OS_ERROR_ALERT << "Unexpected an instance type << "
 							<< aVar->getFullyQualifiedNameID() << " as : " << oss.str() << " : "
-							<< varTypeSpecifier->getFullyQualifiedNameID() << ">> !!!"
+							<< varTypeSpecifier.getFullyQualifiedNameID() << ">> !!!"
 							<< SEND_ALERT;
 
 					CVC4::Expr varExpr =
@@ -735,12 +782,11 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 		}
 	}
 
-	Vector< CVC4::Expr >::iterator it = mTableOfParameterExpr.begin();
-	for( ; it != mTableOfParameterExpr.end() ; ++it )
+	for( const auto & itParam : mTableOfParameterExpr )
 	{
-		if( not mTableOfParameterExprForNewFormula.contains( *it ) )
+		if( not mTableOfParameterExprForNewFormula.contains( itParam ) )
 		{
-			mTableOfParameterExprForOldFormula.append( *it );
+			mTableOfParameterExprForOldFormula.append( itParam );
 		}
 	}
 
@@ -804,8 +850,8 @@ bool CVC4Solver::isEqualSet(
 		CVC4::Expr newFormula;
 		CVC4::Expr oldFormula;
 
-		edToExpr(newEC.refExecutionData(), newFormula,
-				oldEC.refExecutionData(), oldFormula);
+		edToExpr(newEC.getExecutionData(), newFormula,
+				oldEC.getExecutionData(), oldFormula);
 
 AVM_IF_DEBUG_FLAG( SMT_SOLVING )
 	oldEC.traceDefault(AVM_OS_TRACE << TAB);
@@ -833,11 +879,13 @@ AVM_IF_DEBUG_FLAG( SMT_SOLVING )
 	AVM_OS_TRACE << TAB << "isSubSet Expr: " << equalTest << std::endl;
 AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
-		CVC4::Result result = mSmtEngine.query(equalTest);
+//		CVC4::Result result = mSmtEngine.query(equalTest);
+		CVC4::Result result = mSmtEngine.checkSat(equalTest);
 
 AVM_IF_DEBUG_FLAG( SMT_SOLVING )
 	AVM_OS_TRACE << TAB << "\nisEqual result : "
-			<< TAB << ( (result.isValid() == CVC4::Result::VALID) ?
+//			<< TAB << ( (result.isValid() == CVC4::Result::VALID) ?
+			<< TAB << ( (result.isSat() == CVC4::Result::SAT) ?
 					"true" : "false" ) << std::endl	<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
@@ -845,7 +893,8 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 		oldFormula = CVC4_EXPR_NULL;
 		destroyChecker();
 
-		return( result == CVC4::Result::VALID );
+//		return( result == CVC4::Result::VALID );
+		return( result == CVC4::Result::SAT );
 	}
 	catch( const CVC4::Exception & ex )
 	{
@@ -865,6 +914,9 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	AVM_OS_TRACE << "CVC4Solver::isSatisfiable(...) "
 			":" << SOLVER_SESSION_ID << ">" << std::endl
 			<< "\t" << aCondition.str() << std::endl;
+
+	// trace to file
+//	smt_check_sat(aCondition);
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
 	if( aCondition.isBoolean() )
@@ -877,7 +929,7 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 				SolverDef::SATISFIABLE : SolverDef::UNSATISFIABLE );
 	}
 
-	if( aCondition.isFloat() )
+	else if( aCondition.isFloat() )
 	{
 AVM_IF_DEBUG_FLAG( SMT_SOLVING )
 	AVM_OS_TRACE << TAB << "is satisfiable : " << aCondition.str() << std::endl;
@@ -887,26 +939,48 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 				SolverDef::SATISFIABLE : SolverDef::UNSATISFIABLE );
 	}
 
-
 	try
 	{
 		createChecker();
 
 		// compile Formula
-		CVC4::Expr aFormula= safe_from_baseform( aCondition );
-
+		CVC4::Expr aFormula = safe_from_baseform( aCondition );
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	AVM_OS_TRACE << "CVC4Condition :" << SOLVER_SESSION_ID << ">" << std::endl;
-	AVM_IF_DEBUG_LEVEL_GTE_HIGH
-		AVM_OS_TRACE << "\t";
-		aFormula.printAst(AVM_OS_TRACE);
-		AVM_OS_TRACE << std::endl;
-	AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
+
+	dbg_smt(aFormula);
+
 	AVM_OS_TRACE << "\t" << aFormula << std::endl;
+
+	if( mBitsetOfConstrainedParameter.anyTrue() )
+	{
+		AVM_OS_TRACE << "REQUIRED ASSERTION : " << mBitsetOfConstrainedParameter
+				<< " for CONSTRAINED type" << std::endl;
+	}
+	if( mBitsetOfPositiveParameter.anyTrue() )
+	{
+		AVM_OS_TRACE << "REQUIRED ASSERTION : " << mBitsetOfPositiveParameter
+				<< " for POSITIVE type" << std::endl;
+	}
+	if( mBitsetOfStrictlyPositiveParameter.anyTrue() )
+	{
+		AVM_OS_TRACE << "REQUIRED ASSERTION : "
+				<< mBitsetOfStrictlyPositiveParameter
+				<< " for STRICTLY POSITIVE type" << std::endl;
+	}
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
-		CVC4::Result result = mSmtEngine.checkSat( aFormula );
+//AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )	// trace to file
+//	AVM_OS_TRACE << "z3::solver::to_smt2(...)" << std::endl
+//			<< z3Solver.to_smt2() << std::endl;
+//AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+
+
+		CVC4::Result result = ( mBitsetOfConstrainedParameter.allFalse()
+				|| appendPossitiveAssertion() )
+						? mSmtEngine.checkSat( aFormula )
+						: CVC4::Result::SAT_UNKNOWN;
 
 		// ATTENTION : lorsque CVC4 répond UNKNOWN,
 		// on considère que la garde est SATISFIABLE
@@ -1007,6 +1081,9 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	AVM_OS_TRACE << "CVC4Solver::solve(...) "
 			":" << SOLVER_SESSION_ID << ">" << std::endl
 			<< "\t" << aCondition.str() << std::endl;
+
+	// trace to file
+//	smt_check_sat(aCondition);
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
 	try
@@ -1022,12 +1099,10 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	AVM_OS_TRACE << "CVC4Condition :" << SOLVER_SESSION_ID << ">" << std::endl;
-	AVM_IF_DEBUG_LEVEL_GTE_HIGH
-		AVM_OS_TRACE << "\t";
-		aFormula.printAst(AVM_OS_TRACE);
-		AVM_OS_TRACE << std::endl;
-	AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
-		AVM_OS_TRACE << "\t" << aFormula << std::endl;
+
+	dbg_smt(aFormula, true);
+
+	AVM_OS_TRACE << "\t" << aFormula << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
 
@@ -1061,13 +1136,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 					if( rat.isIntegral() )
 					{
 						valuesVector.append( ExpressionConstructor::newInteger(
-								rat.getNumerator().get_mpz() ) );
+								rat.getNumerator().getValue() ) );
 					}
 					else // C'est un rationel (num/den)
 					{
 						valuesVector.append(
 								ExpressionConstructor::newRational(
-										rat.get_mpq() ) );
+										rat.getValue() ) );
 					}
 
 #else
@@ -1191,43 +1266,35 @@ AVM_IF_DEBUG_FLAG( SMT_SOLVING )
 	AVM_OS_TRACE << "old PC: " << aPC << std::endl;
 AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
-	InstanceOfData * aVar = NULL;
-	BaseTypeSpecifier * varTypeSpecifier = NULL;
+	InstanceOfData * aVar = nullptr;
 
 	// compile DATAs
 	std::ostringstream oss;
-	ListOfInstanceOfData::iterator itVar;
-	ListOfInstanceOfData::iterator endVar;
 
-	ListOfPairMachineData::iterator itPairMachineData = getSelectedVariable().begin();
-	ListOfPairMachineData::iterator endPairMachineData = getSelectedVariable().end();
 	avm_offset_t varID = 1;
-	for( ; itPairMachineData != endPairMachineData ; ++itPairMachineData )
+	for( const auto & itPairMachineData : getSelectedVariable() )
 	{
-		if( (*itPairMachineData).second().nonempty() )
+		if( itPairMachineData.second().nonempty() )
 		{
 			const RuntimeForm & newRF = newED.getRuntime(
-					(*itPairMachineData).first() );
+					itPairMachineData.first() );
 			const RuntimeForm & oldRF = oldED.getRuntime(
-					(*itPairMachineData).first() );
+					itPairMachineData.first() );
 
-			itVar = (*itPairMachineData).second().begin();
-			endVar = (*itPairMachineData).second().end();
-			for( ; itVar != endVar ; ++itVar , ++varID )
+			for( const auto & itVar : itPairMachineData.second() )
 			{
 				//??? TABLEAUX
-				aVar = newRF.rawVariable((*itVar)->getOffset());
-				varTypeSpecifier = aVar->getTypeSpecifier();
+				aVar = newRF.rawVariable(itVar->getOffset());
+				
+				const BaseTypeSpecifier & varTypeSpecifier = aVar->getTypeSpecifier();
 
 				oss.str("");
 				oss << "V_" << varID;
 
-				CVC4::Expr newValue = safe_from_baseform(
-						newRF.getData(*itVar), varTypeSpecifier);
-				CVC4::Expr oldValue = safe_from_baseform(
-						oldRF.getData(*itVar), varTypeSpecifier);
+				CVC4::Expr newValue = safe_from_baseform(newRF.getData(itVar));
+				CVC4::Expr oldValue = safe_from_baseform(oldRF.getData(itVar));
 
-				if( varTypeSpecifier->isTypedBoolean() )
+				if( varTypeSpecifier.isTypedBoolean() )
 				{
 					CVC4::Expr varExpr =
 							mExprManager.mkVar(oss.str(), SMT_TYPE_BOOL);
@@ -1237,18 +1304,27 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 					oldFormulaList.push_back( mExprManager.mkExpr(
 							CVC4::kind::EQUAL,varExpr, oldValue) );
 				}
-				else if( varTypeSpecifier->weaklyTypedInteger() ||
-						varTypeSpecifier->isTypedEnum() )
+				else if( varTypeSpecifier.isTypedEnum() )
 				{
 					CVC4::Expr varExpr =
-							mExprManager.mkVar(oss.str(), SMT_TYPE_INT);
+							mExprManager.mkVar(oss.str(), SMT_TYPE_ENUM);
 					mTableOfVariableExpr.push_back( varExpr );
 					newFormulaList.push_back( mExprManager.mkExpr(
 							CVC4::kind::EQUAL, varExpr, newValue) );
 					oldFormulaList.push_back( mExprManager.mkExpr(
 							CVC4::kind::EQUAL, varExpr, oldValue) );
 				}
-				else if( varTypeSpecifier->weaklyTypedReal() )
+				else if( varTypeSpecifier.weaklyTypedInteger() )
+				{
+					CVC4::Expr varExpr =
+							mExprManager.mkVar(oss.str(), SMT_TYPE_INTEGER);
+					mTableOfVariableExpr.push_back( varExpr );
+					newFormulaList.push_back( mExprManager.mkExpr(
+							CVC4::kind::EQUAL, varExpr, newValue) );
+					oldFormulaList.push_back( mExprManager.mkExpr(
+							CVC4::kind::EQUAL, varExpr, oldValue) );
+				}
+				else if( varTypeSpecifier.weaklyTypedReal() )
 				{
 					CVC4::Expr varExpr =
 							mExprManager.mkVar(oss.str(), SMT_TYPE_REAL);
@@ -1262,7 +1338,7 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 				{
 					AVM_OS_ERROR_ALERT << "Unexpected an instance type << "
 							<< aVar->getFullyQualifiedNameID() << " as : " << oss.str() << " : "
-							<< varTypeSpecifier->getFullyQualifiedNameID() << ">> !!!"
+							<< varTypeSpecifier.getFullyQualifiedNameID() << ">> !!!"
 							<< SEND_ALERT;
 
 					CVC4::Expr varExpr = mExprManager.mkVar(oss.str(), SMT_TYPE_REAL);
@@ -1309,50 +1385,48 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 	mSmtEngine.assertFormula( pcExpr );
 
 	std::vector< CVC4::Expr > aFormulaList;
-	InstanceOfData * aVar = NULL;
-	BaseTypeSpecifier * varTypeSpecifier = NULL;
+	InstanceOfData * aVar = nullptr;
 	ListOfInstanceOfData::iterator itVar;
 
 	// compile DATA
-	ListOfListOfInstanceOfData::iterator itPairMachineData =
-			getSelectedVariable()->begin();
-	for( ; itPairMachineData != getSelectedVariable()->end() ; ++itPairMachineData )
+	for( const auto & itPairMachineData : getSelectedVariable() )
 	{
-		if( (*itPairMachineData).second().nonempty() )
+		if( itPairMachineData.second().nonempty() )
 		{
-			itVar = (*itPairMachineData).begin();
-			RuntimeForm * aRF = anED.get(*itVar);
+			itVar = itPairMachineData.begin();
+			RuntimeForm * aRF = anED.get(itVar);
 
-			for( ; itVar != (*itPairMachineData).end() ; ++itVar )
+			for( ; itVar != itPairMachineData.end() ; ++itVar )
 			{
-				aVar = aRF.getExecutable()->getBasicData((*itVar)->getOffset());
-				varTypeSpecifier = aVar->getTypeSpecifier();
+				aVar = aRF.refExecutable().getBasicVariable(itVar->getOffset());
+				
+				const BaseTypeSpecifier & varTypeSpecifier = aVar->getTypeSpecifier();
 
-				if( varTypeSpecifier->isTypedBoolean() )
+				if( varTypeSpecifier.isTypedBoolean() )
 				{
-					aFormulaList.push_back( safe_from_baseform(
-							aRF.getData(*itVar), varTypeSpecifier) );
+					aFormulaList.push_back(
+							safe_from_baseform(aRF.getData(itVar)) );
 				}
-				else if( varTypeSpecifier->weaklyTypedInteger() ||
-						varTypeSpecifier->isTypedEnum() )
+				else if( varTypeSpecifier.weaklyTypedInteger()
+						|| varTypeSpecifier.isTypedEnum() )
 				{
-					aFormulaList.push_back( safe_from_baseform(
-							aRF.getData(*itVar), varTypeSpecifier) );
+					aFormulaList.push_back(
+							safe_from_baseform(aRF.getData(itVar)) );
 				}
-				else if( varTypeSpecifier->weaklyTypedReal() )
+				else if( varTypeSpecifier.weaklyTypedReal() )
 				{
-					aFormulaList.push_back( safe_from_baseform(
-							aRF.getData(*itVar), varTypeSpecifier) );
+					aFormulaList.push_back(
+							safe_from_baseform(aRF.getData(itVar)) );
 				}
 				else
 				{
 					AVM_OS_ERROR_ALERT << "Unexpected an instance type << "
 							<< aVar->getFullyQualifiedNameID() " : "
-							<< varTypeSpecifier->getFullyQualifiedNameID() << ">> !!!"
+							<< varTypeSpecifier.getFullyQualifiedNameID() << ">> !!!"
 							<< SEND_ALERT;
 
-					aFormulaList.push_back( safe_from_baseform(
-							aRF.getData(*itVar), varTypeSpecifier) );
+					aFormulaList.push_back(
+							safe_from_baseform(aRF.getData(itVar)) );
 				}
 			}
 		}
@@ -1391,63 +1465,56 @@ CVC4::Expr CVC4Solver::edToExpr(const ExecutionData & anED)
 	// compile PC
 	aFormulaList.push_back( safe_from_baseform(anED.getPathCondition()) );
 
-	BaseTypeSpecifier * varTypeSpecifier = NULL;
-	ListOfInstanceOfData::iterator itVar;
-	ListOfInstanceOfData::iterator endVar;
-
 	// compile DATA
-	ListOfPairMachineData::iterator itPairMachineData = getSelectedVariable().begin();
-	ListOfPairMachineData::iterator endPairMachineData = getSelectedVariable().end();
 	avm_offset_t varID = 0;
-	for( ; itPairMachineData != endPairMachineData ; ++itPairMachineData )
+	for( const auto & itPairMachineData : getSelectedVariable() )
 	{
-		if( (*itPairMachineData).second().nonempty() )
+		if( itPairMachineData.second().nonempty() )
 		{
 			const RuntimeForm & aRF = anED.getRuntime(
-					(*itPairMachineData).first() );
+					itPairMachineData.first() );
 
-			itVar = (*itPairMachineData).second().begin();
-			endVar = (*itPairMachineData).second().end();
-			for( ; itVar != endVar ; ++itVar , ++varID )
+			for( const auto & itVar : itPairMachineData.second() )
 			{
 				//??? TABLEAUX
-				InstanceOfData * aVar = aRF.rawVariable((*itVar)->getOffset());
+				InstanceOfData * aVar = aRF.rawVariable(itVar->getOffset());
 
-				varTypeSpecifier = aVar->getTypeSpecifier();
+				const BaseTypeSpecifier & varTypeSpecifier = aVar->getTypeSpecifier();
 
-				if( varTypeSpecifier->isTypedBoolean() )
+				if( varTypeSpecifier.isTypedBoolean() )
 				{
 					aFormulaList.push_back( mExprManager.mkExpr(CVC4::kind::EQUAL,
 							getVariableExpr(aVar, SMT_TYPE_BOOL, varID),
-							safe_from_baseform(aRF.getData(*itVar),
-									varTypeSpecifier)) );
+							safe_from_baseform(aRF.getData(itVar))) );
 				}
-				else if( varTypeSpecifier->weaklyTypedInteger() ||
-						varTypeSpecifier->isTypedEnum() )
+				else if( varTypeSpecifier.isTypedEnum() )
 				{
 					aFormulaList.push_back( mExprManager.mkExpr(CVC4::kind::EQUAL,
-							getVariableExpr(aVar, SMT_TYPE_INT, varID),
-							safe_from_baseform(aRF.getData(*itVar),
-									varTypeSpecifier)) );
+							getVariableExpr(aVar, SMT_TYPE_ENUM, varID),
+							safe_from_baseform(aRF.getData(itVar))) );
 				}
-				else if( varTypeSpecifier->weaklyTypedReal() )
+				else if( varTypeSpecifier.weaklyTypedInteger() )
+				{
+					aFormulaList.push_back( mExprManager.mkExpr(CVC4::kind::EQUAL,
+							getVariableExpr(aVar, SMT_TYPE_INTEGER, varID),
+							safe_from_baseform(aRF.getData(itVar))) );
+				}
+				else if( varTypeSpecifier.weaklyTypedReal() )
 				{
 					aFormulaList.push_back( mExprManager.mkExpr(CVC4::kind::EQUAL,
 							getVariableExpr(aVar, SMT_TYPE_REAL, varID),
-							safe_from_baseform(aRF.getData(*itVar),
-									varTypeSpecifier)) );
+							safe_from_baseform(aRF.getData(itVar))) );
 				}
 				else
 				{
 					AVM_OS_ERROR_ALERT << "Unexpected an instance type << "
 							<< aVar->getFullyQualifiedNameID() << " : "
-							<< varTypeSpecifier->getFullyQualifiedNameID() << ">> !!!"
+							<< varTypeSpecifier.getFullyQualifiedNameID() << ">> !!!"
 							<< SEND_ALERT;
 
 					aFormulaList.push_back( mExprManager.mkExpr(CVC4::kind::EQUAL,
 							getVariableExpr(aVar, SMT_TYPE_REAL, varID),
-							safe_from_baseform(aRF.getData(*itVar),
-									varTypeSpecifier)) );
+							safe_from_baseform(aRF.getData(itVar))) );
 				}
 			}
 		}
@@ -1472,20 +1539,21 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
 CVC4::Expr & CVC4Solver::getParameterExpr(const BF & bfParameter)
 {
-	InstanceOfData * aParameter = bfParameter.to_ptr< InstanceOfData >();
+	InstanceOfData & aParameter = const_cast< InstanceOfData & >(
+			bfParameter.to< InstanceOfData >() );
 
-	if( aParameter->getMark() == 0 )
+	if( aParameter.getMark() == 0 )
 	{
-		BaseTypeSpecifier * paramTypeSpecifier =
-				aParameter->referedTypeSpecifier();
+		const BaseTypeSpecifier & paramTypeSpecifier =
+				aParameter.referedTypeSpecifier();
 
 		CVC4::Type paramType;
 
-		if( paramTypeSpecifier->isTypedBoolean() )
+		if( paramTypeSpecifier.isTypedBoolean() )
 		{
 			paramType = SMT_TYPE_BOOL;
 		}
-		else if( paramTypeSpecifier->weaklyTypedInteger() )
+		else if( paramTypeSpecifier.weaklyTypedUInteger() )
 		{
 			if( SolverDef::DEFAULT_SOLVER_KIND ==
 					SolverDef::SOLVER_CVC4_BV32_KIND )
@@ -1493,73 +1561,255 @@ CVC4::Expr & CVC4Solver::getParameterExpr(const BF & bfParameter)
 				paramType = SMT_TYPE_BV32;
 			}
 			else
-//				if( SolverDef::DEFAULT_SOLVER_KIND ==
-//						SolverDef::SOLVER_CVC4_KIND )
+//			if( SolverDef::DEFAULT_SOLVER_KIND == SolverDef::SOLVER_CVC4_KIND )
 			{
-				paramType = SMT_TYPE_INT;
+				paramType = SMT_TYPE_UINTEGER;
+			}
+		}
+		else if( paramTypeSpecifier.weaklyTypedInteger() )
+		{
+			if( SolverDef::DEFAULT_SOLVER_KIND ==
+					SolverDef::SOLVER_CVC4_BV32_KIND )
+			{
+				paramType = SMT_TYPE_BV32;
+			}
+			else
+//			if( SolverDef::DEFAULT_SOLVER_KIND == SolverDef::SOLVER_CVC4_KIND )
+			{
+				paramType = SMT_TYPE_INTEGER;
 			}
 //			else
 //			{
-//			AVM_OS_FATAL_ERROR_EXIT
-//					<< "SolverDef::DEFAULT_SOLVER_KIND <> "
-//						"CVC4_INT and <> CVC4_BV32 !!!\n"
-//					<< SEND_EXIT;
+//				AVM_OS_FATAL_ERROR_EXIT
+//						<< "SolverDef::DEFAULT_SOLVER_KIND <> "
+//							"CVC4_INT and <> CVC4_BV32 !!!\n"
+//						<< SEND_EXIT;
 //
-//				paramType = SMT_TYPE_INT;
+//				paramType = SMT_TYPE_INTEGER;
 //			}
 		}
-		else if( paramTypeSpecifier->weaklyTypedReal() )
+
+		else if( paramTypeSpecifier.weaklyTypedURational() )
+		{
+			paramType = SMT_TYPE_URATIONAL;
+		}
+		else if( paramTypeSpecifier.weaklyTypedRational() )
+		{
+			paramType = SMT_TYPE_RATIONAL;
+		}
+
+		else if( paramTypeSpecifier.weaklyTypedUReal() )
+		{
+			paramType = SMT_TYPE_UREAL;
+		}
+		else if( paramTypeSpecifier.weaklyTypedReal() )
 		{
 			paramType = SMT_TYPE_REAL;
 		}
-		else if( paramTypeSpecifier->isTypedString() )
+
+		else if( paramTypeSpecifier.isTypedString() )
 		{
 			paramType = SMT_TYPE_STRING;
 		}
-		else if( paramTypeSpecifier->isTypedEnum() )
+		else if( paramTypeSpecifier.isTypedEnum() )
 		{
-			paramType = SMT_TYPE_INT;
+			paramType = SMT_TYPE_ENUM;
 			// TODO Attention : il faudrait rajouter les contraintes
 			// d'intervalle pour le type énuméré
 		}
-		else if( paramTypeSpecifier->isTypedMachine() )
+		else if( paramTypeSpecifier.isTypedMachine() )
 		{
 			// TODO:> Consolidation après TEST
-			paramType = SMT_TYPE_INT;
+			paramType = SMT_TYPE_INTEGER;
 		}
 		else
 		{
 			AVM_OS_ERROR_ALERT << "Unexpected an instance type << "
-					<< aParameter->getFullyQualifiedNameID() << " : "
-					<< paramTypeSpecifier->getFullyQualifiedNameID() << ">> !!!"
+					<< aParameter.getFullyQualifiedNameID() << " : "
+					<< paramTypeSpecifier.getFullyQualifiedNameID() << ">> !!!"
 					<< SEND_ALERT;
 
 			paramType = SMT_TYPE_REAL;
 		}
 
 
-		CVC4::Expr paramExpr = mExprManager.mkVar( OSS() << "P_"
-				<< mTableOfParameterInstance.size(), paramType );
+		CVC4::Expr paramExpr = mExprManager.mkVar(
+				uniqParameterID( aParameter ), paramType );
 
 //AVM_IF_DEBUG_FLAG( SMT_SOLVING )
-//	AVM_OS_TRACE << TAB  << "P_" << mTableOfParameterInstance.size()
-//			<< " <- " << aParameter->getFullyQualifiedNameID() << std::endl;
+//	AVM_OS_TRACE << TAB  << mParamPrefix << mTableOfParameterInstance.size()
+//			<< " <- " << aParameter.getFullyQualifiedNameID() << std::endl;
 //	AVM_OS_TRACE << std::flush;
 //AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
-		aParameter->setMark( mTableOfParameterInstance.size() );
-		mTableOfParameterInstance.append( bfParameter );
+		aParameter.setMark( mTableOfParameterInstance.size() );
 
-		mTableOfParameterExpr.append(paramExpr);
-//		if( m_pTableOfParameterExpr != NULL )
+		mTableOfParameterInstance.push_back( bfParameter );
+
+		mTableOfParameterExpr.push_back( paramExpr );
+
+		mBitsetOfConstrainedParameter.push_back(
+				paramTypeSpecifier.couldGenerateConstraint() );
+
+		mBitsetOfPositiveParameter.push_back(
+				paramTypeSpecifier.isTypedPositiveNumber() );
+
+		mBitsetOfStrictlyPositiveParameter.push_back(
+				paramTypeSpecifier.isTypedStrictlyPositiveNumber() );
+
+//		if( m_pTableOfParameterExpr != nullptr )
 //		{
 //			m_pTableOfParameterExpr->append(paramExpr);
 //		}
 	}
 
-	return( mTableOfParameterExpr[ aParameter->getMark() ] );
-
+	return( mTableOfParameterExpr[ aParameter.getMark() ] );
 }
+
+
+
+CVC4::Expr & CVC4Solver::getBoundParameterExpr(
+		const BF & bfParameter, ARGS & boundVarConstraints)
+{
+	InstanceOfData & aBoundParameter = const_cast< InstanceOfData & >(
+			bfParameter.to< InstanceOfData >() );
+
+//	if( aBoundParameter.getMark() == 0 )
+	{
+		const BaseTypeSpecifier & paramTypeSpecifier =
+				aBoundParameter.referedTypeSpecifier();
+
+		CVC4::Type paramType;
+
+		if( paramTypeSpecifier.isTypedBoolean() )
+		{
+			paramType = SMT_TYPE_BOOL;
+		}
+		else if( paramTypeSpecifier.weaklyTypedUInteger() )
+		{
+			if( SolverDef::DEFAULT_SOLVER_KIND ==
+					SolverDef::SOLVER_CVC4_BV32_KIND )
+			{
+				paramType = SMT_TYPE_BV32;
+			}
+			else
+//			if( SolverDef::DEFAULT_SOLVER_KIND == SolverDef::SOLVER_CVC4_KIND )
+			{
+				paramType = SMT_TYPE_UINTEGER;
+			}
+		}
+		else if( paramTypeSpecifier.weaklyTypedInteger() )
+		{
+			if( SolverDef::DEFAULT_SOLVER_KIND ==
+					SolverDef::SOLVER_CVC4_BV32_KIND )
+			{
+				paramType = SMT_TYPE_BV32;
+			}
+			else
+//			if( SolverDef::DEFAULT_SOLVER_KIND == SolverDef::SOLVER_CVC4_KIND )
+			{
+				paramType = SMT_TYPE_INTEGER;
+			}
+//			else
+//			{
+//				AVM_OS_FATAL_ERROR_EXIT
+//						<< "SolverDef::DEFAULT_SOLVER_KIND <> "
+//							"CVC4_INT and <> CVC4_BV32 !!!\n"
+//						<< SEND_EXIT;
+//
+//				paramType = SMT_TYPE_INTEGER;
+//			}
+		}
+
+		else if( paramTypeSpecifier.weaklyTypedURational() )
+		{
+			paramType = SMT_TYPE_URATIONAL;
+		}
+		else if( paramTypeSpecifier.weaklyTypedRational() )
+		{
+			paramType = SMT_TYPE_RATIONAL;
+		}
+
+		else if( paramTypeSpecifier.weaklyTypedUReal() )
+		{
+			paramType = SMT_TYPE_UREAL;
+		}
+		else if( paramTypeSpecifier.weaklyTypedReal() )
+		{
+			paramType = SMT_TYPE_REAL;
+		}
+
+		else if( paramTypeSpecifier.isTypedString() )
+		{
+			paramType = SMT_TYPE_STRING;
+		}
+		else if( paramTypeSpecifier.isTypedEnum() )
+		{
+			paramType = SMT_TYPE_ENUM;
+			// TODO Attention : il faudrait rajouter les contraintes
+			// d'intervalle pour le type énuméré
+		}
+		else if( paramTypeSpecifier.isTypedMachine() )
+		{
+			// TODO:> Consolidation après TEST
+			paramType = SMT_TYPE_INTEGER;
+		}
+		else
+		{
+			AVM_OS_ERROR_ALERT << "Unexpected an instance type << "
+					<< aBoundParameter.getFullyQualifiedNameID() << " : "
+					<< paramTypeSpecifier.getFullyQualifiedNameID() << ">> !!!"
+					<< SEND_ALERT;
+
+			paramType = SMT_TYPE_REAL;
+		}
+
+
+		CVC4::Expr paramExpr = mExprManager.mkBoundVar(
+//				OSS() << mParamPrefix << mTableOfParameterInstance.size(),
+				aBoundParameter.getNameID(),
+				paramType );
+
+//AVM_IF_DEBUG_FLAG( SMT_SOLVING )
+//	AVM_OS_TRACE << TAB  << mParamPrefix << mTableOfParameterInstance.size()
+//			<< " <- " << aBoundParameter.getFullyQualifiedNameID() << std::endl;
+//	AVM_OS_TRACE << std::flush;
+//AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
+
+		aBoundParameter.setMark( mTableOfParameterInstance.size() );
+
+		mTableOfParameterInstance.push_back( bfParameter );
+
+		mTableOfParameterExpr.push_back( paramExpr );
+
+		mBitsetOfStrictlyPositiveParameter.push_back( false );
+		mBitsetOfPositiveParameter.push_back( false );
+		mBitsetOfConstrainedParameter.push_back( false );
+
+		if( paramTypeSpecifier.isTypedStrictlyPositiveNumber() )
+		{
+			boundVarConstraints.next( mExprManager.mkExpr(
+					CVC4::kind::GT, paramExpr, SMT_CST_INT_ZERO) );
+		}
+		else if( paramTypeSpecifier.isTypedPositiveNumber() )
+		{
+			boundVarConstraints.next( mExprManager.mkExpr(
+					CVC4::kind::GEQ, paramExpr, SMT_CST_INT_ZERO) );
+		}
+		else
+		{
+			boundVarConstraints.next( SMT_CST_BOOL_TRUE );
+		}
+
+//		if( m_pTableOfParameterExpr != nullptr )
+//		{
+//			m_pTableOfParameterExpr->append(paramExpr);
+//		}
+	}
+
+	return( mTableOfParameterExpr[ aBoundParameter.getMark() ] );
+}
+
 
 
 CVC4::Expr & CVC4Solver::getVariableExpr(InstanceOfData * aVar,
@@ -1568,7 +1818,7 @@ CVC4::Expr & CVC4Solver::getVariableExpr(InstanceOfData * aVar,
 	if( mTableOfVariableExpr.size() <= varID )
 	{
 		mTableOfVariableExpr.push_back(
-				mExprManager.mkVar( OSS() << "V_" << varID, varType ) );
+				mExprManager.mkVar( uniqVariableID( *aVar, varID ), varType ) );
 	}
 
 	return( mTableOfVariableExpr.at(varID) );
@@ -1576,12 +1826,40 @@ CVC4::Expr & CVC4Solver::getVariableExpr(InstanceOfData * aVar,
 
 
 
-CVC4::Expr CVC4Solver::safe_from_baseform(const BF & exprForm,
-		BaseTypeSpecifier * typeSpecifier)
+bool CVC4Solver::appendPossitiveAssertion()
+{
+	std::size_t endOffset = mBitsetOfConstrainedParameter.size();
+	for( std::size_t offset = 1 ; offset < endOffset ; ++offset )
+	{
+		if( mBitsetOfStrictlyPositiveParameter[offset] )
+		{
+			if( mSmtEngine.assertFormula( mExprManager.mkExpr(CVC4::kind::GT,
+					mTableOfParameterExpr[offset], SMT_CST_INT_ZERO) ).isSat()
+				== CVC4::Result::UNSAT )
+			{
+				return( false );
+			}
+		}
+		else if( mBitsetOfPositiveParameter[offset] )
+		{
+			if( mSmtEngine.assertFormula( mExprManager.mkExpr(CVC4::kind::GEQ,
+					mTableOfParameterExpr[offset], SMT_CST_INT_ZERO) ).isSat()
+				== CVC4::Result::UNSAT )
+			{
+				return( false );
+			}
+		}
+	}
+
+	return( true );
+}
+
+
+CVC4::Expr CVC4Solver::safe_from_baseform(const BF & exprForm)
 {
 	try
 	{
-		return( from_baseform(exprForm, typeSpecifier) );
+		return( from_baseform(exprForm) );
 	}
 	catch ( const CVC4::Exception & ex )
 	{
@@ -1629,8 +1907,7 @@ CVC4::Expr CVC4Solver::safe_from_baseform(const BF & exprForm,
 	return( SMT_CST_INT_ZERO );
 }
 
-CVC4::Expr CVC4Solver::from_baseform(
-		const BF & exprForm, BaseTypeSpecifier * typeSpecifier)
+CVC4::Expr CVC4Solver::from_baseform(const BF & exprForm)
 {
 	AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( exprForm ) << "expression !!!"
 			<< SEND_EXIT;
@@ -1639,52 +1916,23 @@ CVC4::Expr CVC4Solver::from_baseform(
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode * aCode = exprForm.to_ptr< AvmCode >();
+			const AvmCode & aCode = exprForm.to< AvmCode >();
 
-			typeSpecifier = TypeManager::UNIVERSAL;
-
-			switch( aCode->getAvmOpCode() )
+			switch( aCode.getAvmOpCode() )
 			{
 				// COMPARISON OPERATION
 				case AVM_OPCODE_EQ:
 				{
-					const BF & arg0 = aCode->first();
-					const BF & arg1 = aCode->second();
-
-					if( ExpressionTypeChecker::isBoolean(arg0) &&
-							ExpressionTypeChecker::isBoolean(arg1) )
-					{
-						return( mExprManager.mkExpr(CVC4::kind::EQUAL,
-								from_baseform(arg0, TypeManager::BOOLEAN),
-								from_baseform(arg1, TypeManager::BOOLEAN)) );
-					}
-					else
-					{
-						return( mExprManager.mkExpr(CVC4::kind::EQUAL,
-								from_baseform(arg0, typeSpecifier),
-								from_baseform(arg1, typeSpecifier)) );
-					}
+					return( mExprManager.mkExpr(CVC4::kind::EQUAL,
+							from_baseform(aCode.first()),
+							from_baseform(aCode.second())) );
 				}
 
 				case AVM_OPCODE_NEQ:
 				{
-					const BF & arg0 = aCode->first();
-					const BF & arg1 = aCode->second();
-
-					if( ExpressionTypeChecker::isBoolean(arg0) &&
-							ExpressionTypeChecker::isBoolean(arg1) )
-					{
-						return( mExprManager.mkExpr(CVC4::kind::NOT,
-								mExprManager.mkExpr(CVC4::kind::EQUAL,
-									from_baseform(arg0, TypeManager::BOOLEAN),
-									from_baseform(arg1, TypeManager::BOOLEAN))) );
-					}
-					else
-					{
-						return( mExprManager.mkExpr(CVC4::kind::DISTINCT,
-								from_baseform(arg0, typeSpecifier),
-								from_baseform(arg1, typeSpecifier)) );
-					}
+					return( mExprManager.mkExpr(CVC4::kind::DISTINCT,
+							from_baseform(aCode.first()),
+							from_baseform(aCode.second())) );
 				}
 
 				case AVM_OPCODE_LT:
@@ -1693,16 +1941,16 @@ CVC4::Expr CVC4Solver::from_baseform(
 							SolverDef::SOLVER_CVC4_BV32_KIND )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::BITVECTOR_SLT,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)) );
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())) );
 					}
 					else
 //						if( SolverDef::DEFAULT_SOLVER_KIND ==
 //								SolverDef::SOLVER_CVC4_KIND )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::LT,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)) );
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())) );
 					}
 				}
 
@@ -1716,117 +1964,109 @@ CVC4::Expr CVC4Solver::from_baseform(
 						BFVector rightList;
 						BFVector leftList;
 
-						if( aCode->first().is< AvmCode >() &&
-							( aCode->first().to_ptr< AvmCode >()->
+						if( aCode.first().is< AvmCode >() &&
+							( aCode.first().to< AvmCode >().
 									isOpCode( AVM_OPCODE_PLUS ) ) )
 						{
-							AvmCode::iterator it =
-									aCode->first().to_ptr< AvmCode >()->begin();
-							AvmCode::iterator endIt =
-									aCode->first().to_ptr< AvmCode >()->end();
-							for( ; it != endIt ; ++it )
+							for( const auto & itOperand :
+								aCode.first().to< AvmCode >().getOperands() )
 							{
-								if( (*it).is< AvmCode >() &&
-									( (*it).to_ptr< AvmCode >()->
+								if( itOperand.is< AvmCode >() &&
+									( itOperand.to< AvmCode >().
 											isOpCode( AVM_OPCODE_UMINUS ) ) )
 								{
 									rightList.append(
-											(*it).to_ptr< AvmCode >()->getArg1() );
+											itOperand.to< AvmCode >().first() );
 								}
-								else if( (*it).isInteger() &&
-										( (*it).toInteger() < 0 ) )
+								else if( itOperand.isInteger() &&
+										( itOperand.toInteger() < 0 ) )
 								{
 									rightList.append( ExpressionConstructor::
-											newInteger(- (*it).toInteger()) );
+											newInteger(- itOperand.toInteger()) );
 								}
 								else
 								{
-									leftList.append( (*it) );
+									leftList.append( itOperand );
 								}
 							}
 						}
-						else if( not ( aCode->first().isInteger() &&
-									 ( aCode->first().toInteger() == 0 ) ) )
+						else if( not ( aCode.first().isInteger() &&
+									 ( aCode.first().toInteger() == 0 ) ) )
 						{
-							leftList.append( aCode->first() );
+							leftList.append( aCode.first() );
 						}
 
-						if( aCode->second().is< AvmCode >() &&
-							( aCode->second().to_ptr< AvmCode >()->
+						if( aCode.second().is< AvmCode >() &&
+							( aCode.second().to< AvmCode >().
 									isOpCode( AVM_OPCODE_PLUS ) ) )
 						{
-							AvmCode::iterator it =
-									aCode->second().to_ptr< AvmCode >()->begin();
-							AvmCode::iterator endIt =
-									aCode->second().to_ptr< AvmCode >()->end();
-							for( ; it != endIt ; ++it )
+							for( const auto & itOperand :
+								aCode.second().to< AvmCode >().getOperands() )
 							{
-								if( (*it).is< AvmCode >() &&
-									( (*it).to_ptr< AvmCode >()->
+								if( itOperand.is< AvmCode >() &&
+									( itOperand.to< AvmCode >().
 											isOpCode( AVM_OPCODE_UMINUS ) ) )
 								{
 									leftList.append(
-											(*it).to_ptr< AvmCode >()->getArg1() );
+											itOperand.to< AvmCode >().first() );
 								}
-								else if( (*it).isInteger() &&
-										( (*it).toInteger() < 0 ) )
+								else if( itOperand.isInteger() &&
+										( itOperand.toInteger() < 0 ) )
 								{
 									leftList.append( ExpressionConstructor::
-											newInteger(- (*it).toInteger()) );
+										newInteger(- itOperand.toInteger()) );
 								}
 								else
 								{
-									rightList.append( (*it) );
+									rightList.append( itOperand );
 								}
 							}
 						}
-						else if( not ( aCode->second().isInteger() &&
-									 ( aCode->second().toInteger() == 0 ) ) )
+						else if( not ( aCode.second().isInteger() &&
+									 ( aCode.second().toInteger() == 0 ) ) )
 						{
-							rightList.append( aCode->second() );
+							rightList.append( aCode.second() );
 						}
 
 						if( leftList.empty() )
 						{
 							leftMember = from_baseform(
-									ExpressionConstant::INTEGER_ZERO,
-									typeSpecifier);
+									ExpressionConstant::INTEGER_ZERO);
 						}
 						else if( leftList.singleton() )
 						{
-							leftMember = from_baseform(leftList[0], typeSpecifier);
+							leftMember = from_baseform(leftList[0]);
 						}
 						else
 						{
 							// leftMember = BVPLUS des elements de leftList
-							leftMember = from_baseform( leftList[0], typeSpecifier );
+							leftMember = from_baseform( leftList[0] );
 							for (std::size_t i = 1 ; i < leftList.size() ; i ++)
 							{
 								leftMember =  mExprManager.mkExpr(
 										CVC4::kind::BITVECTOR_PLUS, leftMember,
-										from_baseform(leftList[i], typeSpecifier));
+										from_baseform(leftList[i]));
 							}
 						}
 
 						if( rightList.empty() )
 						{
 							rightMember = from_baseform(
-									ExpressionConstant::INTEGER_ZERO,
-									typeSpecifier);
+									ExpressionConstant::INTEGER_ZERO);
 						}
 						else if( rightList.singleton() )
 						{
-							rightMember = from_baseform(rightList[0], typeSpecifier);
+							rightMember = from_baseform(rightList[0]);
 						}
 						else
 						{
 							// rightMember = BVPLUS des elements de rightList
-							rightMember = from_baseform( rightList[0], typeSpecifier );
+							rightMember = from_baseform( rightList[0] );
 							for (std::size_t i = 1 ; i < rightList.size() ; i ++)
 							{
 								rightMember =  mExprManager.mkExpr(
 										CVC4::kind::BITVECTOR_PLUS, rightMember,
-										from_baseform(rightList[i], typeSpecifier));
+										from_baseform(rightList[i]));
 							}
 						}
 
@@ -1838,8 +2078,8 @@ CVC4::Expr CVC4Solver::from_baseform(
 //								SolverDef::SOLVER_CVC4_KIND )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::LEQ,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)) );
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())) );
 					}
 				}
 
@@ -1849,16 +2089,16 @@ CVC4::Expr CVC4Solver::from_baseform(
 							SolverDef::SOLVER_CVC4_BV32_KIND )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::BITVECTOR_SGT,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)) );
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())) );
 					}
 					else
 //						if( SolverDef::DEFAULT_SOLVER_KIND ==
 //								SolverDef::SOLVER_CVC4_KIND )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::GT,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)) );
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())) );
 					}
 				}
 
@@ -1868,75 +2108,49 @@ CVC4::Expr CVC4Solver::from_baseform(
 							SolverDef::SOLVER_CVC4_BV32_KIND )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::BITVECTOR_SGE,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)) );
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())) );
 					}
 					else
 //						if( SolverDef::DEFAULT_SOLVER_KIND ==
 //								SolverDef::SOLVER_CVC4_KIND )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::GEQ,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)) );
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())) );
 					}
 				}
 
 
 				case AVM_OPCODE_CONTAINS:
 				{
-					BuiltinCollection * aCollection =
-							aCode->first().to_ptr< BuiltinCollection >();
+					const BuiltinCollection & aCollection =
+							aCode.first().to< BuiltinCollection >();
 
-					if( aCollection->singleton() )
+					if( aCollection.singleton() )
 					{
-						const BF & col = aCollection->at(0);
-						const BF & elt = aCode->second();
-
-						if( ExpressionTypeChecker::isBoolean(col) &&
-								ExpressionTypeChecker::isBoolean(elt) )
-						{
-							return( mExprManager.mkExpr(CVC4::kind::EQUAL,
-									from_baseform(col, TypeManager::BOOLEAN),
-									from_baseform(elt, TypeManager::BOOLEAN)) );
-						}
-						else
-						{
-							return( mExprManager.mkExpr(CVC4::kind::EQUAL,
-									from_baseform(col, typeSpecifier),
-									from_baseform(elt, typeSpecifier)) );
-						}
+						return( mExprManager.mkExpr(CVC4::kind::EQUAL,
+								from_baseform(aCollection.at(0)),
+								from_baseform(aCode.second())) );
 					}
-					else if( aCollection->populated() )
+					else if( aCollection.populated() )
 					{
-						ARGS arg( aCollection->size() );
-						const BF & elt = aCode->second();
-						bool isBoolElt = ExpressionTypeChecker::isBoolean(elt);
+						ARGS arg( aCollection.size() );
+						const BF & elt = aCode.second();
 
 						for( std::size_t offset = 0 ; arg.hasNext() ; ++offset )
 						{
-							const BF & col = aCollection->at( offset );
 
-							if( isBoolElt && ExpressionTypeChecker::isBoolean(col) )
-							{
-								arg.next( mExprManager.mkExpr(CVC4::kind::EQUAL,
-										from_baseform(col, TypeManager::BOOLEAN),
-										from_baseform(elt, TypeManager::BOOLEAN) ));
-							}
-							else
-							{
-								arg.next( mExprManager.mkExpr(CVC4::kind::EQUAL,
-										from_baseform(col, typeSpecifier),
-										from_baseform(elt, typeSpecifier) ));
-							}
+							arg.next( mExprManager.mkExpr(CVC4::kind::EQUAL,
+									from_baseform(aCollection.at(offset)),
+									from_baseform(elt) ));
 						}
 
 						return( mExprManager.mkExpr(CVC4::kind::OR, arg->table) );
 					}
 					else
 					{
-						return( ((typeSpecifier != NULL) &&
-								typeSpecifier->isTypedBoolean()) ?
-										SMT_CST_BOOL_FALSE : SMT_CST_INT_ZERO );
+						return( SMT_CST_BOOL_FALSE );
 					}
 				}
 
@@ -1945,17 +2159,16 @@ CVC4::Expr CVC4Solver::from_baseform(
 				case AVM_OPCODE_NOT:
 				{
 					return( mExprManager.mkExpr(CVC4::kind::NOT,
-							from_baseform(aCode->first(), TypeManager::BOOLEAN)) );
+							from_baseform(aCode.first())) );
 				}
 
 				case AVM_OPCODE_AND:
 				{
-					ARGS arg( aCode->size() );
+					ARGS arg( aCode.size() );
 
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
+					for( const auto & itOperand : aCode.getOperands() )
 					{
-						arg.next( from_baseform(*it, TypeManager::BOOLEAN) );
+						arg.next( from_baseform(itOperand) );
 					}
 
 					return( mExprManager.mkExpr(CVC4::kind::AND, arg->table) );
@@ -1965,38 +2178,31 @@ CVC4::Expr CVC4Solver::from_baseform(
 				{
 					return( mExprManager.mkExpr(CVC4::kind::NOT,
 							mExprManager.mkExpr(CVC4::kind::AND,
-									from_baseform(aCode->first(),
-											TypeManager::BOOLEAN),
-									from_baseform(aCode->second(),
-											TypeManager::BOOLEAN))) );
+									from_baseform(aCode.first()),
+									from_baseform(aCode.second()))) );
 				}
 
 				case AVM_OPCODE_XAND:
 				{
 					return( mExprManager.mkExpr(CVC4::kind::OR,
 							mExprManager.mkExpr(CVC4::kind::AND,
-									from_baseform(aCode->first(),
-											TypeManager::BOOLEAN),
-									from_baseform(aCode->second(),
-											TypeManager::BOOLEAN)),
+									from_baseform(aCode.first()),
+									from_baseform(aCode.second())),
 							mExprManager.mkExpr(CVC4::kind::AND,
 									mExprManager.mkExpr(CVC4::kind::NOT,
-											from_baseform(aCode->first(),
-													TypeManager::BOOLEAN)),
+											from_baseform(aCode.first())),
 									mExprManager.mkExpr(CVC4::kind::NOT,
-											from_baseform(aCode->second(),
-													TypeManager::BOOLEAN))) ) );
+											from_baseform(aCode.second()))) ) );
 				}
 
 
 				case AVM_OPCODE_OR:
 				{
-					ARGS arg( aCode->size() );
+					ARGS arg( aCode.size() );
 
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
+					for( const auto & itOperand : aCode.getOperands() )
 					{
-						arg.next( from_baseform(*it, TypeManager::BOOLEAN) );
+						arg.next( from_baseform(itOperand) );
 					}
 
 					return( mExprManager.mkExpr(CVC4::kind::OR, arg->table) );
@@ -2006,10 +2212,76 @@ CVC4::Expr CVC4Solver::from_baseform(
 				{
 					return( mExprManager.mkExpr(CVC4::kind::NOT,
 							mExprManager.mkExpr(CVC4::kind::OR,
-									from_baseform(aCode->first(),
-											TypeManager::BOOLEAN),
-									from_baseform(aCode->second(),
-											TypeManager::BOOLEAN))) );
+									from_baseform(aCode.first()),
+									from_baseform(aCode.second()))) );
+				}
+
+				case AVM_OPCODE_IMPLIES:
+				{
+					return( mExprManager.mkExpr(CVC4::kind::IMPLIES,
+							from_baseform(aCode.first()),
+							from_baseform(aCode.second())) );
+				}
+
+
+				// QUANTIFED LOGICAL OPERATION
+				case AVM_OPCODE_EXISTS:
+				{
+					std::size_t boundVarCount = aCode.size()  - 1;
+
+					ARGS boundVars( boundVarCount );
+
+					ARGS boundVarConstraints( aCode.size() );
+
+					for (std::size_t offset = 0; offset < boundVarCount; ++offset)
+					{
+						boundVars.next(
+								getBoundParameterExpr(aCode[ offset ],
+										boundVarConstraints) );
+					}
+
+					CVC4::Expr boundVarList = mExprManager.mkExpr(
+							CVC4::kind::BOUND_VAR_LIST, boundVars->table);
+
+					boundVarConstraints.next(
+							from_baseform(aCode[ boundVarCount ]) );
+
+					return( mExprManager.mkExpr(
+							CVC4::kind::EXISTS, boundVarList,
+							mExprManager.mkExpr(CVC4::kind::AND,
+									boundVarConstraints->table)) );
+
+				}
+
+				case AVM_OPCODE_FORALL:
+				{
+					std::size_t boundVarCount = aCode.size()  - 1;
+
+					ARGS boundVars( boundVarCount );
+
+					ARGS boundVarConstraints( boundVarCount );
+
+					for (std::size_t offset = 0; offset < boundVarCount; ++offset)
+					{
+						boundVars.next(
+								getBoundParameterExpr(aCode[ offset ],
+										boundVarConstraints) );
+					}
+
+					CVC4::Expr boundVarList = mExprManager.mkExpr(
+							CVC4::kind::BOUND_VAR_LIST, boundVars->table);
+
+					CVC4::Expr forallCondition =
+							(boundVarCount == 1) ? boundVarConstraints[0]
+							: mExprManager.mkExpr(CVC4::kind::AND,
+									boundVarConstraints->table);
+
+					forallCondition = mExprManager.mkExpr(
+							CVC4::kind::IMPLIES, forallCondition,
+							from_baseform(aCode[ boundVarCount ]) );
+
+					return( mExprManager.mkExpr(CVC4::kind::FORALL,
+							boundVarList, forallCondition) );
 				}
 
 
@@ -2017,33 +2289,33 @@ CVC4::Expr CVC4Solver::from_baseform(
 				case AVM_OPCODE_BAND:
 				{
 					return( mExprManager.mkExpr(CVC4::kind::BITVECTOR_AND,
-							from_baseform(aCode->first(), typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier)) );
+							from_baseform(aCode.first()),
+							from_baseform(aCode.second())) );
 				}
 
 				case AVM_OPCODE_BOR:
 				{
 					return( mExprManager.mkExpr(CVC4::kind::BITVECTOR_OR,
-							from_baseform(aCode->first(), typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier)) );
+							from_baseform(aCode.first()),
+							from_baseform(aCode.second())) );
 				}
 
 				case AVM_OPCODE_LSHIFT:
 				{
-					if( aCode->second().isInteger() )
+					if( aCode.second().isInteger() )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::BITVECTOR_SHL,
-								from_baseform(aCode->first(), typeSpecifier),
+								from_baseform(aCode.first()),
 								mExprManager.mkConst( CVC4::Rational(
 										static_cast<unsigned long int>(
-											aCode->second().toInteger())) ) ) );
+											aCode.second().toInteger())) ) ) );
 					}
 					else
 					{
 						AVM_OS_FATAL_ERROR_EXIT
 								<< "Unexpected second argument for "
 									"newFixedLeftShiftExpr !!!\n"
-								<< aCode->toString( AVM_TAB1_INDENT )
+								<< aCode.toString( AVM_TAB1_INDENT )
 								<< SEND_EXIT;
 
 						break;
@@ -2052,20 +2324,20 @@ CVC4::Expr CVC4Solver::from_baseform(
 
 				case AVM_OPCODE_RSHIFT:
 				{
-					if( aCode->second().isInteger() )
+					if( aCode.second().isInteger() )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::BITVECTOR_ASHR,
-								from_baseform(aCode->first(), typeSpecifier),
+								from_baseform(aCode.first()),
 								mExprManager.mkConst( CVC4::Rational(
 										static_cast<unsigned long int>(
-											aCode->second().toInteger())) ) ) );
+											aCode.second().toInteger())) ) ) );
 					}
 					else
 					{
 						AVM_OS_FATAL_ERROR_EXIT
 								<< "Unexpected second argument for "
 									"newFixedRightShiftExpr !!!\n"
-								<< aCode->toString( AVM_TAB1_INDENT )
+								<< aCode.toString( AVM_TAB1_INDENT )
 								<< SEND_EXIT;
 
 						break;
@@ -2076,38 +2348,37 @@ CVC4::Expr CVC4Solver::from_baseform(
 				{
 					return( mExprManager.mkExpr(CVC4::kind::OR,
 							mExprManager.mkExpr(CVC4::kind::AND,
-								from_baseform(aCode->first(), typeSpecifier),
+								from_baseform(aCode.first()),
 								mExprManager.mkExpr(CVC4::kind::NOT,
-									from_baseform(aCode->second(), typeSpecifier))),
+									from_baseform(aCode.second()))),
 							mExprManager.mkExpr(CVC4::kind::AND,
 								mExprManager.mkExpr(CVC4::kind::NOT,
-									from_baseform(aCode->first(), typeSpecifier)),
-								from_baseform(aCode->second(), typeSpecifier)) ) );
+									from_baseform(aCode.first())),
+								from_baseform(aCode.second())) ) );
 				}
 
 				case AVM_OPCODE_XNOR:
 				{
 					return( mExprManager.mkExpr(CVC4::kind::OR,
 							mExprManager.mkExpr(CVC4::kind::AND,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)),
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())),
 							mExprManager.mkExpr(CVC4::kind::AND,
 								mExprManager.mkExpr(CVC4::kind::NOT,
-									from_baseform(aCode->first(), typeSpecifier)),
+									from_baseform(aCode.first())),
 								mExprManager.mkExpr(CVC4::kind::NOT,
-									from_baseform(aCode->second(), typeSpecifier))) ) );
+									from_baseform(aCode.second()))) ) );
 				}
 
 
 				// ARITHMETIC OPERATION
 				case AVM_OPCODE_PLUS:
 				{
-					ARGS arg( aCode->size() );
+					ARGS arg( aCode.size() );
 
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
+					for( const auto & itOperand : aCode.getOperands() )
 					{
-						arg.next( from_baseform(*it, typeSpecifier) );
+						arg.next( from_baseform(itOperand) );
 					}
 
 					if( SolverDef::DEFAULT_SOLVER_KIND ==
@@ -2128,7 +2399,7 @@ CVC4::Expr CVC4Solver::from_baseform(
 				case AVM_OPCODE_UMINUS:
 				{
 					return( mExprManager.mkExpr(CVC4::kind::UMINUS,
-							from_baseform(aCode->first(), typeSpecifier)) );
+							from_baseform(aCode.first())) );
 				}
 
 				case AVM_OPCODE_MINUS:
@@ -2137,27 +2408,26 @@ CVC4::Expr CVC4Solver::from_baseform(
 							SolverDef::SOLVER_CVC4_BV32_KIND )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::BITVECTOR_SUB,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)) );
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())) );
 					}
 					else
 //						if( SolverDef::DEFAULT_SOLVER_KIND ==
 //								SolverDef::SOLVER_CVC4_KIND )
 					{
 						return( mExprManager.mkExpr(CVC4::kind::MINUS,
-								from_baseform(aCode->first(), typeSpecifier),
-								from_baseform(aCode->second(), typeSpecifier)) );
+								from_baseform(aCode.first()),
+								from_baseform(aCode.second())) );
 					}
 				}
 
 				case AVM_OPCODE_MULT:
 				{
-					ARGS arg( aCode->size() );
+					ARGS arg( aCode.size() );
 
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
+					for( const auto & itOperand : aCode.getOperands() )
 					{
-						arg.next( from_baseform(*it, typeSpecifier) );
+						arg.next( from_baseform(itOperand) );
 					}
 
 					if( SolverDef::DEFAULT_SOLVER_KIND ==
@@ -2178,15 +2448,15 @@ CVC4::Expr CVC4Solver::from_baseform(
 				case AVM_OPCODE_DIV:
 				{
 					return( mExprManager.mkExpr(CVC4::kind::DIVISION,
-							from_baseform(aCode->first(), typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier)) );
+							from_baseform(aCode.first()),
+							from_baseform(aCode.second())) );
 				}
 
 				case AVM_OPCODE_POW:
 				{
 					return( mExprManager.mkExpr(CVC4::kind::POW,
-							from_baseform(aCode->first(), typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier)) );
+							from_baseform(aCode.first()),
+							from_baseform(aCode.second())) );
 				}
 
 //				case AVM_OPCODE_MOD:
@@ -2196,7 +2466,7 @@ CVC4::Expr CVC4Solver::from_baseform(
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "CVC4Solver::from_baseform:> "
 								"Unsupported expression !!!\n"
-							<< aCode->toString( AVM_TAB1_INDENT )
+							<< aCode.toString( AVM_TAB1_INDENT )
 							<< SEND_EXIT;
 
 					break;
@@ -2213,18 +2483,8 @@ CVC4::Expr CVC4Solver::from_baseform(
 
 		case FORM_BUILTIN_BOOLEAN_KIND:
 		{
-			if( exprForm.to_ptr< Boolean >()->getValue() )
-			{
-				return( ((typeSpecifier != NULL) &&
-						typeSpecifier->isTypedBoolean()) ?
-								SMT_CST_BOOL_TRUE : SMT_CST_INT_ONE );
-			}
-			else
-			{
-				return( ((typeSpecifier != NULL) &&
-						typeSpecifier->isTypedBoolean()) ?
-								SMT_CST_BOOL_FALSE : SMT_CST_INT_ZERO );
-			}
+			return( exprForm.to< Boolean >().getValue() ?
+					SMT_CST_BOOL_TRUE : SMT_CST_BOOL_FALSE );
 		}
 
 
@@ -2235,31 +2495,22 @@ CVC4::Expr CVC4Solver::from_baseform(
 			{
 				return( mExprManager.mkConst( CVC4::BitVector( 32,
 						static_cast<unsigned long int>(
-								exprForm.to_ptr< Integer >()->toInteger())) ) );
+								exprForm.to< Integer >().toInteger())) ) );
 			}
 			else
 //				if( SolverDef::DEFAULT_SOLVER_KIND == SolverDef::SOLVER_CVC4_KIND )
 			{
-				if( (typeSpecifier != NULL) &&
-						typeSpecifier->isTypedBoolean() )
-				{
-					return( exprForm.to_ptr< Integer >()->isZero() ?
-							SMT_CST_BOOL_FALSE : SMT_CST_BOOL_TRUE );
-				}
-				else
-				{
 #if defined( _AVM_BUILTIN_NUMERIC_GMP_ )
 
-					return( mExprManager.mkConst( CVC4::Rational( CVC4::Integer(
-							exprForm.to_ptr< Integer >()->getValue() ) ) ) );
+				return( mExprManager.mkConst( CVC4::Rational( CVC4::Integer(
+						exprForm.to< Integer >().getValue() ) ) ) );
 
 #else
 
-					return( mExprManager.mkConst( CVC4::Rational(
-							exprForm.to_ptr< Integer >()->str()) ) );
+				return( mExprManager.mkConst( CVC4::Rational(
+						exprForm.to< Integer >().str()) ) );
 
 #endif /* _AVM_BUILTIN_NUMERIC_GMP_ */
-				}
 			}
 //			else
 //			{
@@ -2269,62 +2520,46 @@ CVC4::Expr CVC4Solver::from_baseform(
 //					<< SEND_EXIT;
 //
 //				return( mExprManager.mkConst( CVC4::Rational(
-//						exprForm.to_ptr< Integer >()->getValue() ) ) );
+//						exprForm.to< Integer >().getValue() ) ) );
 //			}
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			if( (typeSpecifier != NULL) && typeSpecifier->isTypedBoolean() )
-			{
-				return( exprForm.to_ptr< Rational >()->isZero() ?
-						SMT_CST_BOOL_FALSE : SMT_CST_BOOL_TRUE );
-			}
-			else
-			{
 #if defined( _AVM_BUILTIN_NUMERIC_GMP_ )
 
-				return( mExprManager.mkConst( CVC4::Rational(
-						exprForm.to_ptr< Rational >()->getValue() ) ) );
+			return( mExprManager.mkConst( CVC4::Rational(
+					exprForm.to< Rational >().getValue() ) ) );
 
 #else
 
-				return( mExprManager.mkConst( CVC4::Rational(
-						exprForm.to_ptr< Rational >()->str() ) ) );
+			return( mExprManager.mkConst( CVC4::Rational(
+					exprForm.to< Rational >().str() ) ) );
 
-//				return( mExprManager.mkConst( CVC4::Rational(
-//						exprForm.to_ptr< Rational >()->getNumerator(),
-//						exprForm.to_ptr< Rational >()->getDenominator()) ) );
+//			return( mExprManager.mkConst( CVC4::Rational(
+//					exprForm.to< Rational >().getNumerator(),
+//					exprForm.to< Rational >().getDenominator()) ) );
 //
-//				return( mExprManager.mkConst( CVC4::Rational(
-//						exprForm.to_ptr< Rational >()->strNumerator(),
-//						exprForm.to_ptr< Rational >()->strDenominator()) ) );
+//			return( mExprManager.mkConst( CVC4::Rational(
+//					exprForm.to< Rational >().strNumerator(),
+//					exprForm.to< Rational >().strDenominator()) ) );
 
 #endif /* _AVM_BUILTIN_NUMERIC_GMP_  */
-			}
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			if( (typeSpecifier != NULL) && typeSpecifier->isTypedBoolean() )
-			{
-				return( exprForm.to_ptr< Float >()->isZero() ?
-						SMT_CST_BOOL_FALSE : SMT_CST_BOOL_TRUE  );
-			}
-			else
-			{
 #if defined( _AVM_BUILTIN_NUMERIC_GMP_ )
 
-				return( mExprManager.mkConst( CVC4::Rational( mpq_class(
-						exprForm.to_ptr< Float >()->getValue() ) ) ) );
+			return( mExprManager.mkConst( CVC4::Rational( mpq_class(
+					exprForm.to< Float >().getValue() ) ) ) );
 
 #else
 
-				return( mExprManager.mkConst(
-						CVC4::Rational(exprForm.str()) ) );
+			return( mExprManager.mkConst(
+					CVC4::Rational(exprForm.str()) ) );
 
 #endif /* _AVM_BUILTIN_NUMERIC_GMP_ */
-			}
 		}
 
 
@@ -2338,56 +2573,56 @@ CVC4::Expr CVC4Solver::from_baseform(
 		case FORM_BUILTIN_CHARACTER_KIND:
 		{
 			AVM_OS_ERROR_ALERT << "Unexpected a CHAR as expression << "
-					<< exprForm.to_ptr< Character >()->getValue()
+					<< exprForm.to< Character >().getValue()
 					<< " >> !!!"
 					<< SEND_ALERT;
 
 			return( mExprManager.mkConst( CVC4::Rational(
-					exprForm.to_ptr< Character >()->getValue() ) ) );
+					exprForm.to< Character >().getValue() ) ) );
 		}
 
 		case FORM_BUILTIN_STRING_KIND:
 		{
 			return( mExprManager.mkConst( CVC4::String(
-					exprForm.to_ptr< String >()->getValue() ) ) );
+					exprForm.to< String >().getValue() ) ) );
 		}
 
 		case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Unexpected a STRING | UFI as expression << "
-					<< exprForm.to_ptr< String >()->getValue() << " >> !!!"
+					<< exprForm.to< String >().getValue() << " >> !!!"
 					<< SEND_EXIT;
 
 			break;
 //			return( mExprManager.mkConst(
-//					exprForm.to_ptr< String >()->getValue() ) );
+//					exprForm.to< String >().getValue() ) );
 		}
 
 		case FORM_BUILTIN_IDENTIFIER_KIND:
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Unexpected a IDENTIFIER as expression << "
-					<< exprForm.to_ptr< Identifier >()->getValue()
+					<< exprForm.to< Identifier >().getValue()
 					<< " >> !!!"
 					<< SEND_EXIT;
 
 			break;
 //			return( mExprManager.mkConst(
-//					exprForm.to_ptr< Identifier >()->getValue() ) );
+//					exprForm.to< Identifier >().getValue() ) );
 		}
 
 		case FORM_OPERATOR_KIND:
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Unexpected an OPERATOR as expression << "
-					<< exprForm.to_ptr< Operator >()->standardSymbol()
+					<< exprForm.to< Operator >().standardSymbol()
 					<< " >> !!!"
 					<< SEND_EXIT;
 
 			break;
 //			return( mExprManager.mkConst(
-//					exprForm.to_ptr< Operator >()->standardSymbol() ) );
+//					exprForm.to< Operator >().standardSymbol() ) );
 		}
 
 
@@ -2399,13 +2634,14 @@ CVC4::Expr CVC4Solver::from_baseform(
 		default:
 		{
 			AVM_OS_FATAL_ERROR_EXIT
-					<< "Unexpected BASEFORM KIND as expression << "
+					<< "CVC4Solver::from_baseform:> Unexpected OBJECT KIND << "
+					<< exprForm.classKindName() << " >> as expression << "
 					<< exprForm.str() << " >> !!!"
 					<< SEND_EXIT;
 
 			break;
 //			return( mExprManager.mkConst(
-//					exprForm.to_ptr< BaseInstanceForm >()->getFullyQualifiedNameID() ) );
+//					exprForm.to< BaseInstanceForm >().getFullyQualifiedNameID() ) );
 		}
 	}
 
@@ -2415,6 +2651,57 @@ CVC4::Expr CVC4Solver::from_baseform(
 
 	return( SMT_CST_INT_ZERO );
 }
+
+
+void CVC4Solver::dbg_smt(const CVC4::Expr & aFormula, bool produceModelOption) const
+{
+	aFormula.printAst(AVM_OS_TRACE << "\t");
+	AVM_OS_TRACE << std::endl;
+
+	std::string fileLocation = ( OSS() << mLogFolderLocation
+			<< ( produceModelOption ? "cvc4_get_model_" : "cvc4_check_sat_" )
+			<< SOLVER_SESSION_ID << ".smt2" );
+
+	std::ofstream osFile;
+	osFile.open(fileLocation, std::ios_base::out);
+	if ( osFile.good() )
+	{
+		osFile << "; Getting info" << std::endl
+				<< "(get-info :name)"    << std::endl
+				<< "(get-info :version)" << std::endl;
+
+		if( produceModelOption )
+		{
+			osFile << "; Getting values or models" << std::endl
+					<< "(set-option :produce-models true)" << std::endl
+//					<< "; Getting assignments" << std::endl
+//					<< "(set-option :produce-assignments true)" << std::endl
+					<< "; Logic" << std::endl
+					<< "(set-logic ALL)" << std::endl
+					<< std::endl;
+
+			aFormula.printAst(osFile << "\t");
+
+			osFile << std::endl << std::endl
+					<< "(get-model)" << std::endl
+//					<< "(get-assignment)"
+					<< std::endl;
+		}
+		else
+		{
+			osFile << std::endl;
+
+			aFormula.printAst(osFile << "\t");
+
+			osFile << std::endl << std::endl
+					<< "CHECKSAT;" << std::endl;
+		}
+
+		osFile.close();
+	}
+}
+
+
 
 
 } /* namespace sep */

@@ -16,7 +16,7 @@
 #ifndef PRINTER_WRAPSTREAM_H_
 #define PRINTER_WRAPSTREAM_H_
 
-#include <iostream>
+#include <ostream>
 #include <string>
 
 namespace sep
@@ -77,7 +77,7 @@ struct WrapData
 	}
 
 
-	bool configure(WObject * wfParameterObject);
+	bool configure(const WObject * wfParameterObject);
 
 };
 
@@ -172,7 +172,7 @@ private:
 	/**
 	 * overflow(...)
 	 */
-	int_type overflow(int_type c);
+	virtual int_type overflow(int_type c) override;
 
 };
 

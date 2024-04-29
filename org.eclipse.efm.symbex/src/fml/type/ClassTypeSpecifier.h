@@ -39,10 +39,10 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	ClassTypeSpecifier(DataType * aCompiledType,
+	ClassTypeSpecifier(const DataType & astType,
 			avm_type_specifier_kind_t aSpecifierKind = TYPE_CLASS_SPECIFIER)
 	: BaseSymbolTypeSpecifier(CLASS_KIND_T( ClassTypeSpecifier ),
-			aSpecifierKind, aCompiledType, 1, 1, 0)
+			aSpecifierKind, astType, 1, 1, 0)
 	{
 		//!!! NOTHING
 	}
@@ -61,13 +61,16 @@ public:
 	 * Format a value w.r.t. its type
 	 */
 	virtual void formatStream(
-			OutStream & out, const ArrayBF & arrayValue) const;
+			OutStream & out, const ArrayBF & arrayValue) const override;
+
+	// Due to [-Woverloaded-virtual=]
+	using BaseSymbolTypeSpecifier::formatStream;
 
 
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & out) const;
+	void toStream(OutStream & out) const override;
 
 };
 

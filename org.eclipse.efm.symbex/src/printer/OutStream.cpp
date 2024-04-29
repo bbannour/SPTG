@@ -18,7 +18,7 @@
 #include <util/avm_assert.h>
 #include <util/avm_vfs.h>
 
-#include <sew/Workflow.h>
+#include <sew/WorkflowParameter.h>
 
 #include <fml/workflow/WObject.h>
 
@@ -51,62 +51,37 @@ const std::string & CONSOLE_SYMBEX_PROMPT = "[SBX] ";
  */
 void OutStream::load()
 {
-	_avm_os_log_ = AVM_OS_COUT.OS;
+	if( _avm_os_null_ == nullptr )
+	{
+		_avm_os_null_ = new std::ostream(nullptr);
+	}
+}
 
-	_avm_os_trace_ = AVM_OS_COUT.OS;
-
-	_avm_os_tdd_ = AVM_OS_COUT.OS;
+static void delete_stream(std::ostream * & out)
+{
+	if( (out != nullptr) && (out != _avm_os_null_)
+			&& (out != &(std::cout)) && (out != &(std::cerr)) )
+	{
+//		out->close();
+		delete out;
+	}
+	out = nullptr;
 }
 
 void OutStream::dispose()
 {
 	// AVM TRACE LOG << ofstream >>
-	if( _avm_os_log_ != NULL )
-	{
-		_avm_os_log_->flush();
-
-		if( (_avm_os_log_ != AVM_OS_COUT.OS) &&
-				(_avm_os_log_ != _avm_os_null_) )
-		{
-//			_avm_os_log->close();
-			delete _avm_os_log_;
-		}
-	}
-	_avm_os_log_ = NULL;
-
+	delete_stream( _avm_os_log_ );
 
 	// AVM TRACE DEBUG << ofstream >>
-	if( _avm_os_trace_ != NULL )
-	{
-		_avm_os_trace_->flush();
-
-		if( (_avm_os_trace_ != AVM_OS_COUT.OS) &&
-				(_avm_os_trace_ != _avm_os_null_) )
-		{
-//			_avm_os_trace->close();
-			delete _avm_os_trace_;
-		}
-	}
-	_avm_os_trace_ = NULL;
-
+	delete_stream( _avm_os_trace_ );
 
 	// AVM TEST DRIVEN DEVELOPMENT << ofstream >>
-	if( _avm_os_tdd_ != NULL )
-	{
-		_avm_os_tdd_->flush();
-
-		if( (_avm_os_tdd_ != AVM_OS_COUT.OS) &&
-				(_avm_os_tdd_ != _avm_os_null_) )
-		{
-//			_avm_os_tdd_->close();
-			delete _avm_os_tdd_;
-		}
-	}
-	_avm_os_tdd_ = NULL;
+	delete_stream( _avm_os_tdd_ );
 
 
 	// AVM NULL << ofstream >>
-	if( _avm_os_null_ != NULL )
+	if( _avm_os_null_ != nullptr )
 	{
 		delete _avm_os_null_;
 	}
@@ -127,10 +102,10 @@ section PROPERTY
 	line#wrap#separator = "\n\t";
 endsection
 */
-bool OutStream::configure(Workflow * aWorkflow)
+bool OutStream::configure(const WorkflowParameter & aWorkflowParameter)
 {
-	WObject * seqFORMAT = Query::getWSequenceOrElse(
-			aWorkflow->getParameterWObject(), "format", "PROPERTY");
+	const WObject * seqFORMAT = Query::getWSequenceOrElse(
+			aWorkflowParameter.getParameterWObject(), "format", "PROPERTY");
 
 	// GLOBAL INDENT CHAR
 	std::string strTab = Query::getRegexWPropertyString(seqFORMAT,
@@ -147,23 +122,23 @@ bool OutStream::configure(Workflow * aWorkflow)
 	/*
 	 * DEFAULT_WRAP_DATA
 	 */
-	if( DEFAULT_WRAP_DATA.configure( seqFORMAT ) )
+	if( not DEFAULT_WRAP_DATA.configure( seqFORMAT ) )
 	{
 		//!!NOTHING
 	}
 
 	// AVM TRACE LOG << ofstream >>
-	if( aWorkflow->hasDeveloperDebugLogFile() )
+	if( aWorkflowParameter.hasDeveloperDebugLogFile() )
 	{
 		_avm_os_log_ = new std::ofstream(
-				aWorkflow->getDeveloperDebugLogFileLocation().c_str() );
-		if( (_avm_os_log_ == NULL) || _avm_os_log_->fail() )
+				aWorkflowParameter.getDeveloperDebugLogFileLocation() );
+		if( (_avm_os_log_ == nullptr) || _avm_os_log_->fail() )
 		{
 			_avm_os_log_ = _avm_os_null_;
 
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Failed to open AVM_OS_LOG << "
-					<< aWorkflow->getDeveloperDebugLogFileLocation()
+					<< aWorkflowParameter.getDeveloperDebugLogFileLocation()
 					<< " >> file in write mode !!!"
 					<< SEND_EXIT;
 
@@ -179,17 +154,17 @@ bool OutStream::configure(Workflow * aWorkflow)
 
 
 	// AVM TRACE DEBUG << ofstream >>
-	if( aWorkflow->hasDeveloperDebugTraceFile() )
+	if( aWorkflowParameter.hasDeveloperDebugTraceFile() )
 	{
 		_avm_os_trace_ = new std::ofstream(
-				aWorkflow->getDeveloperDebugTraceFileLocation().c_str() );
-		if( (_avm_os_trace_ == NULL) || _avm_os_trace_->fail() )
+				aWorkflowParameter.getDeveloperDebugTraceFileLocation() );
+		if( (_avm_os_trace_ == nullptr) || _avm_os_trace_->fail() )
 		{
 			_avm_os_trace_ = _avm_os_null_;
 
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Failed to open AVM_OS_TRACE << "
-					<< aWorkflow->getDeveloperDebugTraceFileLocation()
+					<< aWorkflowParameter.getDeveloperDebugTraceFileLocation()
 					<< " >> file in write mode !!!"
 					<< SEND_EXIT;
 
@@ -205,24 +180,24 @@ bool OutStream::configure(Workflow * aWorkflow)
 
 
 	// AVM TEST DRIVEN DEVELOPMENT << ofstream >>
-	if( aWorkflow->hasTddReport() )
-	{
-		_avm_os_tdd_ = new std::ofstream(
-				aWorkflow->getTddReportLocation().c_str() );
-		if( (_avm_os_tdd_ == NULL) || _avm_os_tdd_->fail() )
-		{
-			_avm_os_tdd_ = _avm_os_null_;
-
-			AVM_OS_FATAL_ERROR_EXIT
-					<< "Failed to open AVM_OS_TDD << "
-					<< aWorkflow->getTddReportLocation()
-					<< " >> file in write mode !!!"
-					<< SEND_EXIT;
-
-			return( false );
-		}
-	}
-	else
+//	if( aWorkflowParameter.hasTddReport() )
+//	{
+//		_avm_os_tdd_ = new std::ofstream(
+//				aWorkflowParameter.getTddReportLocation() );
+//		if( (_avm_os_tdd_ == nullptr) || _avm_os_tdd_->fail() )
+//		{
+//			_avm_os_tdd_ = _avm_os_null_;
+//
+//			AVM_OS_FATAL_ERROR_EXIT
+//					<< "Failed to open AVM_OS_TDD << "
+//					<< aWorkflowParameter.getTddReportLocation()
+//					<< " >> file in write mode !!!"
+//					<< SEND_EXIT;
+//
+//			return( false );
+//		}
+//	}
+//	else
 	{
 		_avm_os_tdd_ = _avm_os_null_;
 	}
@@ -330,7 +305,7 @@ OutStream & OutStream::operator<<(const AvmEMPHASIS & emphasis)
  * UTIL VARIABLE
  * AVM_OS_NULL
  */
-std::ostream * _avm_os_null_ = new std::ostream(NULL);
+std::ostream * _avm_os_null_ = nullptr;
 
 NullOutStream AVM_OS_NULL;
 
@@ -343,7 +318,7 @@ NullOutStream AVM_OS_NULL;
 OutStream AVM_OS_COUT( std::cout , ""   , " "  , "\n" );
 
 OutStream AVM_OS_CERR(
-		((_AVM_EXEC_MODE_ == AVM_EXEC_SERVER_MODE) ? std::cout : std::cerr),
+		((_AVM_EXEC_MODE_ & AVM_EXEC_SERVER_MODE) ? std::cout : std::cerr),
 //		AVM_SPC_INDENT );
 		""   , " "  , "\n" );
 
@@ -360,8 +335,9 @@ std::string AVM_TRACE_FILE_LOCATION;
 /**
  * UTIL VARIABLE
  * AVM_OS_LOG
+ * Default target stream is &( std::cout ) until configure
  */
-std::ostream * _avm_os_log_ = NULL;
+std::ostream * _avm_os_log_ = &( std::cout );
 
 //OutStream AVM_OS_LOG( std::cout , AVM_SPC_INDENT );
 OutStream AVM_OS_LOG( std::cout , ""   , " "  , "\n" );
@@ -370,8 +346,9 @@ OutStream AVM_OS_LOG( std::cout , ""   , " "  , "\n" );
 /**
  * UTIL VARIABLE
  * AVM_OS_TRACE
+ * Default target stream is &( std::cout ) until configure
  */
-std::ostream * _avm_os_trace_ = NULL;
+std::ostream * _avm_os_trace_ = &( std::cout );
 
 //OutStream AVM_OS_TRACE( std::cout , AVM_SPC_INDENT );
 OutStream AVM_OS_TRACE( std::cout , ""   , " "  , "\n" );
@@ -400,8 +377,9 @@ InfoOutstreamT AVM_OS_CLOG(AVM_OS_COUT, AVM_OS_LOG);
  * UTIL VARIABLE
  * AVM_OS_TDD
  * for Test Driven Development
+ * Default target stream is &( std::cout ) until configure
  */
-std::ostream * _avm_os_tdd_ = NULL;
+std::ostream * _avm_os_tdd_ = &( std::cout );
 
 //OutStream AVM_OS_TDD( std::cout , AVM_TAB_INDENT );
 OutStream AVM_OS_TDD( std::cout , ""   , "\t" , "\n" );

@@ -37,7 +37,7 @@ class ComPoint;
 class ComRoute;
 class Connector;
 class ExecutableForm;
-class InstanceOfConnect;
+class InstanceOfConnector;
 class InstanceOfMachine;
 class InstanceOfPort;
 class PropertyPart;
@@ -50,9 +50,9 @@ protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	avm_size_t mNextRouteID;
+	std::size_t mNextRouteID;
 
-	avm_size_t mNextConnectID;
+	std::size_t mNextConnectorID;
 
 public:
 	/**
@@ -73,11 +73,11 @@ public:
 
 	/**
 	 * mNextRouteID
-	 * mNextConnectID
+	 * mNextConnectorID
 	 */
 	void updateMessageID()
 	{
-		mNextConnectID = mNextRouteID;
+		mNextConnectorID = mNextRouteID;
 	}
 
 	/**
@@ -85,23 +85,23 @@ public:
 	 * PRE-COMPILATION
 	 ***************************************************************************
 	 */
-	BF precompileParameter(ExecutableForm * aContainer,
+	BF precompileParameter(ExecutableForm & aContainer,
 			TableOfInstanceOfData & tableOfVariable,
-			Variable * aParameter, avm_offset_t offset);
+			const Variable & aParameter, avm_offset_t offset);
 
 	void precompileComPoint(
-			ExecutableForm * aContainer, PropertyPart & theDeclaration,
+			ExecutableForm & aContainer, const PropertyPart & theDeclaration,
 			TableOfInstanceOfData & tableOfVariable);
 
-	void precompileComPoint(ExecutableForm * aContainer,
+	void precompileComPoint(ExecutableForm & aContainer,
 			const PropertyPart::TableOfPort & listOfComPoint,
-			avm_size_t ioPortOffset, TableOfInstanceOfData & tableOfVariable);
+			std::size_t ioPortOffset, TableOfInstanceOfData & tableOfVariable);
 
 	void precompileChannel(
-			ExecutableForm * aContainer, PropertyPart & theDeclaration,
+			ExecutableForm & aContainer, const PropertyPart & theDeclaration,
 			TableOfInstanceOfData & tableOfVariable);
 
-	void precompileBuffer(ExecutableForm * aContainer, Buffer * aBuffer);
+	void precompileBuffer(ExecutableForm & aContainer, const Buffer & aBuffer);
 
 
 
@@ -110,96 +110,98 @@ public:
 	 * COMPILATION
 	 ***************************************************************************
 	 */
-	void compilePort(ExecutableForm * anExecutable);
+	void compilePort(ExecutableForm & anExecutable);
 
-	void compilePort(ExecutableForm * anExecutable,
+	void compilePort(ExecutableForm & anExecutable,
 			const InstanceOfPort & aPortInstance);
 
 
 	Router addMachineModelRouter(
-			ExecutableForm * theExecutable, InstanceOfMachine * aMachine);
+			ExecutableForm & theExecutable,
+			const InstanceOfMachine & aMachine);
 
-	Router newMachineRouter(InstanceOfMachine * aMachine);
+	Router newMachineRouter(const InstanceOfMachine & aMachine);
 
 
-	void compileCommunication(ExecutableForm * theExecutable,
+	void compileCommunication(ExecutableForm & theExecutable,
 			bool & hasSynchronizeMachine, bool & hasUpdateBuffer);
 
-	void compileConnector(ExecutableForm * theExecutable,
+	void compileConnector(ExecutableForm & theExecutable,
 			bool & hasSynchronizeMachine, bool & hasUpdateBuffer);
 
-	void compileConnector(ExecutableForm * theExecutable,
-			Connector * aConnector, InstanceOfConnect * ioc,
+	void compileConnector(ExecutableForm & theExecutable,
+			const Connector & astConnector, InstanceOfConnector & aConnector,
 			bool & hasSynchronizeMachine, bool & hasUpdateBuffer);
 
-	void compileRoute(ExecutableForm * theExecutable,
-			Connector * aConnector, InstanceOfConnect * ioc,
+	void compileRoute(ExecutableForm & theExecutable,
+			const Connector & astConnector, InstanceOfConnector & aConnector,
 			bool & hasSynchronizeMachine, bool & hasUpdateBuffer);
 
 
 
 	void compileConnectorBroadcast(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileConnectorBuffer(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileConnectorRoutingCast(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileConnectorSynchronous(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileConnectorFlow(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileConnectorTransfert(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileConnectorEnvironment(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 
 	void compileRouteBroadcast(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileRouteBuffer(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileRouteRoutingCast(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileRouteSynchronous(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileRouteTransfert(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 	void compileRouteEnvironment(
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector);
 
 
 
 	ExecutableForm * compileComPointMachine(
-			ExecutableForm * theExecutable, ComPoint * aComPoint,
+			ExecutableForm & theExecutable, const ComPoint & aComPoint,
 			bool & isInstanceStaticFlag, InstanceOfMachine * & aMachine);
 
-	bool compileComPointPort(ExecutableForm * theExecutable4Port,
-			ComPoint * aComPoint, InstanceOfPort * & aPort);
+	bool compileComPointPort(
+			ExecutableForm & theExecutableOfConnector,
+			ExecutableForm & theExecutable4Port,
+			const ComPoint & aComPoint, InstanceOfPort * & aPort);
 
 	void createRoutingData(List< RoutingData > & listOfRoutingData,
-			ExecutableForm * theExecutable, InstanceOfConnect * ioc,
-			ComRoute * aComRoute, ComPoint * aComPoint);
+			ExecutableForm & theExecutable, InstanceOfConnector & aConnector,
+			const ComRoute & aComRoute, const ComPoint & aComPoint);
 
-	RoutingData addRoutingData(ExecutableForm * theExecutable,
-			bool isInstanceStaticFlag, InstanceOfConnect * ioc,
-			InstanceOfMachine * theInstanceStatic,
-			InstanceOfPort * thePortInstance,
-			Modifier::DIRECTION_KIND aDirection);
+	RoutingData addRoutingData(ExecutableForm & theExecutable,
+			bool isInstanceStaticFlag, InstanceOfConnector & aConnector,
+			const InstanceOfMachine & theInstanceStatic,
+			const InstanceOfPort & thePortInstance, const ComRoute & aComRoute);
 
-	RoutingData addRoutingData(Router & theRouter,
-			RoutingData & theRoutingData,
-			Modifier::DIRECTION_KIND aDirection);
+	RoutingData addRoutingData(
+			InstanceOfConnector & aConnector, Router & theRouter,
+			RoutingData & theRoutingData, const ComRoute & aComRoute);
 
 
 	/**
@@ -213,11 +215,11 @@ public:
 	void updateGlobalRoute(const Router & refRouter, const Router & newRouter);
 
 	void updateLocalModelUsingLocalPrototype(
-			ExecutableForm * theExecutable, const Router & aRouter4Model);
+			ExecutableForm & theExecutable, const Router & aRouter4Model);
 
 	void updateLocalModelUsingGlobalModel(const Router & aRouter4Model);
 
-	void postCompileCommunication(ExecutableForm * theExecutable);
+	void postCompileCommunication(ExecutableForm & theExecutable);
 
 };
 

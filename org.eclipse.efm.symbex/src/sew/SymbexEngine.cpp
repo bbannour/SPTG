@@ -15,6 +15,8 @@
 
 #include "SymbexEngine.h"
 
+#include <fstream>
+
 #include <builder/Builder.h>
 #include <parser/ParserManager.h>
 
@@ -25,8 +27,6 @@
 #include <sew/SymbexDispatcher.h>
 #include <sew/Workflow.h>
 
-#include <util/ExecutionTime.h>
-
 
 namespace sep
 {
@@ -35,12 +35,9 @@ namespace sep
  * CONSTRUCTOR
  * Default
  */
-SymbexEngine::SymbexEngine(Workflow & aWorkflow,
-		WObject * wfParameterObject, avm_offset_t anOffset)
+SymbexEngine::SymbexEngine(const WObject * wfParameterObject)
 : RunnableElement( wfParameterObject ),
-mWorkflow( aWorkflow ),
-
-mConfiguration( *this , mWorkflow ),
+mConfiguration( *this ),
 mPrimitiveProcessor( *this , mConfiguration ),
 
 mBuilder( *this , mConfiguration  , mPrimitiveProcessor ),
@@ -48,12 +45,16 @@ mLoader( mConfiguration, mBuilder , mPrimitiveProcessor ),
 
 mControllerUnitManager( *this , wfParameterObject ),
 mSymbexDispatcher( *this , wfParameterObject , mControllerUnitManager),
+
+mExecutionChronoManager( false ),
 mExecutionTimeManager( false ),
 
-mOffset( anOffset ),
+mPreviousEngine( nullptr ),
+mNextEngine( nullptr ),
 
-mPreviousEngine( NULL ),
-mNextEngine( NULL )
+mErrorCount( 0 ),
+mWarningCount( 0 )
+
 {
 	//!! NOTHING
 }
@@ -72,8 +73,11 @@ bool SymbexEngine::configure()
 			<< "Configure Engine director: " << strUniqId()
 			<< std::endl;
 
+	mConfigFlag = RunnableElement::configure();
+
 	if( not mConfiguration.configure(getParameterWObject(),
-		((mPreviousEngine != NULL) ? &(mPreviousEngine->mConfiguration) : NULL)) )
+			((mPreviousEngine != nullptr) ?
+					&(mPreviousEngine->mConfiguration) : nullptr)) )
 	{
 		avm_set_exit_code( AVM_EXIT_CONFIGURE_ERROR_CODE );
 
@@ -87,6 +91,9 @@ AVM_ENDIF_DEBUG_FLAG( CONFIGURING )
 AVM_IF_DEBUG_FLAG( CONFIGURING )
 	mConfiguration.toStream( AVM_OS_LOG );
 AVM_ENDIF_DEBUG_FLAG( CONFIGURING )
+
+	// Setting CURRENT ACTIVE CONFIGURATION
+	setCurrentActiveConfiguration();
 
 	////////////////////////////////////////////////////////////////////////////
 	///// PRIMITIVE PROCESSOR
@@ -156,7 +163,9 @@ AVM_ENDIF_DEBUG_ENABLED_OR
 AVM_IF_DEBUG_ENABLED_OR( mConfiguration.isDebugParsingStageEnabled() )
 	mConfiguration.saveSpecification( true , "parsed" );
 AVM_ENDIF_DEBUG_ENABLED_OR
+	}
 
+	if (mConfiguration.hasSpecification()) {
 		////////////////////////////////////////////////////////////////////////
 		///// BUILDING : COMPILING ; LOADING
 		////////////////////////////////////////////////////////////////////////
@@ -180,12 +189,12 @@ AVM_ENDIF_DEBUG_FLAG_AND( COMPILING )
 	}
 
 	// Mandatory for expression compiling in any PluginProcessor
-	else if( mPreviousEngine != NULL  )
+	else if( mPreviousEngine != nullptr  )
 	{
 		mBuilder.getAvmcodeCompiler().getSymbolTable().setSymbolTable(
 			mPreviousEngine->getBuilder().getAvmcodeCompiler().getSymbolTable() );
 
-		mConfiguration.set( mPreviousEngine->mConfiguration );
+		mConfiguration.reset( mPreviousEngine->mConfiguration );
 	}
 	else
 	{
@@ -228,7 +237,7 @@ AVM_ENDIF_DEBUG_FLAG_AND( COMPILING )
 			<< "Configure Engine director: " << strUniqId() << "... DONE"
 			<< std::endl;
 
-	return( true );
+	return( mConfigFlag );
 }
 
 
@@ -240,7 +249,7 @@ bool SymbexEngine::initImpl()
 	if( not mControllerUnitManager.init() )
 	{
 		AVM_OS_ERROR_ALERT << "SymbexEngine:> "
-					"the Plugin Processor Manager initialisation failed !!!"
+					"the FAMs Controller Unit initialization failed !!!"
 				<< SEND_ALERT;
 
 		return( false );
@@ -249,7 +258,8 @@ bool SymbexEngine::initImpl()
 
 	if( not mSymbexDispatcher.init() )
 	{
-		AVM_OS_ERROR_ALERT << "SymbexEngine:> the Engine initialisation failed !!!"
+		AVM_OS_ERROR_ALERT << "SymbexEngine:> "
+				"the Symbex Dispatcher initialization failed !!!"
 				<< SEND_ALERT;
 
 		return( false );
@@ -267,7 +277,7 @@ bool SymbexEngine::preprocess()
 	{
 		if( mConfiguration.getInputContext().last()->isRoot() )
 		{
-			mConfiguration.appendTrace(
+			mConfiguration.appendExecutionTrace(
 					mConfiguration.getInputContext().last() );
 		}
 
@@ -275,10 +285,10 @@ bool SymbexEngine::preprocess()
 				mConfiguration.getInputContext().pop_last() );
 	}
 
-	if( mConfiguration.noTrace() && (mPreviousEngine != NULL) )
+	if( mConfiguration.noExecutionTrace() && (mPreviousEngine != nullptr) )
 	{
-		mConfiguration.appendTrace(
-				mPreviousEngine->mConfiguration.getTrace() );
+		mConfiguration.appendExecutionTrace(
+				mPreviousEngine->mConfiguration.getExecutionTrace() );
 	}
 
 	bool isSymbexDispatcher_OK = mSymbexDispatcher.preprocess();
@@ -305,8 +315,9 @@ bool SymbexEngine::start()
 	///// COMPUTING
 	////////////////////////////////////////////////////////////////////////////
 
-	avm_report(AVM_OS_LOG, "SymbexEngine::startComputing");
+	reportInstanceCounterUsage(AVM_OS_LOG, "SymbexEngine::startComputing");
 
+	mExecutionChronoManager.startChrono();
 	mExecutionTimeManager.start_time();
 
 	mSymbexDispatcher.start();
@@ -315,12 +326,23 @@ bool SymbexEngine::start()
 	///// EXECUTION TIME REPORT
 	////////////////////////////////////////////////////////////////////////////
 
-	mExecutionTimeManager.finish_time();
+	reportTimeElapsing(AVM_OS_LOG);
 
-	AVM_OS_LOG << std::endl << mExecutionTimeManager.time_stat() << std::endl;
-	AVM_OS_COUT << std::endl << mExecutionTimeManager.time_stat() << std::endl;
+	reportTimeElapsing(AVM_OS_COUT);
 
 	return( true );
+}
+
+
+void SymbexEngine::reportTimeElapsing(OutStream & out)
+{
+	mExecutionChronoManager.endChrono();
+	mExecutionTimeManager.finish_time();
+
+	mExecutionChronoManager.toStream(
+			out << std::endl << AVM_NO_INDENT ) << END_INDENT << std::endl;
+
+//	out << mExecutionTimeManager.time_stat() << std::endl;
 }
 
 
@@ -380,11 +402,9 @@ void SymbexEngine::dynReport(OutStream & os) const
 
 void SymbexEngine::postReport(OutStream & os) const
 {
-	mSymbexDispatcher.report(AVM_OS_LOG);
-	mSymbexDispatcher.report(AVM_OS_COUT);
+	mSymbexDispatcher.report(os);
 
-	mControllerUnitManager.report(AVM_OS_LOG);
-	mControllerUnitManager.report(AVM_OS_COUT);
+	mControllerUnitManager.report(os);
 }
 
 
@@ -413,6 +433,33 @@ bool SymbexEngine::startParsing()
 
 	bool isOK = mConfiguration.hasSpecification() && aParser.hasNoSyntaxError();
 
+	mErrorCount = aParser.getErrorCount();
+	mWarningCount = aParser.getWarningCount();
+
+	AVM_OS_LOG << _SEW_
+			<< "< end > Parsing ... " << ( isOK ? "done." : "failed." )
+			<< std::endl;
+
+	return( isOK );
+}
+
+
+bool SymbexEngine::startParsing(const std::string & rawTextModel)
+{
+	AVM_OS_LOG << std::endl << _SEW_ << "< start > Parsing ..." << std::endl;
+
+	ParserManager aParser( mConfiguration.getSpecificationFileLocation() );
+
+	std::istringstream strStream( rawTextModel );
+
+	mConfiguration.setSpecification( aParser.parseFML(
+			mConfiguration.getWObjectManager(), strStream ) );
+
+	bool isOK = mConfiguration.hasSpecification() && aParser.hasNoSyntaxError();
+
+	mErrorCount = aParser.getErrorCount();
+	mWarningCount = aParser.getWarningCount();
+
 	AVM_OS_LOG << _SEW_
 			<< "< end > Parsing ... " << ( isOK ? "done." : "failed." )
 			<< std::endl;
@@ -433,6 +480,8 @@ bool SymbexEngine::startBuilding()
 
 	serializeBuildingResult();
 
+	serializeLoadingResult();
+
 	AVM_OS_LOG << _SEW_
 			<< "< end > Building ... " << ( isOK ? "done." : "failed." )
 			<< std::endl;
@@ -447,6 +496,10 @@ bool SymbexEngine::startBuilding()
 bool SymbexEngine::startComputing()
 {
 	AVM_OS_LOG << std::endl << _SBX_ << "< start > Computing ..." << std::endl;
+
+	// Setting CURRENT ACTIVE CONFIGURATION
+	setCurrentActiveConfiguration();
+
 	try
 	{
 		////////////////////////////////////////////////////////////////////////
@@ -525,6 +578,17 @@ bool SymbexEngine::startComputing()
 
 		AVM_OS_LOG << std::endl;
 
+		postReport(AVM_OS_COUT);
+
+
+		////////////////////////////////////////////////////////////////////////////
+		///// EXECUTION TIME REPORT
+		////////////////////////////////////////////////////////////////////////////
+
+		reportTimeElapsing(AVM_OS_LOG);
+
+		reportTimeElapsing(AVM_OS_COUT);
+
 
 		////////////////////////////////////////////////////////////////////////
 		///// EXITING
@@ -597,21 +661,175 @@ bool SymbexEngine::startComputing()
 }
 
 
+/*
+ * for RPC PURPUSE
+ */
+bool SymbexEngine::initComputing()
+{
+	AVM_OS_LOG << std::endl << _SBX_ << "< start > Computing ..." << std::endl;
+
+	// Setting CURRENT ACTIVE CONFIGURATION
+	setCurrentActiveConfiguration();
+
+	try
+	{
+		////////////////////////////////////////////////////////////////////////
+		///// INITIALIZATION
+		////////////////////////////////////////////////////////////////////////
+
+		if( not init() )
+		{
+			avm_set_exit_code( AVM_EXIT_INITIALIZING_ERROR_CODE );
+
+			return( false );
+		}
+
+		////////////////////////////////////////////////////////////////////////
+		///// PRE PROCESSING
+		////////////////////////////////////////////////////////////////////////
+
+		if( not preprocess() )
+		{
+			avm_set_exit_code( AVM_EXIT_PRE_PROCESSING_ERROR_CODE );
+
+			return( false );
+		}
+
+		////////////////////////////////////////////////////////////////////////
+		///// REPORTING
+		////////////////////////////////////////////////////////////////////////
+
+		AVM_OS_LOG << std::endl;
+
+		preReport(AVM_OS_LOG);
+
+		AVM_OS_LOG << std::endl;
+
+		////////////////////////////////////////////////////////////////////////
+		///// INIT
+		////////////////////////////////////////////////////////////////////////
+
+		mSymbexDispatcher.initStep();
+
+		////////////////////////////////////////////////////////////////////////
+		///// REPORTING
+		////////////////////////////////////////////////////////////////////////
+
+		AVM_OS_LOG << std::endl;
+
+		dynReport(AVM_OS_LOG);
+
+		AVM_OS_LOG << std::endl;
+
+	}
+	catch ( const std::exception & e )
+	{
+		AVM_OS_WARN << std::endl << EMPHASIS(
+				"SymbexEngine::startComputing< std::exception >",
+				e.what(), '*', 80);
+
+		AVM_OS_WARN << EMPHASIS("Save Point ...", '*', 80);
+
+		////////////////////////////////////////////////////////////////////////
+		///// FAILED REPORTING
+		////////////////////////////////////////////////////////////////////////
+
+		failedReport();
+	}
+	catch ( ... )
+	{
+		AVM_OS_WARN << std::endl << EMPHASIS(
+				"SymbexEngine::startComputing< unknown::exception > !!!",
+				'*', 80);
+
+		AVM_OS_WARN << EMPHASIS("Save Point ...", '*', 80);
+
+		////////////////////////////////////////////////////////////////////////
+		///// FAILED REPORTING
+		////////////////////////////////////////////////////////////////////////
+
+		failedReport();
+	}
+
+	AVM_OS_LOG << std::endl << _SBX_ << "< end > Computing ... done." << std::endl;
+
+	return( true );
+}
+
+bool SymbexEngine::runPostProcessor()
+{
+	try
+	{
+		////////////////////////////////////////////////////////////////////////
+		///// POST PROCESSING
+		////////////////////////////////////////////////////////////////////////
+
+		if( not postprocess() )
+		{
+			serializeComputingResult();
+
+			avm_set_exit_code( AVM_EXIT_POST_PROCESSING_ERROR_CODE );
+
+			return( false );
+		}
+
+		////////////////////////////////////////////////////////////////////////
+		///// REPORTING
+		////////////////////////////////////////////////////////////////////////
+
+		AVM_OS_LOG << std::endl;
+
+		postReport(AVM_OS_LOG);
+
+		AVM_OS_LOG << std::endl;
+
+		postReport(AVM_OS_COUT);
+
+		////////////////////////////////////////////////////////////////////////
+		///// SERIALIZATION
+		////////////////////////////////////////////////////////////////////////
+
+		serializeComputingResult();
+	}
+	catch ( const std::exception & e )
+	{
+		AVM_OS_WARN << std::endl << EMPHASIS(
+				"SymbexEngine::startComputing< std::exception >",
+				e.what(), '*', 80);
+
+		AVM_OS_WARN << EMPHASIS("Save Point ...", '*', 80);
+
+		////////////////////////////////////////////////////////////////////////
+		///// FAILED REPORTING
+		////////////////////////////////////////////////////////////////////////
+
+		failedReport();
+	}
+	catch ( ... )
+	{
+		AVM_OS_WARN << std::endl << EMPHASIS(
+				"SymbexEngine::startComputing< unknown::exception > !!!",
+				'*', 80);
+
+		AVM_OS_WARN << EMPHASIS("Save Point ...", '*', 80);
+
+		////////////////////////////////////////////////////////////////////////
+		///// FAILED REPORTING
+		////////////////////////////////////////////////////////////////////////
+
+		failedReport();
+	}
+
+	AVM_OS_LOG << std::endl << _SBX_ << "< end > Computing ... done." << std::endl;
+
+	return( true );
+}
+
+
+
 /**
  * Serialization
  */
-void SymbexEngine::serializeBuildingResult()
-{
-	mConfiguration.serializeBuildingResult();
-}
-
-void SymbexEngine::serializeComputingResult()
-{
-	mConfiguration.serializeComputingResult();
-}
-
-
-
 void SymbexEngine::failedReport()
 {
 	////////////////////////////////////////////////////////////////////////////
@@ -665,15 +883,15 @@ void SymbexEngine::tddStart()
 	AVM_OS_TDD << "time#stat = " << mExecutionTimeManager.time_stat()
 			<< std::endl;
 
-	if( mWorkflow.isTddUnitTesting() )
-	{
-		tddUnitReport(AVM_OS_TDD);
-	}
-
-	if( mWorkflow.isTddRegressionTesting() )
-	{
-		tddRegressionReport(AVM_OS_TDD);
-	}
+//	if( mWorkflow.isTddUnitTesting() )
+//	{
+//		tddUnitReport(AVM_OS_TDD);
+//	}
+//
+//	if( mWorkflow.isTddRegressionTesting() )
+//	{
+//		tddRegressionReport(AVM_OS_TDD);
+//	}
 
 	AVM_OS_TDD << DECR_INDENT;
 	AVM_OS_TDD << "// end engine "

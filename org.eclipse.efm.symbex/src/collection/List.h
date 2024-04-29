@@ -17,9 +17,10 @@
 
 #include <util/avm_assert.h>
 #include <util/avm_numeric.h>
-#include <base/SmartPointerUtil.h>
 
 #include <collection/Collection.h>
+
+#include <common/Element.h>
 
 
 namespace sep
@@ -103,12 +104,12 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline virtual void pop_back()
+	inline void pop_back()
 	{
 		BaseList::pop_back();
 	}
 
-	inline void pop_back(avm_size_t count)
+	inline void pop_back(std::size_t count)
 	{
 		for( ; (count > 0) && nonempty() ; --count )
 		{
@@ -117,13 +118,13 @@ public:
 	}
 
 
-	inline virtual void push_back(const T & arg)
+	inline virtual void push_back(const T & arg) override
 	{
 		BaseList::push_back(arg);
 	}
 
 
-	inline virtual void push_back(const std::list< T > & aCollection)
+	inline virtual void push_back(const std::list< T > & aCollection) override
 	{
 		BaseList::insert(BaseList::end(),
 				aCollection.begin(), aCollection.end());
@@ -137,7 +138,7 @@ public:
 	}
 
 
-	inline virtual void push_back(const std::vector< T > & aCollection)
+	inline virtual void push_back(const std::vector< T > & aCollection) override
 	{
 		BaseList::insert(BaseList::end(),
 				aCollection.begin(), aCollection.end());
@@ -151,7 +152,7 @@ public:
 	}
 
 
-	inline virtual void push_front(const T & arg)
+	inline virtual void push_front(const T & arg) override
 	{
 		BaseList::push_front(arg);
 	}
@@ -164,12 +165,12 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline virtual void pop_front()
+	inline void pop_front()
 	{
 		BaseList::pop_front();
 	}
 
-	inline void pop_front(avm_size_t count)
+	inline void pop_front(std::size_t count)
 	{
 		for( ; (count > 0) && nonempty() ; --count )
 		{
@@ -178,7 +179,7 @@ public:
 	}
 
 
-	inline virtual void push_front(const std::list< T > & aCollection)
+	inline virtual void push_front(const std::list< T > & aCollection) override
 	{
 		BaseList::insert(BaseList::begin(),
 				aCollection.begin(), aCollection.end());
@@ -192,7 +193,8 @@ public:
 	}
 
 
-	inline virtual void push_front(const std::vector< T > & aCollection)
+	inline virtual void push_front(
+			const std::vector< T > & aCollection) override
 	{
 		BaseList::insert(BaseList::begin(),
 				aCollection.begin(), aCollection.end());
@@ -212,17 +214,17 @@ public:
 	 * emptiness
 	 ***************************************************************************
 	 */
-	inline virtual bool empty() const
+	inline virtual bool empty() const override
 	{
 		return( BaseList::empty() );
 	}
 
-	inline virtual bool nonempty() const
+	inline virtual bool nonempty() const override
 	{
 		return( not BaseList::empty() );
 	}
 
-	inline virtual bool singleton() const
+	inline virtual bool singleton() const override
 	{
 		//return( size() == 1 );
 
@@ -231,7 +233,7 @@ public:
 		return( (it != itEnd) && ((++it) == itEnd) );
 	}
 
-	inline virtual bool populated() const
+	inline virtual bool populated() const override
 	{
 		//return( size() > 1 );
 
@@ -241,7 +243,7 @@ public:
 	}
 
 
-	//	inline virtual avm_size_t size() const
+	//	inline virtual std::size_t size() const override
 	//	{
 	//		return( BaseList::size() );
 	//	}
@@ -250,13 +252,24 @@ public:
 	/**
 	 * contains a particular element
 	 */
-	inline virtual bool contains(const T & arg) const
+	inline virtual bool contains(const T & arg) const override
 	{
-		typename BaseList::const_iterator it = BaseList::begin();
-		typename BaseList::const_iterator itEnd = BaseList::end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & it : (*this) )
 		{
-			if( (*it) == arg )
+			if( it == arg )
+			{
+				return( true );
+			}
+		}
+
+		return( false );
+	}
+
+	inline virtual bool contains(const T * arg) const override
+	{
+		for( const auto & it : (*this) )
+		{
+			if( it == *arg )
 			{
 				return( true );
 			}
@@ -269,7 +282,7 @@ public:
 	/**
 	 * has an intersection with another list
 	 */
-	inline virtual bool intersect(const std::list< T > & aCollection) const
+	inline bool intersect(const std::list< T > & aCollection) const
 	{
 		typename std::list< T >::const_iterator itCol;
 		typename std::list< T >::const_iterator endItCol = aCollection.end();
@@ -297,31 +310,9 @@ public:
 	 * append
 	 ***************************************************************************
 	 */
-	inline virtual void append(const T & arg)
+	inline virtual void append(const T & arg) override
 	{
 		BaseList::push_back(arg);
-	}
-
-	inline virtual void append(const T & arg1, const T & arg2)
-	{
-		append(arg1);
-		append(arg2);
-	}
-
-	inline virtual void append(const T & arg1, const T & arg2, const T & arg3)
-	{
-		append(arg1);
-		append(arg2);
-		append(arg3);
-	}
-
-
-	inline virtual void append(T * anArrayOfArgument, int anArgSize)
-	{
-		for (int i = 0 ; i < anArgSize ; ++i)
-		{
-			push_back(anArrayOfArgument[i]);
-		}
 	}
 
 	template< typename _TOE >
@@ -332,26 +323,35 @@ public:
 	}
 
 	template< typename _TOE >
-	inline void splice(std::list< _TOE > & aCollection)
-	{
-		BaseList::splice(BaseList::end(), aCollection);
-	}
-
-	template< typename _TOE >
 	inline void append(const std::vector< _TOE > & aCollection)
 	{
 		BaseList::insert(BaseList::end(),
 				aCollection.begin(), aCollection.end());
 	}
 
+	using Collection<T>::append;
+
 
 	/*
 	 ***************************************************************************
 	 * SETTER
-	 * add_union
+	 * splice
 	 ***************************************************************************
 	 */
-	inline virtual void add_union(const T & arg)
+	template< typename _TOE >
+	inline void splice(std::list< _TOE > & aCollection)
+	{
+		BaseList::splice(BaseList::end(), aCollection);
+	}
+
+
+	/*
+	 ***************************************************************************
+	 * SETTER
+	 * add_unique
+	 ***************************************************************************
+	 */
+	inline virtual void add_unique(const T & arg) override
 	{
 		if( not contains(arg) )
 		{
@@ -359,48 +359,7 @@ public:
 		}
 	}
 
-	inline virtual void add_union(const T & arg1, const T & arg2)
-	{
-		add_union(arg1);
-		add_union(arg2);
-	}
-
-
-	inline virtual void add_union(T * anArrayOfArgument, int anArgSize)
-	{
-		for (int i = 0 ; i < anArgSize ; ++i)
-		{
-			add_union( anArrayOfArgument[i] );
-		}
-	}
-
-
-	inline virtual void add_union(const std::list< T > & aCollection)
-	{
-		typename std::list< T >::const_iterator it = aCollection.begin();
-		for( ; it != aCollection.end() ; ++it )
-		{
-			add_union( (*it) );
-		}
-	}
-
-	inline virtual void add_union(const std::list< T > * aCollection)
-	{
-		typename std::list< T >::const_iterator it = aCollection->begin();
-		for( ; it != aCollection->end() ; ++it )
-		{
-			add_union( (*it) );
-		}
-	}
-
-	inline virtual void add_union(const std::vector< T > & aCollection)
-	{
-		typename std::vector< T >::const_iterator it = aCollection.begin();
-		for( ; it != aCollection.end() ; ++it )
-		{
-			add_union( (*it) );
-		}
-	}
+	using Collection<T>::add_unique;
 
 
 	/*
@@ -409,18 +368,18 @@ public:
 	 * first & ... & last
 	 ***************************************************************************
 	 */
-	inline virtual reference first()
+	inline virtual reference first() override
 	{
 		return( BaseList::front() );
 	}
 
-	inline virtual const_reference first() const
+	inline virtual const_reference first() const override
 	{
 		return( BaseList::front() );
 	}
 
 
-	inline virtual T pop_first()
+	inline virtual T pop_first() override
 	{
 		T theFirst = BaseList::front();
 
@@ -429,7 +388,7 @@ public:
 		return( theFirst );
 	}
 
-	inline virtual void pop_first_to(T & theFirst)
+	inline virtual void pop_first_to(T & theFirst) override
 	{
 		theFirst = BaseList::front();
 
@@ -442,7 +401,7 @@ public:
 	}
 
 
-	inline virtual reference second()
+	inline virtual reference second() override
 	{
 		AVM_OS_ASSERT_FATAL_ERROR_EXIT( populated() )
 				<< "Expected a List with size() > 1 !!!"
@@ -451,7 +410,7 @@ public:
 		return( *( ++(BaseList::begin()) ) );
 	}
 
-	inline virtual const_reference second() const
+	inline virtual const_reference second() const override
 	{
 		AVM_OS_ASSERT_FATAL_ERROR_EXIT( populated() )
 				<< "Expected a List with size() > 1 !!!"
@@ -461,18 +420,18 @@ public:
 	}
 
 
-	inline virtual reference last()
+	inline virtual reference last() override
 	{
 		return( *( BaseList::rbegin() ) );
 	}
 
-	inline virtual const_reference last() const
+	inline virtual const_reference last() const override
 	{
 		return( *( BaseList::rbegin() ) );
 	}
 
 
-	inline virtual T pop_last()
+	inline virtual T pop_last() override
 	{
 		T theLast = BaseList::back();
 
@@ -481,7 +440,7 @@ public:
 		return( theLast );
 	}
 
-	inline virtual void pop_last_to(T & theLast)
+	inline virtual void pop_last_to(T & theLast) override
 	{
 		theLast = BaseList::back();
 
@@ -494,7 +453,7 @@ public:
 	}
 
 
-	inline virtual reference at(avm_size_t index)
+	inline reference at(std::size_t index)
 	{
 		typename BaseList::iterator it = BaseList::begin();
 		typename BaseList::iterator itEnd = BaseList::end();
@@ -506,7 +465,7 @@ public:
 		return( ((index == 0) && (it != itEnd)) ? *it : last() );
 	}
 
-	inline virtual const_reference at(avm_size_t index) const
+	inline const_reference at(std::size_t index) const
 	{
 		typename BaseList::const_iterator it = BaseList::begin();
 		typename BaseList::const_iterator itEnd = BaseList::end();
@@ -519,18 +478,18 @@ public:
 	}
 
 
-	inline virtual reference get(avm_size_t index)
+	inline reference get(std::size_t index)
 	{
 		return( at(index) );
 	}
 
-	inline virtual const_reference get(avm_size_t index) const
+	inline const_reference get(std::size_t index) const
 	{
 		return( at(index) );
 	}
 
 
-	inline T pop_index(avm_size_t index)
+	inline T pop_index(std::size_t index)
 	{
 		typename BaseList::iterator it = BaseList::begin();
 		typename BaseList::iterator itEnd = BaseList::end();
@@ -558,63 +517,27 @@ public:
 	 ***************************************************************************
 	 * SETTER
 	 * reset
+	 * remove
+	 * makeUnique
 	 ***************************************************************************
 	 */
-	inline virtual void reset(const T & arg)
+	inline virtual void reset() override
 	{
 		BaseList::clear();
-		push_back(arg);
 	}
 
-
-	inline virtual void reset(const std::list< T > & aCollection)
-	{
-		BaseList::clear();
-
-		push_back(aCollection);
-	}
-
-	inline virtual void reset(const std::vector< T > & aCollection)
-	{
-		BaseList::clear();
-
-		push_back(aCollection);
-	}
+	using Collection<T>::reset;
 
 
-	template< typename _TOE >
-	inline void reset(const std::list< _TOE > & aCollection)
-	{
-		BaseList::clear();
-
-		push_back(aCollection);
-	}
-
-	template< typename _TOE >
-	inline void reset(const std::vector< _TOE > & aCollection)
-	{
-		BaseList::clear();
-
-		push_back(aCollection);
-	}
-
-
-	inline virtual void remove(const T & arg)
+	inline virtual void remove(const T & arg) override
 	{
 		BaseList::remove(arg);
 	}
 
-	inline void remove(const std::list< T > & aCollection)
-	{
-		typename std::list< T >::const_iterator it = aCollection.begin();
-		for( ; it != aCollection.end() ; ++it )
-		{
-			BaseList::remove( (*it) );
-		}
-	}
+	using Collection<T>::remove;
 
 
-	inline virtual void makeUnique()
+	inline void makeUnique()
 	{
 		if( populated() )
 		{
@@ -649,76 +572,10 @@ public:
 };
 
 
-
-template< typename T >
-class APList : public List< T >
-{
-public:
-	/**
-	 * TYPEDEF
-	 */
-	typedef T       & reference;
-	typedef const T & const_reference;
-
-	typedef List< T >  BaseAPList;
-
-
-	/**
-	 * CONSTRUCTOR
-	 * Default
-	 */
-	APList()
-	: BaseAPList()
-	{
-		//!! NOTHING
-	}
-
-	/**
-	 * CONSTRUCTOR
-	 * Copy
-	 */
-	APList(const APList & aList)
-	: BaseAPList( )
-	{
-		typename BaseAPList::const_iterator it = aList.begin();
-		typename BaseAPList::const_iterator itEnd = aList.end();
-		for( ; it != itEnd ; ++it )
-		{
-			BaseAPList::push_back( sep::incrReferenceCount( *it ) );
-		}
-	}
-
-
-	/**
-	 * DESTRUCTOR
-	 */
-	virtual ~APList()
-	{
-		clear();
-	}
-
-	/**
-	 * CLEAR
-	 */
-	void clear()
-	{
-		while( BaseAPList::nonempty() )
-		{
-			sep::destroy( BaseAPList::pop_last() );
-		}
-
-		BaseAPList::clear();
-	}
-
-};
-
-
-
 /**
  * MEMORY MANAGEMENT
  * DESTROY
  */
-
 template< class T >
 void destroy(List< T * > * aList)
 {
@@ -729,7 +586,16 @@ void destroy(List< T * > * aList)
 
 	delete( aList );
 
-	aList = NULL;
+	aList = nullptr;
+}
+
+template< class T >
+void destroy(List< T * > & aList)
+{
+	while( aList.nonempty() )
+	{
+		sep::destroy( aList.pop_last() );
+	}
 }
 
 
@@ -738,7 +604,7 @@ void destroy(List< T > * aList)
 {
 	delete( aList );
 
-	aList = NULL;
+	aList = nullptr;
 }
 
 

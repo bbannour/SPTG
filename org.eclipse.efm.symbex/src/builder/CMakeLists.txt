@@ -16,4 +16,3 @@ target_include_directories (builder PUBLIC ${GMP_INCLUDE_DIR} ${GMPXX_INCLUDE_DI
 target_include_directories (builder PUBLIC ${Boost_INCLUDE_DIRS})
 target_include_directories (builder PUBLIC ${CVC4_INCLUDE_DIR})
 
-add_dependencies(builder rescan_cvc4)

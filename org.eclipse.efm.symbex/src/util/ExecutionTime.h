@@ -35,6 +35,30 @@ namespace sep
 
 class ExecutionTime
 {
+
+protected :
+	/**
+	 * ATTRIBUTES
+	 */
+
+#ifdef __AVM_UNIX__
+	struct timeval start_t;
+	struct timeval finish_t;
+	struct rusage start_r;
+	struct rusage finish_r;
+	clock_t finish_clock;
+#endif /* __AVM_UNIX__ */
+
+	avm_ftime_t t_depart;
+	avm_ftime_t t_fin;
+
+	std::time_t t_start;
+	std::time_t t_end;
+
+	//!!! BOOST TODO
+//	boost::posix_time::ptime time_start;
+//	boost::posix_time::ptime time_end;
+
 public :
 	/**
 	 * CONSTRUCTOR
@@ -63,29 +87,6 @@ public :
 
 	static avm_ftime_t getClock();
 
-
-protected :
-
-	/*ATTRIBUTES*/
-
-
-#ifdef __AVM_UNIX__
-	struct timeval start_t;
-	struct timeval finish_t;
-	struct rusage start_r;
-	struct rusage finish_r;
-	clock_t finish_clock;
-#endif /* __AVM_UNIX__ */
-
-	avm_ftime_t t_depart;
-	avm_ftime_t t_fin;
-
-	std::time_t t_start;
-	std::time_t t_end;
-
-//!!! BOOST TODO
-//	boost::posix_time::ptime time_start;
-//	boost::posix_time::ptime time_end;
 };
 
 

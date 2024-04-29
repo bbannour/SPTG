@@ -18,8 +18,6 @@
 
 #include <computer/BaseEnvironment.h>
 
-#include <common/AvmPointer.h>
-
 #include <computer/primitive/AvmPrimitiveProcessor.h>
 
 #include <fml/runtime/ExecutionContext.h>
@@ -55,7 +53,7 @@ public :
 	////////////////////////////////////////////////////////////////////////////
 	// OUTPUTs
 	///////////////////////////////////////////////////////////////////////////
-	APExecutionData outED;
+	ExecutionData outED;
 
 	BF outVAL;
 
@@ -107,7 +105,7 @@ public:
 		//!! NOTHING
 	}
 
-	EvaluationEnvironment(BaseEnvironment & form, const APExecutionData & anED)
+	EvaluationEnvironment(BaseEnvironment & form, const ExecutionData & anED)
 	: BaseEnvironment( form , anED ),
 	outED( anED ),
 	outVAL( )
@@ -115,7 +113,7 @@ public:
 		//!! NOTHING
 	}
 
-	EvaluationEnvironment(BaseEnvironment & form, const APExecutionData & anED,
+	EvaluationEnvironment(BaseEnvironment & form, const ExecutionData & anED,
 			const BFCode & aCode)
 	: BaseEnvironment(form , anED , aCode),
 	outED( anED ),
@@ -124,7 +122,7 @@ public:
 		//!! NOTHING
 	}
 
-	EvaluationEnvironment(BaseEnvironment & form, const APExecutionData & anED,
+	EvaluationEnvironment(BaseEnvironment & form, const ExecutionData & anED,
 			const RuntimeID & aRID)
 	: BaseEnvironment( form , anED , aRID ),
 	outED( anED ),
@@ -147,12 +145,12 @@ public:
 	 * GETTER - SETTER
 	 * OUTPUTS
 	*/
-	inline virtual bool hasOutput() const
+	inline virtual bool hasOutput() const override
 	{
 		return( outED.valid() );
 	}
 
-	inline virtual bool hasntOutput() const
+	inline virtual bool hasnoOutput() const override
 	{
 		return( outED.invalid() && outVAL.invalid() );
 	}
@@ -186,10 +184,10 @@ public:
 
 
 	// For filters
-	bool eval(const APExecutionData & anED, const RuntimeID & aRID,
+	bool eval(const ExecutionData & anED, const RuntimeID & aRID,
 			const BF & bf);
 
-	bool eval(const APExecutionData & anED, const RuntimeID & aRID,
+	bool eval(const ExecutionData & anED, const RuntimeID & aRID,
 			const BFCode & aCode);
 
 
@@ -235,20 +233,20 @@ public:
 	/**
 	 * TOOLS
 	 */
-	BF ioSubst(const APExecutionData & apED, AvmProgram * aProgram,
-			AvmCode * progIO, AvmCode * traceIO, const BF & aCode);
+	BF ioSubst(const ExecutionData & apED, AvmProgram * aProgram,
+			const AvmCode & progIO, const AvmCode & traceIO, const BF & aCode);
 
 
 	/**
 	 * CHECK SATISFIABILITY
 	 */
-	bool evalFormula(const APExecutionData & anED, const RuntimeID & aRID,
+	bool evalFormula(const ExecutionData & anED, const RuntimeID & aRID,
 			AvmProgram * aProgram, const BF & anExpr);
 
-	inline bool evalFormula(const APExecutionData & anED,
+	inline bool evalFormula(const ExecutionData & anED,
 			const RuntimeID & aRID, const BF & anExpr)
 	{
-		return( evalFormula(anED, aRID, NULL, anExpr) );
+		return( evalFormula(anED, aRID, nullptr, anExpr) );
 	}
 
 	inline bool evalFormula(const ExecutionContext & anEC,
@@ -256,16 +254,19 @@ public:
 	{
 		inEC = (& anEC);
 
-		inED = anEC.getAPExecutionData();
+		inED = anEC.getExecutionData();
 
-		return( evalFormula(inED, inED->getSystemRID(), aProgram, anExpr) );
+		return( evalFormula(inED, inED.getSystemRID(), aProgram, anExpr) );
 	}
 
 
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
+
+	// Due to [-Woverloaded-virtual=]
+	using BaseEnvironment::toStream;
 
 };
 

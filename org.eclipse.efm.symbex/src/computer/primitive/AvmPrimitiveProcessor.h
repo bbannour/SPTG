@@ -80,9 +80,9 @@ public:
 	mConfiguration( aConfiguration ),
 
 	AVM_PRIMITIVE_TABLE( ),
-	DEFAULT_EVAL_EXPRESSION_ALU( NULL ),
-	DEFAULT_INVOKE_ROUTINE( NULL ),
-	DEFAULT_AVM_PRIMITIVE( NULL )
+	DEFAULT_EVAL_EXPRESSION_ALU( nullptr ),
+	DEFAULT_INVOKE_ROUTINE( nullptr ),
+	DEFAULT_AVM_PRIMITIVE( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -154,7 +154,7 @@ public:
 	 * the RUN statement
 	 */
 
-	void postRun(ExecutionContext & anEC, ListOfAPExecutionData & runEDS);
+	void postRun(ExecutionContext & anEC, ListOfExecutionData & runEDS);
 	void postRun(ExecutionContext & anEC, ExecutionEnvironment & ENV);
 
 
@@ -162,6 +162,8 @@ public:
 
 
 	void run(ExecutionContext & anEC);
+
+	void run(ExecutionContext & anEC, const BF & aRunnableElement);
 
 	bool run(avm_offset_t opOffset, ExecutionEnvironment & ENV);
 

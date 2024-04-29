@@ -14,6 +14,7 @@
  ******************************************************************************/
 
 #include "ExpressionConstant.h"
+#include "ExpressionConstructor.h"
 
 #include <fml/builtin/Boolean.h>
 #include <fml/builtin/Character.h>
@@ -37,6 +38,13 @@ BF ExpressionConstant::CHARACTER_NULL;
 BF ExpressionConstant::STRING_EMPTY;
 
 
+Numeric ExpressionConstant::INTEGER_MIN;
+
+Numeric ExpressionConstant::INTEGER_MAX;
+
+Numeric ExpressionConstant::UINTEGER_MAX;
+
+
 Numeric ExpressionConstant::INTEGER_MINUS_TWO;
 
 Numeric ExpressionConstant::INTEGER_MINUS_ONE;
@@ -46,6 +54,9 @@ Numeric ExpressionConstant::INTEGER_ZERO;
 Numeric ExpressionConstant::INTEGER_ONE;
 
 Numeric ExpressionConstant::INTEGER_TWO;
+
+Numeric ExpressionConstant::INTEGER_42;
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +70,17 @@ void ExpressionConstant::load()
 	BOOLEAN_FALSE     = Boolean::create(false);
 
 
+	INTEGER_MIN       = ExpressionConstructorNative::newInteger(
+						AVM_NUMERIC_MIN_INTEGER);
+
+	INTEGER_MAX       = ExpressionConstructorNative::newInteger(
+						AVM_NUMERIC_MAX_INTEGER);
+
+
+	UINTEGER_MAX       = ExpressionConstructorNative::newInteger(
+						AVM_NUMERIC_MAX_UINTEGER);
+
+
 	INTEGER_MINUS_TWO = -2;
 
 	INTEGER_MINUS_ONE = -1;
@@ -68,6 +90,8 @@ void ExpressionConstant::load()
 	INTEGER_ONE       = 1;
 
 	INTEGER_TWO       = 2;
+
+	INTEGER_42        = 42;
 
 
 	CHARACTER_NULL    = new Character('\0');

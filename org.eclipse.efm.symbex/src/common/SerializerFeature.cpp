@@ -50,6 +50,15 @@ prototype filter::filter_ufid as avm::core.filter.filter_type is
 
 endprototype
  *******************************************************************************
+
+vfs [
+	folder = "uri:acsl"
+	file#1   = "acslSpec.h"
+
+	file#2   = "acslSpec.cpp"
+
+] // end vfs
+
  */
 
 
@@ -117,11 +126,11 @@ static bool scanPeriod(std::string period,
 	return false;
 }
 
-bool SerializerFeature::configure(WObject * wfParameterObject)
+bool SerializerFeature::configure(const WObject * wfParameterObject)
 {
 	bool isConfigOK = true;
 
-	WObject * theVFS = Query::getRegexWSequence(
+	const WObject * theVFS = Query::getRegexWSequence(
 			wfParameterObject, OR_WID2("vfs", "VFS"));
 
 	if( theVFS == WObject::_NULL_ )
@@ -132,8 +141,12 @@ bool SerializerFeature::configure(WObject * wfParameterObject)
 
 	if( theVFS != WObject::_NULL_ )
 	{
+		mAutoOpenFileFlag =
+				Query::getWPropertyBoolean(theVFS,
+						CONS_WID3("auto", "open" ,"file"), mAutoOpenFileFlag);
+
 		mReportDetailsFlag =
-				Query::getWPropertyBoolean(theVFS, "details", false);
+				Query::getWPropertyBoolean(theVFS, "details", mReportDetailsFlag);
 
 		////////////////////////////////////////////////////////////////////////
 		// The report mTableOfURI Attributes
@@ -142,6 +155,7 @@ bool SerializerFeature::configure(WObject * wfParameterObject)
 
 		std::string::size_type pos;
 		std::string scheme;
+		std::string mode;
 		std::string attrID;
 
 		WObject::const_iterator itWfO = theVFS->owned_begin();
@@ -152,11 +166,11 @@ bool SerializerFeature::configure(WObject * wfParameterObject)
 			{
 				scheme = attrID = (*itWfO)->getNameID();
 
-				AvmUri & uri = appendUri( (*itWfO)->toStringValue() );
+				AvmUri & uri = appendUri( attrID , (*itWfO)->toStringValue() );
 
 				if( StringTools::startsWith(scheme, "uri") )
 				{
-					pos = uri.raw.find(':');
+					pos = uri.raw.find_first_of(":#");
 					if( pos != std::string::npos )
 					{
 						scheme = uri.raw.substr(0, pos);
@@ -165,11 +179,12 @@ bool SerializerFeature::configure(WObject * wfParameterObject)
 				}
 				else
 				{
-					pos = scheme.find('#');
+					pos = scheme.find_first_of(":#");
 					if( pos != std::string::npos )
 					{
 						scheme = scheme.substr(0, pos);
 					}
+
 					uri.location = uri.raw;
 				}
 
@@ -187,14 +202,14 @@ bool SerializerFeature::configure(WObject * wfParameterObject)
 					continue;
 				}
 
+				if( (*itWfO)->getSpecifierOp() == AVM_OPCODE_PLUS )
+				{
+					uri.mode |= std::fstream::app;
+				}
 
 				if( StringTools::startsWith(scheme, "stream") )
 				{
-					if( configureStream(theVFS, uri) )
-					{
-						mapUri(attrID, uri);
-					}
-					else
+					if( not configureStream(theVFS, uri) )
 					{
 						destroyLastUri();
 
@@ -204,25 +219,7 @@ bool SerializerFeature::configure(WObject * wfParameterObject)
 
 				else if( StringTools::startsWith(scheme, "folder") )
 				{
-					if( configureFolder(theVFS, uri) )
-					{
-						mapUri(attrID, uri);
-					}
-					else
-					{
-						destroyLastUri();
-
-						isConfigOK = false;
-					}
-				}
-
-				else if( StringTools::startsWith(scheme, "file") )
-				{
-					if( configureFile(theVFS, uri) )
-					{
-						mapUri(attrID, uri);
-					}
-					else
+					if( not configureFolder(theVFS, uri) )
 					{
 						destroyLastUri();
 
@@ -232,11 +229,17 @@ bool SerializerFeature::configure(WObject * wfParameterObject)
 
 				else if( StringTools::startsWith(scheme, "filename") )
 				{
-					if( configureFilename(theVFS, uri) )
+					if( not configureFilename(theVFS, uri) )
 					{
-						mapUri(attrID, uri);
+						destroyLastUri();
+
+						isConfigOK = false;
 					}
-					else
+				}
+
+				else if( StringTools::startsWith(scheme, "file") )
+				{
+					if( not configureFile(theVFS, uri) )
 					{
 						destroyLastUri();
 
@@ -246,11 +249,7 @@ bool SerializerFeature::configure(WObject * wfParameterObject)
 
 				else if( StringTools::startsWith(scheme, "socket") )
 				{
-					if( configureSocket(theVFS, uri) )
-					{
-						mapUri(attrID, uri);
-					}
-					else
+					if( not configureSocket(theVFS, uri) )
 					{
 						destroyLastUri();
 
@@ -299,7 +298,7 @@ bool SerializerFeature::configure(WObject * wfParameterObject)
 }
 
 
-bool SerializerFeature::configureStream(WObject * theVFS, AvmUri & uri)
+bool SerializerFeature::configureStream(const WObject * theVFS, AvmUri & uri)
 {
 	if( uri.location.find("std:") == 0 )
 	{
@@ -349,7 +348,7 @@ bool SerializerFeature::configureStream(WObject * theVFS, AvmUri & uri)
 }
 
 
-bool SerializerFeature::configureFolder(WObject * theVFS, AvmUri & uri)
+bool SerializerFeature::configureFolder(const WObject * theVFS, AvmUri & uri)
 {
 	uri.kind |= AVM_URI_FOLDER_KIND;
 
@@ -389,34 +388,39 @@ bool SerializerFeature::configureFolder(WObject * theVFS, AvmUri & uri)
 }
 
 
-bool SerializerFeature::configureFile(WObject * theVFS, AvmUri & uri)
+bool SerializerFeature::configureFile(const WObject * theVFS, AvmUri & uri)
 {
 	uri.kind |= AVM_URI_FILE_KIND;
 
 	uri.location = VFS::native_path(uri.location, lastFolder.location);
 
-	uri.outStream = new std::ofstream(uri.location.c_str(), uri.mode);
-
-	if( uri.outStream.good() )
+	if( mAutoOpenFileFlag )
 	{
-		uri.isAllocated = true;
+		uri.outStream = new std::ofstream(uri.location.c_str(), uri.mode);
 
-		lastFile.location = uri.location;
+		if( uri.outStream.good() )
+		{
+			uri.isAllocated = true;
 
-		return( true );
+			lastFile.location = uri.location;
+
+			return( true );
+		}
+		else
+		{
+			theVFS->errorLocation(AVM_OS_WARN)
+					<< "Failed to open < " << uri.location
+					<< " > file in write mode !!!" << std::endl;
+
+			return( false );
+		}
 	}
-	else
-	{
-		theVFS->errorLocation(AVM_OS_WARN)
-				<< "Failed to open < " << uri.location
-				<< " > file in write mode !!!" << std::endl;
 
-		return( false );
-	}
+	return( true );
 }
 
 
-bool SerializerFeature::configureFilename(WObject * theVFS, AvmUri & uri)
+bool SerializerFeature::configureFilename(const WObject * theVFS, AvmUri & uri)
 {
 	uri.kind |= AVM_URI_FILENAME_KIND;
 
@@ -443,7 +447,7 @@ bool SerializerFeature::configureFilename(WObject * theVFS, AvmUri & uri)
 }
 
 
-bool SerializerFeature::configureSocket(WObject * theVFS, AvmUri & uri)
+bool SerializerFeature::configureSocket(const WObject * theVFS, AvmUri & uri)
 {
 	uri.kind |= AVM_URI_SOCKET_KIND;
 
@@ -451,7 +455,7 @@ bool SerializerFeature::configureSocket(WObject * theVFS, AvmUri & uri)
 
 	if( pos != std::string::npos )
 	{
-		if( not sep::from_string<avm_uint64_t>(
+		if( not sep::from_string<std::uint64_t>(
 				uri.location.substr(pos+1), uri.port, std::dec) )
 		{
 			theVFS->errorLocation(AVM_OS_WARN)
@@ -477,7 +481,7 @@ bool SerializerFeature::configureSocket(WObject * theVFS, AvmUri & uri)
 
 
 bool SerializerFeature::configurePeriod(
-		WObject * theVFS, const std::string & strPeriod)
+		const WObject * theVFS, const std::string & strPeriod)
 {
 	std::string period;
 	std::string::size_type pos;
@@ -588,6 +592,89 @@ bool SerializerFeature::configurePeriod(
 }
 
 
+/**
+ * GETTER
+ * Generate new outStream for a given index
+ */
+OutStream & SerializerFeature::newFileStream(std::size_t index)
+{
+	newIndexFile.close();
+
+	if( not lastFilename.location.empty() )
+	{
+		newIndexFile.location = lastFilename.location;
+	}
+	else if( not lastFile.location.empty() )
+	{
+		newIndexFile.location = lastFile.location;
+	}
+
+	newIndexFile.location = (OSS() << VFS::stem( newIndexFile.location )
+			<< "_" << index << VFS::extension( newIndexFile.location ));
+
+	newIndexFile.location =
+			VFS::native_path(newIndexFile.location, lastFolder.location);
+
+	newIndexFile.outStream =
+			new std::ofstream(newIndexFile.location.c_str(), newIndexFile.mode);
+
+	if( newIndexFile.outStream.good() )
+	{
+		newIndexFile.isAllocated = true;
+
+		return( newIndexFile.outStream );
+	}
+	else
+	{
+		AVM_OS_WARN << "Failed to open < " << newIndexFile.location
+				<< " > file in write mode !!!" << std::endl;
+	}
+
+	return( AVM_OS_COUT );
+}
+
+
+OutStream & SerializerFeature::newFileStream(const std::string & filename)
+{
+	newIndexFile.close();
+
+	if( not filename.empty() )
+	{
+		newIndexFile.location = filename;
+	}
+	else if( not lastFilename.location.empty() )
+	{
+		newIndexFile.location = lastFilename.location;
+	}
+	else if( not lastFile.location.empty() )
+	{
+		newIndexFile.location = lastFile.location;
+	}
+	else
+	{
+		newIndexFile.location = "newfile.txt";
+	}
+
+	newIndexFile.location =
+			VFS::native_path(newIndexFile.location, lastFolder.location);
+
+	newIndexFile.outStream =
+			new std::ofstream(newIndexFile.location.c_str(), newIndexFile.mode);
+
+	if( newIndexFile.outStream.good() )
+	{
+		newIndexFile.isAllocated = true;
+
+		return( newIndexFile.outStream );
+	}
+	else
+	{
+		AVM_OS_WARN << "Failed to open < " << newIndexFile.location
+				<< " > file in write mode !!!" << std::endl;
+	}
+
+	return( AVM_OS_COUT );
+}
 
 /**
  *******************************************************************************
@@ -623,11 +710,9 @@ void SerializerFeature::toStream(OutStream & os) const
 			<< (mReportDetailsFlag ? "true" : "false") << ";"
 			<< EOL_INCR_INDENT;
 
-	VectorOfAvmUri::const_iterator it = mTableOfURI.begin();
-	VectorOfAvmUri::const_iterator endIt = mTableOfURI.end();
-	for( ; it != endIt ; ++it )
+	for( auto & anUri : mTableOfURI )
 	{
-		(*it).toStream(os);
+		anUri.toStream(os);
 	}
 
 	std::string sep = "";

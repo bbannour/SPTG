@@ -53,13 +53,11 @@ static bool firedTraceIsRun(const BF & aFiredTrace, const RuntimeID & aRID)
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			const AvmCode * anAvmCode = aFiredTrace.to_ptr< AvmCode >();
+			const AvmCode & anAvmCode = aFiredTrace.to< AvmCode >();
 
-			AvmCode::const_iterator it = anAvmCode->begin();
-			AvmCode::const_iterator itEnd = anAvmCode->end();
-			for( ; it != itEnd ; ++it )
+			for( const auto & itOperand : anAvmCode.getOperands() )
 			{
-				if( firedTraceIsRun((*it), aRID) )
+				if( firedTraceIsRun(itOperand, aRID) )
 				{
 					return( true );
 				}
@@ -70,29 +68,20 @@ static bool firedTraceIsRun(const BF & aFiredTrace, const RuntimeID & aRID)
 
 		case FORM_EXECUTION_CONFIGURATION_KIND:
 		{
-			const ExecutionConfiguration * anExecConf =
-					aFiredTrace.to_ptr< ExecutionConfiguration >();
+			const ExecutionConfiguration & anExecConf =
+					aFiredTrace.to< ExecutionConfiguration >();
 
-			if( aRID == anExecConf->getRuntimeID() )
+			if( aRID == anExecConf.getRuntimeID() )
 			{
-				return( anExecConf->getOperator()->
-						isOpCode( AVM_OPCODE_RUN ) );
+				return( anExecConf.getOperator().isOpCode( AVM_OPCODE_RUN ) );
 			}
 			break;
 		}
 
 		case FORM_EXECUTION_CONTEXT_KIND:
 		{
-			return( firedTraceIsRun( aFiredTrace.to_ptr<
-					ExecutionContext >()->getRunnableElementTrace(), aRID) );
-		}
-
-		case FORM_EXECUTION_DATA_KIND:
-		{
-			return( firedTraceIsRun(aFiredTrace.to_ptr<
-						ExecutionData >()->getRunnableElementTrace(), aRID)
-				|| firedTraceIsRun(aFiredTrace.to_ptr< ExecutionData >()->
-						getExecutionContext()->getRunnableElementTrace(), aRID) );
+			return( firedTraceIsRun( aFiredTrace.to<
+					ExecutionContext >().getRunnableElementTrace(), aRID) );
 		}
 
 		default:
@@ -105,71 +94,79 @@ static bool firedTraceIsRun(const BF & aFiredTrace, const RuntimeID & aRID)
 }
 
 
+static bool firedTraceIsRun(const ExecutionData & anED, const RuntimeID & aRID)
+{
+	return( firedTraceIsRun(anED.getRunnableElementTrace(), aRID)
+			|| firedTraceIsRun(anED.getExecutionContext()->
+					getRunnableElementTrace(), aRID) );
+}
 
-static bool computeStatusStateIs(const APExecutionData & apED,
+
+
+static bool computeStatusStateIs(const ExecutionData & apED,
 		const RuntimeID & aRID, const AVM_OPCODE op)
 {
 	switch( op )
 	{
 		case AVM_OPCODE_RUN:
 		{
-			return( apED->isRunning(aRID) || firedTraceIsRun(apED, aRID) );
+			return( apED.isRunning(aRID) || firedTraceIsRun(apED, aRID) );
 		}
 
 		case AVM_OPCODE_SCHEDULE_INVOKE:
 		{
-			return( apED->isIdle(aRID) );
+			return( apED.isIdle(aRID) );
 		}
 
 		case AVM_OPCODE_START:
 		case AVM_OPCODE_RESTART:
 		{
-			return(    apED->isDefinedPES(aRID) &&
-					(! apED->isLoaded(aRID))    &&
-					(! apED->isStarting(aRID))  &&
-					(! apED->isFinalized(aRID)) &&
-					(! apED->isDestroyed(aRID))
+			return(    apED.isDefinedPES(aRID) &&
+					(! apED.isLoaded(aRID))    &&
+					(! apED.isStarting(aRID))  &&
+					(! apED.isFinalized(aRID)) &&
+					(! apED.isDestroyed(aRID))
 			);
 		}
 
 
 		case AVM_OPCODE_ENABLE_INVOKE:
 		{
-			return( apED->isIdleOrRunning(aRID) );
+			return( apED.isIdleOrRunning(aRID) );
 		}
 
 		case AVM_OPCODE_DISABLE_INVOKE:
 		case AVM_OPCODE_ABORT_INVOKE:
 		{
-			return( apED->isDisableOrAborted(aRID) );
+			return( apED.isDisableOrAborted(aRID) );
 		}
 
 
 		case AVM_OPCODE_FINAL:
 		{
-			return( apED->isFinalized(aRID) );
+			return( apED.isFinalized(aRID) );
 		}
 
 		case AVM_OPCODE_DESTROY:
 		{
-			return( apED->isDestroyed(aRID) );
+			return( apED.isDestroyed(aRID) );
 		}
 
 
 		case AVM_OPCODE_SUSPEND:
 		{
-			return( apED->isSuspended(aRID) );
+			return( apED.isSuspended(aRID) );
 		}
 
 		case AVM_OPCODE_STOP:
 		{
-			return( apED->isStopped(aRID) );
+			return( apED.isStopped(aRID) );
 		}
 
 
 		case AVM_OPCODE_WAIT:
 		{
-			return( apED->isWaiting(aRID) );
+			return( apED.isWaiting(aRID) );
 		}
 
 
@@ -182,8 +179,8 @@ static bool computeStatusStateIs(const APExecutionData & apED,
 
 
 
-static bool computeStatusBeing(const APExecutionData & prevED,
-		const APExecutionData & anED, const RuntimeID & aRID, AVM_OPCODE op)
+static bool computeStatusBeing(const ExecutionData & prevED,
+		const ExecutionData & anED, const RuntimeID & aRID, AVM_OPCODE op)
 {
 	switch( op )
 	{
@@ -192,11 +189,11 @@ static bool computeStatusBeing(const APExecutionData & prevED,
 			if( prevED.valid() )
 			{
 				return( (! firedTraceIsRun(prevED, aRID) ) &&
-						(anED->isRunning(aRID) || firedTraceIsRun(anED, aRID)) );
+						(anED.isRunning(aRID) || firedTraceIsRun(anED, aRID)) );
 			}
 			else
 			{
-				return( anED->isRunning(aRID) );
+				return( anED.isRunning(aRID) );
 			}
 		}
 
@@ -204,11 +201,11 @@ static bool computeStatusBeing(const APExecutionData & prevED,
 		{
 			if( prevED.valid() )
 			{
-				return( (! prevED->isIdle(aRID)) && anED->isIdle(aRID) );
+				return( (! prevED.isIdle(aRID)) && anED.isIdle(aRID) );
 			}
 			else
 			{
-				return( anED->isRunning(aRID) );
+				return( anED.isRunning(aRID) );
 			}
 		}
 
@@ -217,12 +214,12 @@ static bool computeStatusBeing(const APExecutionData & prevED,
 		{
 			if( prevED.valid() )
 			{
-				return( (! prevED->isStarting(aRID)) &&
-						anED->isStarting(aRID) );
+				return( (! prevED.isStarting(aRID)) &&
+						anED.isStarting(aRID) );
 			}
 			else
 			{
-				return( anED->isStarting(aRID) );
+				return( anED.isStarting(aRID) );
 			}
 		}
 
@@ -230,12 +227,12 @@ static bool computeStatusBeing(const APExecutionData & prevED,
 		{
 			if( prevED.valid() )
 			{
-				return( (! prevED->isFinalizing(aRID)) &&
-						anED->isFinalizing(aRID) );
+				return( (! prevED.isFinalizing(aRID)) &&
+						anED.isFinalizing(aRID) );
 			}
 			else
 			{
-				return( anED->isFinalizing(aRID) );
+				return( anED.isFinalizing(aRID) );
 			}
 		}
 
@@ -243,12 +240,12 @@ static bool computeStatusBeing(const APExecutionData & prevED,
 		{
 			if( prevED.valid() )
 			{
-				return( prevED->isDisableOrAborted(aRID) &&
-						anED->isIdleOrRunning(aRID) );
+				return( prevED.isDisableOrAborted(aRID) &&
+						anED.isIdleOrRunning(aRID) );
 			}
 			else
 			{
-				return( anED->isIdleOrRunning(aRID) );
+				return( anED.isIdleOrRunning(aRID) );
 			}
 		}
 
@@ -256,12 +253,12 @@ static bool computeStatusBeing(const APExecutionData & prevED,
 		{
 			if( prevED.valid() )
 			{
-				return( prevED->isIdleOrRunning(aRID) &&
-						anED->isDisable(aRID) );
+				return( prevED.isIdleOrRunning(aRID) &&
+						anED.isDisable(aRID) );
 			}
 			else
 			{
-				return( anED->isIdleOrRunning(aRID) );
+				return( anED.isIdleOrRunning(aRID) );
 			}
 		}
 
@@ -269,12 +266,12 @@ static bool computeStatusBeing(const APExecutionData & prevED,
 		{
 			if( prevED.valid() )
 			{
-				return( prevED->isIdleOrRunning(aRID) &&
-						anED->isAborted(aRID) );
+				return( prevED.isIdleOrRunning(aRID)
+						&& anED.isAborted(aRID) );
 			}
 			else
 			{
-				return( anED->isIdleOrRunning(aRID) );
+				return( anED.isIdleOrRunning(aRID) );
 			}
 		}
 
@@ -283,12 +280,12 @@ static bool computeStatusBeing(const APExecutionData & prevED,
 		{
 			if( prevED.valid() )
 			{
-				return( (! prevED->isSuspended(aRID)) &&
-						anED->isSuspended(aRID) );
+				return( (! prevED.isSuspended(aRID))
+						&& anED.isSuspended(aRID) );
 			}
 			else
 			{
-				return( anED->isSuspended(aRID) );
+				return( anED.isSuspended(aRID) );
 			}
 		}
 
@@ -297,12 +294,12 @@ static bool computeStatusBeing(const APExecutionData & prevED,
 		{
 			if( prevED.valid() )
 			{
-				return( (! prevED->isWaiting(aRID)) &&
-						anED->isWaiting(aRID) );
+				return( (! prevED.isWaiting(aRID))
+						&& anED.isWaiting(aRID) );
 			}
 			else
 			{
-				return( anED->isWaiting(aRID) );
+				return( anED.isWaiting(aRID) );
 			}
 		}
 
@@ -326,16 +323,16 @@ bool AvmPrimitive_StatusWas::seval(EvaluationEnvironment & ENV)
 {
 	if( ENV.inEC->hasPrevious() )
 	{
-		Operator * anOperator = ENV.mARG->at(0).to_ptr< Operator >();
+		const Operator & anOperator = ENV.mARG->at(0).to< Operator >();
 
-		switch( anOperator->getAvmOpCode() )
+		switch( anOperator.getAvmOpCode() )
 		{
 			case AVM_OPCODE_ASSIGN:
 			{
 				ENV.outVAL = ExpressionConstructor::newBoolean(
 						ENV.isAssigned(ENV.mARG->outED.getPrevious(),
-								ENV.mARG->outED->mRID,
-								ENV.mARG->at(1).to_ptr< InstanceOfData >()));
+								ENV.mARG->outED.getRID(),
+								ENV.mARG->at(1).to< InstanceOfData >()));
 				return( true );
 			}
 
@@ -347,7 +344,7 @@ bool AvmPrimitive_StatusWas::seval(EvaluationEnvironment & ENV)
 				{
 					ENV.outVAL = ExpressionConstructor::newBoolean(
 							computeStatusStateIs(ENV.mARG->outED.getPrevious(),
-									aRID, anOperator->getAvmOpCode()));
+									aRID, anOperator.getAvmOpCode()));
 					return( true );
 				}
 				else
@@ -375,16 +372,16 @@ bool AvmPrimitive_StatusWas::seval(EvaluationEnvironment & ENV)
 
 bool AvmPrimitive_StatusIs::seval(EvaluationEnvironment & ENV)
 {
-	Operator * anOperator = ENV.mARG->at(0).to_ptr< Operator >();
+	const Operator & anOperator = ENV.mARG->at(0).to< Operator >();
 
-	switch( anOperator->getAvmOpCode() )
+	switch( anOperator.getAvmOpCode() )
 	{
 		case AVM_OPCODE_ASSIGN:
 		{
 			ENV.outVAL = ExpressionConstructor::newBoolean(
 					ENV.isAssigned(ENV.mARG->outED,
-							ENV.mARG->outED->mRID,
-							ENV.mARG->at(1).to_ptr< InstanceOfData >()) );
+							ENV.mARG->outED.getRID(),
+							ENV.mARG->at(1).to< InstanceOfData >()) );
 			return( true );
 		}
 
@@ -396,7 +393,7 @@ bool AvmPrimitive_StatusIs::seval(EvaluationEnvironment & ENV)
 			{
 				ENV.outVAL = ExpressionConstructor::newBoolean(
 						computeStatusStateIs(ENV.mARG->outED, aRID,
-								anOperator->getAvmOpCode()));
+								anOperator.getAvmOpCode()));
 				return( true );
 			}
 			else
@@ -419,16 +416,16 @@ bool AvmPrimitive_StatusBeing::seval(EvaluationEnvironment & ENV)
 {
 	if( ENV.inEC->hasPrevious() )
 	{
-		Operator * anOperator = ENV.mARG->at(0).to_ptr< Operator >();
+		const Operator & anOperator = ENV.mARG->at(0).to< Operator >();
 
-		switch( anOperator->getAvmOpCode() )
+		switch( anOperator.getAvmOpCode() )
 		{
 			case AVM_OPCODE_ASSIGN:
 			{
 				ENV.outVAL = ExpressionConstructor::newBoolean(
 						ENV.isAssigned(ENV.mARG->outED,
-								ENV.mARG->outED->mRID,
-								ENV.mARG->at(1).to_ptr< InstanceOfData >()) );
+								ENV.mARG->outED.getRID(),
+								ENV.mARG->at(1).to< InstanceOfData >()) );
 				return( true );
 			}
 
@@ -441,7 +438,7 @@ bool AvmPrimitive_StatusBeing::seval(EvaluationEnvironment & ENV)
 					ENV.outVAL = ExpressionConstructor::newBoolean(
 							computeStatusBeing(ENV.mARG->outED.getPrevious(),
 									ENV.mARG->outED, aRID,
-									anOperator->getAvmOpCode()));
+									anOperator.getAvmOpCode()));
 					return( true );
 				}
 				else
@@ -470,24 +467,22 @@ bool AvmPrimitive_StatusBeing::seval(EvaluationEnvironment & ENV)
 
 bool AvmPrimitive_StatusWill::seval(EvaluationEnvironment & ENV)
 {
-	Operator * anOperator = ENV.mARG->at(0).to_ptr< Operator >();
+	const Operator & anOperator = ENV.mARG->at(0).to< Operator >();
 
 	bool evalStatusFlag = false;
 
-	switch( anOperator->getAvmOpCode() )
+	switch( anOperator.getAvmOpCode() )
 	{
 		case AVM_OPCODE_ASSIGN:
 		{
-			InstanceOfData * lvalue = ENV.mARG->at(1).to_ptr< InstanceOfData >();
-
-			ExecutionContext::child_iterator endEC = ENV.inEC->end();
-			ExecutionContext::child_iterator itEC;
+			const InstanceOfData & lvalue =
+					ENV.mARG->at(1).to< InstanceOfData >();
 
 			evalStatusFlag = false;
-			for( itEC = ENV.inEC->begin() ; itEC != endEC ; ++itEC )
+			for( const auto & itChildEC : ENV.inEC->getChildContexts() )
 			{
-				if( ENV.isAssigned((*itEC)->getAPExecutionData(),
-						ENV.mARG->outED->mRID, lvalue) )
+				if( ENV.isAssigned(itChildEC->getExecutionData(),
+						ENV.mARG->outED.getRID(), lvalue) )
 				{
 					evalStatusFlag = true;
 					break;
@@ -505,21 +500,16 @@ bool AvmPrimitive_StatusWill::seval(EvaluationEnvironment & ENV)
 
 			if( aRID.valid() )
 			{
-				ExecutionContext::child_iterator endEC = ENV.inEC->end();
-				ExecutionContext::child_iterator itEC;
-
-				for( itEC = ENV.inEC->begin() ; itEC != endEC ; ++itEC )
+				for( const auto & itChildEC : ENV.inEC->getChildContexts() )
 				{
-					if( computeStatusStateIs((*itEC)->getAPExecutionData(),
-							aRID, anOperator->getAvmOpCode()) )
+					if( computeStatusStateIs(itChildEC->getExecutionData(),
+							aRID, anOperator.getAvmOpCode()) )
 					{
 						evalStatusFlag = true;
 						break;
 					}
 				}
-				ENV.outVAL =
-						ExpressionConstructor::newBoolean(
-								evalStatusFlag);
+				ENV.outVAL = ExpressionConstructor::newBoolean(evalStatusFlag);
 				return( true );
 			}
 			else
@@ -540,30 +530,30 @@ bool AvmPrimitive_StatusWill::seval(EvaluationEnvironment & ENV)
 
 bool AvmPrimitive_Changed::seval(EvaluationEnvironment & ENV)
 {
-	InstanceOfData * lvalue = ENV.mARG->at(0).to_ptr< InstanceOfData >();
+	const InstanceOfData & lvalue = ENV.mARG->at(0).to< InstanceOfData >();
 
 	bool isChangedFlag = true;
 
-	if( ENV.isAssigned(ENV.mARG->outED, ENV.mARG->outED->mRID, lvalue) )
+	if( ENV.isAssigned(ENV.mARG->outED, ENV.mARG->outED.getRID(), lvalue) )
 	{
 		isChangedFlag = true;
 		const BF & currentValue = ENV.getRvalue(ENV.mARG->outED,
-				ENV.mARG->outED->mRID, lvalue);
+				ENV.mARG->outED.getRID(), lvalue);
 
 		if( ENV.inEC->hasPrevious() )
 		{
 			isChangedFlag = currentValue.strNEQ(
 					ENV.getRvalue(ENV.mARG->outED.getPrevious(),
-							ENV.mARG->outED->mRID, lvalue));
+							ENV.mARG->outED.getRID(), lvalue));
 		}
 
-		if( (! isChangedFlag) && ENV.mARG->outED->hasExecutionContext() &&
-				(ENV.mARG->outED->getExecutionContext()->
-						getAPExecutionData() != ENV.mARG->outED) )
+		if( (! isChangedFlag) && ENV.mARG->outED.hasExecutionContext() &&
+				ENV.mARG->outED.getExecutionContext()->
+						getExecutionData().isTNEQ( ENV.mARG->outED ) )
 		{
-			isChangedFlag = currentValue.strNEQ(
-					ENV.getRvalue(ENV.mARG->outED->getExecutionContext()->
-						getAPExecutionData(), ENV.mARG->outED->mRID, lvalue));
+			isChangedFlag = currentValue.strNEQ( ENV.getRvalue(
+					ENV.mARG->outED.getExecutionContext()->getwExecutionData(),
+					ENV.mARG->outED.getRID(), lvalue) );
 		}
 		else
 		{
@@ -591,12 +581,12 @@ bool AvmPrimitive_Changed::seval(EvaluationEnvironment & ENV)
 //!! TODO OPTIMIZATION
 bool AvmPrimitive_ChangedTo::seval(EvaluationEnvironment & ENV)
 {
-	InstanceOfData * lvalue = ENV.mARG->at(0).to_ptr< InstanceOfData >();
+	const InstanceOfData & lvalue = ENV.mARG->at(0).to< InstanceOfData >();
 
-	if( ENV.isAssigned(ENV.mARG->outED, ENV.mARG->outED->mRID, lvalue) )
+	if( ENV.isAssigned(ENV.mARG->outED, ENV.mARG->outED.getRID(), lvalue) )
 	{
 		const BF & currentValue = ENV.getRvalue(ENV.mARG->outED,
-				ENV.mARG->outED->mRID, lvalue);
+				ENV.mARG->outED.getRID(), lvalue);
 
 		ENV.outVAL = ExpressionConstructor::newBoolean(
 				currentValue.strNEQ( ENV.mARG->at(1) ) );

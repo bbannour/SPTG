@@ -25,9 +25,6 @@
 #include <fml/type/BaseTypeSpecifier.h>
 
 #include <fml/infrastructure/DataType.h>
-#include <fml/infrastructure/Routine.h>
-
-#include <fml/executable/InstanceOfData.h>
 
 
 namespace sep
@@ -40,14 +37,19 @@ class Machine;
 class ObjectElement;
 class Operator;
 
+class Routine;
+
 class PropertyPart;
 
 
 class Variable : public PropertyElement ,
+		AVM_INJECT_STATIC_NULL_REFERENCE( Variable ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( Variable )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( Variable )
+
+	AVM_TYPEDEF_TABLE_CLASS( Variable )
 
 
 protected:
@@ -78,7 +80,7 @@ public:
 
 	mBinding( ),
 
-	onWriteRoutine( NULL )
+	onWriteRoutine( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -92,7 +94,7 @@ public:
 
 	mBinding( ),
 
-	onWriteRoutine( NULL )
+	onWriteRoutine( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -116,10 +118,17 @@ public:
 
 	/**
 	 * GETTER
+	 * Unique Null Reference
+	 */
+	static Variable & nullref();
+
+
+	/**
+	 * GETTER
 	 * Qualified Name IDentifier
 	 * QualifiedNameID using mFullyQualifiedNameID & mNameID
 	 */
-	inline virtual std::string getQualifiedNameID() const
+	inline virtual std::string getQualifiedNameID() const override
 	{
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 
@@ -132,11 +141,12 @@ AVM_ELSE
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	}
 
+	std::string getUniqNameID() const override;
 
 	/**
 	 * UTIL
 	 */
-	Operator * getAssignOperator() const;
+	const Operator * getAssignOperator() const;
 
 
 	/**
@@ -156,23 +166,23 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	std::string strT();
 
 
-	inline DataType * getDataType() const
+	inline const DataType & getDataType() const
 	{
-		return( getType().as_ptr< DataType >() );
+		return( getType().as< DataType >() );
 	}
 
-	inline bool hasDataType()
+	inline bool hasDataType() const
 	{
 		return( getType().is< DataType >() );
 	}
 
 
-	inline BaseTypeSpecifier * getTypeSpecifier() const
+	inline const BaseTypeSpecifier & getTypeSpecifier() const
 	{
-		return( getType().as_ptr< BaseTypeSpecifier >() );
+		return( getType().as< BaseTypeSpecifier >() );
 	}
 
-	inline bool hasTypeSpecifier()
+	inline bool hasTypeSpecifier() const
 	{
 		return( getType().is< BaseTypeSpecifier >() );
 	}
@@ -216,7 +226,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	inline std::string prettyPrintableValue() const
 	{
 		return( mValue.is< ObjectElement >()
-				? mValue.to_ptr< ObjectElement >()->getNameID()
+				? mValue.to< ObjectElement >().getNameID()
 				: mValue.str() );
 	}
 
@@ -258,14 +268,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	 * GETTER - SETTER
 	 * onWrite
 	 */
-	inline Routine * getOnWriteRoutine() const
-	{
-		return( onWriteRoutine );
-	}
+	const Routine & getOnWriteRoutine() const;
 
 	inline bool hasOnWrite() const
 	{
-		return( onWriteRoutine != NULL );
+		return( onWriteRoutine != nullptr );
 	}
 
 	inline void setOnWriteRoutine(Routine * aWriteRoutine)
@@ -277,55 +284,55 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	/**
 	 * Serialization
 	 */
-	void strParameter(OutStream & os) const
+	void strParameter(OutStream & out) const
 	{
-		os << getModifier().toString_not(Modifier::NATURE_PARAMETER_KIND) //<< "var "
-				<< strTypeSpecifier() << " " << getNameID();
+		out << getModifier().toString_not(Modifier::NATURE_PARAMETER_KIND) //<< "var "
+			<< strTypeSpecifier() << " " << getNameID();
 
 		if( getModifier().hasNatureMacro() && hasBinding() )
 		{
-			os << " (::= " << getBinding().str() << ")";
+			out << " (::= " << getBinding().str() << ")";
 		}
 		if( hasValue() )
 		{
-			os << " = " << strValue();
+			out << " = " << strValue();
 		}
 	}
 
-	void strReturn(OutStream & os) const
+	void strReturn(OutStream & out) const
 	{
-		os << getModifier().toString_not(Modifier::DIRECTION_RETURN_KIND) //<< "var "
-				<< strTypeSpecifier() << " " << getNameID();
+		out << getModifier().toString_not(Modifier::DIRECTION_RETURN_KIND) //<< "var "
+			<< strTypeSpecifier() << " " << getNameID();
 
 		if( getModifier().hasNatureMacro() && hasBinding() )
 		{
-			os << " (::= " << getBinding().str() << ")";
+			out << " (::= " << getBinding().str() << ")";
 		}
 		if( hasValue() )
 		{
-			os << " = " << strValue();
+			out << " = " << strValue();
 		}
 	}
 
 
-	void strHeader(OutStream & os) const
+	virtual void strHeader(OutStream & out) const override
 	{
-		os << getModifier().toString() << "var "
+		out << getModifier().toString() << "var "
 			<< strTypeSpecifier() << " " << getFullyQualifiedNameID();
 
 		if( hasBinding() )
 		{
-			os << " $bind " << getBinding().str();
+			out << " $bind " << getBinding().str();
 		}
 
-AVM_IF_DEBUG_FLAG2_AND( COMPILING , QUALIFIED_NAME_ID , hasValue() )
-	os << " = " << strValue();
-AVM_ENDIF_DEBUG_FLAG2_AND( COMPILING , QUALIFIED_NAME_ID )
+//AVM_IF_DEBUG_FLAG2_AND( COMPILING , QUALIFIED_NAME_ID , hasValue() )
+	out << " = " << strValue();
+//AVM_ENDIF_DEBUG_FLAG2_AND( COMPILING , QUALIFIED_NAME_ID )
 	}
 
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & out) const override;
 
-	void toStreamParameter(OutStream & os) const;
+	void toStreamParameter(OutStream & out) const;
 
 };
 

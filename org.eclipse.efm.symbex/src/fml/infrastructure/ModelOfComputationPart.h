@@ -18,8 +18,6 @@
 
 #include <fml/common/ObjectClassifier.h>
 
-#include <common/AvmPointer.h>
-
 
 namespace sep
 {
@@ -57,7 +55,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
 
 
 };

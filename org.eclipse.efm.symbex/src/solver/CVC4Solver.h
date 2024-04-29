@@ -66,7 +66,7 @@ public:
 
 	static std::string DESCRIPTION;
 
-	static avm_uint64_t SOLVER_SESSION_ID;
+	static std::uint64_t SOLVER_SESSION_ID;
 
 	static 	CVC4::Expr CVC4_EXPR_NULL;
 	static 	CVC4::Type CVC4_TYPE_NULL;
@@ -98,28 +98,29 @@ public:
 	/**
 	 * CONFIGURE
 	 */
-	virtual bool configure(
-			Configuration & aConfiguration, WObject * wfFilterObject,
-			ListOfPairMachineData & listOfSelectedVariable);
+	static bool configure(const WObject * wfFilterObject);
 
 
 	/**
 	 * PROVER
 	 */
 	virtual bool isSubSet(
-			const ExecutionContext & newEC, const ExecutionContext & oldEC);
+			const ExecutionContext & newEC,
+			const ExecutionContext & oldEC) override;
 
 	virtual bool isEqualSet(
-			const ExecutionContext & newEC, const ExecutionContext & oldEC);
+			const ExecutionContext & newEC,
+			const ExecutionContext & oldEC) override;
 
-	virtual SolverDef::SATISFIABILITY_RING isSatisfiable(const BF & aCondition);
+	virtual SolverDef::SATISFIABILITY_RING isSatisfiable(
+			const BF & aCondition) override;
 
 
 	/**
 	 * SOLVER
 	 */
 	virtual bool solveImpl(const BF & aCondition,
-			BFVector & dataVector, BFVector & valuesVector);
+			BFVector & dataVector, BFVector & valuesVector) override;
 
 
 	/**
@@ -127,8 +128,8 @@ public:
 	 * ValidityChecker
 	 */
 	bool createChecker();
-	bool destroyChecker();
-	bool resetTable();
+	virtual bool destroyChecker() override;
+	virtual bool resetTable() override;
 
 	/**
 	 * TOOLS
@@ -142,15 +143,21 @@ public:
 
 	CVC4::Expr  edToExpr(const ExecutionData & anED);
 
-	CVC4::Expr safe_from_baseform(const BF & exprForm,
-			BaseTypeSpecifier * typeSpecifier = NULL);
+	bool appendPossitiveAssertion();
 
-	CVC4::Expr from_baseform(const BF & exprForm,
-			BaseTypeSpecifier * typeSpecifier = NULL);
+	CVC4::Expr safe_from_baseform(const BF & exprForm);
+
+	CVC4::Expr from_baseform(const BF & exprForm);
 
 	CVC4::Expr & getParameterExpr(const BF & aParameter);
 	CVC4::Expr & getVariableExpr(InstanceOfData * aVar,
 			CVC4::Type varType, avm_offset_t varID);
+
+	CVC4::Expr & getBoundParameterExpr(
+			const BF & aParameter, ARGS & boundVarConstraints);
+
+
+	virtual void dbg_smt(const CVC4::Expr & aFormula, bool produceModelOption = false) const;
 
 };
 

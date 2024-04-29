@@ -27,7 +27,7 @@ namespace sep
  * STATIC
  * _NULL_
  */
-WObject * WObject::_NULL_ = NULL;
+WObject * WObject::_NULL_ = nullptr;
 
 const std::string & WObject::FML_FQN_SCHEME = "fml";
 
@@ -47,7 +47,7 @@ void WObject::destroyOwnedElement()
 {
 	if( mOwnedElements.nonempty() )
 	{
-		WObject * wfObject = WObject::_NULL_;
+		const WObject * wfObject = WObject::_NULL_;
 
 		std::size_t ownedCount = mOwnedElements.size();
 
@@ -166,12 +166,12 @@ AVM_ENDIF_DEBUG_ENABLED
 			{
 AVM_IF_DEBUG_ENABLED
 	AVM_OS_WARN << "Indestructible Managed WObject <pos "
-			<< wfObject->getOffset() << ": " << std::flush;
+			<< wfObject->getOwnedOffset() << ": " << std::flush;
 	AVM_OS_WARN << wfObject->strUniqId() << "> with refcount < "
 			<< wfObject->getRefCount() << " > for destruction !" << std::endl;
 AVM_ENDIF_DEBUG_ENABLED
 
-			wfObject->decrRefCount();
+				wfObject->decrRefCount();
 			}
 
 			else
@@ -195,16 +195,16 @@ AVM_ENDIF_DEBUG_ENABLED
  * FACTORY
  * container of WObject
  * !UNUSED!
-WObject * WObject::container() const
+const WObject * WObject::container() const
 {
-	WObject * wfContainer = WObject::_NULL_;
+	const WObject * wfContainer = WObject::_NULL_;
 
 	ObjectElement * aContainer = this->getContainer();
-	while( aContainer != NULL )
+	while( aContainer != nullptr )
 	{
 		if( aContainer->is< WObject >() )
 		{
-			wfContainer = aContainer->to< WObject >();
+			wfContainer = aContainer->to_ptr< WObject >();
 			if( wfContainer->isWTypedObject()
 				|| wfContainer->isWSequence() )
 			{
@@ -218,16 +218,16 @@ WObject * WObject::container() const
 	return( WObject::_NULL_ );
 }
 
-WObject * WObject::sequenceContainerOf() const
+const WObject * WObject::sequenceContainerOf() const
 {
-	WObject * wfContainer = WObject::_NULL_;
+	const WObject * wfContainer = WObject::_NULL_;
 
 	ObjectElement * aContainer = this->getContainer();
-	while( aContainer != NULL )
+	while( aContainer != nullptr )
 	{
 		if( aContainer->is< WObject >() )
 		{
-			wfContainer = aContainer->to< WObject >();
+			wfContainer = aContainer->to_ptr< WObject >();
 
 			if( wfContainer->isWSequence() )
 			{
@@ -252,9 +252,9 @@ const WObject * WObject::objectContainer() const
 	const WObject * wfContainer = WObject::_NULL_;
 
 	const ObjectElement * aContainer = this->getContainer();
-	while( aContainer != NULL )
+	while( aContainer != nullptr )
 	{
-		wfContainer = aContainer->to< WObject >();
+		wfContainer = aContainer->to_ptr< WObject >();
 
 		if( wfContainer->isWTypedObject() )
 		{
@@ -337,7 +337,7 @@ void WObject::strHeader(OutStream & os) const
 
 		if( hasReallyUnrestrictedName() )
 		{
-			os << " '" << getUnrestrictedName() << "'";
+			os << " \"" << getUnrestrictedName() << "\"";
 		}
 
 		os << " = " << strPropertyValue();
@@ -349,7 +349,7 @@ void WObject::strHeader(OutStream & os) const
 
 		if( hasReallyUnrestrictedName() )
 		{
-			os << " '" << getUnrestrictedName() << "'";
+			os << " \"" << getUnrestrictedName() << "\"";
 		}
 	}
 
@@ -366,7 +366,7 @@ void WObject::strHeader(OutStream & os) const
 
 		if( hasReallyUnrestrictedName() )
 		{
-			os << " '" << getUnrestrictedName() << "'";
+			os << " \"" << getUnrestrictedName() << "\"";
 		}
 	}
 }
@@ -420,12 +420,12 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PARSING )
 	{
 		if( getValue().is< AvmCode >() )
 		{
-			AvmCode * aCode = getValue().to_ptr< AvmCode >();
+			const AvmCode & aCode = getValue().to< AvmCode >();
 
 			if( StatementTypeChecker::isSchedule(aCode) )
 			{
 				os << " = $" << IGNORE_FIRST_TAB;
-				aCode->toStream(os);
+				aCode.toStream(os);
 			}
 			else
 			{
@@ -439,7 +439,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PARSING )
 			os << " " << strSpecifierOperator( mSpecifierOp );
 			if( getValue().is< Operator >() )
 			{
-				getValue().to_ptr< Operator >()->standardSymbol();
+				getValue().to< Operator >().standardSymbol();
 			}
 			else if( isWPropertyWReference() )
 			{
@@ -481,27 +481,25 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PARSING )
 
 	os << EOL_INCR_INDENT;
 
-	TableOfOwnedElement::const_iterator itElement = mOwnedElements.begin();
-	TableOfOwnedElement::const_iterator endElement = mOwnedElements.end();
-	for( ; itElement != endElement ; ++itElement )
+	for( const auto & itElement : mOwnedElements )
 	{
-		if( (*itElement) != NULL )
+		if( itElement != nullptr )
 		{
-			if( (*itElement)->getContainer() != this )
+			if( itElement->getContainer() != this )
 			{
-				os << TAB << "&" << (*itElement)
+				os << TAB << "&" << itElement
 						->getFullyQualifiedNameID()
-//				os << TAB << (*itElement)->getNameID()
+//				os << TAB << itElement->getNameID()
 						<< EOL_FLUSH;
 			}
 			else
 			{
-				(*itElement)->toStream(os);
+				itElement->toStream(os);
 			}
 		}
 		else
 		{
-			os << TAB << "NULL" << EOL_FLUSH;
+			os << TAB << "nullptr" << EOL_FLUSH;
 		}
 	}
 
@@ -520,7 +518,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PARSING )
  * return FullyQualifiedNameID + '.' aNameID
  */
 std::string WObjectManager::makeFQN(
-		WObject * wfObject, const std::string & aNameID) const
+		const WObject * wfObject, const std::string & aNameID) const
 {
 	if( wfObject == WObject::_NULL_ )
 	{
@@ -537,9 +535,9 @@ std::string WObjectManager::makeFQN(
 	else
 	{
 		const ObjectElement * aContainer = wfObject->getContainer();
-		while( aContainer != NULL )
+		while( aContainer != nullptr )
 		{
-			if( aContainer->to< WObject >()->isWTypedObject() )
+			if( aContainer->to_ptr< WObject >()->isWTypedObject() )
 			{
 				return( aContainer->getFullyQualifiedNameID()
 						+ "." + aNameID );
@@ -614,7 +612,7 @@ WObject * WObjectManager::newWPropertyExpression(WObject * wfContainer,
 		case FORM_BUILTIN_STRING_KIND:
 		{
 			wfObject = new WObject( (*this), wfContainer,
-					value.to_ptr< String >()->isSingleQuote()
+					value.to< String >().isSingleQuote()
 						? WObject::WOBJECT_PROPERTY_SINGLE_QUOTE_STRING_KIND
 						: WObject::WOBJECT_PROPERTY_DOUBLE_QUOTE_STRING_KIND,
 					aNameID, value );
@@ -640,7 +638,7 @@ WObject * WObjectManager::newWPropertyExpression(WObject * wfContainer,
 
 		case FORM_UFI_KIND:
 		{
-			if( value.to_ptr< UniFormIdentifier >()->isPureIdentifier() )
+			if( value.to< UniFormIdentifier >().isPureIdentifier() )
 			{
 				wfObject = new WObject( (*this), wfContainer,
 						WObject::WOBJECT_PROPERTY_IDENTIFIER_KIND,

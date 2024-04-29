@@ -31,9 +31,9 @@ namespace sep
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef avm_uint64_t      avm_delay_value_t;
+typedef std::uint64_t      avm_delay_value_t;
 
-typedef avm_uint16_t       avm_unit_t;
+typedef std::uint16_t       avm_unit_t;
 
 enum {
 	AVM_UNDEFINED_UNIT    = 0x0000,

@@ -17,6 +17,7 @@
 #include <common/Element.h>
 
 #include <collection/Pair.h>
+#include <collection/List.h>
 #include <collection/Vector.h>
 
 #include <fml/lib/IComPoint.h>
@@ -32,15 +33,27 @@ namespace sep
 {
 
 
-class InstanceOfConnect;
+class InstanceOfConnector;
 class InstanceOfMachine;
 class InstanceOfPort;
 
 class RoutingData;
 
 
-class RoutingDataElement :
-		public Element ,
+/**
+ * TYPEDEF
+ * Pair
+ * InstanceOfMachine
+ * InstanceOfPort
+ */
+typedef Pair< const InstanceOfMachine & ,
+			const InstanceOfPort & >  PairMachinePort;
+
+typedef Vector< PairMachinePort * > VectorOfPairMachinePort;
+
+
+
+class RoutingDataElement : public Element ,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( RoutingDataElement )
 {
 
@@ -48,22 +61,18 @@ class RoutingDataElement :
 
 	AVM_DECLARE_CLONABLE_CLASS( RoutingDataElement )
 
-public:
-	typedef Pair < InstanceOfMachine * , InstanceOfPort * >  PairMachinePort;
-
-
 protected:
 	/*
 	 * ATTRIBUTES
 	 */
 	// The Message Identifier
-	avm_size_t mMID;
+	std::size_t mMID;
 
 	// global protocol
 	ComProtocol::PROTOCOL_KIND mProtocol;
 
 	// The connector instance
-	InstanceOfConnect * mConnect;
+	const InstanceOfConnector & mConnector;
 
 	// The concerned MACHINE and the PORT
 	PairMachinePort mMachinePort;
@@ -80,21 +89,11 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	RoutingDataElement(avm_size_t mid, InstanceOfMachine * aMachine,
-			InstanceOfPort * aPort, ComProtocol::PROTOCOL_KIND aProtocol)
-	: Element( CLASS_KIND_T( RoutingData ) ),
-	mMID( mid ),
-	mProtocol( aProtocol ),
-	mConnect( NULL ),
-	mMachinePort(aMachine, aPort),
-	mBufferInstance( ),
-	mRuntimeRID( )
-	{
-		//!! NOTHING
-	}
+	RoutingDataElement(std::size_t mid, const InstanceOfMachine & aMachine,
+			const InstanceOfPort & aPort, ComProtocol::PROTOCOL_KIND aProtocol);
 
-	RoutingDataElement(InstanceOfConnect * aConnector,
-			InstanceOfMachine * aMachine, InstanceOfPort * aPort);
+	RoutingDataElement(const InstanceOfConnector & aConnector,
+			const InstanceOfMachine & aMachine, const InstanceOfPort & aPort);
 
 
 	/**
@@ -104,8 +103,9 @@ public:
 	explicit RoutingDataElement(const RoutingDataElement & anElement)
 	: Element( anElement ),
 	mMID( anElement.mMID ),
+
 	mProtocol( anElement.mProtocol ),
-	mConnect( anElement.mConnect ),
+	mConnector( anElement.mConnector ),
 	mMachinePort( anElement.mMachinePort ),
 	mBufferInstance( anElement.mBufferInstance ),
 	mRuntimeRID( anElement.mRuntimeRID )
@@ -126,12 +126,12 @@ public:
 	 * GETTER
 	 * mMachinePort
 	 */
-	inline InstanceOfMachine * getMachine() const
+	inline const InstanceOfMachine & getMachine() const
 	{
 		return( mMachinePort.first() );
 	}
 
-	inline InstanceOfPort * getPort() const
+	inline const InstanceOfPort & getPort() const
 	{
 		return( mMachinePort.second() );
 	}
@@ -139,7 +139,14 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStreamPrefix(OutStream & out) const;
+
+	inline virtual void toStream(OutStream & out) const override
+	{
+		toStreamPrefix( out );
+
+		out << TAB << "}" << EOL_FLUSH;
+	}
 
 };
 
@@ -156,8 +163,11 @@ private:
 	typedef SmartPointer< RoutingDataElement ,
 						DestroyElementPolicy >  base_this_type;
 
-	typedef Pair < InstanceOfMachine * , InstanceOfPort * >  PairMachinePort;
-
+protected:
+/**
+ * ATTRIBUTES
+ */
+	List< RoutingData >  mManyCastRoutingData;
 
 public:
 	/*
@@ -171,21 +181,24 @@ public:
 	 * Default
 	 */
 	RoutingData()
-	: base_this_type( )
+	: base_this_type( ),
+	mManyCastRoutingData( )
 	{
 		//!! NOTHING
 	}
 
-	RoutingData(avm_size_t mid, InstanceOfMachine * aMachine,
-			InstanceOfPort * aPort, ComProtocol::PROTOCOL_KIND aProtocol)
-	: base_this_type( new RoutingDataElement(mid, aMachine, aPort, aProtocol) )
+	RoutingData(std::size_t mid, const InstanceOfMachine & aMachine,
+			const InstanceOfPort & aPort, ComProtocol::PROTOCOL_KIND aProtocol)
+	: base_this_type( new RoutingDataElement(mid, aMachine, aPort, aProtocol) ),
+	mManyCastRoutingData( )
 	{
 		//!! NOTHING
 	}
 
-	RoutingData(InstanceOfConnect * aConnector,
-			InstanceOfMachine * aMachine, InstanceOfPort * aPort)
-	: base_this_type( new RoutingDataElement(aConnector, aMachine, aPort) )
+	RoutingData(const InstanceOfConnector & aConnector,
+			const InstanceOfMachine & aMachine, const InstanceOfPort & aPort)
+	: base_this_type( new RoutingDataElement(aConnector, aMachine, aPort) ),
+	mManyCastRoutingData( )
 	{
 		//!! NOTHING
 	}
@@ -196,7 +209,8 @@ public:
 	 * Copy
 	 */
 	RoutingData(const RoutingData & anElement)
-	: base_this_type( anElement )
+	: base_this_type( anElement ),
+	mManyCastRoutingData( anElement.mManyCastRoutingData )
 	{
 		//!! NOTHING
 	}
@@ -215,12 +229,12 @@ public:
 	 * GETTER - SETTER
 	 * mMID
 	 */
-	inline avm_size_t getMID() const
+	inline std::size_t getMID() const
 	{
 		return( base_this_type::mPTR->mMID );
 	}
 
-	inline void setMID(avm_size_t mid) const
+	inline void setMID(std::size_t mid) const
 	{
 		base_this_type::mPTR->mMID = mid;
 	}
@@ -271,6 +285,45 @@ public:
 				== ComProtocol::PROTOCOL_ANYCAST_KIND );
 	}
 
+	inline bool isProtocolBROADCAST() const
+	{
+		return( base_this_type::mPTR->mProtocol
+				== ComProtocol::PROTOCOL_BROADCAST_KIND );
+	}
+
+	inline bool isProtocolMULTICAST() const
+	{
+		return( base_this_type::mPTR->mProtocol
+				== ComProtocol::PROTOCOL_MULTICAST_KIND );
+	}
+
+	inline bool isMultiRoutingProtocol() const
+	{
+		switch( base_this_type::mPTR->mProtocol )
+		{
+			case ComProtocol::PROTOCOL_BUFFER_KIND:
+			case ComProtocol::PROTOCOL_BROADCAST_KIND:
+			case ComProtocol::PROTOCOL_MULTICAST_KIND:
+			case ComProtocol::PROTOCOL_UNICAST_KIND:
+			case ComProtocol::PROTOCOL_ANYCAST_KIND:
+			{
+				return( true );
+			}
+
+			case ComProtocol::PROTOCOL_RDV_KIND:
+			case ComProtocol::PROTOCOL_MULTIRDV_KIND:
+
+			case ComProtocol::PROTOCOL_ENVIRONMENT_KIND:
+			case ComProtocol::PROTOCOL_TRANSFERT_KIND:
+			case ComProtocol::PROTOCOL_UNDEFINED_KIND:
+			default:
+			{
+				return( false );
+			}
+		}
+	}
+
+
 	inline void setProtocol(ComProtocol::PROTOCOL_KIND aProtocol) const
 	{
 		base_this_type::mPTR->mProtocol = aProtocol;
@@ -279,21 +332,32 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * mConnect
+	 * mManyCastRoutingData
 	 */
-	inline InstanceOfConnect * getConnect() const
+	inline const List< RoutingData > & getManyCastRoutingData() const
 	{
-		return( base_this_type::mPTR->mConnect );
+		return( mManyCastRoutingData );
 	}
 
-	inline bool hasConnect() const
+	inline bool hasManyCastRoutingData() const
 	{
-		return( base_this_type::mPTR->mConnect != NULL );
+		return( mManyCastRoutingData.nonempty() );
 	}
 
-	inline void setConnect(InstanceOfConnect * anConnect) const
+
+	inline void appendManyCastRoutingData(const RoutingData & aRoutingData)
 	{
-		base_this_type::mPTR->mConnect = anConnect;
+		mManyCastRoutingData.append(aRoutingData);
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * mConnector
+	 */
+	inline const InstanceOfConnector & getConnector() const
+	{
+		return( base_this_type::mPTR->mConnector );
 	}
 
 
@@ -306,12 +370,12 @@ public:
 		return( base_this_type::mPTR->mMachinePort );
 	}
 
-	inline InstanceOfMachine * getMachine() const
+	inline const InstanceOfMachine & getMachine() const
 	{
 		return( base_this_type::mPTR->mMachinePort.first() );
 	}
 
-	inline InstanceOfPort * getPort() const
+	inline const InstanceOfPort & getPort() const
 	{
 		return( base_this_type::mPTR->mMachinePort.second() );
 	}
@@ -329,6 +393,11 @@ public:
 	inline const ListOfInstanceOfBuffer & getBufferInstance() const
 	{
 		return( base_this_type::mPTR->mBufferInstance );
+	}
+
+	inline const bool hasBufferInstance() const
+	{
+		return( base_this_type::mPTR->mBufferInstance.nonempty() );
 	}
 
 	inline void appendBuffer(InstanceOfBuffer * aBuffer)
@@ -365,7 +434,7 @@ public:
 	inline virtual std::string toString(
 			const AvmIndent & indent = AVM_TAB_INDENT) const
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
 			StringOutStream oss(indent);
 
@@ -379,17 +448,7 @@ public:
 		}
 	}
 
-	inline void toStream(OutStream & os) const
-	{
-		if( base_this_type::mPTR != NULL )
-		{
-			base_this_type::mPTR->toStream(os);
-		}
-		else
-		{
-			os << "RoutingData<null>" << std::flush;
-		}
-	}
+	void toStream(OutStream & out) const;
 
 };
 

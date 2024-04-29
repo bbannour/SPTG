@@ -46,7 +46,7 @@ protected:
 	 */
 
 	// the Type Specifier
-	TypeSpecifier mSupportTypeSpecifier;
+	const TypeSpecifier mSupportTypeSpecifier;
 
 	IIntervalKind::KIND mIntervalKind;
 
@@ -59,12 +59,12 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	IntervalTypeSpecifier(DataType * aCompiledType,
+	IntervalTypeSpecifier(const DataType & astType,
 			const TypeSpecifier & aTypeSpecifier,
 			IIntervalKind::KIND aNature,
 			const BF & anInfimum, const BF & aSupremum)
 	: BaseTypeSpecifier(CLASS_KIND_T( IntervalTypeSpecifier ),
-			TYPE_INTERVAL_SPECIFIER, aCompiledType, 1,
+			TYPE_INTERVAL_SPECIFIER, astType, 1,
 			aTypeSpecifier.getDataSize(), aTypeSpecifier.getBitSize()),
 	mSupportTypeSpecifier( aTypeSpecifier ),
 	mIntervalKind( aNature ),
@@ -93,22 +93,12 @@ public:
 		return( mSupportTypeSpecifier );
 	}
 
-	inline bool hasSupportTypeSpecifier() const
-	{
-		return( mSupportTypeSpecifier.valid() );
-	}
-
-	inline void setSupportTypeSpecifier(const TypeSpecifier & aTypeSpecifier)
-	{
-		mSupportTypeSpecifier = aTypeSpecifier;
-	}
-
 
 	/**
 	 * GETTER - SETTER
 	 * mIntervalKind
 	 */
-	inline virtual IIntervalKind::KIND getIntervalKind() const
+	inline virtual IIntervalKind::KIND getIntervalKind() const override
 	{
 		return( mIntervalKind );
 	}
@@ -160,7 +150,8 @@ public:
 	 */
 	BF minConstraint(const BF & aParam) const;
 	BF maxConstraint(const BF & aParam) const;
-	BF genConstraint(const BF & aParam) const;
+
+	virtual BF genConstraint(const BF & aParam) const override;
 
 
 	/**
@@ -171,9 +162,9 @@ public:
 		return( IIntervalKind::to_string(mIntervalKind, mInfimum, mSupremum) );
 	}
 
-	std::string strT() const;
+	virtual std::string strT() const override;
 
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & os) const override;
 
 };
 

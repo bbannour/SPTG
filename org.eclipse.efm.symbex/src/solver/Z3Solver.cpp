@@ -18,8 +18,9 @@
 /*
  * Here because "SolverDef.h" could define this macro
  */
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) and (not defined( _AVM_SOLVER_Z3_C_ )) )
 
+#include <fstream>
 
 #include <util/avm_vfs.h>
 
@@ -47,7 +48,7 @@
 
 #include <fml/workflow/WObject.h>
 
-#include <fstream>
+#include <z3_api.h>
 
 
 namespace sep
@@ -63,68 +64,84 @@ std::string Z3Solver::ID = "Z3";
 std::string Z3Solver::DESCRIPTION = "Z3 "
 		"'High-performance Theorem Prover at Microsoft Research, MIT License'";
 
-avm_uint64_t Z3Solver::SOLVER_SESSION_ID = 0;
+std::uint64_t Z3Solver::SOLVER_SESSION_ID = 1;
 
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
+/**
+ * CONSTRUCTOR
+ * Default
+ */
+Z3Solver::Z3Solver()
+: base_this_type( ),
+CONFIG ( nullptr ),
+CONTEXT( nullptr )
+{
+	mLogFolderLocation = VFS::ProjectDebugPath + "/z3_cpp/";
+}
 
 
-#if defined( _AVM_SOLVER_Z3_CPP_ )
+/**
+ * CONFIGURE
+ */
+bool Z3Solver::configure(const WObject * wfFilterObject)
+{
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
+
+		std::string logFolderLocation = VFS::ProjectDebugPath + "/z3_cpp/";
+
+	if ( not VFS::checkWritingFolder(logFolderLocation, true) )
+	{
+		AVM_OS_LOG << " Z3Solver::createChecker :> Error: The folder "
+				<< "`" << logFolderLocation	<< "' "
+				<< "---> doesn't exist or is not writable !!!"
+				<< std::endl << std::endl;
+		return( false );
+	}
+
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
+
+	return( true );
+}
+
 
 
 /**
  * CREATE - DESTROY
  * ValidityChecker
  */
-
-
-bool Z3Solver::createChecker(z3::config & cfg, z3::context & ctx)
+bool Z3Solver::createChecker(z3::config & config, z3::context & context)
 {
-	CFG = & cfg;
+	CONFIG = & config;
 
-	CFG->set("MODEL", "true");
+	CONFIG->set("MODEL", "true");
 
-	CTX = & ctx;
+	CONTEXT = & context;
 
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	++SOLVER_SESSION_ID;
-AVM_IF_DEBUG_LEVEL_GTE_HIGH
-		mLogFolderLocation = OSS << VFS::ProjectLogPath << "/z3/";
-
-		if ( not VFS::checkWritingFolder(mLogFolderLocation) )
-		{
-			AVM_OS_LOG << " Z3Solver::createChecker :> Error: The folder "
-					<< "`" << mLogFolderLocation	<< "' "
-					<< "---> doesn't exist or is not writable !!!"
-					<< std::endl << std::endl;
-			return( false );
-		}
-AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-	SMT_CST_BOOL_TRUE  = CTX->bool_val(true);
-	SMT_CST_BOOL_FALSE = CTX->bool_val(false);
+//	SMT_CST_BOOL_TRUE  = CONTEXT->bool_val(true);
+//	SMT_CST_BOOL_FALSE = CONTEXT->bool_val(false);
 
 	resetTable();
 
 	return( true );
 }
 
+#define	SMT_CST_BOOL_TRUE   CONTEXT->bool_val( true )
+#define	SMT_CST_BOOL_FALSE  CONTEXT->bool_val( false )
+
+#define	SMT_CST_INT_ZERO  CONTEXT->int_val( 0 )
+
 
 bool Z3Solver::destroyChecker()
 {
 	resetTable();
 
-	CFG = NULL;
+	CONFIG = nullptr;
 
-	CTX = NULL;
+	CONTEXT = nullptr;
+
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
+	++SOLVER_SESSION_ID;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
 	return( true );
 }
@@ -133,9 +150,13 @@ bool Z3Solver::resetTable()
 {
 	base_this_type::resetTable();
 
-	mTableOfParameterDecl.append( z3::symbol(*CTX, 0) );
+	mTableOfParameterDecl.push_back( z3::symbol(*CONTEXT, 0) );
 
-	mTableOfParameterExpr.append( z3::expr(*CTX) );
+	mTableOfParameterExpr.push_back( z3::expr(*CONTEXT) );
+
+	mBitsetOfConstrainedParameter.push_back( false );
+	mBitsetOfPositiveParameter.push_back( false );
+	mBitsetOfStrictlyPositiveParameter.push_back( false );
 
 	return( true );
 }
@@ -161,19 +182,17 @@ SolverDef::SATISFIABILITY_RING Z3Solver::isSatisfiable(const BF & aCondition)
 {
 	SolverDef::SATISFIABILITY_RING satisfiability = SolverDef::SATISFIABLE;
 
-	z3::config cfg;
-	z3::context ctx;
-	createChecker(cfg, ctx);
+	z3::config config;
+	z3::context context;
+	createChecker(config, context);
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	AVM_OS_TRACE << "Z3Solver::isSatisfiable(...) "
-			":" << SOLVER_SESSION_ID << ">" << std::endl
+	AVM_OS_TRACE << "Z3Solver::isSatisfiable(...) :"
+			<< SOLVER_SESSION_ID << ">" << std::endl
 			<< "\t" << aCondition.str() << std::endl;
 
 	// trace to file
-AVM_IF_DEBUG_LEVEL_GTE_HIGH
-		smt_check_sat(aCondition);
-AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
+	smt_check_sat(aCondition);
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
 	z3::expr z3Condition = from_baseform(aCondition);
@@ -181,17 +200,45 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	AVM_OS_TRACE << "Z3Condition :" << SOLVER_SESSION_ID << ">" << std::endl
 			<< "\t" << z3Condition << std::endl;
-AVM_IF_DEBUG_LEVEL_GTE_HIGH
-	AVM_OS_TRACE << "Z3::CTX :" << SOLVER_SESSION_ID << ">" << std::endl
-			<< ctx << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
+
+	AVM_IF_DEBUG_LEVEL_GTE_HIGH
+		AVM_OS_TRACE << "Z3::CONTEXT :" << SOLVER_SESSION_ID << ">"
+				<< std::endl << context << std::endl;
+	AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
+
+	if( mBitsetOfConstrainedParameter.anyTrue() )
+	{
+		AVM_OS_TRACE << "REQUIRED ASSERTION : " << mBitsetOfConstrainedParameter
+				<< " for CONSTRAINED type" << std::endl;
+	}
+	if( mBitsetOfPositiveParameter.anyTrue() )
+	{
+		AVM_OS_TRACE << "REQUIRED ASSERTION : " << mBitsetOfPositiveParameter
+				<< " for POSITIVE type" << std::endl;
+	}
+	if( mBitsetOfStrictlyPositiveParameter.anyTrue() )
+	{
+		AVM_OS_TRACE << "REQUIRED ASSERTION : "
+				<< mBitsetOfStrictlyPositiveParameter
+				<< " for STRICTLY POSITIVE type" << std::endl;
+	}
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
-	//if( z3Condition != NULL )
+	//if( z3Condition != nullptr )
 	{
-		z3::solver z3Solver(*CTX);
+		z3::solver z3Solver(*CONTEXT);
+
+		if( mBitsetOfConstrainedParameter.anyTrue() )
+		{
+			appendPossitiveAssertion( z3Solver );
+		}
 
 		z3Solver.add( z3Condition );
+
+AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )	// trace to file
+	dbg_smt(z3Solver);
+AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+
 
 		switch( z3Solver.check() )
 		{
@@ -240,9 +287,9 @@ bool Z3Solver::solveImpl(const BF & aCondition,
 {
 	SolverDef::SATISFIABILITY_RING satisfiability = SolverDef::SATISFIABLE;
 
-	z3::config cfg;
-	z3::context ctx;
-	createChecker(cfg, ctx);
+	z3::config config;
+	z3::context context;
+	createChecker(config, context);
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	AVM_OS_TRACE << "Z3Solver::solve(...) :"
@@ -258,48 +305,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	AVM_OS_TRACE << "Z3Condition :" << SOLVER_SESSION_ID << ">" << std::endl
 			<< "\t" << z3Condition << std::endl;
-AVM_IF_DEBUG_LEVEL_GTE_HIGH
-	AVM_OS_TRACE << "Z3::CTX :" << SOLVER_SESSION_ID << ">" << std::endl
-			<< ctx << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
+
+	AVM_IF_DEBUG_LEVEL_GTE_HIGH
+		AVM_OS_TRACE << "Z3::CONTEXT :" << SOLVER_SESSION_ID << ">"
+				<< std::endl << context << std::endl;
+	AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
-	z3::solver z3Solver(*CTX);
-
-	z3Solver.add( z3Condition );
-
-	switch( z3Solver.check() )
+	//if( z3Condition != nullptr )
 	{
-		case z3::sat:
-		{
-			satisfiability = SolverDef::SATISFIABLE;
-			break;
-		}
-
-		case z3::unsat:
-		{
-			satisfiability = SolverDef::UNSATISFIABLE;
-			break;
-		}
-
-		case z3::unknown:
-		{
-			satisfiability = SolverDef::UNKNOWN_SAT;
-			break;
-		}
-
-		default:
-		{
-			satisfiability = SolverDef::ABORT_SAT;
-			break;
-		}
-	}
-
-	//if( z3Condition != NULL )
-	{
-		z3::solver z3Solver(*CTX);
+		z3::solver z3Solver(*CONTEXT);
 
 		z3Solver.add( z3Condition );
+
+AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )	// trace to file
+	dbg_smt(z3Solver, true);
+AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 
 		switch( z3Solver.check() )
 		{
@@ -392,65 +413,112 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 /**
  * TOOLS
  */
-z3::sort Z3Solver::getZ3Type(BaseTypeSpecifier * bts)
+z3::sort Z3Solver::getZ3Type(const BaseTypeSpecifier & bts)
 {
-	if( bts->isTypedBoolean() )
+	if( bts.isTypedBoolean() )
 	{
-		return( CTX->bool_sort() );
+		return( CONTEXT->bool_sort() );
 	}
 
-	else if( bts->isTypedEnum() )
+	else if( bts.isTypedEnum() )
 	{
-		return( CTX->int_sort() );
+		return( CONTEXT->int_sort() );
 		// TODO Attention : il faudrait rajouter les contraintes
 		// d'intervalle pour le type énuméré
 	}
-	else if( bts->weaklyTypedInteger() )
+	else if( bts.weaklyTypedInteger() )
 	{
-		return( CTX->int_sort() );
+		return( CONTEXT->int_sort() );
 	}
 
-	else if( bts->weaklyTypedReal() )
+	else if( bts.weaklyTypedReal() )
 	{
-		return( CTX->real_sort() );
+		return( CONTEXT->real_sort() );
 	}
 
-	return( CTX->real_sort() );
+	return( CONTEXT->real_sort() );
 }
 
 
-z3::expr Z3Solver::getParameterExpr(const BF & bfParameter)
+z3::expr Z3Solver::getParameterExpr(const BF & bParameter)
 {
-	InstanceOfData * aParameter = bfParameter.to_ptr< InstanceOfData >();
+	InstanceOfData & aParameter = const_cast< InstanceOfData & >(
+			bParameter.to< InstanceOfData >() );
 
-	if( aParameter->getMark() == 0 )
+	if( aParameter.getMark() == 0 )
 	{
-		aParameter->setMark( mTableOfParameterInstance.size() );
-		mTableOfParameterInstance.append( bfParameter );
+		aParameter.setMark( mTableOfParameterInstance.size() );
+		mTableOfParameterInstance.append( bParameter );
 
-		mTableOfParameterDecl.push_back(
-				CTX->str_symbol(aParameter->getNameID().c_str()) );
+		mTableOfParameterDecl.push_back( CONTEXT->str_symbol(
+				uniqParameterID( aParameter ).c_str() ) );
+
+		const BaseTypeSpecifier & paramTypeSpecifier =
+				aParameter.referedTypeSpecifier();
 
 		mTableOfParameterExpr.push_back(
-				CTX->constant(mTableOfParameterDecl.last(),
-						getZ3Type(aParameter->referedTypeSpecifier())) );
+				CONTEXT->constant(mTableOfParameterDecl.last(),
+						getZ3Type(paramTypeSpecifier)) );
+
+		mBitsetOfConstrainedParameter.push_back(
+				paramTypeSpecifier.couldGenerateConstraint() );
+
+		mBitsetOfPositiveParameter.push_back(
+				paramTypeSpecifier.isTypedPositiveNumber() );
+
+		mBitsetOfStrictlyPositiveParameter.push_back(
+				paramTypeSpecifier.isTypedStrictlyPositiveNumber() );
 	}
 
-	return( mTableOfParameterExpr.at( aParameter->getMark() ) );
+	return( mTableOfParameterExpr.at( aParameter.getMark() ) );
 }
 
 
+z3::expr Z3Solver::getBoundParameterExpr(const BF & bParameter, z3::expr & z3And)
+{
+	InstanceOfData & aParameter = const_cast< InstanceOfData & >(
+			bParameter.to< InstanceOfData >() );
+
+	aParameter.setMark( mTableOfParameterInstance.size() );
+	mTableOfParameterInstance.append( bParameter );
+
+	mTableOfParameterDecl.push_back( CONTEXT->str_symbol(
+			uniqParameterID( aParameter ).c_str() ) );
+
+	const BaseTypeSpecifier & paramTypeSpecifier =
+			aParameter.referedTypeSpecifier();
+
+	z3::expr paramExpr = CONTEXT->constant(
+			mTableOfParameterDecl.last(), getZ3Type(paramTypeSpecifier));
+
+	mTableOfParameterExpr.push_back( paramExpr );
+
+	mBitsetOfStrictlyPositiveParameter.push_back( false );
+	mBitsetOfPositiveParameter.push_back( false );
+	mBitsetOfConstrainedParameter.push_back( false );
+
+	if( paramTypeSpecifier.isTypedStrictlyPositiveNumber() )
+	{
+		z3And = z3And && (paramExpr > SMT_CST_INT_ZERO);
+	}
+	else if( paramTypeSpecifier.isTypedPositiveNumber() )
+	{
+		z3And = z3And && (paramExpr >= SMT_CST_INT_ZERO);
+	}
+
+	return( mTableOfParameterExpr.at( aParameter.getMark() ) );
+}
 
 
 z3::expr Z3Solver::getVariableExpr(InstanceOfData * aVar, std::size_t varID)
 {
 	if( mTableOfVariableExpr.size() <= varID )
 	{
-		mTableOfVariableDecl.push_back(
-				CTX->str_symbol(aVar->getNameID().c_str()) );
+		mTableOfVariableDecl.push_back( CONTEXT->str_symbol(
+				uniqVariableID( *aVar, varID ).c_str() ) );
 
 		mTableOfVariableExpr.push_back(
-				CTX->constant(mTableOfVariableDecl.last(),
+				CONTEXT->constant(mTableOfVariableDecl.last(),
 						getZ3Type(aVar->getTypeSpecifier())) );
 		}
 
@@ -458,14 +526,30 @@ z3::expr Z3Solver::getVariableExpr(InstanceOfData * aVar, std::size_t varID)
 }
 
 
-z3::expr Z3Solver::safe_from_baseform(const BF & exprForm,
-		BaseTypeSpecifier * typeSpecifier)
+void Z3Solver::appendPossitiveAssertion(z3::solver & z3Solver)
 {
-	z3::expr e(*CTX);
+	std::size_t endOffset = mBitsetOfConstrainedParameter.size();
+	for( std::size_t offset = 1 ; offset < endOffset ; ++offset )
+	{
+		if( mBitsetOfStrictlyPositiveParameter[offset] )
+		{
+			z3Solver.add( mTableOfParameterExpr[offset] > SMT_CST_INT_ZERO );
+		}
+		else if( mBitsetOfPositiveParameter[offset] )
+		{
+			z3Solver.add( mTableOfParameterExpr[offset] >= SMT_CST_INT_ZERO );
+		}
+	}
+}
+
+
+z3::expr Z3Solver::safe_from_baseform(const BF & exprForm)
+{
+	z3::expr e(*CONTEXT);
 
 	try
 	{
-		e = from_baseform(exprForm, typeSpecifier);
+		e = from_baseform(exprForm);
 
 		destroyChecker();
 	}
@@ -475,8 +559,9 @@ z3::expr Z3Solver::safe_from_baseform(const BF & exprForm,
 				<< "\tZ3Solver::safe_from_baseform< unknown::exception :"
 				<< SOLVER_SESSION_ID << ">" << std::endl
 				<< REPEAT("--------", 10) << std::endl
-				<< "\tFailed to CONVERT sep::fml::expression to Z3::Expr:>" << std::endl
-				<< "\t  " << exprForm.str(" ") << std::endl
+				<< "\tFailed to CONVERT sep::fml::expression to Z3::Expr:>"
+				<< std::endl
+				<< "\t  " << exprForm.str() << std::endl
 				<< REPEAT("********", 10) << std::endl;
 
 		destroyChecker();
@@ -486,8 +571,7 @@ z3::expr Z3Solver::safe_from_baseform(const BF & exprForm,
 }
 
 
-z3::expr Z3Solver::from_baseform(const BF & exprForm,
-		BaseTypeSpecifier * typeSpecifier)
+z3::expr Z3Solver::from_baseform(const BF & exprForm)
 {
 	AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( exprForm ) << "expression !!!"
 			<< SEND_EXIT;
@@ -497,88 +581,84 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode * aCode = exprForm.to_ptr< AvmCode >();
+			const AvmCode & aCode = exprForm.to< AvmCode >();
 
-			typeSpecifier = TypeManager::UNIVERSAL;
-
-			switch( aCode->getAvmOpCode() )
+			switch( aCode.getAvmOpCode() )
 			{
 				// COMPARISON OPERATION
 				case AVM_OPCODE_EQ:
 				{
-					return( from_baseform(aCode->first() , typeSpecifier) ==
-							from_baseform(aCode->second(), typeSpecifier) );
+					return( from_baseform(aCode.first()) ==
+							from_baseform(aCode.second()) );
 				}
 
 				case AVM_OPCODE_NEQ:
 				{
-					return( from_baseform(aCode->first() , typeSpecifier) !=
-							from_baseform(aCode->second(), typeSpecifier) );
+					return( from_baseform(aCode.first()) !=
+							from_baseform(aCode.second()) );
 
 //					ARGS arg( 2 );
 //
-//					arg.next( from_baseform(aCode->first() , typeSpecifier) );
-//					arg.next( from_baseform(aCode->second(), typeSpecifier) );
+//					arg.next( from_baseform(aCode.first()) );
+//					arg.next( from_baseform(aCode.second()) );
 //
-//					return( Z3_mk_distinct(CTX, 2, arg->table) );
+//					return( Z3_mk_distinct(CONTEXT, 2, arg->table) );
 				}
 
 				case AVM_OPCODE_LT:
 				{
-					return( from_baseform(aCode->first() , typeSpecifier) <
-							from_baseform(aCode->second(), typeSpecifier) );
+					return( from_baseform(aCode.first()) <
+							from_baseform(aCode.second()) );
 				}
 
 				case AVM_OPCODE_LTE:
 				{
-					return( from_baseform(aCode->first() , typeSpecifier) <=
-							from_baseform(aCode->second(), typeSpecifier) );
+					return( from_baseform(aCode.first()) <=
+							from_baseform(aCode.second()) );
 				}
 
 				case AVM_OPCODE_GT:
 				{
-					return( from_baseform(aCode->first() , typeSpecifier) >
-							from_baseform(aCode->second(), typeSpecifier) );
+					return( from_baseform(aCode.first()) >
+							from_baseform(aCode.second()) );
 				}
 
 				case AVM_OPCODE_GTE:
 				{
-					return( from_baseform(aCode->first() , typeSpecifier) >=
-							from_baseform(aCode->second(), typeSpecifier) );
+					return( from_baseform(aCode.first()) >=
+							from_baseform(aCode.second()) );
 				}
 
 
 				case AVM_OPCODE_CONTAINS:
 				{
 					BuiltinCollection * aCollection =
-							aCode->first().to_ptr< BuiltinCollection >();
+							aCode.first().to_ptr< BuiltinCollection >();
 
 					if( aCollection->singleton() )
 					{
-						return( from_baseform(aCollection->at(0), typeSpecifier) ==
-								from_baseform(aCode->second(), typeSpecifier) );
+						return( from_baseform(aCollection->at(0))
+								== from_baseform(aCode.second()) );
 					}
 					else if( aCollection->populated() )
 					{
 						std::size_t colSize = aCollection->size();
-						const BF & elt = aCode->second();
+						const BF & elt = aCode.second();
 
-						z3::expr z3Or = ( from_baseform(elt, typeSpecifier) ==
-								from_baseform(aCollection->at(0), typeSpecifier) );
+						z3::expr z3Or = ( from_baseform(elt) ==
+								from_baseform(aCollection->at(0)) );
 
 						for( std::size_t offset = 1 ; offset < colSize ; ++offset )
 						{
-							z3Or = z3Or || (from_baseform(elt, typeSpecifier) ==
-								from_baseform(aCollection->at(offset), typeSpecifier));
+							z3Or = z3Or || (from_baseform(elt) ==
+								from_baseform(aCollection->at(offset)));
 						}
 
 						return( z3Or );
 					}
 					else
 					{
-						return( ((typeSpecifier != NULL) &&
-								typeSpecifier->isTypedBoolean()) ?
-										CTX->bool_val(false) : CTX->int_val(0) );
+						return( CONTEXT->bool_val(false) );
 					}
 				}
 
@@ -586,20 +666,18 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 				// LOGICAL OPERATION
 				case AVM_OPCODE_NOT:
 				{
-					return( not from_baseform(
-							aCode->first(), TypeManager::BOOLEAN) );
+					return( not from_baseform(aCode.first()) );
 				}
 
 				case AVM_OPCODE_AND:
 				{
 					z3::expr z3And =
-							from_baseform(aCode->first(), TypeManager::BOOLEAN) &&
-							from_baseform(aCode->second(), TypeManager::BOOLEAN);
+							from_baseform(aCode.first()) &&
+							from_baseform(aCode.second());
 
-					for( std::size_t offset = 2 ; offset < aCode->size() ; ++offset )
+					for( std::size_t offset = 2 ; offset < aCode.size() ; ++offset )
 					{
-						z3And = z3And && from_baseform(
-								aCode->at(offset), TypeManager::BOOLEAN);
+						z3And = z3And && from_baseform(aCode.at(offset));
 					}
 
 					return( z3And );
@@ -608,13 +686,12 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 				case AVM_OPCODE_NAND:
 				{
 					z3::expr z3And =
-							from_baseform(aCode->first(), TypeManager::BOOLEAN) &&
-							from_baseform(aCode->second(), TypeManager::BOOLEAN);
+							from_baseform(aCode.first()) &&
+							from_baseform(aCode.second());
 
-					for( std::size_t offset = 2 ; offset < aCode->size() ; ++offset )
+					for( std::size_t offset = 2 ; offset < aCode.size() ; ++offset )
 					{
-						z3And = z3And && from_baseform(
-								aCode->at(offset), TypeManager::BOOLEAN);
+						z3And = z3And && from_baseform(aCode.at(offset));
 					}
 
 					return( not z3And );
@@ -625,13 +702,12 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 				case AVM_OPCODE_OR:
 				{
 					z3::expr z3Or =
-							from_baseform(aCode->first(), TypeManager::BOOLEAN) ||
-							from_baseform(aCode->second(), TypeManager::BOOLEAN);
+							from_baseform(aCode.first()) ||
+							from_baseform(aCode.second());
 
-					for( std::size_t offset = 2 ; offset < aCode->size() ; ++offset )
+					for( std::size_t offset = 2 ; offset < aCode.size() ; ++offset )
 					{
-						z3Or = z3Or || from_baseform(
-								aCode->at(offset), TypeManager::BOOLEAN);
+						z3Or = z3Or || from_baseform(aCode.at(offset));
 					}
 
 					return( z3Or );
@@ -640,13 +716,12 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 				case AVM_OPCODE_NOR:
 				{
 					z3::expr z3Or =
-						from_baseform(aCode->first(), TypeManager::BOOLEAN) ||
-						from_baseform(aCode->second(), TypeManager::BOOLEAN);
+						from_baseform(aCode.first()) ||
+						from_baseform(aCode.second());
 
-					for( std::size_t offset = 2 ; offset < aCode->size() ; ++offset )
+					for( std::size_t offset = 2 ; offset < aCode.size() ; ++offset )
 					{
-						z3Or = z3Or || from_baseform(
-								aCode->at(offset), TypeManager::BOOLEAN);
+						z3Or = z3Or || from_baseform(aCode.at(offset));
 					}
 
 					return( not z3Or );
@@ -661,29 +736,76 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 
 				case AVM_OPCODE_XOR:
 				{
-					z3::expr arg0 = from_baseform(
-							aCode->first(), TypeManager::BOOLEAN);
+					z3::expr arg0 = from_baseform(aCode.first());
 
-					z3::expr arg1 = from_baseform(
-							aCode->second(), TypeManager::BOOLEAN);
+					z3::expr arg1 = from_baseform(aCode.second());
 
 					return( (arg0 && (! arg1)) || ((! arg0) && arg1) );
 				}
 
 //				case AVM_OPCODE_XNOR:
 
+				case AVM_OPCODE_IMPLIES:
+				{
+					return( z3::implies(
+							from_baseform(aCode.first()) ,
+							from_baseform(aCode.second()) ) );
+				}
+
+
+				case AVM_OPCODE_EXISTS:
+				{
+					std::size_t boundVarCount = aCode.size()  - 1;
+
+					z3::expr_vector arg( *CONTEXT );
+
+					z3::expr z3Constraint = SMT_CST_BOOL_TRUE;
+
+					for (std::size_t offset = 0; offset < boundVarCount; ++offset)
+					{
+						arg.push_back(
+								getBoundParameterExpr(
+										aCode[ offset ], z3Constraint) );
+					}
+
+					z3Constraint = z3Constraint &&
+							from_baseform(aCode[ boundVarCount ]);
+
+					return( z3::exists(arg, z3Constraint) );
+				}
+
+				case AVM_OPCODE_FORALL:
+				{
+					std::size_t boundVarCount = aCode.size()  - 1;
+
+					z3::expr_vector arg( *CONTEXT );
+
+					z3::expr z3Constraint = SMT_CST_BOOL_TRUE;
+
+					for (std::size_t offset = 0; offset < boundVarCount; ++offset)
+					{
+						arg.push_back(
+								getBoundParameterExpr(
+										aCode[ offset ], z3Constraint) );
+					}
+
+					z3Constraint = z3::implies( z3Constraint,
+							from_baseform(aCode[ boundVarCount ]) );
+
+					return( z3::forall(arg, z3Constraint) );
+				}
+
 
 				// ARITHMETIC OPERATION
 				case AVM_OPCODE_PLUS:
 				{
 					z3::expr z3Plus =
-							from_baseform(aCode->first(), typeSpecifier) +
-							from_baseform(aCode->second(), typeSpecifier);
+							from_baseform(aCode.first()) +
+							from_baseform(aCode.second());
 
-					for( std::size_t offset = 2 ; offset < aCode->size() ; ++offset )
+					for( std::size_t offset = 2 ; offset < aCode.size() ; ++offset )
 					{
-						z3Plus = z3Plus +
-								from_baseform(aCode->at(offset), typeSpecifier);
+						z3Plus = z3Plus + from_baseform(aCode.at(offset));
 					}
 
 					return( z3Plus );
@@ -691,19 +813,18 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 
 				case AVM_OPCODE_UMINUS:
 				{
-					return( - from_baseform(aCode->first(), typeSpecifier) );
+					return( - from_baseform(aCode.first()) );
 				}
 
 				case AVM_OPCODE_MINUS:
 				{
 					z3::expr z3Minus =
-							from_baseform(aCode->first(), typeSpecifier) -
-							from_baseform(aCode->second(), typeSpecifier);
+							from_baseform(aCode.first()) -
+							from_baseform(aCode.second());
 
-					for( std::size_t offset = 2 ; offset < aCode->size() ; ++offset )
+					for( std::size_t offset = 2 ; offset < aCode.size() ; ++offset )
 					{
-						z3Minus = z3Minus -
-								from_baseform(aCode->at(offset), typeSpecifier);
+						z3Minus = z3Minus - from_baseform(aCode.at(offset));
 					}
 
 					return( z3Minus );
@@ -712,13 +833,12 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 				case AVM_OPCODE_MULT:
 				{
 					z3::expr z3Mult =
-							from_baseform(aCode->first(), typeSpecifier) *
-							from_baseform(aCode->second(), typeSpecifier);
+							from_baseform(aCode.first()) *
+							from_baseform(aCode.second());
 
-					for( std::size_t offset = 2 ; offset < aCode->size() ; ++offset )
+					for( std::size_t offset = 2 ; offset < aCode.size() ; ++offset )
 					{
-						z3Mult = z3Mult *
-								from_baseform(aCode->at(offset), typeSpecifier);
+						z3Mult = z3Mult * from_baseform(aCode.at(offset));
 					}
 
 					return( z3Mult );
@@ -726,18 +846,18 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 
 				case AVM_OPCODE_DIV:
 				{
-					return( from_baseform(aCode->first() , typeSpecifier) /
-							from_baseform(aCode->second(), typeSpecifier) );
+					return( from_baseform(aCode.first()) /
+							from_baseform(aCode.second()) );
 				}
 
 				case AVM_OPCODE_POW:
 				{
 
-//					if( ExpressionFactory::isInt32(aCode->second()) )
+//					if( ExpressionFactory::isInt32(aCode.second()) )
 //					{
 //						return( std::pw(
-//								from_baseform(aCode->first() , typeSpecifier),
-//								from_baseform(aCode->second() , typeSpecifier) ) );
+//								from_baseform(aCode.first()),
+//								from_baseform(aCode.second()) ) );
 //					}
 //					else
 					{
@@ -747,7 +867,7 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 									"<< AVM_OPCODE_POW >> !!!"
 								<< SEND_EXIT;
 
-						return( z3::expr(*CTX) );
+						return( z3::expr(*CONTEXT) );
 					}
 				}
 
@@ -758,10 +878,10 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Z3Solver::from_baseform:> "
 								"Unexpected expression !!!\n"
-							<< aCode->toString( AVM_TAB1_INDENT )
+							<< aCode.toString( AVM_TAB1_INDENT )
 							<< SEND_EXIT;
 
-					return( z3::expr(*CTX) );
+					return( z3::expr(*CONTEXT) );
 				}
 			}
 
@@ -775,109 +895,48 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 
 		case FORM_BUILTIN_BOOLEAN_KIND:
 		{
-			return( CTX->bool_val(
-					exprForm.to_ptr< Boolean >()->getValue() ) );
+			return( CONTEXT->bool_val(
+					exprForm.to< Boolean >().getValue() ) );
 		}
 
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
-			if( (typeSpecifier != NULL) && typeSpecifier->isTypedBoolean() )
-			{
-//				return( CTX->bool_val(
-//						not exprForm.to_ptr< Integer >()->isZero() ) );
+			return( CONTEXT->int_val( static_cast< int64_t >(
+					exprForm.to< Integer >().toInteger() ) ) );
 
-				return( exprForm.to_ptr< Integer >()->isZero() ?
-						SMT_CST_BOOL_FALSE : SMT_CST_BOOL_TRUE );
-			}
-			else
-			{
-#if defined( _AVM_BUILTIN_NUMERIC_GMP_ )
-
-				return( CTX->int_val( static_cast< __int64 >(
-						exprForm.to_ptr< Integer >()->toInteger() ) ) );
-
-#else
-
-				return( CTX->int_val( static_cast< __int64 >(
-						exprForm.to_ptr< Integer >()->toInteger() ) ) );
-
-#endif /* _AVM_BUILTIN_NUMERIC_GMP_ */
-			}
-
-//			return( CTX->int_val( exprForm.to_ptr< Integer >()->str().c_str() ) );
+//			return( CONTEXT->int_val( exprForm.to< Integer >().str().c_str() ) );
 		}
 
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
-			if( (typeSpecifier != NULL) && typeSpecifier->isTypedBoolean() )
-			{
-//				return( CTX->bool_val(
-//						not exprForm.to_ptr< Rational >()->isZero() ) );
+			return( CONTEXT->real_val(
+					exprForm.to< Rational >().toNumerator(),
+					exprForm.to< Rational >().toDenominator() ) );
 
-				return( exprForm.to_ptr< Rational >()->isZero() ?
-						SMT_CST_BOOL_FALSE : SMT_CST_BOOL_TRUE );
-			}
-			else
-			{
-#if defined( _AVM_BUILTIN_NUMERIC_GMP_ )
-
-				return( CTX->real_val(
-						exprForm.to_ptr< Rational >()->toNumerator(),
-						exprForm.to_ptr< Rational >()->toDenominator() ) );
-
-#else
-
-				return( CTX->real_val(
-						exprForm.to_ptr< Rational >()->toNumerator(),
-						exprForm.to_ptr< Rational >()->toDenominator() ) );
-
-#endif /* _AVM_BUILTIN_NUMERIC_GMP_ */
-			}
-
-//			return( CTX->real_val( exprForm.to_ptr< Rational >()->str().c_str() ) );
+//			return( CONTEXT->real_val( exprForm.to< Rational >().str().c_str() ) );
 		}
 
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
-			if( (typeSpecifier != NULL) && typeSpecifier->isTypedBoolean() )
-			{
-//				return( CTX->bool_val(
-//						not exprForm.to_ptr< Float >()->isZero() ) );
-
-				return( exprForm.to_ptr< Float >()->isZero() ?
-						SMT_CST_BOOL_FALSE : SMT_CST_BOOL_TRUE );
-			}
-			else
-			{
-#if defined( _AVM_BUILTIN_NUMERIC_GMP_ )
-
-				return( CTX->real_val(
-						exprForm.to_ptr< Float >()->str().c_str() ) );
-
-#else
-
-				return( CTX->real_val(
-						exprForm.to_ptr< Float >()->str().c_str() ) );
-
-#endif /* _AVM_BUILTIN_NUMERIC_GMP_ */
-			}
+			return( CONTEXT->real_val(
+					exprForm.to< Float >().str().c_str() ) );
 		}
 
 
 		case FORM_RUNTIME_ID_KIND:
 		{
-			return( CTX->int_val( exprForm.bfRID().getRid() ) );
+			return( CONTEXT->int_val( exprForm.bfRID().getRid() ) );
 		}
 
 		default:
 		{
 			AVM_OS_FATAL_ERROR_EXIT
-					<< "Z3Solver::from_baseform:> Unexpected BASEFORM KIND << "
+					<< "Z3Solver::from_baseform:> Unexpected OBJECT KIND << "
 					<< exprForm.classKindName() << " >> as expression << "
 					<< exprForm.str() << " >> !!!"
 					<< SEND_EXIT;
 
-			return( z3::expr(*CTX) );
+			return( z3::expr(*CONTEXT) );
 		}
 	}
 
@@ -885,7 +944,7 @@ z3::expr Z3Solver::from_baseform(const BF & exprForm,
 			<< "Z3Solver::from_baseform ERROR !!!"
 			<< SEND_EXIT;
 
-	return( z3::expr(*CTX) );
+	return( z3::expr(*CONTEXT) );
 }
 
 
@@ -914,7 +973,6 @@ BF Z3Solver::to_baseform(z3::model z3Model, z3::expr z3Form)
 /**
  * Using file API
  */
-
 SolverDef::SATISFIABILITY_RING Z3Solver::smt_check_sat(const BF & aCondition)
 {
 	SolverDef::SATISFIABILITY_RING satisfiability = SolverDef::SATISFIABLE;
@@ -924,10 +982,10 @@ SolverDef::SATISFIABILITY_RING Z3Solver::smt_check_sat(const BF & aCondition)
 	StringOutStream ossCondition("", "\t", "");
 	to_smt(ossCondition, aCondition, paramVector);
 
-	std::string fileLocation = OSS << mLogFolderLocation,
-			<< "z3_check_sat_" << SOLVER_SESSION_ID << ".smt";
+	std::string fileLocation = ( OSS() << mLogFolderLocation
+			<< "z3_cpp_check_sat_" << SOLVER_SESSION_ID << ".log" );
 	std::ofstream osFile;
-	osFile.open(fileLocation.c_str(), std::ios_base::out);
+	osFile.open(fileLocation, std::ios_base::out);
 	if ( osFile.good() )
 	{
 //		osFile << "(echo \"" << aCondition.str() << "\")" << std::endl;
@@ -945,8 +1003,11 @@ SolverDef::SATISFIABILITY_RING Z3Solver::smt_check_sat(const BF & aCondition)
 			{
 				osFile << "Bool";
 			}
-			else if( aParam->weaklyTypedInteger() ||
-					aParam->isTypedEnum() )
+			else if( aParam->isTypedEnum() )
+			{
+				osFile << "Int";
+			}
+			else if( aParam->weaklyTypedInteger() )
 			{
 				osFile << "Int";
 			}
@@ -961,7 +1022,12 @@ SolverDef::SATISFIABILITY_RING Z3Solver::smt_check_sat(const BF & aCondition)
 			osFile << ")" << std::endl;
 		}
 
-		osFile << "(assert " << ossCondition.str() << ")" << std::endl;
+		osFile << ";;(assert " << ossCondition.str() << ")" << std::endl;
+
+		// AST SERIALIZATION
+		z3::expr z3Condition = from_baseform(aCondition);
+		osFile << std::endl << std::endl
+				<< "(assert "    << z3Condition << ")" << std::endl << std::endl;
 
 		osFile << "(check-sat)" << std::endl;
 
@@ -971,7 +1037,6 @@ SolverDef::SATISFIABILITY_RING Z3Solver::smt_check_sat(const BF & aCondition)
 	{
 		return( SolverDef::ABORT_SAT );
 	}
-
 
 	return( satisfiability );
 }
@@ -984,10 +1049,10 @@ bool Z3Solver::smt_check_model(const BF & aCondition,
 	StringOutStream ossCondition("", "\t", "");
 	to_smt(ossCondition, aCondition, paramVector);
 
-	std::string fileLocation = OSS << mLogFolderLocation
-			<< "z3_check_sat_" << SOLVER_SESSION_ID << ".smt";
+	std::string fileLocation = ( OSS() << mLogFolderLocation
+			<< "z3_cpp_get_model_" << SOLVER_SESSION_ID << ".log");
 	std::ofstream osFile;
-	osFile.open(fileLocation.c_str(), std::ios_base::out);
+	osFile.open(fileLocation, std::ios_base::out);
 	if ( osFile.good() )
 	{
 //		osFile << "(echo \"" << aCondition.str() << "\")" << std::endl;
@@ -1005,8 +1070,11 @@ bool Z3Solver::smt_check_model(const BF & aCondition,
 			{
 				osFile << "Bool";
 			}
-			else if( aParam->weaklyTypedInteger() ||
-					aParam->isTypedEnum() )
+			else if( aParam->isTypedEnum() )
+			{
+				osFile << "Int";
+			}
+			else if( aParam->weaklyTypedInteger() )
 			{
 				osFile << "Int";
 			}
@@ -1021,7 +1089,12 @@ bool Z3Solver::smt_check_model(const BF & aCondition,
 			osFile << ")" << std::endl;
 		}
 
-		osFile << "(assert " << ossCondition.str() << ")" << std::endl;
+		osFile << ";;(assert " << ossCondition.str() << ")" << std::endl;
+
+		// AST SERIALIZATION
+		z3::expr z3Condition = from_baseform(aCondition);
+		osFile << std::endl << std::endl
+				<< "(assert "    << z3Condition << ")" << std::endl << std::endl;
 
 		osFile << "(get-model)" << std::endl;
 
@@ -1041,7 +1114,6 @@ SolverDef::SATISFIABILITY_RING Z3Solver::from_smt_sat(const BF & aCondition)
 {
 	SolverDef::SATISFIABILITY_RING satisfiability = SolverDef::SATISFIABLE;
 
-
 	return( satisfiability );
 }
 
@@ -1053,11 +1125,13 @@ bool Z3Solver::from_smt_model(const BF & aCondition,
 
 
 
-void Z3Solver::to_smt(OutStream & os,
+bool Z3Solver::to_smt(OutStream & os,
 		const BF & exprForm, BFVector & dataVector) const
 {
 	AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( exprForm ) << "expression !!!"
 			<< SEND_EXIT;
+
+	bool hasQuantifier = false;
 
 	os << TAB;
 
@@ -1065,13 +1139,18 @@ void Z3Solver::to_smt(OutStream & os,
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode * aCode = exprForm.to_ptr< AvmCode >();
+			const AvmCode & aCode = exprForm.to< AvmCode >();
 
 			os << '(';
 			std::string eoe = "";
 
-			switch( aCode->getAvmOpCode() )
+			switch( aCode.getAvmOpCode() )
 			{
+				case AVM_OPCODE_EQ:
+				{
+					os << "=";
+					break;
+				}
 				case AVM_OPCODE_AND:
 				{
 					os << "and";
@@ -1107,20 +1186,59 @@ void Z3Solver::to_smt(OutStream & os,
 					break;
 				}
 
+				case AVM_OPCODE_CONTAINS:
+				{
+					os << "contains";
+					break;
+				}
+
+				case AVM_OPCODE_EXISTS:
+				{
+					os << "exists";
+					hasQuantifier = true;
+					break;
+				}
+				case AVM_OPCODE_FORALL:
+				{
+					os << "forall";
+					hasQuantifier = true;
+					break;
+				}
+
 				default:
 				{
-					os << aCode->getOperator()->strSMT();
+					os << aCode.getOperator()->strSMT();
 					break;
 
 				}
 			}
 
-			AvmCode::iterator it = aCode->begin();
-			AvmCode::iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
+			if( hasQuantifier )
 			{
-				os << " ";
-				to_smt(os, *it, dataVector);
+				BFList boundVars;
+
+				auto endOperand = aCode.end();
+				auto itOperand = aCode.begin();
+				for( ; (itOperand + 1) != endOperand ; ++itOperand )
+				{
+					boundVars.append(*itOperand);
+
+					os << " " << (*itOperand).to<
+							InstanceOfData >().getFullyQualifiedNameID();
+				}
+
+				to_smt(os, *itOperand, dataVector);
+
+				dataVector.remove(boundVars);
+			}
+			else
+			{
+				for( const auto & itOperand : aCode.getOperands() )
+				{
+					os << " ";
+					hasQuantifier = to_smt(os, itOperand, dataVector)
+								|| hasQuantifier;
+				}
 			}
 
 			os << eoe << ')';
@@ -1130,12 +1248,28 @@ void Z3Solver::to_smt(OutStream & os,
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			dataVector.add_union( exprForm );
-			os << exprForm.to_ptr< InstanceOfData >()->getFullyQualifiedNameID();
+			dataVector.add_unique( exprForm );
+
+			os << exprForm.to< InstanceOfData >().getFullyQualifiedNameID();
 
 			break;
 		}
 
+		case FORM_ARRAY_BF_KIND:
+		{
+			os << '{';
+			ArrayBF * arrayArg =  exprForm.to_ptr< ArrayBF >();
+			for( std::size_t idx = 0 ; idx < arrayArg->size() ; ++idx )
+			{
+				os << " ";
+				hasQuantifier = to_smt(os, arrayArg->at(idx), dataVector)
+							|| hasQuantifier;
+			}
+
+			os << " }";
+
+			break;
+		}
 
 		case FORM_BUILTIN_BOOLEAN_KIND:
 		case FORM_BUILTIN_INTEGER_KIND:
@@ -1149,31 +1283,88 @@ void Z3Solver::to_smt(OutStream & os,
 
 		default:
 		{
-			AVM_OS_FATAL_ERROR_EXIT
-					<< "Unexpected BASEFORM KIND as expression << "
-					<< exprForm.str() << " >> !!!"
-					<< SEND_EXIT;
+			if( exprForm.is< BuiltinContainer >() )
+			{
+				os << '{';
+				BuiltinContainer * aCollection =
+						exprForm.to_ptr< BuiltinContainer >();
+				for( std::size_t idx = 0 ; idx < aCollection->size() ; ++idx )
+				{
+					os << " ";
+					hasQuantifier = to_smt(os, aCollection->at(idx), dataVector)
+								|| hasQuantifier;
+				}
 
-			os << exprForm.str();
+				os << " }";
+			}
+			else
+			{
+				AVM_OS_FATAL_ERROR_EXIT
+						<< "Z3Solver::to_smt:> Unexpected OBJECT KIND << "
+						<< exprForm.classKindName() << " >> as expression << "
+						<< exprForm.str() << " >> !!!"
+						<< SEND_EXIT;
+
+				os << exprForm.str();
+			}
 
 			break;
 		}
 	}
 
 	os << EOL;
+
+	return hasQuantifier;
 }
 
 
-#else /* NOT _AVM_SOLVER_Z3_CPP_ ==> _AVM_SOLVER_Z3_C << default >> */
+void Z3Solver::dbg_smt(z3::solver & z3Solver, bool produceModelOption) const
+{
+	AVM_OS_TRACE << "z3::solver::to_smt2(...) --> "
+			<< ( produceModelOption ? "Get Model" : "isSatifiable" ) << std::endl
+			<< z3Solver.to_smt2() << std::endl;
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 
+	std::string fileLocation = ( OSS() << mLogFolderLocation
+			<< ( produceModelOption ? "z3_cpp_get_model_" : "z3_cpp_check_sat_" )
+			<< SOLVER_SESSION_ID << ".smt2" );
+
+	std::ofstream osFile;
+	osFile.open(fileLocation, std::ios_base::out);
+	if ( osFile.good() )
+	{
+		osFile << ";; yices-smt2 " << fileLocation << std::endl;
+		osFile << ";; Getting info" << std::endl
+				<< "(get-info :name)"    << std::endl
+				<< "(get-info :version)" << std::endl;
+
+		if( produceModelOption )
+		{
+			osFile << ";; Getting values or models" << std::endl
+					<< "(set-option :produce-models true)" << std::endl
+//					<< "; Getting assignments" << std::endl
+//					<< "(set-option :produce-assignments true)" << std::endl
+//					<< "; Logic" << std::endl
+//					<< "(set-logic ALL)" << std::endl
+					<< std::endl;
+
+			osFile << z3Solver.to_smt2() << std::endl;
+
+			osFile << "(get-model)" << std::endl
+//					<< "(get-assignment)"
+					<< std::endl;
+		}
+		else
+		{
+//			osFile << ";; Logic" << std::endl
+//					<< "(set-logic ALL)" << std::endl;
+
+			osFile << z3Solver.to_smt2() << std::endl;
+		}
+
+		osFile.close();
+	}
+}
 
 
 /**
@@ -1298,1449 +1489,92 @@ static void display_ast(OutStream & os, Z3_context ctx, Z3_ast v)
 /**
    \brief Custom function interpretations pretty printer.
  */
-static void display_function_interpretations(
-		OutStream & os, Z3_context ctx, Z3_model model)
+void display_function_interpretations(OutStream & out, Z3_context c, Z3_model m)
 {
-	unsigned num_functions, i;
+    unsigned num_functions, i;
 
-	os << "function interpretations:" << std::endl;
+    out << "function interpretations:" << std::endl;
 
-	num_functions = Z3_get_model_num_funcs(ctx, model);
-	for (i = 0; i < num_functions; i++) {
-		Z3_func_decl fdecl;
-		Z3_symbol name;
-		Z3_ast func_else;
-		unsigned num_entries, j;
+    num_functions = Z3_model_get_num_funcs(c, m);
+    for (i = 0; i < num_functions; i++) {
+        Z3_func_decl fdecl;
+        Z3_symbol name;
+        Z3_ast func_else;
+        unsigned num_entries = 0, j;
+        Z3_func_interp_opt finterp;
 
-		fdecl = Z3_get_model_func_decl(ctx, model, i);
-		name = Z3_get_decl_name(ctx, fdecl);
-		display_symbol(os, ctx, name);
-		os << " = {";
-		num_entries = Z3_get_model_func_num_entries(ctx, model, i);
-		for (j = 0; j < num_entries; j++) {
-			unsigned num_args, k;
-			if (j > 0) {
-				os << ", ";
-			}
-			num_args = Z3_get_model_func_entry_num_args(ctx, model, i, j);
-			os << "(";
-			for (k = 0; k < num_args; k++) {
-				if (k > 0) {
-					os << ", ";
-				}
-				display_ast(os, ctx, Z3_get_model_func_entry_arg(ctx, model, i, j, k));
-			}
-			os << "|->";
-			display_ast(os, ctx, Z3_get_model_func_entry_value(ctx, model, i, j));
-			os << ")";
-		}
-		if (num_entries > 0) {
-			os << ", ";
-		}
-		os << "(else|->";
-		func_else = Z3_get_model_func_else(ctx, model, i);
-		display_ast(os, ctx, func_else);
-		os << ")}" << std::endl;
-	}
+        fdecl = Z3_model_get_func_decl(c, m, i);
+        finterp = Z3_model_get_func_interp(c, m, fdecl);
+	Z3_func_interp_inc_ref(c, finterp);
+        name = Z3_get_decl_name(c, fdecl);
+        display_symbol(out, c, name);
+        out << " = {";
+        if (finterp)
+          num_entries = Z3_func_interp_get_num_entries(c, finterp);
+        for (j = 0; j < num_entries; j++) {
+            unsigned num_args, k;
+            Z3_func_entry fentry = Z3_func_interp_get_entry(c, finterp, j);
+	    Z3_func_entry_inc_ref(c, fentry);
+            if (j > 0) {
+                out << ", ";
+            }
+            num_args = Z3_func_entry_get_num_args(c, fentry);
+            out << "(";
+            for (k = 0; k < num_args; k++) {
+                if (k > 0) {
+                    out << ", ";
+                }
+                display_ast(out, c, Z3_func_entry_get_arg(c, fentry, k));
+            }
+            out << "|->";
+            display_ast(out, c, Z3_func_entry_get_value(c, fentry));
+            out << ")";
+	    Z3_func_entry_dec_ref(c, fentry);
+        }
+        if (num_entries > 0) {
+            out << ", ";
+        }
+        out << "(else|->";
+        func_else = Z3_func_interp_get_else(c, finterp);
+        display_ast(out, c, func_else);
+        out << ")}\n";
+	Z3_func_interp_dec_ref(c, finterp);
+    }
 }
+
 
 /**
    \brief Custom model pretty printer.
  */
-static void display_model(OutStream & os, Z3_context ctx, Z3_model model)
-{
-	unsigned num_constants;
-	unsigned i;
-
-	num_constants = Z3_get_model_num_constants(ctx, model);
-	for (i = 0; i < num_constants; i++) {
-		Z3_symbol name;
-		Z3_func_decl cnst = Z3_get_model_constant(ctx, model, i);
-		Z3_ast a, v;
-		name = Z3_get_decl_name(ctx, cnst);
-		display_symbol(os, ctx, name);
-		os << " = ";
-		a = Z3_mk_app(ctx, cnst, 0, 0);
-		v = a;
-		Z3_bool ok = Z3_eval(ctx, model, a, &v);
-		if( ok == Z3_TRUE )
-		{
-			display_ast(os, ctx, v);
-			os << std::endl;
-		}
-	}
-	display_function_interpretations(os, ctx, model);
-}
-
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-/**
- * CONFIGURE
- */
-bool Z3Solver::configure(
-		Configuration & aConfiguration, WObject * wfFilterObject,
-		ListOfPairMachineData & listOfSelectedVariable)
-{
-	if( not base_this_type::configure(
-		aConfiguration, wfFilterObject, listOfSelectedVariable) )
-	{
-		return( false );
-	}
-
-	return( true );
-}
-
-
-
-/**
- * CREATE - DESTROY
- * ValidityChecker
- */
-
-/**
-   \brief Simpler error handler.
- */
-void error_handler(Z3_error_code e)
-{
-	AVM_OS_EXIT( FAILED )
-			<< "Z3Solver:> Incorrect use of the solver, error code << "
-			<< e << " >>"
-			<< SEND_EXIT;
-}
-
-
-bool Z3Solver::createChecker()
-{
-	CFG = Z3_mk_config();
-
-	Z3_set_param_value(CFG, "MODEL", "true");
-
-	CTX = Z3_mk_context(CFG);
-
-//	Z3_set_error_handler(error_handler);
-
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	++SOLVER_SESSION_ID;
-AVM_IF_DEBUG_LEVEL_GTE_HIGH
-	mLogFolderLocation = OSS() << VFS::ProjectLogPath << "/z3/";
-
-	if ( not VFS::checkWritingFolder(mLogFolderLocation) )
-	{
-		AVM_OS_LOG << " Z3Solver::createChecker :> Error: The folder "
-				<< "`" << mLogFolderLocation	<< "' "
-				<< "---> doesn't exist or is not writable !!!"
-				<< std::endl << std::endl;
-		return( false );
-	}
-
-//	std::string fileLocation = OSS << mLogFolderLocation
-//			<< "z3_log_" << SOLVER_SESSION_ID << ".z3";
-//	Z3_open_log( fileLocation.c_str() );
+//static void display_model(OutStream & out, Z3_context c, Z3_model m)
+//{
+//    unsigned num_constants;
+//    unsigned i;
 //
-//	fileLocation = OSS << mLogFolderLocation
-//			<< "z3_trace_" << SOLVER_SESSION_ID << ".z3";
-//	Z3_trace_to_file( CTX , fileLocation.c_str() );
-AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-
-	SMT_TYPE_BOOL = Z3_mk_bool_sort(CTX);
-	SMT_TYPE_INT  = Z3_mk_int_sort(CTX);
-	SMT_TYPE_REAL = Z3_mk_real_sort(CTX);
-
-	SMT_CST_BOOL_TRUE  = Z3_mk_true(CTX);
-	SMT_CST_BOOL_FALSE = Z3_mk_false(CTX);
-
-	SMT_CST_INT_ZERO = Z3_mk_int(CTX, 0, SMT_TYPE_INT);
-	SMT_CST_INT_ONE  = Z3_mk_int(CTX, 1, SMT_TYPE_INT);
-
-	resetTable();
-
-	return( true );
-}
-
-
-bool Z3Solver::destroyChecker()
-{
-	resetTable();
-
-	SMT_TYPE_BOOL  = NULL;
-	SMT_TYPE_INT   = NULL;
-	SMT_TYPE_BV32  = NULL;
-	SMT_TYPE_BV64  = NULL;
-	SMT_TYPE_REAL  = NULL;
-
-	SMT_CST_BOOL_TRUE   = NULL;
-	SMT_CST_BOOL_FALSE  = NULL;
-
-	SMT_CST_INT_ZERO	= NULL;
-	SMT_CST_INT_ONE	 = NULL;
-
-//	Z3_close_log();
-//	Z3_trace_off( CTX );
-
-	if( CFG != NULL )
-	{
-		Z3_del_config(CFG);
-		CFG = NULL;
-	}
-
-	if( CTX != NULL )
-	{
-		Z3_del_context(CTX);
-
-		CTX = NULL;
-	}
-
-	return( true );
-}
-
-bool Z3Solver::resetTable()
-{
-	base_this_type::resetTable();
-
-	mTableOfParameterDecl.append( NULL );
-
-	mTableOfParameterExpr.append( NULL );
-
-	return( true );
-}
-
-
-
-/**
- * PROVER
- */
-bool Z3Solver::isSubSet(
-		const ExecutionContext & newEC, const ExecutionContext & oldEC)
-{
-	return( true );
-}
-
-bool Z3Solver::isEqualSet(
-		const ExecutionContext & newEC, const ExecutionContext & oldEC)
-{
-	return( true );
-}
-
-SolverDef::SATISFIABILITY_RING Z3Solver::isSatisfiable(const BF & aCondition)
-{
-	SolverDef::SATISFIABILITY_RING satisfiability = SolverDef::SATISFIABLE;
-
-	createChecker();
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	AVM_OS_TRACE << "Z3Solver::isSatisfiable(...) "
-			":" << SOLVER_SESSION_ID << ">" << std::endl
-			<< "\t" << aCondition.str() << std::endl;
-
-	// trace to file
-AVM_IF_DEBUG_LEVEL_GTE_HIGH
-		smt_check_sat(aCondition);
-AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-	Z3_ast z3Condition = from_baseform(aCondition);
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	AVM_OS_TRACE << "Z3Condition :" << SOLVER_SESSION_ID << ">"
-			<< std::endl;
-AVM_IF_DEBUG_LEVEL_GTE_HIGH
-		AVM_OS_TRACE << "\t";
-		display_ast(AVM_OS_TRACE, CTX, z3Condition);
-		AVM_OS_TRACE << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
-	AVM_OS_TRACE << "\t" << Z3_ast_to_string(CTX, z3Condition) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
-	AVM_OS_TRACE << "Z3::CTX :" << SOLVER_SESSION_ID << ">" << std::endl
-			<< Z3_context_to_string(CTX) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
-
-	if( z3Condition != NULL )
-	{
-		Z3_assert_cnstr(CTX, z3Condition);
-
-		switch( Z3_check(CTX) )
-		{
-			case Z3_L_TRUE:
-			{
-				satisfiability = SolverDef::SATISFIABLE;
-				break;
-			}
-
-			case Z3_L_FALSE:
-			{
-				satisfiability = SolverDef::UNSATISFIABLE;
-				break;
-			}
-
-			case Z3_L_UNDEF:
-			{
-				satisfiability = SolverDef::UNKNOWN_SAT;
-				break;
-			}
-
-			default:
-			{
-				satisfiability = SolverDef::ABORT_SAT;
-				break;
-			}
-		}
-	}
-
-	destroyChecker();
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	AVM_OS_TRACE << "result :" << SOLVER_SESSION_ID << "> "
-			<< SolverDef::strSatisfiability(satisfiability) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-	return( satisfiability );
-}
-
-
-/**
- * SOLVER
- */
-bool Z3Solver::solveImpl(const BF & aCondition,
-		BFVector & dataVector, BFVector & valuesVector)
-{
-	SolverDef::SATISFIABILITY_RING satisfiability = SolverDef::SATISFIABLE;
-
-	createChecker();
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	AVM_OS_TRACE << "Z3Solver::solve(...) "
-			":" << SOLVER_SESSION_ID << ">" << std::endl
-			<< "\t" << aCondition.str() << std::endl;
-
-	// trace to file
-	smt_check_model(aCondition, dataVector, valuesVector);
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-	Z3_ast z3Condition = from_baseform(aCondition);
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	AVM_OS_TRACE << "Z3Condition :" << SOLVER_SESSION_ID << ">"
-			<< std::endl;
-AVM_IF_DEBUG_LEVEL_GTE_HIGH
-		AVM_OS_TRACE << "\t";
-		display_ast(AVM_OS_TRACE, CTX, z3Condition);
-		AVM_OS_TRACE << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
-	AVM_OS_TRACE << "\t" << Z3_ast_to_string(CTX, z3Condition) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
-	AVM_OS_TRACE << "Z3::CTX :" << SOLVER_SESSION_ID << ">" << std::endl
-			<< Z3_context_to_string(CTX) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
-
-	if( z3Condition != NULL )
-	{
-		Z3_assert_cnstr(CTX, z3Condition);
-
-		Z3_model model = NULL;
-
-		switch( Z3_check_and_get_model(CTX, &model) )
-		{
-			case Z3_L_TRUE:
-			{
-				satisfiability = SolverDef::SATISFIABLE;
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	AVM_OS_TRACE << "Z3Model sat:" << SOLVER_SESSION_ID << ">" << std::endl
-			<< Z3_model_to_string(CTX, model) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-				unsigned num_constants = Z3_get_model_num_constants(CTX, model);
-				for( unsigned i = 0 ; i < num_constants ; i++ )
-				{
-					Z3_func_decl cnst = Z3_get_model_constant(CTX, model, i);
-
-					Z3_symbol symbol = Z3_get_decl_name(CTX, cnst);
-
-					int offset = mTableOfParameterDecl.find(symbol);
-					if( offset >= 0 )
-					{
-						dataVector.append( mTableOfParameterInstance[offset] );
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	display_symbol(AVM_OS_TRACE, CTX, symbol);
-	AVM_OS_TRACE << " := ";
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-						Z3_ast app = Z3_mk_app(CTX, cnst, 0, 0);
-
-						Z3_ast value = app;
-
-						Z3_bool ok = Z3_eval(CTX, model, app, &value);
-
-						switch( ok )
-						{
-							case Z3_L_TRUE:
-							{
-								BF bfVal = to_baseform(model, value);
-
-								valuesVector.append( bfVal.valid() ?
-										bfVal : dataVector.back() );
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	display_ast(AVM_OS_TRACE, CTX, value);
-	AVM_OS_TRACE << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-								break;
-							}
-							case Z3_L_FALSE:
-							case Z3_L_UNDEF:
-							default:
-							{
-								valuesVector.append( BF::REF_NULL );
-
-								AVM_OS_FATAL_ERROR_EXIT
-										<< "Z3Solver::solve :> "
-											"failed to Z3_eval << "
-										<< Z3_ast_to_string(CTX, app)
-										<< " >> !!!"
-										<< SEND_EXIT;
-
-								break;
-							}
-						}
-					}
-					else
-					{
-						AVM_OS_FATAL_ERROR_EXIT
-								<< "Z3Solver::solve :> "
-								"unfound parameter instance for Z3 symbol << "
-								<< Z3_get_symbol_string(CTX, symbol)
-								<< " >> !!!"
-								<< SEND_EXIT;
-					}
-				}
-
-
-				break;
-			}
-
-			case Z3_L_FALSE:
-			{
-				satisfiability = SolverDef::UNSATISFIABLE;
-				break;
-			}
-
-			case Z3_L_UNDEF:
-			{
-				satisfiability = SolverDef::UNKNOWN_SAT;
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-				AVM_OS_TRACE << "Z3Model undef:" << SOLVER_SESSION_ID << ">"
-						<< std::endl;
-				AVM_OS_TRACE << Z3_model_to_string(CTX, model) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-				break;
-			}
-
-			default:
-			{
-				satisfiability = SolverDef::ABORT_SAT;
-				break;
-			}
-		}
-
-		if( model != NULL )
-		{
-			Z3_del_model(CTX, model);
-		}
-
-	}
-
-	destroyChecker();
-
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-	AVM_OS_TRACE << "solve :" << SOLVER_SESSION_ID << "> "
-			<< SolverDef::strSatisfiability(satisfiability) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
-
-	return( satisfiability == SolverDef::SATISFIABLE );
-}
-
-
-
-/**
- * TOOLS
- */
-
-Z3_sort Z3Solver::getZ3Type(BaseTypeSpecifier * bts)
-{
-	if( bts->isTypedBoolean() )
-	{
-		return( SMT_TYPE_BOOL );
-	}
-	else if( bts->isTypedEnum() )
-	{
-		return( SMT_TYPE_INT );
-		// TODO Attention : il faudrait rajouter les contraintes
-		// d'intervalle pour le type énuméré
-	}
-	else if( bts->weaklyTypedInteger() )
-	{
-		return( SMT_TYPE_INT );
-	}
-	else if( bts->weaklyTypedReal() )
-	{
-		return( SMT_TYPE_REAL );
-	}
-
-	else if( bts->isTypedMachine() )
-	{
-		// TODO:> Consolidation après TEST
-		return( SMT_TYPE_INT );
-	}
-
-	return( SMT_TYPE_REAL );
-}
-
-
-Z3_ast Z3Solver::getParameterExpr(const BF & bfParameter)
-{
-	InstanceOfData * aParameter = bfParameter.to_ptr< InstanceOfData >();
-
-	if( aParameter->getMark() == 0 )
-	{
-		aParameter->setMark( mTableOfParameterInstance.size() );
-		mTableOfParameterInstance.append( bfParameter );
-
-		mTableOfParameterDecl.push_back( Z3_mk_string_symbol( CTX,
-//				( OSS << "P_" << aParameter->getMark() ).c_str() ) );
-				aParameter->getNameID().c_str() ) );
-
-		mTableOfParameterExpr.push_back( Z3_mk_const( CTX,
-				mTableOfParameterDecl.last(),
-				getZ3Type(aParameter->referedTypeSpecifier())) );
-	}
-
-	return( mTableOfParameterExpr.at( aParameter->getMark() ) );
-}
-
-
-
-
-Z3_ast Z3Solver::getVariableExpr(InstanceOfData * aVar, std::size_t varID)
-{
-	if( mTableOfVariableExpr.size() <= varID )
-	{
-		mTableOfVariableDecl.push_back( Z3_mk_string_symbol( CTX,
-//				( OSS << "V_" << varID ).c_str() ) );
-				aVar->getNameID().c_str() ) );
-
-		mTableOfVariableExpr.push_back( Z3_mk_const( CTX,
-				mTableOfVariableDecl.last(),
-				getZ3Type(aVar->getTypeSpecifier()) ) );
-	}
-
-	return( mTableOfVariableExpr.at( varID ) );
-}
-
-
-
-Z3_ast Z3Solver::safe_from_baseform(const BF & exprForm,
-		BaseTypeSpecifier * typeSpecifier)
-{
-	Z3_ast e = NULL;
-
-	try
-	{
-		if( (e = from_baseform(exprForm, typeSpecifier)) == NULL )
-		{
-			AVM_OS_WARN << std::endl << REPEAT("********", 10) << std::endl
-					<< "\tZ3Solver::safe_from_baseform< unknown::error :"
-					<< SOLVER_SESSION_ID << ">" << std::endl
-					<< REPEAT("--------", 10) << std::endl
-					<< "\tFailed to CONVERT sep::fml::expression to Z3::Expr:>" << std::endl
-					<< "\t  " << exprForm.str() << std::endl
-					<< REPEAT("********", 10) << std::endl;
-
-			destroyChecker();
-		}
-	}
-	catch ( ... )
-	{
-		AVM_OS_WARN << std::endl << REPEAT("********", 10) << std::endl
-				<< "\tZ3Solver::safe_from_baseform< unknown::exception :"
-				<< SOLVER_SESSION_ID << ">" << std::endl
-				<< REPEAT("--------", 10) << std::endl
-				<< "\tFailed to CONVERT sep::fml::expression to Z3::Expr:>" << std::endl
-				<< "\t  " << exprForm.str() << std::endl
-				<< REPEAT("********", 10) << std::endl;
-
-		destroyChecker();
-	}
-
-	return( e );
-}
-
-
-
-Z3_ast Z3Solver::from_baseform(const BF & exprForm,
-		BaseTypeSpecifier * typeSpecifier)
-{
-	AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( exprForm ) << "expression !!!"
-			<< SEND_EXIT;
-
-	switch( exprForm.classKind() )
-	{
-		case FORM_AVMCODE_KIND:
-		{
-			AvmCode * aCode = exprForm.to_ptr< AvmCode >();
-
-			typeSpecifier = TypeManager::UNIVERSAL;
-
-			switch( aCode->getAvmOpCode() )
-			{
-				// COMPARISON OPERATION
-				case AVM_OPCODE_EQ:
-				{
-					return( Z3_mk_eq( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) );
-				}
-
-				case AVM_OPCODE_NEQ:
-				{
-					return( Z3_mk_not( CTX, Z3_mk_eq( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) ) );
-
-//					ARGS arg( 2 );
+//    if (!m) return;
 //
-//					arg.next( from_baseform(aCode->first() , typeSpecifier) );
-//					arg.next( from_baseform(aCode->second(), typeSpecifier) );
-//
-//					return( Z3_mk_distinct(CTX, 2, arg->table) );
-				}
+//    num_constants = Z3_model_get_num_consts(c, m);
+//    for (i = 0; i < num_constants; i++) {
+//        Z3_symbol name;
+//        Z3_func_decl cnst = Z3_model_get_const_decl(c, m, i);
+//        Z3_ast a, v;
+//        Z3_bool ok;
+//        name = Z3_get_decl_name(c, cnst);
+//        display_symbol(out, c, name);
+//        out << " = ";
+//        a = Z3_mk_app(c, cnst, 0, 0);
+//        v = a;
+//        ok = Z3_model_eval(c, m, a, 1, &v);
+//        display_ast(out, c, v);
+//        out << std::endl;
+//    }
+//    display_function_interpretations(out, c, m);
+//}
 
-				case AVM_OPCODE_LT:
-				{
-					return( Z3_mk_lt( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) );
-				}
-
-				case AVM_OPCODE_LTE:
-				{
-					return( Z3_mk_le( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) );
-				}
-
-				case AVM_OPCODE_GT:
-				{
-					return( Z3_mk_gt( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) );
-				}
-
-				case AVM_OPCODE_GTE:
-				{
-					return( Z3_mk_ge( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) );
-				}
-
-
-				// LOGICAL OPERATION
-				case AVM_OPCODE_NOT:
-				{
-					return( Z3_mk_not( CTX,
-							from_baseform(aCode->first() , typeSpecifier)) );
-				}
-
-				case AVM_OPCODE_AND:
-				{
-					ARGS arg( aCode->size() );
-
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
-					{
-						arg.next( from_baseform(*it, typeSpecifier) );
-					}
-
-					return( Z3_mk_and(CTX, arg->count, arg->table) );
-				}
-
-				case AVM_OPCODE_NAND:
-				{
-					ARGS arg( aCode->size() );
-
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
-					{
-						arg.next( from_baseform(*it, typeSpecifier) );
-					}
-
-					return( Z3_mk_not( CTX, Z3_mk_and(CTX, arg->count, arg->table) ) );
-				}
-
-//				case AVM_OPCODE_XAND:
-//				{
-//					ARGS arg( 2 );
-//
-//					arg.next( Z3_mk_not( CTX,
-//							from_baseform(aCode->first() , typeSpecifier)) );
-//					arg.next( from_baseform(aCode->second(), typeSpecifier) );
-//
-//					return( Z3_mk_and(CTX, arg->table, 2) );
-//
-//					return( mVC->orExpr(
-//							mVC->andExpr(from_baseform(aCode->first(), typeSpecifier),
-//									from_baseform(aCode->second(), typeSpecifier)),
-//							mVC->andExpr(mVC->notExpr(from_baseform(aCode->first(), typeSpecifier)),
-//									mVC->notExpr(from_baseform(aCode->second(), typeSpecifier))) ) );
-//				}
-
-
-				case AVM_OPCODE_OR:
-				{
-					ARGS arg( aCode->size() );
-
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
-					{
-						arg.next( from_baseform(*it, typeSpecifier) );
-					}
-
-					return( Z3_mk_or(CTX, arg->count, arg->table) );
-				}
-
-				case AVM_OPCODE_NOR:
-				{
-					ARGS arg( aCode->size() );
-
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
-					{
-						arg.next( from_baseform(*it, typeSpecifier) );
-					}
-
-					return( Z3_mk_not( CTX, Z3_mk_or(CTX, arg->count, arg->table) ) );
-				}
-
-//				case AVM_OPCODE_BAND:
-//				{
-//					return( Z3_mk_bv_and( CTX,
-//							from_baseform(aCode->first(), typeSpecifier),
-//							from_baseform(aCode->second(), typeSpecifier) ) );
-//				}
-//
-//				case AVM_OPCODE_BOR:
-//				{
-//					return( Z3_mk_bv_or( CTX,
-//							from_baseform(aCode->first(), typeSpecifier),
-//							from_baseform(aCode->second(), typeSpecifier) ) );
-//				}
-//
-//				case AVM_OPCODE_LSHIFT:
-//				{
-//					if( aCode->second().isInteger() )
-//					{
-//						return( Z3_mk_bv_shift_left0( CTX,
-//								from_baseform(aCode->first(), typeSpecifier),
-//								aCode->second().toInteger()) );
-//
-//					}
-//					else
-//					{
-//						AVM_OS_FATAL_ERROR_EXIT
-//								<< "Unexpected second argument for "
-//									"newFixedLeftShiftExpr !!!\n"
-//								<< aCode->toString( AVM_TAB1_INDENT )
-//								<< SEND_EXIT;
-//
-//						return( NULL );
-//					}
-//				}
-//
-//				case AVM_OPCODE_RSHIFT:
-//				{
-//					if( aCode->second().isInteger() )
-//					{
-//						return( Z3_mk_bv_shift_right0( CTX,
-//								from_baseform(aCode->first(), typeSpecifier),
-//								aCode->second().toInteger()) );
-//
-//					}
-//					else
-//					{
-//						AVM_OS_FATAL_ERROR_EXIT
-//								<< "Unexpected second argument for "
-//									"newFixedRightShiftExpr !!!\n"
-//								<< aCode->toString( AVM_TAB1_INDENT )
-//								<< SEND_EXIT;
-//
-//						return( NULL );
-//					}
-//				}
-
-				case AVM_OPCODE_XOR:
-				{
-					return( Z3_mk_xor( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) );
-				}
-
-				case AVM_OPCODE_XNOR:
-				{
-					return( Z3_mk_not( CTX, Z3_mk_xor( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) ) );
-				}
-
-
-				// ARITHMETIC OPERATION
-				case AVM_OPCODE_PLUS:
-				{
-					ARGS arg( aCode->size() );
-
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
-					{
-						arg.next( from_baseform(*it, typeSpecifier) );
-					}
-
-					return( Z3_mk_add(CTX, arg->count, arg->table) );
-				}
-
-				case AVM_OPCODE_UMINUS:
-				{
-					return( Z3_mk_unary_minus(CTX,
-							from_baseform(aCode->first(), typeSpecifier)) );
-				}
-
-				case AVM_OPCODE_MINUS:
-				{
-					ARGS arg( aCode->size() );
-
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
-					{
-						arg.next( from_baseform(*it, typeSpecifier) );
-					}
-
-					return( Z3_mk_sub(CTX, arg->count, arg->table) );
-				}
-
-				case AVM_OPCODE_MULT:
-				{
-					ARGS arg( aCode->size() );
-
-					AvmCode::iterator it = aCode->begin();
-					for( ; arg.hasNext() ; ++it )
-					{
-						arg.next( from_baseform(*it, typeSpecifier) );
-					}
-
-					return( Z3_mk_mul(CTX, arg->count, arg->table) );
-				}
-
-				case AVM_OPCODE_DIV:
-				{
-					return( Z3_mk_div( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) );
-				}
-
-				case AVM_OPCODE_POW:
-				{
-					if( ExpressionFactory::isPosInteger(aCode->second()) )
-					{
-//						return( Z3_mk_power( CTX,
-//								from_baseform(aCode->first() , typeSpecifier),
-//								from_baseform(aCode->second(), typeSpecifier) ) );
-
-						avm_uinteger_t power =
-								ExpressionFactory::toUInteger(aCode->second());
-
-						ARGS arg( power );
-
-						arg.next( from_baseform(aCode->first()) );
-
-						while( arg.hasNext() )
-						{
-							arg.next( arg[ 0 ] );
-						}
-
-						return( Z3_mk_mul(CTX, arg->count, arg->table) );
-					}
-					else
-					{
-						AVM_OS_FATAL_ERROR_EXIT
-								<< "Z3Solver::from_baseform:> Unsupported "
-								"expression Operator << AVM_OPCODE_POW >> !!!"
-								<< SEND_EXIT;
-
-						return( NULL );
-					}
-				}
-
-				case AVM_OPCODE_MOD:
-				{
-					return( Z3_mk_mod( CTX,
-							from_baseform(aCode->first() , typeSpecifier),
-							from_baseform(aCode->second(), typeSpecifier) ) );
-				}
-
-
-				default:
-				{
-					AVM_OS_FATAL_ERROR_EXIT
-							<< "Z3Solver::from_baseform:> Unexpected "
-								"BASEFORM KIND for execution !!!\n"
-							<< aCode->toString( AVM_TAB1_INDENT )
-							<< SEND_EXIT;
-
-					return( NULL );
-				}
-			}
-
-			break;
-		}
-
-		case FORM_INSTANCE_DATA_KIND:
-		{
-			return( getParameterExpr( exprForm ) );
-		}
-
-		case FORM_BUILTIN_BOOLEAN_KIND:
-		{
-			if( exprForm.to_ptr< Boolean >()->getValue() )
-			{
-				return( ((typeSpecifier != NULL) && typeSpecifier->isTypedBoolean()) ?
-						SMT_CST_BOOL_TRUE : SMT_CST_INT_ONE );
-			}
-			else
-			{
-				return( ((typeSpecifier != NULL) && typeSpecifier->isTypedBoolean()) ?
-						SMT_CST_BOOL_FALSE : SMT_CST_INT_ZERO );
-			}
-		}
-
-
-		case FORM_BUILTIN_INTEGER_KIND:
-		{
-			if( (typeSpecifier != NULL) && typeSpecifier->isTypedBoolean() )
-			{
-				return( exprForm.to_ptr< Integer >()->isZero() ?
-						SMT_CST_BOOL_FALSE : SMT_CST_BOOL_TRUE );
-			}
-			else
-			{
-#if defined( _AVM_BUILTIN_NUMERIC_GMP_ )
-
-				return( Z3_mk_int64(CTX,
-						exprForm.to_ptr< Integer >()->toInteger(),
-						SMT_TYPE_INT) );
-
-#else
-
-				return( Z3_mk_int64(CTX,
-						exprForm.to_ptr< Integer >()->toInteger(),
-						SMT_TYPE_INT) );
-
-#endif /* _AVM_BUILTIN_NUMERIC_GMP_ */
-			}
-
-//			return( Z3_mk_numeral(CTX,
-//					exprForm.to_ptr< Integer >()->str().c_str(),
-//					SMT_TYPE_INT) );
-		}
-
-		case FORM_BUILTIN_RATIONAL_KIND:
-		{
-			if( (typeSpecifier != NULL) && typeSpecifier->isTypedBoolean() )
-			{
-				return( exprForm.to_ptr< Rational >()->isZero() ?
-						SMT_CST_BOOL_FALSE : SMT_CST_BOOL_TRUE );
-			}
-			else
-			{
-#if defined( _AVM_BUILTIN_NUMERIC_GMP_ )
-
-				return( Z3_mk_real(CTX,
-						exprForm.to_ptr< Rational >()->toNumerator(),
-						exprForm.to_ptr< Rational >()->toDenominator() ) );
-
-#else
-
-				return( Z3_mk_real(CTX,
-						exprForm.to_ptr< Rational >()->toNumerator(),
-						exprForm.to_ptr< Rational >()->toDenominator() ) );
-
-#endif /* _AVM_BUILTIN_NUMERIC_GMP_ */
-			}
-
-//			return( Z3_mk_numeral( CTX,
-//					exprForm.to_ptr< Rational >()->str().c_str(),
-//					SMT_TYPE_REAL) );
-		}
-
-		case FORM_BUILTIN_FLOAT_KIND:
-		{
-			if( (typeSpecifier != NULL) && typeSpecifier->isTypedBoolean() )
-			{
-				return( exprForm.to_ptr< Float >()->isZero() ?
-						SMT_CST_BOOL_FALSE : SMT_CST_BOOL_TRUE );
-			}
-			else
-			{
-#if defined( _AVM_BUILTIN_NUMERIC_GMP_ )
-
-				return( Z3_mk_numeral(CTX,
-						exprForm.to_ptr< Float >()->str().c_str(),
-						SMT_TYPE_REAL) );
-
-#else
-
-				return( Z3_mk_numeral(CTX,
-						exprForm.to_ptr< Float >()->str().c_str(),
-						SMT_TYPE_REAL) );
-
-#endif /* _AVM_BUILTIN_NUMERIC_GMP_ */
-			}
-		}
-
-
-		case FORM_RUNTIME_ID_KIND:
-		{
-			return( Z3_mk_int(CTX, exprForm.bfRID().getRid(), SMT_TYPE_INT) );
-		}
-
-		default:
-		{
-			AVM_OS_FATAL_ERROR_EXIT
-					<< "Z3Solver::from_baseform:> Unexpected BASEFORM KIND << "
-					<< exprForm.classKindName() << " >> as expression << "
-					<< exprForm.str() << " >> !!!"
-					<< SEND_EXIT;
-
-			return( NULL );
-		}
-	}
-
-	AVM_OS_FATAL_ERROR_EXIT
-			<< "Z3Solver::from_baseform ERROR !!!"
-			<< SEND_EXIT;
-
-	return( NULL );
-}
-
-
-BF Z3Solver::to_baseform(Z3_model model, Z3_ast z3Form)
-{
-	switch( Z3_get_ast_kind(CTX, z3Form) )
-	{
-		case Z3_NUMERAL_AST:
-		{
-			Z3_sort type = Z3_get_sort(CTX, z3Form);
-
-			switch( Z3_get_sort_kind(CTX, type) )
-			{
-				case Z3_BOOL_SORT:
-				{
-					switch( Z3_get_bool_value(CTX, z3Form) )
-					{
-						case Z3_L_TRUE:
-						{
-							return( ExpressionConstructor::newBoolean( true ) );
-						}
-						case Z3_L_FALSE:
-						{
-							return( ExpressionConstructor::newBoolean( false ) );
-						}
-						case Z3_L_UNDEF:
-						default:
-						{
-							return( ExpressionConstructor::newBoolean(
-									Z3_get_numeral_string(CTX, z3Form)) );
-						}
-					}
-				}
-				case Z3_INT_SORT:
-				{
-					{
-						int val;
-						if( Z3_get_numeral_int(CTX, z3Form, &val) == Z3_L_TRUE )
-						{
-							return( ExpressionConstructor::newInteger(
-									static_cast< avm_integer_t >( val ) ) );
-						}
-					}
-					{
-						unsigned val;
-						if( Z3_get_numeral_uint(CTX, z3Form, &val) == Z3_L_TRUE )
-						{
-							return( ExpressionConstructor::newUInteger(
-									static_cast< avm_uinteger_t >( val ) ) );
-						}
-					}
-					{
-						__int64 val;
-						if( Z3_get_numeral_int64(CTX, z3Form, &val) == Z3_L_TRUE )
-						{
-							return( ExpressionConstructor::newInteger(
-									static_cast< avm_integer_t >( val ) ) );
-						}
-					}
-					{
-						unsigned __int64 val;
-						if( Z3_get_numeral_uint64(CTX, z3Form, &val) == Z3_L_TRUE )
-						{
-							return( ExpressionConstructor::newUInteger(
-									static_cast< avm_uinteger_t >( val ) ) );
-						}
-					}
-
-					return( ExpressionConstructor::newInteger(
-							Z3_get_numeral_string(CTX, z3Form)) );
-				}
-				case Z3_REAL_SORT:
-				{
-					__int64 num;
-					__int64 den;
-					if( Z3_get_numeral_rational_int64(CTX, z3Form, &num, &den) == Z3_L_TRUE )
-					{
-						return( ExpressionConstructor::newRational(
-								static_cast< avm_integer_t >( num ),
-								static_cast< avm_integer_t >( den ) ) );
-					}
-
-					return( ExpressionConstructor::newFloat(
-							Z3_get_numeral_string(CTX, z3Form)) );
-				}
-				case Z3_UNINTERPRETED_SORT:
-				case Z3_BV_SORT:
-				case Z3_ARRAY_SORT:
-				case Z3_DATATYPE_SORT:
-				default:
-				{
-					return( ExpressionConstructor::newString(
-							Z3_get_numeral_string(CTX, z3Form)) );
-
-					break;
-				}
-			}
-
-			break;
-		}
-		case Z3_APP_AST:
-		{
-			Z3_app app = Z3_to_app(CTX, z3Form);
-
-			if( Z3_get_app_num_args(CTX, app) == 0 )
-			{
-				Z3_func_decl func_decl = Z3_get_app_decl(CTX, app);
-
-				std::string val = Z3_func_decl_to_string(CTX, func_decl);
-				if( val == "(define true bool)" )
-				{
-					return( ExpressionConstructor::newBoolean( true ) );
-				}
-				else if( val == "(define false bool)" )
-				{
-					return( ExpressionConstructor::newBoolean( false ) );
-				}
-
-//				z3Form = Z3_model_get_const_interp(CTX, model, func_decl);
-//
-//				return( to_baseform(model, z3Form) );
-
-			}
-
-			break;
-		}
-		case Z3_QUANTIFIER_AST:
-		{
-			break;
-		}
-		default:
-		{
-			break;
-		}
-	}
-
-	return( BF::REF_NULL );
-}
-
-
-/**
- * Using file API
- */
-
-SolverDef::SATISFIABILITY_RING Z3Solver::smt_check_sat(const BF & aCondition)
-{
-	SolverDef::SATISFIABILITY_RING satisfiability = SolverDef::SATISFIABLE;
-
-	BFVector paramVector;
-
-	StringOutStream ossCondition("", "\t", "");
-	to_smt(ossCondition, aCondition, paramVector);
-
-	std::string fileLocation = OSS() << mLogFolderLocation
-			<< "z3_check_sat_"  << SOLVER_SESSION_ID  << ".smt";
-	std::ofstream osFile;
-	osFile.open(fileLocation.c_str(), std::ios_base::out);
-	if ( osFile.good() )
-	{
-//		osFile << "(echo \"" << aCondition.str() << "\")" << std::endl;
-
-		InstanceOfData * aParam;
-
-		std::size_t paramCount = paramVector.size();
-		for( std::size_t offset = 0 ; offset < paramCount ; offset++ )
-		{
-			aParam = paramVector[ offset ].to_ptr< InstanceOfData >();
-
-			osFile << "(declare-const " << aParam->getFullyQualifiedNameID()
-					<< " ";
-			if( aParam->isTypedBoolean() )
-			{
-				osFile << "Bool";
-			}
-			else if( aParam->weaklyTypedInteger() || aParam->isTypedEnum() )
-			{
-				osFile << "Int";
-			}
-			else if( aParam->weaklyTypedReal() )
-			{
-				osFile << "Real";
-			}
-			else
-			{
-				osFile << "Unknown";
-			}
-			osFile << ")" << std::endl;
-		}
-
-		osFile << "(assert " << ossCondition.str() << ")" << std::endl;
-
-		osFile << "(check-sat)" << std::endl;
-
-		osFile.close();
-	}
-	else
-	{
-		return( SolverDef::ABORT_SAT );
-	}
-
-
-	return( satisfiability );
-}
-
-bool Z3Solver::smt_check_model(const BF & aCondition,
-		BFVector & dataVector, BFVector & valuesVector)
-{
-	BFVector paramVector;
-
-	StringOutStream ossCondition("", "\t", "");
-	to_smt(ossCondition, aCondition, paramVector);
-
-	std::string fileLocation = OSS() << mLogFolderLocation
-			<< "z3_check_sat_" << SOLVER_SESSION_ID << ".smt";
-	std::ofstream osFile;
-	osFile.open(fileLocation.c_str(), std::ios_base::out);
-	if ( osFile.good() )
-	{
-//		osFile << "(echo \"" << aCondition.str() << "\")" << std::endl;
-
-		InstanceOfData * aParam;
-
-		std::size_t paramCount = paramVector.size();
-		for( std::size_t offset = 0 ; offset < paramCount ; offset++ )
-		{
-			aParam = paramVector[ offset ].to_ptr< InstanceOfData >();
-
-			osFile << "(declare-const " << aParam->getFullyQualifiedNameID()
-					<< " ";
-			if( aParam->isTypedBoolean() )
-			{
-				osFile << "Bool";
-			}
-			else if( aParam->weaklyTypedInteger() || aParam->isTypedEnum() )
-			{
-				osFile << "Int";
-			}
-			else if( aParam->weaklyTypedReal() )
-			{
-				osFile << "Real";
-			}
-			else
-			{
-				osFile << "Unknown";
-			}
-			osFile << ")" << std::endl;
-		}
-
-		osFile << "(assert " << ossCondition.str() << ")" << std::endl;
-
-		osFile << "(get-model)" << std::endl;
-
-		osFile.close();
-	}
-	else
-	{
-		return( false );
-	}
-
-	return( true );
-}
-
-
-
-SolverDef::SATISFIABILITY_RING Z3Solver::from_smt_sat(const BF & aCondition)
-{
-	SolverDef::SATISFIABILITY_RING satisfiability = SolverDef::SATISFIABLE;
-
-
-	return( satisfiability );
-}
-
-bool Z3Solver::from_smt_model(const BF & aCondition,
-		BFVector & dataVector, BFVector & valuesVector)
-{
-	return( true );
-}
-
-
-
-void Z3Solver::to_smt(OutStream & os,
-		const BF & exprForm, BFVector & dataVector) const
-{
-	AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( exprForm ) << "expression !!!"
-			<< SEND_EXIT;
-
-	os << TAB;
-
-	switch( exprForm.classKind() )
-	{
-		case FORM_AVMCODE_KIND:
-		{
-			AvmCode * aCode = exprForm.to_ptr< AvmCode >();
-
-			os << '(';
-			std::string eoe = "";
-
-			switch( aCode->getAvmOpCode() )
-			{
-				case AVM_OPCODE_AND:
-				{
-					os << "and";
-					break;
-				}
-				case AVM_OPCODE_OR:
-				{
-					os << "or";
-					break;
-				}
-				case AVM_OPCODE_NOT:
-				{
-					os << "not";
-					break;
-				}
-
-				case AVM_OPCODE_NEQ:
-				{
-					os << "(not";
-					eoe = ")";
-					break;
-				}
-
-				case AVM_OPCODE_IFE:
-				{
-					os << "ite";
-					break;
-				}
-
-				case AVM_OPCODE_IF:
-				{
-					os << "if";
-					break;
-				}
-
-				default:
-				{
-					os << aCode->getOperator()->strSMT();
-					break;
-
-				}
-			}
-
-			AvmCode::iterator it = aCode->begin();
-			AvmCode::iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
-			{
-				os << " ";
-				to_smt(os, *it, dataVector);
-			}
-
-			os << eoe << ')';
-
-			break;
-		}
-
-		case FORM_INSTANCE_DATA_KIND:
-		{
-			dataVector.add_union( exprForm );
-			os << exprForm.to_ptr< InstanceOfData >()->getFullyQualifiedNameID();
-
-			break;
-		}
-
-		case FORM_BUILTIN_BOOLEAN_KIND:
-		case FORM_BUILTIN_INTEGER_KIND:
-		case FORM_BUILTIN_RATIONAL_KIND:
-		case FORM_BUILTIN_FLOAT_KIND:
-		{
-			os << exprForm.str();
-
-			break;
-		}
-
-		default:
-		{
-			AVM_OS_FATAL_ERROR_EXIT
-					<< "Unexpected BASEFORM KIND as expression << "
-					<< exprForm.str() << " >> !!!"
-					<< SEND_EXIT;
-
-			os << exprForm.str();
-
-			break;
-		}
-	}
-
-	os << EOL;
-}
-
-#endif /* _AVM_SOLVER_Z3_CPP_ */
 
 } /* namespace sep */
 
 
 #endif /* _AVM_SOLVER_Z3_ */
+
 

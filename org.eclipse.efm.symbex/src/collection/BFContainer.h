@@ -17,7 +17,6 @@
 #define BFCONTAINER_H_
 
 #include <common/AvmObject.h>
-#include <common/AvmPointer.h>
 #include <common/BF.h>
 #include <common/NamedElement.h>
 
@@ -25,9 +24,10 @@
 #include <collection/Array.h>
 #include <collection/List.h>
 #include <collection/Multiset.h>
-#include <collection/Pair.h>
 #include <collection/Set.h>
 #include <collection/Vector.h>
+
+#include <fml/common/ObjectElement.h>
 
 
 namespace sep
@@ -103,6 +103,43 @@ public:
 	{
 		BaseListOfBF::append( BF( anElement) );
 	}
+
+
+	////////////////////////////////////////////////////////////////////////////
+	// const raw iterator
+	////////////////////////////////////////////////////////////////////////////
+
+	template< class rawT >
+	class const_ref_iterator  :  public BFList::const_iterator
+	{
+	public:
+		const_ref_iterator()
+		: BFList::const_iterator( )
+		{
+			//!! NOTHING
+		}
+
+		const_ref_iterator(const BFList::const_iterator & anIterator)
+		: BFList::const_iterator( anIterator )
+		{
+			//!! NOTHING
+		}
+
+		inline operator rawT const & () const
+		{
+			const BF & current = BFList::const_iterator::operator*();
+
+			return( current.to< rawT >() );
+		}
+
+		inline rawT * operator->() const
+		{
+			const BF & current = BFList::const_iterator::operator*();
+
+			return( current.to_ptr< rawT >() );
+		}
+
+	};
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -222,13 +259,13 @@ public:
 //	 * CONSTRUCTOR
 //	 * Others
 //	 */
-//	explicit ArrayOfBF(avm_size_t count)
+//	explicit ArrayOfBF(std::size_t count)
 //	: BaseArrayOfBF(count)
 //	{
 //		//!! NOTHING
 //	}
 //
-//	explicit ArrayOfBF(avm_size_t count, const BF & anElement)
+//	explicit ArrayOfBF(std::size_t count, const BF & anElement)
 //	: BaseArrayOfBF(count, anElement)
 //	{
 //		//!! NOTHING
@@ -287,12 +324,12 @@ public:
 //
 //		inline operator rawT * () const
 //		{
-//			return( ArrayOfBF::iterator::_M_current->to_ptr< rawT >() );
+//			return( ArrayOfBF::iterator::base()->to_ptr< rawT >() );
 //		}
 //
 //		inline rawT * operator->() const
 //		{
-//			return( ArrayOfBF::iterator::_M_current->to_ptr< rawT >() );
+//			return( ArrayOfBF::iterator::base()->to_ptr< rawT >() );
 //		}
 //
 //	};
@@ -320,12 +357,12 @@ public:
 //
 //		inline operator rawT * () const
 //		{
-//			return( ArrayOfBF::const_iterator::_M_current->to_ptr< rawT >() );
+//			return( ArrayOfBF::const_iterator::base()->to_ptr< rawT >() );
 //		}
 //
 //		inline rawT * operator->() const
 //		{
-//			return( ArrayOfBF::const_iterator::_M_current->to_ptr< rawT >() );
+//			return( ArrayOfBF::const_iterator::base()->to_ptr< rawT >() );
 //		}
 //
 //	};
@@ -374,13 +411,13 @@ public:
 	 * CONSTRUCTOR
 	 * Others
 	 */
-	explicit BFVector(avm_size_t count)
+	explicit BFVector(std::size_t count)
 	: BaseVectorOfBF(count)
 	{
 		//!! NOTHING
 	}
 
-	explicit BFVector(avm_size_t count, const BF & elem)
+	explicit BFVector(std::size_t count, const BF & elem)
 	: BaseVectorOfBF(count, elem)
 	{
 		//!! NOTHING
@@ -438,6 +475,82 @@ public:
 
 
 	////////////////////////////////////////////////////////////////////////////
+	// ref iterator
+	////////////////////////////////////////////////////////////////////////////
+
+	template< class refT >
+	class ref_iterator  :  public BFVector::iterator
+	{
+	public:
+		ref_iterator()
+		: BFVector::iterator( )
+		{
+			//!! NOTHING
+		}
+
+		ref_iterator(const BFVector::iterator & anIterator)
+		: BFVector::iterator( anIterator )
+		{
+			//!! NOTHING
+		}
+
+		inline operator refT & () const
+		{
+			return( BFVector::iterator::base()->template to< refT >() );
+		}
+
+		inline operator refT * () const
+		{
+			return( BFVector::iterator::base()->template to_ptr< refT >() );
+		}
+
+		inline refT * operator->() const
+		{
+			return( BFVector::iterator::base()->template to_ptr< refT >() );
+		}
+
+	};
+
+
+	////////////////////////////////////////////////////////////////////////////
+	// const ref iterator
+	////////////////////////////////////////////////////////////////////////////
+
+	template< class refT >
+	class const_ref_iterator  :  public BFVector::const_iterator
+	{
+	public:
+		const_ref_iterator()
+		: BFVector::const_iterator( )
+		{
+			//!! NOTHING
+		}
+
+		const_ref_iterator(const BFVector::const_iterator & anIterator)
+		: BFVector::const_iterator( anIterator )
+		{
+			//!! NOTHING
+		}
+
+		inline operator refT const & () const
+		{
+			return( BFVector::const_iterator::base()->template to< refT >() );
+		}
+
+		inline operator refT const * () const
+		{
+			return( BFVector::const_iterator::base()->template to_ptr< refT >() );
+		}
+
+		inline refT * operator->() const
+		{
+			return( BFVector::const_iterator::base()->template to_ptr< refT >() );
+		}
+
+	};
+
+
+	////////////////////////////////////////////////////////////////////////////
 	// raw iterator
 	////////////////////////////////////////////////////////////////////////////
 
@@ -459,12 +572,12 @@ public:
 
 		inline operator rawT * () const
 		{
-			return( BFVector::iterator::_M_current->to_ptr< rawT >() );
+			return( BFVector::iterator::base()->template to_ptr< rawT >() );
 		}
 
 		inline rawT * operator->() const
 		{
-			return( BFVector::iterator::_M_current->to_ptr< rawT >() );
+			return( BFVector::iterator::base()->template to_ptr< rawT >() );
 		}
 
 	};
@@ -490,14 +603,20 @@ public:
 			//!! NOTHING
 		}
 
+		const_raw_iterator(const BFVector::iterator & anIterator)
+		: BFVector::const_iterator( anIterator )
+		{
+			//!! NOTHING
+		}
+
 		inline operator rawT * () const
 		{
-			return( BFVector::const_iterator::_M_current->to_ptr< rawT >() );
+			return( BFVector::const_iterator::base()->template to_ptr< rawT >() );
 		}
 
 		inline rawT * operator->() const
 		{
-			return( BFVector::const_iterator::_M_current->to_ptr< rawT >() );
+			return( BFVector::const_iterator::base()->template to_ptr< rawT >() );
 		}
 
 	};
@@ -518,7 +637,7 @@ class TableOfBF_T :
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( TableOfBF_T< BaseT > )
 {
 
-	AVM_DECLARE_CLONABLE_CLASS( TableOfBF_T )
+	AVM_DECLARE_CLONABLE_BASE_CLASS( TableOfBF_T )
 
 
 public:
@@ -527,7 +646,13 @@ public:
 	 */
 	typedef  BaseT * PointerBaseT;
 
+	typedef  BaseT   ReferenceBaseT;
+
+	typedef  BFVector::ref_iterator< BaseT > ref_iterator;
+
 	typedef  BFVector::raw_iterator< BaseT > raw_iterator;
+
+	typedef  BFVector::const_ref_iterator< BaseT > const_ref_iterator;
 
 	typedef  BFVector::const_raw_iterator< BaseT > const_raw_iterator;
 
@@ -544,7 +669,7 @@ public:
 		//!! NOTHING
 	}
 
-	TableOfBF_T(avm_size_t aSize)
+	TableOfBF_T(std::size_t aSize)
 	: AvmObject( ),
 	BFVector( aSize )
 	{
@@ -583,13 +708,24 @@ public:
 	 * GETTER
 	 * Element at <offset> position
 	 */
-	inline PointerBaseT rawAt(avm_size_t offset) const
+	inline const ReferenceBaseT & refAt(std::size_t offset) const
+	{
+		return( BFVector::at(offset).template to< BaseT >() );
+	}
+
+	inline ReferenceBaseT & refAt(std::size_t offset)
+	{
+		return( BFVector::at(offset).template to< BaseT >() );
+	}
+
+
+
+	inline PointerBaseT rawAt(std::size_t offset) const
 	{
 		return( BFVector::at(offset).template to_ptr< BaseT >() );
 	}
 
-
-	inline const BF & get(avm_size_t offset) const
+	inline const BF & get(std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_OFFSET_EXIT( offset , BFVector::size() )
 				<< "Unbound Element at <offset> position !!!"
@@ -598,20 +734,54 @@ public:
 		return( BFVector::at(offset) );
 	}
 
+	/**
+	 * GETTER
+	 * Element by its raw pointer
+	 */
+//	inline const BF & get(PointerBaseT anElement) const
+//	{
+//		if( anElement != nullptr )
+//		{
+//			if( (anElement->getOwnedOffset() < size())
+//				&& (rawAt(anElement->getOwnedOffset()) == anElement) )
+//			{
+//				return( BFVector::at(anElement->getOwnedOffset()) );
+//			}
+//			else if( (anElement->getRuntimeOffset() < size())
+//				&& (rawAt(anElement->getRuntimeOffset()) == anElement) )
+//			{
+//				return( BFVector::at(anElement->getRuntimeOffset()) );
+//			}
+//			else
+//			{
+//				const_raw_iterator it = BaseVector::begin();
+//				const_raw_iterator endIt = BaseVector::end();
+//				for( ; it != endIt ; ++it )
+//				{
+//					if( (it) == anElement )
+//					{
+//						return( *it );
+//					}
+//				}
+//			}
+//		}
+//
+//		return( BF::REF_NULL );
+//	}
+
 
 	/**
 	 * GETTER
-	 * Element by qlfNameID as QualifiedNameID w.r.t compare_op
+	 * Element by aQualifiedNameID as QualifiedNameID w.r.t compare_op
 	 */
 	inline const BF & getByQualifiedNameID(
-			const std::string & qlfNameID,
+			const std::string & aQualifiedNameID,
 			NamedElement::op_comparer_t op) const
 	{
-		const_iterator it = begin();
-		const_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
-			if( (*it).to_ptr< BaseT >()->compare(qlfNameID, op) )
+			if( (it)->compare(aQualifiedNameID, op) )
 			{
 				return( *it );
 			}
@@ -621,20 +791,19 @@ public:
 	}
 
 	inline PointerBaseT rawByQualifiedNameID(
-			const std::string & qlfNameID,
+			const std::string & aQualifiedNameID,
 			NamedElement::op_comparer_t op) const
 	{
-		const_iterator it = begin();
-		const_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
-			if( (*it).to_ptr< BaseT >()->compareID(qlfNameID, op) )
+			if( (it)->isEqualsID(aQualifiedNameID, op) )
 			{
-				return( (*it).to_ptr< BaseT >() );
+				return( it );
 			}
 		}
 
-		return( NULL );
+		return( nullptr );
 	}
 
 
@@ -643,14 +812,15 @@ public:
 	 * Element by Fully Qualified NameID
 	 */
 	inline const BF & getByFQNameID(
-			const std::string & aFullyQualifiedNameID) const
+			const std::string & aFullyQualifiedNameID,
+			bool enabledOnlyLocationComparisonElse = true) const
 	{
-		const_raw_iterator it = begin();
 		const_raw_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
 			// STRICT:> compare LOCATOR & LOCATION (true:- retry only LOCATION)
-			if( (it)->fqnEquals( aFullyQualifiedNameID , true ) )
+			if( (it)->fqnEquals( aFullyQualifiedNameID,
+					enabledOnlyLocationComparisonElse ) )
 			{
 				return( *it );
 			}
@@ -662,9 +832,8 @@ public:
 	inline PointerBaseT rawByFQNameID(
 			const std::string & aFullyQualifiedNameID) const
 	{
-		const_raw_iterator it = begin();
 		const_raw_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
 			// STRICT:> compare LOCATOR & LOCATION (true:- retry only LOCATION)
 			if( (it)->fqnEquals( aFullyQualifiedNameID , true ) )
@@ -673,22 +842,50 @@ public:
 			}
 		}
 
-		return( NULL );
+		return( nullptr );
 	}
 
 
 	/**
 	 * GETTER
-	 * Element by qlfNameID as QualifiedNameID
+	 * Element by anID
+	 */
+	inline const BF & getByID(const std::string & anID) const
+	{
+		if( anID.find('.') == std::string::npos )
+		{
+			return( getByNameID( anID ) );
+		}
+		else
+		{
+			return( getByQualifiedNameID( anID ) );
+		}
+	}
+
+	inline PointerBaseT rawByID(const std::string & anID) const
+	{
+		if( anID.find('.') == std::string::npos )
+		{
+			return( rawByNameID( anID ) );
+		}
+		else
+		{
+			return( rawByQualifiedNameID( anID ) );
+		}
+	}
+
+
+	/**
+	 * GETTER
+	 * Element by aQualifiedNameID as QualifiedNameID
 	 */
 	inline const BF & getByQualifiedNameID(
 			const std::string & aQualifiedNameID) const
 	{
-		const_iterator it = begin();
-		const_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
-			if( (*it).to_ptr< BaseT >()->fqnEndsWith(aQualifiedNameID) )
+			if( (it)->fqnEndsWith(aQualifiedNameID) )
 			{
 				return( *it );
 			}
@@ -700,30 +897,28 @@ public:
 	inline PointerBaseT rawByQualifiedNameID(
 			const std::string & aQualifiedNameID) const
 	{
-		const_iterator it = begin();
-		const_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
-			if( (*it).to_ptr< BaseT >()->fqnEndsWith(aQualifiedNameID) )
+			if( (it)->fqnEndsWith(aQualifiedNameID) )
 			{
-				return( (*it).to_ptr< BaseT >() );
+				return( it );
 			}
 		}
 
-		return( NULL );
+		return( nullptr );
 	}
 
 
-	inline avm_size_t getByQualifiedNameID(
+	inline std::size_t getByQualifiedNameID(
 			const std::string & aQualifiedNameID, BFList & listofFound) const
 	{
-		avm_size_t count = 0;
+		std::size_t count = 0;
 
-		const_iterator it = begin();
-		const_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
-			if( (*it).to_ptr< BaseT >()->fqnEndsWith(aQualifiedNameID) )
+			if( (it)->fqnEndsWith(aQualifiedNameID) )
 			{
 				listofFound.append( *it );
 
@@ -741,9 +936,8 @@ public:
 	 */
 	inline const BF & getByNameID(const std::string & aNameID) const
 	{
-		const_raw_iterator it = begin();
 		const_raw_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
 			if( (it)->getNameID() == aNameID )
 			{
@@ -756,9 +950,8 @@ public:
 
 	inline PointerBaseT rawByNameID(const std::string & aNameID) const
 	{
-		const_raw_iterator it = begin();
 		const_raw_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
 			if( (it)->getNameID() == aNameID )
 			{
@@ -766,17 +959,16 @@ public:
 			}
 		}
 
-		return( NULL );
+		return( nullptr );
 	}
 
-	inline avm_size_t getByNameID(
+	inline std::size_t getByNameID(
 			const std::string & aNameID, BFList & listofFound) const
 	{
-		avm_size_t count = 0;
+		std::size_t count = 0;
 
-		const_raw_iterator it = begin();
 		const_raw_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
 			if( (it)->getNameID() == aNameID )
 			{
@@ -805,15 +997,85 @@ public:
 	}
 
 
+	inline std::list< std::string> getListOfAllNameID() const
+	{
+		std::list< std::string> allNameID;
+
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
+		{
+			allNameID.push_back( (it)->getNameID() );
+		}
+
+		return allNameID;
+	}
+
+	inline std::vector< std::string> getVectorOfAllNameID() const
+	{
+		std::vector< std::string> allNameID;
+
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
+		{
+			allNameID.push_back( (it)->getNameID() );
+		}
+
+		return allNameID;
+	}
+
+
+	/**
+	 * GETTER
+	 * Element by aREGEX
+	 */
+	inline std::size_t getByQualifiedNameREGEX(
+			const std::string & aREGEX, BFList & listofFound) const
+	{
+		std::size_t count = 0;
+
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
+		{
+			if( (it)->fqnRegexMatch(aREGEX) )
+			{
+				listofFound.append( *it );
+
+				++count;
+			}
+		}
+
+		return( count );
+	}
+
+	inline std::size_t getByNameREGEX(
+			const std::string & aREGEX, BFList & listofFound) const
+	{
+		std::size_t count = 0;
+
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
+		{
+			if( (it)->nameRegexMatch(aREGEX) )
+			{
+				listofFound.append( *it );
+
+				++count;
+			}
+		}
+
+		return( count );
+	}
+
+
+
 	/**
 	 * GETTER
 	 * Element by compiled form
 	 */
-	inline const BF & getByAstElement(const ObjectElement * astElement) const
+	inline const BF & getByAstElement(const ObjectElement & astElement) const
 	{
-		const_raw_iterator it = begin();
 		const_raw_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
 			if( (it)->isAstElement( astElement ) )
 			{
@@ -836,7 +1098,7 @@ public:
 		return( BFVector::back() );
 	}
 
-	inline void append(const BF & anElement)
+	inline void append(const BF & anElement) override
 	{
 		BFVector::append( anElement );
 	}
@@ -850,6 +1112,9 @@ public:
 	{
 		BFVector::append( aVector );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using BFVector::append;
 
 
 	/**
@@ -869,10 +1134,15 @@ public:
 	/**
 	 * contains a particular element
 	 */
-	inline bool contains(PointerBaseT anElement) const
+	inline bool contains(const ObjectElement * anElement) const
 	{
-		if( (anElement->getOffset() < size()) &&
-			(rawAt(anElement->getOffset()) == anElement) )
+		if( (anElement->getRuntimeOffset() < size())
+			&& (rawAt(anElement->getRuntimeOffset()) == anElement) )
+		{
+			return( true );
+		}
+		else if( (anElement->getOwnedOffset() < size())
+			&& (rawAt(anElement->getOwnedOffset()) == anElement) )
 		{
 			return( true );
 		}
@@ -893,21 +1163,40 @@ public:
 	}
 
 
-	inline bool contains(const BF & anElement) const
+	inline bool contains(const BF & anElement) const override
 	{
 		return( anElement.is< BaseT >()
 				&& contains( anElement.to_ptr< BaseT >() ) );
+	}
+
+	using BFVector::contains;
+
+
+	/**
+	 * REMOVE
+	 * Element by aNameID
+	 */
+	inline void removeByNameID(const std::string & aNameID)
+	{
+		const_raw_iterator endIt = end();
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
+		{
+			if( (it)->getNameID() == aNameID )
+			{
+				BaseVector::erase(it);
+				break;
+			}
+		}
 	}
 
 
 	/**
 	 * Serialization
 	 */
-	inline virtual void strFQN(OutStream & os) const
+	inline void strFQN(OutStream & os) const
 	{
-		const_raw_iterator it = begin();
 		const_raw_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
 //			os << TAB << str_fqn(it) << EOL;
 			os << TAB << (it)->strFQN() << EOL;
@@ -915,28 +1204,39 @@ public:
 	}
 
 
-	inline virtual void strHeader(OutStream & os) const
+	inline void strHeader(OutStream & os) const
 	{
-		const_raw_iterator it = begin();
 		const_raw_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
 //			os << TAB << str_header( it ) << EOL;
 			(it)->strHeader( os << TAB ); os << EOL;
 		}
 	}
 
-	inline virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
-		const_raw_iterator it = begin();
 		const_raw_iterator endIt = end();
-		for( ; it != endIt ; ++it )
+		for( const_raw_iterator it = begin() ; it != endIt ; ++it )
 		{
 			(it)->toStream(os);
 		}
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using AvmObject::toStream;
+
 };
+
+////////////////////////////////////////////////////////////////////////////////
+// MACRO FOR TYPEDEF DEFINITION
+////////////////////////////////////////////////////////////////////////////////
+
+
+#define AVM_TYPEDEF_TABLE_CLASS(ClassName)   \
+public:                                      \
+	typedef TableOfBF_T< ClassName > Table;  \
+private:
 
 
 /**

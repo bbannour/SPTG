@@ -60,19 +60,19 @@ bool AvmPrimitive_InvokeNew::seval(EvaluationEnvironment & ENV)
 
 	ENV.outED = ENV.mARG->outED;
 
-	RuntimeID invokerRID = ENV.outED->mRID;
+	RuntimeID invokerRID = ENV.outED.getRID();
 
-	if( ENV.outED->couldBeInstanciated( anInstanceDynamic ) )
+	if( ENV.outED.couldBeInstanciated( anInstanceDynamic ) )
 	{
 		const RuntimeID & aCompositeRID =
-				ENV.outED->mRID.getCompositeComponentParent();
+				ENV.outED.getRID().getCompositeComponentParent();
 
-		Operator * aScheduleOp = aCompositeRID.
-				getExecutable()->getOnConcurrencyOperator();
+		const Operator * aScheduleOp = aCompositeRID.
+				refExecutable().getOnConcurrencyOperator();
 
 		RuntimeForm * newRF =
 				ENV.PRIMITIVE_PROCESSOR.getLoader().dynamicLoadMachine(
-						ENV.outED, ENV.outED->mRID, anInstanceDynamic,
+						ENV.outED, ENV.outED.getRID(), anInstanceDynamic,
 						aCompositeRID, aScheduleOp );
 
 		// RUNNING onCREATE
@@ -90,12 +90,12 @@ bool AvmPrimitive_InvokeNew::seval(EvaluationEnvironment & ENV)
 
 //[REGRESSION]!TODO
 		ExecutableForm * modelExecutable = newRID.getExecutable();
-		InstanceOfData * aVar = NULL;
-		avm_size_t offset = 0;
+		std::size_t offset = 0;
 		ENV.mARG->begin(1);
 		for( ; ENV.mARG->hasNext() ; ENV.mARG->next() , ++offset )
 		{
-			aVar = modelExecutable->rawParamData(offset);
+			const InstanceOfData & aVar =
+					modelExecutable->refParamVariable(offset);
 
 //AVM_OS_COUT << std::endl << invokerRID.strUniqId()
 //		<< " , " << newRID.getFullyQualifiedNameID()
@@ -109,7 +109,7 @@ bool AvmPrimitive_InvokeNew::seval(EvaluationEnvironment & ENV)
 		}
 
 
-		BFCode onStartProgram = anInstanceDynamic->getOnStart();
+		const BFCode & onStartProgram = anInstanceDynamic->getOnStart();
 		if( onStartProgram.valid() )
 		{
 			ExecutionEnvironment tmpENV(ENV, ENV.outED, newRID, onStartProgram);
@@ -140,7 +140,7 @@ bool AvmPrimitive_InvokeNew::seval(EvaluationEnvironment & ENV)
 			ENV.outED.mwsetRuntimeFormState(newRID, PROCESS_IDLE_STATE);
 		}
 
-		ENV.outED->mRID = invokerRID;
+		ENV.outED.setRID( invokerRID );
 
 		return( true );
 	}
@@ -158,20 +158,20 @@ bool AvmPrimitive_InvokeNew::run(ExecutionEnvironment & ENV)
 	InstanceOfMachine * anInstanceDynamic =
 			ENV.mARG->at(0).to_ptr< InstanceOfMachine >();
 
-	APExecutionData outED = ENV.mARG->outED;
+	ExecutionData outED = ENV.mARG->outED;
 
-	RuntimeID invokerRID = outED->mRID;
+	RuntimeID invokerRID = outED.getRID();
 
-	if( outED->couldBeInstanciated( anInstanceDynamic ) )
+	if( outED.couldBeInstanciated( anInstanceDynamic ) )
 	{
 		const RuntimeID & aCompositeRID =
-				outED->mRID.getCompositeComponentParent();
+				outED.getRID().getCompositeComponentParent();
 
-		Operator * aScheduleOp = aCompositeRID.
-				getExecutable()->getOnConcurrencyOperator();
+		const Operator * aScheduleOp = aCompositeRID.
+				refExecutable().getOnConcurrencyOperator();
 
 		RuntimeForm * newRF = ENV.getLoader().dynamicLoadMachine(outED,
-				outED->mRID, anInstanceDynamic, aCompositeRID, aScheduleOp );
+				outED.getRID(), anInstanceDynamic, aCompositeRID, aScheduleOp );
 
 		// RUNNING onCREATE
 		if( not ENV.PRIMITIVE_PROCESSOR.getLoader().
@@ -186,7 +186,7 @@ bool AvmPrimitive_InvokeNew::run(ExecutionEnvironment & ENV)
 		const RuntimeID & newRID = newRF->getRID();
 
 
-		BFCode onStartProgram = anInstanceDynamic->getOnStart();
+		const BFCode & onStartProgram = anInstanceDynamic->getOnStart();
 		if( onStartProgram.valid() )
 		{
 			ExecutionEnvironment tmpENV(ENV, outED, newRID, onStartProgram);
@@ -195,16 +195,14 @@ bool AvmPrimitive_InvokeNew::run(ExecutionEnvironment & ENV)
 			{
 				ENV.spliceNotOutput( tmpENV );
 
-				ListOfAPExecutionData::iterator itED = tmpENV.outEDS.begin();
-				ListOfAPExecutionData::iterator endED = tmpENV.outEDS.end();
-				for( ; itED != endED ; ++itED )
+				for( auto & itED : tmpENV.outEDS )
 				{
-					(*itED).mwsetRuntimeFormState(newRID,
+					itED.mwsetRuntimeFormState(newRID,
 							PROCESS_STARTING_STATE,  PROCESS_IDLE_STATE);
 
-					(*itED)->mRID = invokerRID;
+					itED.setRID( invokerRID );
 
-					ENV.appendOutput( *itED );
+					ENV.appendOutput( itED );
 				}
 			}
 			else
@@ -215,7 +213,7 @@ bool AvmPrimitive_InvokeNew::run(ExecutionEnvironment & ENV)
 		else if( not ENV.appendOutput_mwsetPES(
 					outED, newRID, PROCESS_IDLE_STATE) )
 		{
-			outED->mRID = invokerRID;
+			outED.setRID( invokerRID );
 
 			if( not ENV.appendOutput_mwsetPES(
 					outED, newRID, PROCESS_IDLE_STATE) )
@@ -243,20 +241,22 @@ bool AvmBaseInvokePrimitive::pushLocalVars(
 		ExecutionEnvironment & ENV, const BaseAvmProgram & aProgram)
 {
 	ENV.inED.makeWritable();
-	ENV.inED->makeWritableLocalRuntimeStack();
+	ENV.inED.makeWritableLocalRuntimeStack();
 
 	LocalRuntime aLocalRuntime( aProgram );
-	ENV.inED->getLocalRuntimes()->push( aLocalRuntime );
+	ENV.inED.getLocalRuntimes()->push( aLocalRuntime );
 
 	EvaluationEnvironment eENV( ENV );
 
-	TableOfInstanceOfData::const_raw_iterator itData = aProgram.getData().begin();
-	TableOfInstanceOfData::const_raw_iterator endData = aProgram.getData().end();
-	for( avm_size_t i = 0 ; itData != endData ; ++itData , ++i )
+	TableOfInstanceOfData::const_ref_iterator itVar =
+			aProgram.getVariables().begin();
+	TableOfInstanceOfData::const_ref_iterator endVar =
+			aProgram.getVariables().end();
+	for( std::size_t i = 0 ; itVar != endVar ; ++itVar , ++i )
 	{
-		if( (itData)->hasValue() )
+		if( (itVar)->hasValue() )
 		{
-			eENV.seval( (itData)->getValue() );
+			eENV.seval( (itVar)->getValue() );
 			aLocalRuntime.setData(i, eENV.outVAL);
 		}
 		else
@@ -264,7 +264,7 @@ bool AvmBaseInvokePrimitive::pushLocalVars(
 			BFList paramList;
 
 			aLocalRuntime.setData(i, ENV.createNewFreshParam(
-					ENV.inED->mRID, (itData), paramList) );
+					ENV.inED.getRID(), (itVar), paramList) );
 
 			ENV.inED.appendParameters( paramList );
 		}
@@ -278,12 +278,12 @@ bool AvmBaseInvokePrimitive::pushLocalVar1(ExecutionEnvironment & ENV,
 		const BaseAvmProgram & aProgram, const BF & aParam)
 {
 	ENV.inED.makeWritable();
-	ENV.inED->makeWritableLocalRuntimeStack();
+	ENV.inED.makeWritableLocalRuntimeStack();
 
 	LocalRuntime aLocalRuntime( aProgram );
-	ENV.inED->getLocalRuntimes()->push( aLocalRuntime );
+	ENV.inED.getLocalRuntimes()->push( aLocalRuntime );
 
-	aLocalRuntime.setData(static_cast< avm_size_t >(0), aParam);
+	aLocalRuntime.setData(static_cast< std::size_t >(0), aParam);
 
 	return( true );
 }
@@ -293,16 +293,18 @@ bool AvmBaseInvokePrimitive::pushLocalVars(ExecutionEnvironment & ENV,
 		const BaseAvmProgram & aProgram, ArrayBF * params)
 {
 	ENV.inED.makeWritable();
-	ENV.inED->makeWritableLocalRuntimeStack();
+	ENV.inED.makeWritableLocalRuntimeStack();
 
 	LocalRuntime aLocalRuntime( aProgram );
-	ENV.inED->getLocalRuntimes()->push( aLocalRuntime );
+	ENV.inED.getLocalRuntimes()->push( aLocalRuntime );
 
 	EvaluationEnvironment eENV( ENV );
 
-	TableOfInstanceOfData::const_raw_iterator itData = aProgram.getData().begin();
-	TableOfInstanceOfData::const_raw_iterator endData = aProgram.getData().end();
-	for( avm_size_t i = 0 ; itData != endData ; ++itData , ++i )
+	TableOfInstanceOfData::const_ref_iterator itVar =
+			aProgram.getVariables().begin();
+	TableOfInstanceOfData::const_ref_iterator endVar =
+			aProgram.getVariables().end();
+	for( std::size_t i = 0 ; itVar != endVar ; ++itVar , ++i )
 	{
 		if( params->at(i).valid() )
 		{
@@ -310,9 +312,9 @@ bool AvmBaseInvokePrimitive::pushLocalVars(ExecutionEnvironment & ENV,
 //			aLocalRuntime.setData(i, eENV.outVAL);
 			aLocalRuntime.setData(i, params->at(i));
 		}
-		else if( (itData)->hasValue() )
+		else if( (itVar)->hasValue() )
 		{
-			eENV.seval( (itData)->getValue() );
+			eENV.seval( (itVar)->getValue() );
 			aLocalRuntime.setData(i, eENV.outVAL);
 		}
 		else
@@ -320,7 +322,7 @@ bool AvmBaseInvokePrimitive::pushLocalVars(ExecutionEnvironment & ENV,
 			BFList paramList;
 
 			aLocalRuntime.setData(i, ENV.createNewFreshParam(
-					ENV.inED->mRID, (itData), paramList) );
+					ENV.inED.getRID(), (itVar), paramList) );
 
 			ENV.inED.appendParameters( paramList );
 		}
@@ -331,16 +333,16 @@ bool AvmBaseInvokePrimitive::pushLocalVars(ExecutionEnvironment & ENV,
 
 
 
-bool AvmBaseInvokePrimitive::popLocalVars(APExecutionData & anED)
+bool AvmBaseInvokePrimitive::popLocalVars(ExecutionData & anED)
 {
 	anED.makeWritable();
-	anED->makeWritableLocalRuntimeStack();
+	anED.makeWritableLocalRuntimeStack();
 
-	anED->getLocalRuntimes()->pop();
+	anED.getLocalRuntimes()->pop();
 
-	if( not anED->hasLocalRuntime() )
+	if( not anED.hasLocalRuntime() )
 	{
-		anED->destroyLocalRuntimeStack();
+		anED.destroyLocalRuntimeStack();
 	}
 
 	return( true );
@@ -370,14 +372,14 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 	tmpENV.inED.makeWritable();
 
 //	ExecutionDataFactory::appendRunnableElementTrace(tmpENV.inED,
-//			BF(new ExecutionConfiguration(tmpENV.inED->mRID, anAvmProgram)));
+//			BF(new ExecutionConfiguration(tmpENV.inED.getRID(), anAvmProgram)));
 
 	if( not tmpENV.run() )
 	{
 		return( false );
 	}
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	// OUTPUT EDS traitement
 	while( tmpENV.outEDS.nonempty() )
@@ -385,7 +387,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.outEDS.pop_first_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_NOTHING:
 			case AEES_STMNT_FINAL:
@@ -398,6 +400,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 				break;
 			}
 			case AEES_OK:
+			case AEES_STEP_RESUME:
 			{
 				ENV.outEDS.append( tmpED );
 
@@ -418,7 +421,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -432,7 +435,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.irqEDS.pop_last_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_BREAK:
 			case AEES_STMNT_CONTINUE:
@@ -449,7 +452,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as irqEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -486,7 +489,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 	tmpENV.inED.makeWritable();
 
 //	ExecutionDataFactory::appendRunnableElementTrace(tmpENV.inED,
-//			BF(new ExecutionConfiguration(tmpENV.inED->mRID, anAvmProgram)));
+//			BF(new ExecutionConfiguration(tmpENV.inED.getRID(), anAvmProgram)));
 
 	// Allocated local data table
 	pushLocalVar1(tmpENV, anAvmProgram, aParam);
@@ -496,7 +499,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		return( false );
 	}
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	// OUTPUT EDS traitement
 	while( tmpENV.outEDS.nonempty() )
@@ -504,7 +507,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.outEDS.pop_first_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_NOTHING:
 			case AEES_STMNT_FINAL:
@@ -520,6 +523,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 				break;
 			}
 			case AEES_OK:
+			case AEES_STEP_RESUME:
 			{
 				// Free local data table
 				popLocalVars(tmpED);
@@ -543,7 +547,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -557,7 +561,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.irqEDS.pop_last_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_BREAK:
 			case AEES_STMNT_CONTINUE:
@@ -577,7 +581,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as irqEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -612,7 +616,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 bool AvmPrimitive_InvokeRoutine::run(ExecutionEnvironment & ENV)
 {
 	const BF & aCode = ENV.inCODE->first();
-	const AvmProgram & anAvmProgram = aCode.to_ref< AvmProgram >();
+	const AvmProgram & anAvmProgram = aCode.to< AvmProgram >();
 
 	ExecutionTime theExecutionTimeManager(false);
 AVM_IF_DEBUG_FLAG( TIME )
@@ -625,11 +629,11 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 	tmpENV.inED.makeWritable();
 
 	ExecutionDataFactory::appendRunnableElementTrace(tmpENV.inED,
-			BF(new ExecutionConfiguration(tmpENV.inED->mRID, aCode)));
+			BF(new ExecutionConfiguration(tmpENV.inED.getRID(), aCode)));
 
-	if( anAvmProgram.hasData() )
+	if( anAvmProgram.hasVariable() )
 	{
-		if( ENV.inCODE->populated() )
+		if( ENV.inCODE->hasManyOperands() )
 		{
 			pushLocalVars(tmpENV, anAvmProgram,
 					ENV.inCODE->second().to_ptr< ArrayBF >());
@@ -645,7 +649,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		return( false );
 	}
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	// OUTPUT EDS traitement
 	while( tmpENV.outEDS.nonempty() )
@@ -653,7 +657,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.outEDS.pop_first_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_NOTHING:
 			case AEES_STMNT_FINAL:
@@ -662,7 +666,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 				tmpED.mwsetAEES( AEES_OK );
 
 				// Free local data table
-				if( anAvmProgram.hasData() )
+				if( anAvmProgram.hasVariable() )
 				{
 					popLocalVars(tmpED);
 				}
@@ -672,9 +676,10 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 				break;
 			}
 			case AEES_OK:
+			case AEES_STEP_RESUME:
 			{
 				// Free local data table
-				if( anAvmProgram.hasData() )
+				if( anAvmProgram.hasVariable() )
 				{
 					popLocalVars(tmpED);
 				}
@@ -688,7 +693,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -702,7 +707,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.irqEDS.pop_last_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_BREAK:
 			case AEES_STMNT_CONTINUE:
@@ -710,7 +715,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				tmpED.mwsetAEES( AEES_OK );
 
-				if( anAvmProgram.hasData() )
+				if( anAvmProgram.hasVariable() )
 				{
 					popLocalVars(tmpED);
 				}
@@ -724,7 +729,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as irqEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -737,7 +742,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 	{
 		tmpENV.exitEDS.pop_last_to( tmpED );
 
-		if( anAvmProgram.hasData() )
+		if( anAvmProgram.hasVariable() )
 		{
 			popLocalVars(tmpED);
 		}
@@ -760,12 +765,12 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 
 bool AvmPrimitive_InvokeRoutine::resume(ExecutionEnvironment & ENV)
 {
-	const AvmProgram & anAvmProgram = ENV.inCODE->first().to_ref< AvmProgram >();
+	const AvmProgram & anAvmProgram = ENV.inCODE->first().to< AvmProgram >();
 
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 
 	// Verification of EXECUTION ENDING STATUS
-	switch( outED->getAEES() )
+	switch( outED.getAEES() )
 	{
 		case AEES_STMNT_BREAK:
 		case AEES_STMNT_CONTINUE:
@@ -778,7 +783,7 @@ bool AvmPrimitive_InvokeRoutine::resume(ExecutionEnvironment & ENV)
 			outED.mwsetAEES( AEES_OK );
 
 			// Free local data table
-			if( anAvmProgram.hasData() )
+			if( anAvmProgram.hasVariable() )
 			{
 				popLocalVars(outED);
 			}
@@ -790,7 +795,7 @@ bool AvmPrimitive_InvokeRoutine::resume(ExecutionEnvironment & ENV)
 		case AEES_OK:
 		case AEES_STEP_RESUME:
 		{
-			if( anAvmProgram.hasData() )
+			if( anAvmProgram.hasVariable() )
 			{
 				popLocalVars(outED);
 			}
@@ -816,7 +821,7 @@ bool AvmPrimitive_InvokeRoutine::resume(ExecutionEnvironment & ENV)
 		case AEES_STMNT_FATAL_ERROR:
 		case AEES_SYMBOLIC_EXECUTION_LIMITATION:
 		{
-			if( anAvmProgram.hasData() )
+			if( anAvmProgram.hasVariable() )
 			{
 				popLocalVars(outED);
 			}
@@ -830,7 +835,7 @@ bool AvmPrimitive_InvokeRoutine::resume(ExecutionEnvironment & ENV)
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Unexpected ENDIND EXECUTION STATUS :> "
-					<< RuntimeDef::strAEES( outED->mAEES ) << " !!!"
+					<< RuntimeDef::strAEES( outED.getAEES() ) << " !!!"
 					<< SEND_EXIT;
 
 			break;
@@ -853,7 +858,7 @@ bool AvmPrimitive_InvokeRoutine::resume(ExecutionEnvironment & ENV)
 bool AvmPrimitive_InvokeTransition::run(ExecutionEnvironment & ENV)
 {
 	const BF & aCode = ENV.inCODE->first();
-	const AvmProgram & anAvmProgram = aCode.to_ref< AvmTransition >();
+	const AvmProgram & anAvmProgram = aCode.to< AvmTransition >();
 
 	ExecutionTime theExecutionTimeManager(false);
 AVM_IF_DEBUG_FLAG( TIME )
@@ -866,14 +871,14 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 	tmpENV.inED.makeWritable();
 
 	ExecutionDataFactory::appendRunnableElementTrace(tmpENV.inED,
-			BF(new ExecutionConfiguration(tmpENV.inED->mRID, aCode)));
+			BF(new ExecutionConfiguration(tmpENV.inED.getRID(), aCode)));
 
 	if( not tmpENV.run() )
 	{
 		return( false );
 	}
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	// OUTPUT EDS traitement
 	while( tmpENV.outEDS.nonempty() )
@@ -881,7 +886,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.outEDS.pop_first_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_NOTHING:
 			case AEES_STMNT_FINAL:
@@ -905,7 +910,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -919,7 +924,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.irqEDS.pop_last_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_BREAK:
 			case AEES_STMNT_CONTINUE:
@@ -936,7 +941,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as irqEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -961,10 +966,10 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 
 bool AvmPrimitive_InvokeTransition::resume(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 
 	// Verification of EXECUTION ENDING STATUS
-	switch( outED->getAEES() )
+	switch( outED.getAEES() )
 	{
 		case AEES_STMNT_BREAK:
 		case AEES_STMNT_CONTINUE:
@@ -1013,7 +1018,7 @@ bool AvmPrimitive_InvokeTransition::resume(ExecutionEnvironment & ENV)
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Unexpected ENDIND EXECUTION STATUS :> "
-					<< RuntimeDef::strAEES( outED->mAEES ) << " !!!"
+					<< RuntimeDef::strAEES( outED.getAEES() ) << " !!!"
 					<< SEND_EXIT;
 
 			break;
@@ -1063,7 +1068,7 @@ bool AvmPrimitive_InvokeFunction::seval(EvaluationEnvironment & ENV)
 bool AvmPrimitive_InvokeProgram::run(ExecutionEnvironment & ENV)
 {
 	const BF & aCode = ENV.inCODE->first();
-	const AvmProgram & anAvmProgram = aCode.to_ref< AvmProgram >();
+	const AvmProgram & anAvmProgram = aCode.to< AvmProgram >();
 
 	ExecutionTime theExecutionTimeManager(false);
 AVM_IF_DEBUG_FLAG( TIME )
@@ -1076,11 +1081,11 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 	tmpENV.inED.makeWritable();
 
 	ExecutionDataFactory::appendRunnableElementTrace(tmpENV.inED,
-			BF(new ExecutionConfiguration(tmpENV.inED->mRID, aCode)));
+			BF(new ExecutionConfiguration(tmpENV.inED.getRID(), aCode)));
 
-	if( anAvmProgram.hasData() )
+	if( anAvmProgram.hasVariable() )
 	{
-		if( ENV.inCODE->populated() )
+		if( ENV.inCODE->hasManyOperands() )
 		{
 			pushLocalVars(tmpENV, anAvmProgram,
 					ENV.inCODE->second().to_ptr< ArrayBF >());
@@ -1096,7 +1101,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		return( false );
 	}
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	// OUTPUT EDS traitement
 	while( tmpENV.outEDS.nonempty() )
@@ -1104,7 +1109,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.outEDS.pop_first_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_NOTHING:
 			case AEES_STMNT_FINAL:
@@ -1113,7 +1118,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 				tmpED.mwsetAEES( AEES_OK );
 
 				// Free local data table
-				if( anAvmProgram.hasData() )
+				if( anAvmProgram.hasVariable() )
 				{
 					popLocalVars(tmpED);
 				}
@@ -1123,8 +1128,9 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 				break;
 			}
 			case AEES_OK:
+			case AEES_STEP_RESUME:
 			{
-				if( anAvmProgram.hasData() )
+				if( anAvmProgram.hasVariable() )
 				{
 					popLocalVars(tmpED);
 				}
@@ -1138,7 +1144,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -1152,7 +1158,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 		tmpENV.irqEDS.pop_last_to( tmpED );
 
 		// Verification of EXECUTION ENDING STATUS
-		switch( tmpED->getAEES() )
+		switch( tmpED.getAEES() )
 		{
 			case AEES_STMNT_BREAK:
 			case AEES_STMNT_CONTINUE:
@@ -1160,7 +1166,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				tmpED.mwsetAEES( AEES_OK );
 
-				if( anAvmProgram.hasData() )
+				if( anAvmProgram.hasVariable() )
 				{
 					popLocalVars(tmpED);
 				}
@@ -1174,7 +1180,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 			{
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "Unexpected ENDIND EXECUTION STATUS as irqEDS :> "
-						<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+						<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -1187,7 +1193,7 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 	{
 		tmpENV.exitEDS.pop_last_to( tmpED );
 
-		if( anAvmProgram.hasData() )
+		if( anAvmProgram.hasVariable() )
 		{
 			popLocalVars(tmpED);
 		}
@@ -1210,12 +1216,12 @@ AVM_ENDIF_DEBUG_FLAG( TIME )
 
 bool AvmPrimitive_InvokeProgram::resume(ExecutionEnvironment & ENV)
 {
-	const AvmProgram & anAvmProgram = ENV.inCODE->first().to_ref< AvmProgram >();
+	const AvmProgram & anAvmProgram = ENV.inCODE->first().to< AvmProgram >();
 
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 
 	// Verification of EXECUTION ENDING STATUS
-	switch( outED->getAEES() )
+	switch( outED.getAEES() )
 	{
 		case AEES_STMNT_BREAK:
 		case AEES_STMNT_CONTINUE:
@@ -1228,7 +1234,7 @@ bool AvmPrimitive_InvokeProgram::resume(ExecutionEnvironment & ENV)
 			outED.mwsetAEES( AEES_OK );
 
 			// Free local data table
-			if( anAvmProgram.hasData() )
+			if( anAvmProgram.hasVariable() )
 			{
 				popLocalVars(outED);
 			}
@@ -1240,7 +1246,7 @@ bool AvmPrimitive_InvokeProgram::resume(ExecutionEnvironment & ENV)
 		case AEES_OK:
 		case AEES_STEP_RESUME:
 		{
-			if( anAvmProgram.hasData() )
+			if( anAvmProgram.hasVariable() )
 			{
 				popLocalVars(outED);
 			}
@@ -1266,7 +1272,7 @@ bool AvmPrimitive_InvokeProgram::resume(ExecutionEnvironment & ENV)
 		case AEES_STMNT_FATAL_ERROR:
 		case AEES_SYMBOLIC_EXECUTION_LIMITATION:
 		{
-			if( anAvmProgram.hasData() )
+			if( anAvmProgram.hasVariable() )
 			{
 				popLocalVars(outED);
 			}
@@ -1280,7 +1286,7 @@ bool AvmPrimitive_InvokeProgram::resume(ExecutionEnvironment & ENV)
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Unexpected ENDIND EXECUTION STATUS :> "
-					<< RuntimeDef::strAEES( outED->mAEES ) << " !!!"
+					<< RuntimeDef::strAEES( outED.getAEES() ) << " !!!"
 					<< SEND_EXIT;
 
 			break;
@@ -1304,11 +1310,11 @@ bool AvmPrimitive_InvokeLambdaApply::seval(EvaluationEnvironment & ENV)
 
 	const AvmCode * applyCode = ENV.inCODE;
 
-	AvmCode::const_iterator itArg = applyCode->begin();
-	AvmCode::const_iterator endArg = applyCode->end();
+	AvmCode::const_iterator itOperand = applyCode->begin();
+	AvmCode::const_iterator endOperand = applyCode->end();
 
 	// First arg is the lambda function
-	BF theFunction = (*itArg);
+	BF theFunction = (*itOperand);
 	if( theFunction.isnot< AvmLambda >() )
 	{
 		if( not ENV.seval(theFunction) )
@@ -1321,14 +1327,14 @@ bool AvmPrimitive_InvokeLambdaApply::seval(EvaluationEnvironment & ENV)
 	if( theFunction.is< AvmLambda >() )
 	{
 		// First paramater is in second position,
-		++itArg;
+		++itOperand;
 
-		const AvmLambda & aLambdaFun = theFunction.to_ref< AvmLambda >();
+		const AvmLambda & aLambdaFun = theFunction.to< AvmLambda >();
 
 		// CREATE LOCAL VARIABLE TABLE
-		if( not ENV.inED->hasLocalRuntimeStack())
+		if( not ENV.inED.hasLocalRuntimeStack())
 		{
-			ENV.inED->createLocalRuntimeStack();
+			ENV.inED.createLocalRuntimeStack();
 		}
 		LocalRuntime aLocalRuntime( aLambdaFun );
 
@@ -1337,11 +1343,11 @@ bool AvmPrimitive_InvokeLambdaApply::seval(EvaluationEnvironment & ENV)
 		if( aLambdaFun.boundVarCount() < applyCode->size() )
 		{
 			// INITIALIZE LOCAL VARIABLE TABLE
-			avm_size_t offset = 0;
-			avm_size_t endOffset = aLambdaFun.getData().size();
-			for( ; offset < endOffset ; ++itArg , ++offset )
+			std::size_t offset = 0;
+			std::size_t endOffset = aLambdaFun.getVariables().size();
+			for( ; offset < endOffset ; ++itOperand , ++offset )
 			{
-				if( not ENV.seval(*itArg ) )
+				if( not ENV.seval(*itOperand ) )
 				{
 					return( false );
 				}
@@ -1349,7 +1355,7 @@ bool AvmPrimitive_InvokeLambdaApply::seval(EvaluationEnvironment & ENV)
 			}
 
 			// LOAD LOCAL VARIABLE TABLE
-			ENV.inED->getLocalRuntimes()->push( aLocalRuntime );
+			ENV.inED.getLocalRuntimes()->push( aLocalRuntime );
 
 			// REDUCTION
 			rtCode = ENV.seval(aLambdaFun.getExpression());
@@ -1359,8 +1365,8 @@ bool AvmPrimitive_InvokeLambdaApply::seval(EvaluationEnvironment & ENV)
 		else
 		{
 			// NEW LAMBA EXPRESSION
-			avm_size_t newBoundVariableCount =
-					aLambdaFun.getData().size() - applyCode->size() + 1;
+			std::size_t newBoundVariableCount =
+					aLambdaFun.getVariables().size() - applyCode->size() + 1;
 
 			AvmLambda * substLambda = new AvmLambda(aLambdaFun.getContainer(),
 					newBoundVariableCount, aLambdaFun.getNature());
@@ -1368,10 +1374,10 @@ bool AvmPrimitive_InvokeLambdaApply::seval(EvaluationEnvironment & ENV)
 			ENV.outVAL.renew( substLambda );
 
 			// INITIALIZE LOCAL VARIABLE TABLE
-			avm_size_t offset = 0;
-			for( ; itArg != endArg ; ++itArg , ++offset )
+			std::size_t offset = 0;
+			for( ; itOperand != endOperand ; ++itOperand , ++offset )
 			{
-				if( not ENV.seval(*itArg ) )
+				if( not ENV.seval(*itOperand ) )
 				{
 					return( false );
 				}
@@ -1379,25 +1385,25 @@ bool AvmPrimitive_InvokeLambdaApply::seval(EvaluationEnvironment & ENV)
 			}
 
 			// SET NEW BOUND VARIABLE
-			TableOfInstanceOfData::const_raw_iterator itData =
-					aLambdaFun.getData().begin();
-			TableOfInstanceOfData::const_raw_iterator endData =
-					aLambdaFun.getData().end();
+			TableOfInstanceOfData::const_raw_iterator itVar =
+					aLambdaFun.getVariables().begin();
+			TableOfInstanceOfData::const_raw_iterator endVar =
+					aLambdaFun.getVariables().end();
 			avm_offset_t newOffset = 0;
-			for( ; itData != endData ; ++itData , ++offset , ++newOffset )
+			for( ; itVar != endVar ; ++itVar , ++offset , ++newOffset )
 			{
 				Symbol lambdaVar( new InstanceOfData(
-						IPointerDataNature::POINTER_STANDARD_NATURE,
-						substLambda, (itData)->getAstElement(),
+						IPointerVariableNature::POINTER_STANDARD_NATURE,
+						substLambda, itVar->getAstElement(),
 						TypeManager::UNIVERSAL, newOffset) );
 
-				substLambda->setData(newOffset, lambdaVar);
+				substLambda->setVariable(newOffset, lambdaVar);
 
 				aLocalRuntime.setData(offset, lambdaVar);
 			}
 
 			// LOAD LOCAL VARIABLE TABLE
-			ENV.inED->getLocalRuntimes()->push( aLocalRuntime );
+			ENV.inED.getLocalRuntimes()->push( aLocalRuntime );
 
 			// REDUCTION
 			if( (rtCode = ENV.seval(aLambdaFun.getExpression())) )
@@ -1407,13 +1413,13 @@ bool AvmPrimitive_InvokeLambdaApply::seval(EvaluationEnvironment & ENV)
 		}
 
 		// UNLOAD & DESTROY LOCAL VARIABLE TABLE
-		if( ENV.inED->hasLocalRuntime() )
+		if( ENV.inED.hasLocalRuntime() )
 		{
-			ENV.inED->getLocalRuntimes()->pop();
+			ENV.inED.getLocalRuntimes()->pop();
 
-			if( not ENV.inED->hasLocalRuntime() )
+			if( not ENV.inED.hasLocalRuntime() )
 			{
-				ENV.inED->destroyLocalRuntimeStack();
+				ENV.inED.destroyLocalRuntimeStack();
 			}
 		}
 	}
@@ -1422,9 +1428,9 @@ bool AvmPrimitive_InvokeLambdaApply::seval(EvaluationEnvironment & ENV)
 	{
 		BFCode theSubstCode( applyCode->getOperator() , theFunction );
 
-		for ( ++itArg ; itArg != endArg ; ++itArg )
+		for ( ++itOperand ; itOperand != endOperand ; ++itOperand )
 		{
-			if( not ENV.seval(*itArg ) )
+			if( not ENV.seval(*itOperand ) )
 			{
 				return( false );
 			}

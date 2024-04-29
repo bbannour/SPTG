@@ -15,11 +15,13 @@
 
 #include "avm_vfs.h"
 
-#include <collection/Typedef.h>
+#include <printer/OutStream.h>
 
+#include <filesystem>
 #include <fstream>
+#include <vector>
 
-#include <boost/filesystem.hpp>
+//#include <boost/filesystem.hpp>
 
 
 namespace sep
@@ -65,66 +67,66 @@ std::string VFS::ProjectTddPath;
  * FORMAT NATIVE FILE / DIRECTORY PATH
  */
 
-static bool is_complete(const boost::filesystem::path & aPath)
-{
-//	return( aPath.is_absolute() );
-
-	if( aPath.is_complete() )
-	{
-		return( true );
-	}
-	else
-	{
-#ifdef __AVM_BOOST_WINDOWS__
-		std::string root = aPath.root_path().string();
-		return( (root.size() >= 2) &&
-				((root[root.size()-1] == ':')
-				|| (root.find(':') != std::string::npos)   // "c:"
-				|| ((root[0] == '/') && (root[1] == '/'))  // "//share"
-				|| aPath.is_complete()
-				)
-		);
-#else
-		return( aPath.is_complete() );
-#endif
-	}
-//	else if( VFS::IS_WINDOWS_PLATFORM && (! aPath.empty()) )
+//static bool is_absolute(const std::filesystem::path & aPath)
+//{
+////	return( aPath.is_absolute() );
+//
+//	if( aPath.is_absolute() )
 //	{
-//		std::string root = aPath.root_path().string();
-//		return( (root.size() == 2) && (root[1] == ':') );
+//		return( true );
 //	}
-
-	return( false );
-}
+//	else
+//	{
+//#ifdef __AVM_BOOST_WINDOWS__
+//		std::string root = aPath.root_path().generic_string();
+//		return( (root.size() >= 2) &&
+//				((root[root.size()-1] == ':')
+//				|| (root.find(':') != std::string::npos)   // "c:"
+//				|| ((root[0] == '/') && (root[1] == '/'))  // "//share"
+//				|| aPath.is_absolute()
+//				)
+//		);
+//#else
+//		return( aPath.is_absolute() );
+//#endif
+//	}
+////	else if( VFS::IS_WINDOWS_PLATFORM && (! aPath.empty()) )
+////	{
+////		std::string root = aPath.root_path().generic_string();
+////		return( (root.size() == 2) && (root[1] == ':') );
+////	}
+//
+//	return( false );
+//}
 
 
 std::string VFS::native_path(const std::string & path)
 {
-	boost::filesystem::path aPath( path );
+	std::filesystem::path aPath( path );
 
-//	if( not is_complete(aPath) )
+//	if( aPath.is_relative() )
 //	{
-//		aPath = boost::filesystem::current_path().string() +
-//				"/" + aPath.string();
+//		aPath = std::filesystem::current_path().generic_string() +
+//				"/" + aPath.generic_string();
 //	}
-	aPath.normalize();
+	aPath = std::filesystem::weakly_canonical(aPath);
 
-	return( aPath.string() );
+	return( aPath.generic_string() );
 }
 
 std::string VFS::native_path(
 		const std::string & path, const std::string & main_dir)
 {
-	boost::filesystem::path aPath( path );
+	std::filesystem::path aPath( path );
 
-	if( not is_complete(aPath) )
-//	if( aPath.is_relative() )
+//	if( not aPath.is_absolute() )
+	if( aPath.is_relative() )
 	{
-		aPath = main_dir + "/" + aPath.string();
-		aPath.normalize();
+		aPath = main_dir + "/" + aPath.generic_string();
+		aPath = std::filesystem::weakly_canonical(aPath);
 	}
 
-	return( aPath.string() );
+	return( aPath.generic_string() );
 }
 
 // CYGWIN
@@ -158,10 +160,10 @@ bool VFS::checkReadingFile(const std::string & path)
 {
 	try
 	{
-		boost::filesystem::path aPath( path );
+		std::filesystem::path aPath( path );
 
-		return( boost::filesystem::exists(aPath) /*&&
-				boost::filesystem::is_regular_file(aPath)*/ );
+		return( std::filesystem::exists(aPath) /*&&
+				std::filesystem::is_regular_file(aPath)*/ );
 	}
 	catch( const std::exception & e )
 	{
@@ -199,10 +201,10 @@ bool VFS::checkReadingFolder(const std::string & dir_path)
 {
 	try
 	{
-		boost::filesystem::path aPath( dir_path );
+		std::filesystem::path aPath( dir_path );
 
-		return( boost::filesystem::exists(aPath) &&
-				boost::filesystem::is_directory(aPath) );
+		return( std::filesystem::exists(aPath) &&
+				std::filesystem::is_directory(aPath) );
 	}
 	catch( const std::exception & e )
 	{
@@ -213,13 +215,21 @@ bool VFS::checkReadingFolder(const std::string & dir_path)
 	return( false );
 }
 
-bool VFS::checkWritingFolder(const std::string & dir_path)
+bool VFS::checkWritingFolder(const std::string & dir_path, bool cleaningRequired)
 {
 	try
 	{
-		boost::filesystem::path aPath( dir_path );
+		std::filesystem::path aPath( dir_path );
 
-		boost::filesystem::create_directories( aPath );
+		if( cleaningRequired
+			&& std::filesystem::exists(aPath)
+			&& std::filesystem::is_directory(aPath)
+			&& (not std::filesystem::is_empty(aPath)) )
+		{
+			std::filesystem::remove_all(aPath);
+		}
+
+		std::filesystem::create_directories( aPath );
 
 		return( true );
 	}
@@ -243,26 +253,26 @@ bool VFS::listAllFiles(const std::string & dir_path,
 {
 	if( VFS::checkReadingFolder(dir_path) )
 	{
-		boost::filesystem::path aPath( dir_path );
+		std::filesystem::path aPath( dir_path );
 
-		boost::filesystem::directory_iterator end_itr;
-		boost::filesystem::directory_iterator itr(aPath);
+		std::filesystem::directory_iterator end_itr;
+		std::filesystem::directory_iterator itr(aPath);
 
 		for( ; itr != end_itr ; ++itr )
 		{
 			// If it's not a directory, list it.
 			// If you want to list directories too, just remove this check.
-			if( boost::filesystem::is_regular_file( itr->status() ) )
+			if( std::filesystem::is_regular_file( itr->status() ) )
 			{
-				if( VFS::checkReadingFile( itr->path().string() ) )
+				if( VFS::checkReadingFile( itr->path().generic_string() ) )
 				{
-					listOfFiles.push_back( itr->path().string() );
+					listOfFiles.push_back( itr->path().generic_string() );
 				}
 			}
 			else if( recursive &&
-					boost::filesystem::is_directory( itr->status() ) )
+					std::filesystem::is_directory( itr->status() ) )
 			{
-				if( VFS::listAllFiles(itr->path().string(), listOfFiles, true) )
+				if( VFS::listAllFiles(itr->path().generic_string(), listOfFiles, true) )
 				{
 					//!! continue
 				}
@@ -285,8 +295,8 @@ bool VFS::copyTo(
 {
 	try
 	{
-		boost::filesystem::copy_file(srcLocation, destLocation,
-				boost::filesystem::copy_option::overwrite_if_exists);
+		std::filesystem::copy_file(srcLocation, destLocation,
+				std::filesystem::copy_options::overwrite_existing);
 
 		return( true );
 	}
@@ -310,13 +320,13 @@ bool VFS::copyToFolder(
 {
 	try
 	{
-		boost::filesystem::path srcPath( srcLocation );
-		boost::filesystem::path destPath( destLocation );
+		std::filesystem::path srcPath( srcLocation );
+		std::filesystem::path destPath( destLocation );
 
 		destPath /= srcPath.filename();
 
-		boost::filesystem::copy_file(srcPath, destPath,
-				boost::filesystem::copy_option::overwrite_if_exists);
+		std::filesystem::copy_file(srcPath, destPath,
+				std::filesystem::copy_options::overwrite_existing);
 
 		return( true );
 	}
@@ -343,7 +353,7 @@ bool VFS::moveTo(
 	{
 		if( VFS::copyTo(srcLocation, destLocation) )
 		{
-			return( boost::filesystem::remove( srcLocation ) );
+			return( std::filesystem::remove( srcLocation ) );
 		}
 	}
 	catch( const std::exception & e )
@@ -367,7 +377,7 @@ bool VFS::moveToFolder(
 	{
 		if( VFS::copyToFolder(srcLocation, destLocation) )
 		{
-			return( boost::filesystem::remove( srcLocation ) );
+			return( std::filesystem::remove( srcLocation ) );
 		}
 	}
 	catch( const std::exception & e )
@@ -389,83 +399,83 @@ bool VFS::moveToFolder(
  * UTILS
  */
 const char VFS::PathSeparator =
-		boost::filesystem::path::preferred_separator;
+		std::filesystem::path::preferred_separator;
 
 
 bool VFS::isPathSeparator(char c)
 {
-	return( (c == boost::filesystem::path::preferred_separator) ||
+	return( (c == std::filesystem::path::preferred_separator) ||
 			(c == ('/')) || (c == ('\\')) );
 }
 
 
 std::string VFS::parent(const std::string & aLocation)
 {
-	boost::filesystem::path aPath( aLocation );
+	std::filesystem::path aPath( aLocation );
 
-	return( aPath.parent_path().string() );
+	return( aPath.parent_path().generic_string() );
 }
 
 std::string VFS::filename(const std::string & aLocation)
 {
-	boost::filesystem::path aPath( aLocation );
+	std::filesystem::path aPath( aLocation );
 
-	return( aPath.filename().string() );
+	return( aPath.filename().generic_string() );
 }
 
 std::string VFS::stem(const std::string & aLocation)
 {
-	boost::filesystem::path aPath( aLocation );
+	std::filesystem::path aPath( aLocation );
 
-	return( aPath.stem().string() );
+	return( aPath.stem().generic_string() );
 }
 
 std::string VFS::extension(const std::string & aLocation)
 {
-	boost::filesystem::path aPath( aLocation );
+	std::filesystem::path aPath( aLocation );
 
-	return( aPath.extension().string() );
+	return( aPath.extension().generic_string() );
 }
 
 std::string VFS::replace_extension(
 		const std::string & aLocation, const std::string & anExtension)
 {
-	boost::filesystem::path aPath( aLocation );
+	std::filesystem::path aPath( aLocation );
 
-	boost::filesystem::path newPath = aPath.replace_extension(anExtension);
+	std::filesystem::path newPath = aPath.replace_extension(anExtension);
 
-	return( newPath.string() );
+	return( newPath.generic_string() );
 }
 
 
 std::string VFS::prefixFilename(const std::string & aLocation,
 		const std::string & aPrefix, const std::string & newExtension)
 {
-	boost::filesystem::path aPath( aLocation );
+	std::filesystem::path aPath( aLocation );
 
-	boost::filesystem::path newPath = aPath.parent_path();
+	std::filesystem::path newPath = aPath.parent_path();
 
-	newPath /= aPrefix + aPath.filename().string();
+	newPath /= aPrefix + aPath.filename().generic_string();
 
 	if( newExtension.size() > 1 )
 	{
 		newPath = newPath.replace_extension(newExtension);
 	}
 
-	return( newPath.string() );
+	return( newPath.generic_string() );
 }
 
 std::string VFS::suffixFilename(const std::string & aLocation,
 		const std::string & aPrefix, const std::string & newExtension)
 {
-	boost::filesystem::path aPath( aLocation );
+	std::filesystem::path aPath( aLocation );
 
-	boost::filesystem::path newPath = aPath.parent_path();
-	newPath /= aPath.stem().string() + aPrefix +
+	std::filesystem::path newPath = aPath.parent_path();
+	newPath /= aPath.stem().generic_string() + aPrefix +
 			( (newExtension.size() > 1) ?
-					newExtension : aPath.extension().string() );
+					newExtension : aPath.extension().generic_string() );
 
-	return( newPath.string() );
+	return( newPath.generic_string() );
 }
 
 

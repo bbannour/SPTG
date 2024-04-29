@@ -41,14 +41,14 @@ private:
 	typedef  BF  base_this_type;
 
 protected:
-	typedef       ClassT    value_type;
+	typedef       ClassT    value_t;
 
-	typedef       ClassT &  reference;
-	typedef const ClassT &  const_reference;
+	typedef       ClassT &  reference_t;
+	typedef const ClassT &  const_reference_t;
 
 
-	typedef       ClassT *  pointer;
-	typedef const ClassT *  const_pointer;
+	typedef       ClassT *  pointer_t;
+	typedef const ClassT *  const_pointer_t;
 
 
 public:
@@ -62,7 +62,7 @@ public:
 		//!!! NOTHING
 	}
 
-	explicit BasePointer(pointer ptr)
+	explicit BasePointer(pointer_t ptr)
 	: base_this_type( ptr )
 	{
 		//!!! NOTHING
@@ -94,95 +94,20 @@ public:
 
 
 protected:
-	inline pointer raw_pointer() const
+	inline pointer_t raw_pointer() const
 	{
-		return( mPTR  );
-	}
-
-	inline pointer ptrBase() const
-	{
-		return( static_cast< pointer >( mPTR ) );
+		return( static_cast< pointer_t >( mPTR ) );
 	}
 
 
 protected:
-	////////////////////////////////////////////////////////////////////////////
-	// TYPE CAST
-	////////////////////////////////////////////////////////////////////////////
-
-	// cast BF as specified pointer
-	template< class T >
-	inline T * as_ptr() const
-	{
-		// previous:> AVM_OS_ASSERT_WARNING_ALERT
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-				<< "raw_pointer in BasePointer::as_ptr< T >() !!!"
-				<< SEND_EXIT;
-
-		return( (mPTR != NULL) ? mPTR->as< T >() : NULL );
-	}
-
-	template< class T >
-	inline T * to_ptr() const
-	{
-		return( mPTR->to< T >() );
-	}
-
-
-	// cast BF as specified reference
-	template< class T >
-	inline T & as_ref()
-	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-				<< "raw_pointer in BasePointer::as_ref< T >() !!!"
-				<< SEND_EXIT;
-
-		return( *( mPTR->as< T >() ) );
-	}
-
-	template< class T >
-	inline const T & as_ref() const
-	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-				<< "raw_pointer in BasePointer::as_ref< T >() !!!"
-				<< SEND_EXIT;
-
-		return( *( mPTR->as< T >() ) );
-	}
-
-
-	// cast BF as derived BF
-	template< class T >
-	inline T & as_bf()
-	{
-		return( static_cast< T & >( *this ) );
-	}
-
-	template< class T >
-	inline const T & as_bf() const
-	{
-		return( static_cast< const T & >( *this ) );
-	}
-
-
-
-protected:
-	/**
-	 * CAST
-	 */
-	inline operator pointer () const
-	{
-		return( ptrBase() );
-	}
-
 	/**
 	 * OPERATORS
 	 */
-	inline pointer operator-> () const
+	inline pointer_t operator-> () const
 	{
-		return( ptrBase() );
+		return( raw_pointer() );
 	}
-
 
 public:
 	/**
@@ -190,12 +115,12 @@ public:
 	 * BF
 	 */
 
-	inline bool operator==(const_pointer aPtr) const
+	inline bool operator==(const_reference_t aRef) const
 	{
-		return( base_this_type::mPTR == aPtr );
+		return( base_this_type::mPTR == (& aRef) );
 	}
 
-	inline bool operator==(pointer aPtr) const
+	inline bool operator==(const_pointer_t aPtr) const
 	{
 		return( base_this_type::mPTR == aPtr );
 	}
@@ -206,7 +131,12 @@ public:
 	}
 
 
-	inline bool operator!=(const_pointer aPtr) const
+	inline bool operator!=(const_reference_t aRef) const
+	{
+		return( base_this_type::mPTR != (& aRef) );
+	}
+
+	inline bool operator!=(const_pointer_t aPtr) const
 	{
 		return( base_this_type::mPTR != aPtr );
 	}
@@ -229,12 +159,12 @@ public:
 	 */
 	inline virtual const Modifier & getModifier() const
 	{
-		return( ptrBase()->getModifier() );
+		return( raw_pointer()->getModifier() );
 	}
 
 	inline virtual Modifier & getwModifier()
 	{
-		return( ptrBase()->getwModifier() );
+		return( raw_pointer()->getwModifier() );
 	}
 
 
@@ -242,29 +172,34 @@ public:
 	 * GETTER - SETTER
 	 * theCompiledForm
 	 */
-	inline const ObjectElement * getAstElement() const
+	inline const ObjectElement & getAstElement() const
 	{
-		return( ptrBase()->getAstElement() );
+		return( raw_pointer()->getAstElement() );
 	}
 
-	inline bool isAstElement(const ObjectElement * astElement) const
+	inline const ObjectElement & safeAstElement() const
 	{
-		return( ptrBase()->isAstElement( astElement ) );
+		return( raw_pointer()->safeAstElement() );
+	}
+
+	inline bool isAstElement(const ObjectElement & astElement) const
+	{
+		return( raw_pointer()->isAstElement( astElement ) );
 	}
 
 	inline bool hasAstElement() const
 	{
-		return( ptrBase()->hasAstElement() );
+		return( raw_pointer()->hasAstElement() );
 	}
 
 	inline std::string getAstFullyQualifiedNameID() const
 	{
-		return( ptrBase()->getAstFullyQualifiedNameID() );
+		return( raw_pointer()->getAstFullyQualifiedNameID() );
 	}
 
 	inline std::string getAstNameID() const
 	{
-		return( ptrBase()->getAstNameID() );
+		return( raw_pointer()->getAstNameID() );
 	}
 
 	/**
@@ -273,35 +208,41 @@ public:
 	 */
 	inline std::string getFullyQualifiedNameID() const
 	{
-		return( ptrBase()->getFullyQualifiedNameID() );
+		return( raw_pointer()->getFullyQualifiedNameID() );
 	}
 
 	inline bool hasFullyQualifiedNameID() const
 	{
-		return( ptrBase()->hasFullyQualifiedNameID() );
+		return( raw_pointer()->hasFullyQualifiedNameID() );
 	}
 
 	inline void setFullyQualifiedNameID(const std::string & aFQN_ID)
 	{
-		ptrBase()->setFullyQualifiedNameID( aFQN_ID );
+		raw_pointer()->setFullyQualifiedNameID( aFQN_ID );
 	}
 
 	inline void updateFullyQualifiedNameID()
 	{
-		ptrBase()->updateFullyQualifiedNameID();
+		raw_pointer()->updateFullyQualifiedNameID();
 	}
 
 	inline bool fqnEquals(const std::string & aFullyQualifiedNameID,
 			bool enabledOnlyLocationComparisonElse = false) const
 	{
-		return( ptrBase()->fqnEquals(aFullyQualifiedNameID,
+		return( raw_pointer()->fqnEquals(aFullyQualifiedNameID,
 				enabledOnlyLocationComparisonElse) );
 	}
 
 	inline bool fqnEndsWith(const std::string & aQualifiedNameID) const
 	{
-		return( ptrBase()->fqnEndsWith(aQualifiedNameID) );
+		return( raw_pointer()->fqnEndsWith(aQualifiedNameID) );
 	}
+
+	inline bool fqnRegexMatch(const std::string & aRegex) const
+	{
+		return( raw_pointer()->fqnRegexMatch(aRegex) );
+	}
+
 
 	/**
 	 * GETTER - SETTER
@@ -309,34 +250,39 @@ public:
 	 */
 	inline std::string getNameID() const
 	{
-		return( ptrBase()->getNameID() );
+		return( raw_pointer()->getNameID() );
+	}
+
+	inline bool nameRegexMatch(const std::string & aRegex) const
+	{
+		return( raw_pointer()->nameRegexMatch(aRegex) );
 	}
 
 	inline bool hasNameID() const
 	{
-		return( ptrBase()->hasNameID() );
+		return( raw_pointer()->hasNameID() );
 	}
 
 	inline void setNameID(const std::string & aNameID)
 	{
-		ptrBase()->setNameID( aNameID );
+		raw_pointer()->setNameID( aNameID );
 	}
 
 	void updateNameID()
 	{
-		ptrBase()->updateNameID();
+		raw_pointer()->updateNameID();
 	}
 
 	inline void setAllNameID(const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID)
 	{
-		ptrBase()->setAllNameID( aFullyQualifiedNameID , aNameID );
+		raw_pointer()->setAllNameID( aFullyQualifiedNameID , aNameID );
 	}
 
 	inline void setAllNameID(const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID, const std::string & name)
 	{
-		ptrBase()->setAllNameID( aFullyQualifiedNameID , aNameID , name );
+		raw_pointer()->setAllNameID( aFullyQualifiedNameID , aNameID , name );
 	}
 
 };

@@ -16,16 +16,32 @@
 #include "Variable.h"
 
 #include <fml/type/BaseTypeSpecifier.h>
+#include <fml/type/TypeManager.h>
 
 #include <fml/infrastructure/DataType.h>
 #include <fml/infrastructure/Machine.h>
 #include <fml/infrastructure/PropertyPart.h>
+#include <fml/infrastructure/Routine.h>
 
 #include <fml/operator/OperatorManager.h>
 
 
 namespace sep
 {
+
+/**
+ * GETTER
+ * Unique Null Reference
+ */
+Variable & Variable::nullref()
+{
+	static Variable _NULL_(nullptr, TypeManager::UNIVERSAL,
+			"$null<Variable>" , "$null<Variable>");
+	_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+
+	return( _NULL_ );
+}
+
 
 /**
  * CONSTRUCTOR
@@ -41,7 +57,7 @@ mValue( aValue ),
 
 mBinding( ),
 
-onWriteRoutine( NULL )
+onWriteRoutine( nullptr )
 {
 	//!! NOTHING
 }
@@ -62,6 +78,26 @@ onWriteRoutine( aVariablePattern->onWriteRoutine )
 }
 
 
+std::string Variable::getUniqNameID() const
+{
+	std::string name = mNameID;
+	std::replace(name.begin(), name.end(), '#', '_');
+
+	const auto aContainer = getContainer();
+	avm_offset_t parentOffset = aContainer->getRuntimeOffset();
+
+	if( parentOffset == 0 )
+	{
+		return( OSS() << "_" << getOwnedOffset() << "_" << name );
+	}
+	else
+	{
+		return( OSS() << "_" << parentOffset
+					<< "_" << getOwnedOffset() << "_" << name );
+	}
+}
+
+
 /**
  * str Type
  */
@@ -69,15 +105,15 @@ std::string Variable::strT()
 {
 	if( getType().is< BaseTypeSpecifier >() )
 	{
-		return( getType().to_ptr< BaseTypeSpecifier >()->strT() );
+		return( getType().to< BaseTypeSpecifier >().strT() );
 	}
 	else if( getType().is< DataType >() )
 	{
-		return( getType().to_ptr< DataType >()->strT() );
+		return( getType().to< DataType >().strT() );
 	}
 	if( getType().is< ObjectElement >() )
 	{
-		return( getType().to_ptr< ObjectElement >()->getNameID() );
+		return( getType().to< ObjectElement >().getNameID() );
 	}
 	else
 	{
@@ -89,7 +125,7 @@ std::string Variable::strT()
 /**
  * UTIL
  */
-Operator * Variable::getAssignOperator() const
+const Operator * Variable::getAssignOperator() const
 {
 	if( getModifier().hasNatureMacro() )
 	{
@@ -111,83 +147,96 @@ Operator * Variable::getAssignOperator() const
 BehavioralPart * Variable::getContainerOfRoutines() const
 {
 	const ObjectElement * container = this->getContainer();
-	for( ; container != NULL ; container = container->getContainer() )
+	for( ; container != nullptr ; container = container->getContainer() )
 	{
 		if( container->is< Machine >() )
 		{
-			return( container->to< Machine >()->getBehaviorPart() );
+			return( container->to_ptr< Machine >()->getBehaviorPart() );
 		}
 		else if( container->is< DataType >() )
 		{
-			return( container->to< DataType >()->getBehaviorPart() );
+			return( container->to_ptr< DataType >()->getBehaviorPart() );
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 BehavioralPart * Variable::getUniqContainerOfRoutines() const
 {
 	ObjectElement * container = this->getContainer();
-	for( ; container != NULL ; container = container->getContainer() )
+	for( ; container != nullptr ; container = container->getContainer() )
 	{
 		if( container->is< Machine >() )
 		{
-			return( container->to< Machine >()->getUniqBehaviorPart() );
+			return( container->to_ptr< Machine >()->getUniqBehaviorPart() );
 		}
 		else if( container->is< DataType >() )
 		{
-			return( container->to< DataType >()->getUniqBehaviorPart() );
+			return( container->to_ptr< DataType >()->getUniqBehaviorPart() );
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
+/**
+ * GETTER
+ * onWrite
+ */
+const Routine & Variable::getOnWriteRoutine() const
+{
+	return( * onWriteRoutine );
+}
 
 /**
  * Serialization
  */
-void Variable::toStream(OutStream & os) const
+void Variable::toStream(OutStream & out) const
 {
-	os << TAB << getModifier().toString_not( Modifier::FEATURE_CONST_KIND )
-			<< ( getModifier().hasFeatureConst() ? "const" /*"val"*/ : "var" )
-			<< " " << strTypeSpecifier() << " " << getNameID();
+	out << TAB << getModifier().toString_not( Modifier::FEATURE_CONST_KIND )
+		<< ( getModifier().hasFeatureConst() ? "const" /*"val"*/ : "var" )
+		<< " " << strTypeSpecifier() << " " << getNameID();
+
+	if( hasReallyUnrestrictedName() )
+	{
+		out << " \"" << getUnrestrictedName() << "\"";
+	}
 
 	if( mValue.valid() )
 	{
-//		os << " " << getAssignOperator()->str() << " " << mValue.str();
-		os << " = " << mValue.str();
+//		out << " " << getAssignOperator()->str() << " " << mValue.str();
+		out << " = " << mValue.str();
 	}
 
-	if( onWriteRoutine != NULL )
+	if( onWriteRoutine != nullptr )
 	{
-		os << " { " << EOL_INCR_INDENT;
+		out << " { " << EOL_INCR_INDENT;
 
-		onWriteRoutine->toStream(os);
+		onWriteRoutine->toStream(out);
 
-		os << DECR_INDENT_TAB << "}";
+		out << DECR_INDENT_TAB << "}";
 	}
 	else
 	{
-		os << ";";
+		out << ";";
 	}
 
-	os << EOL << std::flush;
+	out << EOL << std::flush;
 }
 
 
-void Variable::toStreamParameter(OutStream & os) const
+void Variable::toStreamParameter(OutStream & out) const
 {
-	os << TAB << getModifier().toString()
+	out << TAB << getModifier().toString()
 			<< strTypeSpecifier() << " " << getNameID();
 
 	if( mValue.valid() )
 	{
-		os << " = " << mValue.str();
+		out << " = " << mValue.str();
 	}
 
-	os << EOL_FLUSH;
+	out << EOL_FLUSH;
 }
 
 

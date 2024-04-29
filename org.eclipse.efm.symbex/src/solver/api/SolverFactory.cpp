@@ -27,11 +27,13 @@
 
 #include <fml/runtime/ExecutionContext.h>
 #include <fml/runtime/ExecutionData.h>
+#include <fml/runtime/RuntimeForm.h>
 #include <fml/runtime/RuntimeLib.h>
 
 #include <fml/type/EnumTypeSpecifier.h>
 #include <fml/type/IntervalTypeSpecifier.h>
 
+#include <fml/workflow/WObject.h>
 
 #include <solver/api/SatSolver.h>
 #include <solver/api/SolverDef.h>
@@ -40,7 +42,7 @@
 #include <solver/Z3Solver.h>
 
 #if defined( _AVM_SOLVER_YICES_V2_ )
-#include <compat/solver/Yices2Solver.h>
+#include <solver/Yices2Solver.h>
 #endif /* _AVM_SOLVER_YICES_V2_ */
 
 // Mandatory after other Solver for compilation FIX
@@ -51,13 +53,13 @@ namespace sep
 {
 
 
-SatSolver * SolverFactory::theDefaultSolver4CheckSatisfiability = NULL;
-SatSolver * SolverFactory::theDefaultSolver4ModelsProduction = NULL;
+SatSolver * SolverFactory::theDefaultSolver4CheckSatisfiability = nullptr;
+SatSolver * SolverFactory::theDefaultSolver4ModelsProduction = nullptr;
 
 BFVector SolverFactory::thePCParameters;
 BFVector SolverFactory::thePCParameterValues;
 
-APExecutionData     SolverFactory::theSymbolicED;
+ExecutionData SolverFactory::theSymbolicED;
 
 
 /**
@@ -70,18 +72,23 @@ void SolverFactory::load()
 #if defined( _AVM_SOLVER_CVC4_ )
 		case SolverDef::SOLVER_CVC4_KIND:
 		{
+			CVC4Solver::configure(WObject::_NULL_);
+
 			theDefaultSolver4CheckSatisfiability = new CVC4Solver();
 
 			theDefaultSolver4ModelsProduction =
 					new CVC4Solver(true /*to set option << produce-models >>*/);
+
 			break;
 		}
 #endif /* _AVM_SOLVER_CVC4_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 		case SolverDef::SOLVER_Z3_KIND:
 		{
+			Z3Solver::configure(WObject::_NULL_);
+
 			theDefaultSolver4CheckSatisfiability = new Z3Solver();
 			theDefaultSolver4ModelsProduction    = new Z3Solver();
 			break;
@@ -92,6 +99,8 @@ void SolverFactory::load()
 #if defined( _AVM_SOLVER_YICES_V2_ )
 		case SolverDef::SOLVER_YICES2_KIND:
 		{
+			Yices2Solver::configure(WObject::_NULL_);
+
 			theDefaultSolver4CheckSatisfiability = new Yices2Solver();
 			theDefaultSolver4ModelsProduction    = new Yices2Solver();
 			break;
@@ -102,6 +111,8 @@ void SolverFactory::load()
 #if defined( _AVM_SOLVER_OMEGA_ )
 		case SolverDef::SOLVER_OMEGA_KIND:
 		{
+			OmegaSolver::configure(WObject::_NULL_);
+
 			theDefaultSolver4CheckSatisfiability = new OmegaSolver();
 			theDefaultSolver4ModelsProduction    = new OmegaSolver();
 			break;
@@ -114,17 +125,45 @@ void SolverFactory::load()
 		{
 #if defined( _AVM_SOLVER_CVC4_ )
 
+			CVC4Solver::configure(WObject::_NULL_);
+
 			theDefaultSolver4CheckSatisfiability = new CVC4Solver();
 
 			theDefaultSolver4ModelsProduction =
 					new CVC4Solver(true /*to set option << produce-models >>*/);
 
+			SolverDef::DEFAULT_SOLVER_KIND = SolverDef::SOLVER_CVC4_KIND;
+
+#elif( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
+
+			Z3Solver::configure(WObject::_NULL_);
+
+			theDefaultSolver4CheckSatisfiability = new Z3Solver();
+			theDefaultSolver4ModelsProduction    = new Z3Solver();
+
+			SolverDef::DEFAULT_SOLVER_KIND = SolverDef::SOLVER_Z3_KIND;
+
+#elif defined( _AVM_SOLVER_YICES_V2_ )
+
+			Yices2Solver::configure(WObject::_NULL_);
+
+			theDefaultSolver4CheckSatisfiability = new Yices2Solver();
+			theDefaultSolver4ModelsProduction    = new Yices2Solver();
+
+			SolverDef::DEFAULT_SOLVER_KIND = SolverDef::SOLVER_YICES2_KIND;
+
 #else
 
-			theDefaultSolver4CheckSatisfiability = NULL;
-			theDefaultSolver4ModelsProduction    = NULL;
+			theDefaultSolver4CheckSatisfiability = nullptr;
+			theDefaultSolver4ModelsProduction    = nullptr;
 
-#endif /* _AVM_SOLVER_CVCx_ */
+#endif /* _AVM_SOLVER_XXX_ */
+
+			AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( theDefaultSolver4CheckSatisfiability )
+					<< "SolverFactory::load:> Unfound default solver << "
+					<< SolverDef::strSolver( SolverDef::DEFAULT_SOLVER_KIND )
+					<< " >> in this executable and and there are no alternative solver !"
+					<< SEND_EXIT;
 
 			break;
 		}
@@ -141,7 +180,7 @@ void SolverFactory::load()
 #endif /* _AVM_SOLVER_CVC4_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 
 	Z3Solver::initCache();
 
@@ -171,7 +210,7 @@ void SolverFactory::dispose()
 #endif /* _AVM_SOLVER_CVC4_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 
 	Z3Solver::finalizeCache();
 
@@ -212,7 +251,7 @@ SolverDef::SATISFIABILITY_RING SolverFactory::isSatisfiable(
 #endif /* _AVM_SOLVER_CVC4_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 		case SolverDef::SOLVER_Z3_KIND:
 		{
 			Z3Solver solver;
@@ -244,11 +283,11 @@ SolverDef::SATISFIABILITY_RING SolverFactory::isSatisfiable(
 
 		default:
 		{
-AVM_OS_WARNING_ALERT
-		<< "SolverFactory::isSatisfiable:> Unknown solver << "
-		<< SolverDef::strSolver( aSolverKind )
-		<< " >> in this executable !!!"
-		<< SEND_ALERT;
+			AVM_OS_WARNING_ALERT
+					<< "SolverFactory::isSatisfiable:> Unknown solver << "
+					<< SolverDef::strSolver( aSolverKind )
+					<< " >> in this executable !!!"
+					<< SEND_ALERT;
 
 			return( SolverDef::UNKNOWN_SAT );
 		}
@@ -263,7 +302,7 @@ AVM_OS_WARNING_ALERT
  */
 void SolverFactory::destroy(SatSolver * aSolver)
 {
-	if( (aSolver != NULL)
+	if( (aSolver != nullptr)
 		&& (aSolver != SolverFactory::theDefaultSolver4CheckSatisfiability)
 		&& (aSolver != SolverFactory::theDefaultSolver4ModelsProduction) )
 	{
@@ -303,7 +342,7 @@ bool SolverFactory::isEmptyIntersection(ListOfInstanceOfData aListOfVarParam,
 
 	OmegaSolver theSolver;
 
-	theSolver.setSelectedVariable(aMainEC.refExecutionData(), aListOfVarParam);
+	theSolver.setSelectedVariable(aMainEC.getExecutionData(), aListOfVarParam);
 
 	return( theSolver.isEmptyIntersection( aMainEC , aComparEC ) );
 
@@ -321,7 +360,7 @@ bool SolverFactory::isSubSet(
 
 	OmegaSolver theSolver;
 
-	theSolver.setSelectedVariable( aMainEC.refExecutionData() );
+	theSolver.setSelectedVariable( aMainEC.getExecutionData() );
 
 	return( theSolver.isSubSet( aMainEC , aComparEC) );
 
@@ -351,7 +390,7 @@ SatSolver * SolverFactory::newSolver4CheckSatisfiability(
 #endif /* _AVM_SOLVER_CVC4_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 		case SolverDef::SOLVER_Z3_KIND:
 		{
 			return( new Z3Solver() );
@@ -377,11 +416,11 @@ SatSolver * SolverFactory::newSolver4CheckSatisfiability(
 
 		default:
 		{
-AVM_OS_ASSERT_FATAL_ERROR_EXIT( theDefaultSolver4CheckSatisfiability == NULL )
-		<< "SolverFactory::newSolver4CheckSatisfiability:> Unknown solver << "
-		<< SolverDef::strSolver( aSolverKind )
-		<< " >> in this executable and  there are no default alternative solver!!!"
-		<< SEND_ALERT;
+			AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( theDefaultSolver4CheckSatisfiability )
+					<< "SolverFactory::newSolver4CheckSatisfiability:> Unknown solver << "
+					<< SolverDef::strSolver( aSolverKind )
+					<< " >> in this executable and  there are no default alternative solver!!!"
+					<< SEND_EXIT;
 
 			SolverDef::toStreamSolverList(AVM_OS_COUT, "Available solver");
 
@@ -405,7 +444,7 @@ SatSolver * SolverFactory::newSolver4ModelsProduction(
 #endif /* _AVM_SOLVER_CVC4_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 		case SolverDef::SOLVER_Z3_KIND:
 		{
 			return( new Z3Solver() );
@@ -431,11 +470,11 @@ SatSolver * SolverFactory::newSolver4ModelsProduction(
 
 		default:
 		{
-AVM_OS_ASSERT_FATAL_ERROR_EXIT( theDefaultSolver4ModelsProduction == NULL )
-		<< "SolverFactory::newSolver4ModelsProduction:> Unknown solver << "
-		<< SolverDef::strSolver( aSolverKind )
-		<< " >> in this executable and and there are no default alternative solver !"
-		<< SEND_ALERT;
+			AVM_OS_ASSERT_FATAL_ERROR_EXIT( theDefaultSolver4ModelsProduction )
+					<< "SolverFactory::newSolver4ModelsProduction:> Unknown solver << "
+					<< SolverDef::strSolver( aSolverKind )
+					<< " >> in this executable and and there are no default alternative solver !"
+					<< SEND_EXIT;
 
 			return( theDefaultSolver4ModelsProduction );
 		}
@@ -463,7 +502,7 @@ bool SolverFactory::solve(SolverDef::SOLVER_KIND aSolverKind,
 #endif /* _AVM_SOLVER_CVC4_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 		case SolverDef::SOLVER_Z3_KIND:
 		{
 			Z3Solver solver;
@@ -494,11 +533,11 @@ bool SolverFactory::solve(SolverDef::SOLVER_KIND aSolverKind,
 
 		default:
 		{
-AVM_OS_WARNING_ALERT
-		<< "SolverFactory::solve:> Unknown solver << "
-		<< SolverDef::strSolver( aSolverKind )
-		<< " >> in this executable !!!"
-		<< SEND_ALERT;
+			AVM_OS_WARNING_ALERT
+					<< "SolverFactory::solve:> Unknown solver << "
+					<< SolverDef::strSolver( aSolverKind )
+					<< " >> in this executable !!!"
+					<< SEND_ALERT;
 
 			return( false );
 		}
@@ -510,7 +549,7 @@ AVM_OS_WARNING_ALERT
 // EXECUTION CONTEXT SOLVING
 ////////////////////////////////////////////////////////////////////////////////
 
-APExecutionData SolverFactory::solve(SolverDef::SOLVER_KIND aSolverKind,
+ExecutionData SolverFactory::solve(SolverDef::SOLVER_KIND aSolverKind,
 		EvaluationEnvironment & ENV, const ExecutionContext & anEC,
 		const BF & aCondition)
 {
@@ -527,7 +566,7 @@ APExecutionData SolverFactory::solve(SolverDef::SOLVER_KIND aSolverKind,
 #endif /* _AVM_SOLVER_CVC4_ */
 
 
-#if defined( _AVM_SOLVER_Z3_ )
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
 		case SolverDef::SOLVER_Z3_KIND:
 		{
 			Z3Solver aSolver;
@@ -560,11 +599,11 @@ APExecutionData SolverFactory::solve(SolverDef::SOLVER_KIND aSolverKind,
 
 		default:
 		{
-AVM_OS_ASSERT_FATAL_ERROR_EXIT( theDefaultSolver4ModelsProduction == NULL )
-		<< "SolverFactory::solve:> Unknown solver << "
-		<< SolverDef::strSolver( aSolverKind )
-		<< " >> in this executable and and there are no default alternative solver !"
-		<< SEND_ALERT;
+			AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( theDefaultSolver4ModelsProduction )
+					<< "SolverFactory::solve:> Unknown solver << "
+					<< SolverDef::strSolver( aSolverKind )
+					<< " >> in this executable and and there are no default alternative solver !"
+					<< SEND_EXIT;
 
 			return( SolverFactory::solve(
 				(*theDefaultSolver4ModelsProduction), ENV, anEC, aCondition) );
@@ -579,7 +618,7 @@ AVM_OS_ASSERT_FATAL_ERROR_EXIT( theDefaultSolver4ModelsProduction == NULL )
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SolverFactory::solve(SatSolver & aSolver, EvaluationEnvironment & ENV,
-		APExecutionData & anED, const BF & aCondition)
+		ExecutionData & anED, const BF & aCondition)
 {
 	thePCParameters.clear();
 	thePCParameterValues.clear();
@@ -593,38 +632,45 @@ bool SolverFactory::solve(SatSolver & aSolver, EvaluationEnvironment & ENV,
 		{
 			setRuntimeParametersSolvingValues(anED);
 
-			ExecutableForm * exec = NULL;
-			TableOfInstanceOfData::const_raw_iterator itData;
-			TableOfInstanceOfData::const_raw_iterator endData;
+			ExecutableForm * exec = nullptr;
+			TableOfInstanceOfData::const_ref_iterator itVar;
+			TableOfInstanceOfData::const_ref_iterator endVar;
 
 			TableOfRuntimeT::
-			const_iterator itRF = anED->getTableOfRuntime().begin();
+			const_iterator itRF = anED.getTableOfRuntime().begin();
 			TableOfRuntimeT::
-			const_iterator endRF = anED->getTableOfRuntime().end();
+			const_iterator endRF = anED.getTableOfRuntime().end();
 			for( RuntimeID itRID ; itRF != endRF ; ++itRF)
 			{
 				itRID = (*itRF)->getRID();
 
 				exec = itRID.getExecutable();
-				if( exec->hasBasicData() )
+				if( exec->hasBasicVariable() )
 				{
-					itData = exec->getBasicData().begin();
-					endData = exec->getBasicData().end();
-					for( ; itData != endData ; ++itData)
+					itVar = exec->getBasicVariables().begin();
+					endVar = exec->getBasicVariables().end();
+					for( ; itVar != endVar ; ++itVar)
 					{
-						const BF & rvalue = ENV.getRvalue(anED, itRID, (itData));
-
-						updateRuntimeParametersValues(rvalue);
-
-						if( ENV.eval(theSymbolicED,
-								theSymbolicED->getParametersRID(), rvalue) )
+						if( (itVar)->getModifier().hasNatureMacro() )
 						{
-							ENV.setRvalue(anED, itRID, (itData), ENV.outVAL);
+							//!! LET UNCHANGED
 						}
 						else
 						{
-							finalizeRuntimeParameters();
-							return( false );
+							const BF & rvalue = ENV.getRvalue(anED, itRID, (itVar));
+
+							updateRuntimeParametersValues(rvalue);
+
+							if( ENV.eval(theSymbolicED,
+									theSymbolicED.getParametersRID(), rvalue) )
+							{
+								ENV.setRvalue(anED, itRID, (itVar), ENV.outVAL);
+							}
+							else
+							{
+								finalizeRuntimeParameters();
+								return( false );
+							}
 						}
 					}
 				}
@@ -651,7 +697,7 @@ bool SolverFactory::solve(SatSolver & aSolver, EvaluationEnvironment & ENV,
 // EXECUTION CONTEXT PARAMETERS NUMERIZATION
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SolverFactory::solveParameters(APExecutionData & anED, const BF & aCondition)
+bool SolverFactory::solveParameters(ExecutionData & anED, const BF & aCondition)
 {
 	if( aCondition.isEqualTrue() )
 	{
@@ -686,20 +732,17 @@ bool SolverFactory::solveParameters(APExecutionData & anED, const BF & aConditio
 // Pour pouvoir reutiliser tout l'outillage de Diverity
 ////////////////////////////////////////////////////////////////////////////////
 
-void SolverFactory::setModel(EvaluationEnvironment & ENV, APExecutionData & anED)
+void SolverFactory::setModel(EvaluationEnvironment & ENV, ExecutionData & anED)
 {
 	ParametersRuntimeForm & paramsRF = anED.getWritableParametersRuntimeForm();
 
-	BaseTypeSpecifier * paramType = NULL;
 	BF value;
-	TableOfInstanceOfData::const_raw_iterator itParam =
-			paramsRF.getParameters().begin();
-	TableOfInstanceOfData::const_raw_iterator endParam =
-			paramsRF.getParameters().end();
+	TableOfInstanceOfData::ref_iterator itParam = paramsRF.getParameters().begin();
+	TableOfInstanceOfData::ref_iterator endParam = paramsRF.getParameters().end();
 	TableOfData::const_iterator itValue = paramsRF.getDataTable()->begin();
 	for( ; itParam != endParam ; ++itParam, ++itValue )
 	{
-		value  = (*itValue);
+		value = (*itValue);
 
 		(itParam)->getwModifier().setFeatureFinal( false );
 
@@ -707,9 +750,9 @@ void SolverFactory::setModel(EvaluationEnvironment & ENV, APExecutionData & anED
 		{
 			/* OK:> value is numeric */
 		}
-		else if( value != (itParam) )
+		else if( value != (*itParam) )
 		{
-			if( ENV.eval(anED, anED->getSystemRID(), value) )
+			if( ENV.eval(anED, anED.getSystemRID(), value) )
 			{
 				paramsRF.setData((itParam)->getOffset(), ENV.outVAL);
 			}
@@ -719,44 +762,45 @@ void SolverFactory::setModel(EvaluationEnvironment & ENV, APExecutionData & anED
 			paramsRF.setData((itParam)->getOffset(), (itParam)->getValue());
 		}
 		else if( (itParam)->hasTypeSpecifier() &&
-				(itParam)->getTypeSpecifier()->hasDefaultValue() )
+				(itParam)->getTypeSpecifier().hasDefaultValue() )
 		{
 			paramsRF.setData((itParam)->getOffset(),
-					(itParam)->getTypeSpecifier()->getDefaultValue());
+					(itParam)->getTypeSpecifier().getDefaultValue());
 		}
 		else
 		{
-			paramType = (itParam)->referedTypeSpecifier();
+			const BaseTypeSpecifier & paramType =
+					(itParam)->referedTypeSpecifier();
 
 			/* OK:> NO value */
-			if( paramType->isTypedNumeric() )
+			if( paramType.isTypedNumeric() )
 			{
-				if( paramType->isTypedInterval() )
+				if( paramType.isTypedInterval() )
 				{
-					IntervalTypeSpecifier * intervalTS = (itParam)->
-							getTypeSpecifier()->as< IntervalTypeSpecifier >();
+					const IntervalTypeSpecifier & intervalTS = (itParam)->
+							getTypeSpecifier().as< IntervalTypeSpecifier >();
 
-					if( intervalTS->getInfimum().isNumeric() &&
-							intervalTS->getSupremum().isNumeric() )
+					if( intervalTS.getInfimum().isNumeric() &&
+							intervalTS.getSupremum().isNumeric() )
 					{
 						// Calcul aléatoire d'un nombre entier
 						paramsRF.setData( (itParam)->getOffset(),
 							ExpressionConstructor::newInteger(
 								RANDOM::gen_int(
-									intervalTS->getInfimum().toInteger(),
-									intervalTS->getSupremum().toInteger())) );
+									intervalTS.getInfimum().toInteger(),
+									intervalTS.getSupremum().toInteger())) );
 					}
-					else if( intervalTS->isLClosed() )
+					else if( intervalTS.isLClosed() )
 					{
 						// Calcul aléatoire d'un nombre entier
 						paramsRF.setData( (itParam)->getOffset(),
-								intervalTS->getInfimum() );
+								intervalTS.getInfimum() );
 					}
-					else if( intervalTS->isRClosed() )
+					else if( intervalTS.isRClosed() )
 					{
 						// Calcul aléatoire d'un nombre entier
 						paramsRF.setData( (itParam)->getOffset(),
-								intervalTS->getSupremum() );
+								intervalTS.getSupremum() );
 					}
 					else
 					{
@@ -764,8 +808,8 @@ void SolverFactory::setModel(EvaluationEnvironment & ENV, APExecutionData & anED
 						paramsRF.setData( (itParam)->getOffset(),
 							ExpressionConstructor::divExpr(
 									ExpressionConstructor::addExpr(
-										intervalTS->getInfimum(),
-										intervalTS->getSupremum()),
+										intervalTS.getInfimum(),
+										intervalTS.getSupremum()),
 									ExpressionConstant::INTEGER_TWO) );
 					}
 				}
@@ -774,26 +818,25 @@ void SolverFactory::setModel(EvaluationEnvironment & ENV, APExecutionData & anED
 					// Calcul aléatoire d'un nombre entier
 					paramsRF.setData((itParam)->getOffset(),
 						ExpressionConstructor::newInteger(
-							RANDOM::gen_uint(0, AVM_NUMERIC_MAX_INT8)) );
+							RANDOM::gen_uint(0, INT8_MAX)) );
 				}
 			}
 
-			else if( paramType->isTypedBoolean() )
+			else if( paramType.isTypedBoolean() )
 			{
 				// Calcul aléatoire d'un nombre compris entre 0 et 1
 				paramsRF.setData((itParam)->getOffset(),
 						ExpressionConstructor::newBoolean(
 								RANDOM::gen_uint(0, 1) != 0));
 			}
-			else if( paramType->isTypedEnum() )
+			else if( paramType.isTypedEnum() )
 			{
 				// Choix aléatoire d'un symbol du type Enum
 				paramsRF.setData((itParam)->getOffset(),
-						paramType->as< EnumTypeSpecifier
-									>()->getRandomSymbolData());
+					paramType.as< EnumTypeSpecifier >().getRandomSymbolData());
 			}
 
-			else if( paramType->isTypedString() )
+			else if( paramType.isTypedString() )
 			{
 				// Calcul aléatoire d'une chaine de charactère
 
@@ -807,7 +850,7 @@ void SolverFactory::setModel(EvaluationEnvironment & ENV, APExecutionData & anED
 //						<< SEND_EXIT;
 
 			}
-			else if( paramType->isTypedCharacter() )
+			else if( paramType.isTypedCharacter() )
 			{
 				// Choix aléatoire d'un charactère
 
@@ -821,7 +864,7 @@ void SolverFactory::setModel(EvaluationEnvironment & ENV, APExecutionData & anED
 //						<< SEND_EXIT;
 			}
 
-			else if( paramType->isTypedMachine() )
+			else if( paramType.isTypedMachine() )
 			{
 				paramsRF.setData((itParam)->getOffset(),
 						RuntimeLib::RID_ENVIRONMENT);
@@ -846,14 +889,12 @@ void SolverFactory::setModel(EvaluationEnvironment & ENV, APExecutionData & anED
 }
 
 
-void SolverFactory::resetModel(APExecutionData & anED)
+void SolverFactory::resetModel(ExecutionData & anED)
 {
 	ParametersRuntimeForm & paramsRF = anED.getWritableParametersRuntimeForm();
 
-	TableOfInstanceOfData::const_raw_iterator itParam =
-			paramsRF.getParameters().begin();
-	TableOfInstanceOfData::const_raw_iterator endParam =
-			paramsRF.getParameters().end();
+	TableOfInstanceOfData::ref_iterator itParam = paramsRF.getParameters().begin();
+	TableOfInstanceOfData::ref_iterator endParam = paramsRF.getParameters().end();
 	for( ; itParam != endParam ; ++itParam )
 	{
 		(itParam)->getwModifier().setFeatureFinal( true );
@@ -862,7 +903,7 @@ void SolverFactory::resetModel(APExecutionData & anED)
 
 
 
-void SolverFactory::setRuntimeParametersSolvingValues(APExecutionData & anED)
+void SolverFactory::setRuntimeParametersSolvingValues(ExecutionData & anED)
 {
 	theSymbolicED = anED;
 
@@ -877,18 +918,48 @@ void SolverFactory::setRuntimeParametersSolvingValues(APExecutionData & anED)
 	{
 		(itVar)->getwModifier().setFeatureFinal( false );
 
-//		if( (itVar) != paramsRF.rawVariable((itVar)->getOffset()) )
-//		{
-//			AVM_OS_COUT << ":?!?> " << (itVar)->getFullyQualifiedNameID()
-//					<< " (param: " << paramsRF.rawVariable(
-//						(itVar)->getOffset())->getFullyQualifiedNameID() << ")"
-//					<< " = " << paramsRF.getData((itVar)->getOffset()).str()
-//					<< " <- " << thePCParameterValues[offset].str()
-//					<< std::endl;
-//		}
+		if( (itVar)->getOffset() >= paramsRF.getVariables().size() )
+		{
+AVM_IF_DEBUG_FLAG( SMT_SOLVING )
+	AVM_OS_TRACE << "SolverFactory:>setting runtime parameters solving values"
+			<< std::endl << anED.getExecutionContext()->str() << std::endl
+			<< "\tAdding (parameter , value) @ " << (itVar)->getOffset()
+			<< " : " << (itVar)->getFQNameID()
+			<< " = " << thePCParameterValues[offset] << std::endl;
+AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
-		paramsRF.setData((itVar)->getOffset(), thePCParameterValues[offset]);
+				paramsRF.appendParameter(*itVar, thePCParameterValues[offset]);
+		}
+		else if( (itVar) != paramsRF.rawVariable((itVar)->getOffset()) )
+		{
+AVM_IF_DEBUG_FLAG( SMT_SOLVING )
+	AVM_OS_TRACE << "SolverFactory:>setting runtime parameters solving values"
+			<< std::endl << anED.getExecutionContext()->str() << std::endl
+			<< "\tAdding (parameter , value) @ " << (itVar)->getOffset()
+			<< " : " << (itVar)->getFQNameID()
+			<< " = " << thePCParameterValues[offset] << std::endl;
+AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
+
+			paramsRF.appendParameter(*itVar, thePCParameterValues[offset]);
+		}
+		else
+		{
+			paramsRF.setData((itVar)->getOffset(), thePCParameterValues[offset]);
+		}
 	}
+
+//!@!UNDO
+//	paramsRF.incrRefCount();
+//	anED.saveParametersRuntimeForm( & paramsRF );
+
+//AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , SOLVING , TRACE )
+//	AVM_OS_TRACE << "Après setRuntimeParametersSolvingValues : paramsRF ..." << EOL_FLUSH;
+//	//	aTraceEC->getExecutionData().toStreamData(AVM_OS_TRACE);
+//	paramsRF.toStreamData(anED, AVM_OS_TRACE);
+//
+//	AVM_OS_TRACE << "Après setRuntimeParametersSolvingValues : theSymbolicED ..." << EOL_FLUSH;
+//	theSymbolicED.getParametersRuntimeForm().toStreamData(anED, AVM_OS_TRACE);
+//AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , SOLVING , TRACE )
 }
 
 
@@ -897,8 +968,8 @@ void SolverFactory::updateRuntimeParametersValues(const BF & aValue)
 	BFVector exprVariableVector;
 	ExpressionFactory::collectVariable(aValue, exprVariableVector);
 
-	const ParametersRuntimeForm & paramsRF =
-			theSymbolicED->getParametersRuntimeForm();
+	ParametersRuntimeForm & paramsRF =
+			theSymbolicED.getWritableParametersRuntimeForm();
 
 	BFVector::raw_iterator< InstanceOfData > itVar = exprVariableVector.begin();
 	BFVector::raw_iterator< InstanceOfData > endVar = exprVariableVector.end();
@@ -911,6 +982,10 @@ void SolverFactory::updateRuntimeParametersValues(const BF & aValue)
 			if( (itVar)->hasValue() )
 			{
 				paramsRF.setData((itVar)->getOffset(), (itVar)->getValue());
+			}
+			else if( (itVar)->getOffset() >= paramsRF.getVariables().size() )
+			{
+					paramsRF.appendParameter((*itVar), (*itVar));
 			}
 			else
 			{
@@ -925,9 +1000,9 @@ void SolverFactory::updateRuntimeParametersValues(const BF & aValue)
 void SolverFactory::finalizeRuntimeParameters()
 {
 	TableOfInstanceOfData::const_raw_iterator itVar =
-			theSymbolicED->getParametersRuntimeForm().getVariables().begin();
+			theSymbolicED.getParametersRuntimeForm().getVariables().begin();
 	TableOfInstanceOfData::const_raw_iterator endVar =
-			theSymbolicED->getParametersRuntimeForm().getVariables().end();
+			theSymbolicED.getParametersRuntimeForm().getVariables().end();
 	for( ; itVar != endVar ; ++itVar )
 	{
 		(itVar)->getwModifier().setFeatureFinal( true );
@@ -941,23 +1016,21 @@ void SolverFactory::finalizeRuntimeParameters()
 // EXECUTION DATA NEWFRESH
 ////////////////////////////////////////////////////////////////////////////
 
-APExecutionData SolverFactory::solveNewfresh(SolverDef::SOLVER_KIND aSolverKind,
+ExecutionData SolverFactory::solveNewfresh(SolverDef::SOLVER_KIND aSolverKind,
 		EvaluationEnvironment & ENV, const ExecutionContext & anEC,
 		const BF & aCondition)
 {
-	APExecutionData anED = anEC.getAPExecutionData();
+	ExecutionData anED = anEC.getExecutionData();
 
 	ParametersRuntimeForm & paramsRF = anED.getWritableParametersRuntimeForm();
 
 	BF value;
-	TableOfInstanceOfData::const_raw_iterator itParam =
-			paramsRF.getParameters().begin();
-	TableOfInstanceOfData::const_raw_iterator endParam =
-			paramsRF.getParameters().end();
+	TableOfInstanceOfData::ref_iterator itParam = paramsRF.getParameters().begin();
+	TableOfInstanceOfData::ref_iterator endParam = paramsRF.getParameters().end();
 	TableOfData::const_iterator itValue = paramsRF.getDataTable()->begin();
 	for( ; itParam != endParam ; ++itParam, ++itValue )
 	{
-		value  = (*itValue);
+		value = (*itValue);
 
 		(itParam)->getwModifier().setFeatureFinal( false );
 
@@ -965,9 +1038,9 @@ APExecutionData SolverFactory::solveNewfresh(SolverDef::SOLVER_KIND aSolverKind,
 		{
 			/* OK:> value is numeric */
 		}
-		else if( value != (itParam) )
+		else if( value != (*itParam) )
 		{
-			if( ENV.eval(anED, anED->getSystemRID(), value) )
+			if( ENV.eval(anED, anED.getSystemRID(), value) )
 			{
 				paramsRF.setData((itParam)->getOffset(), ENV.outVAL);
 			}
@@ -988,6 +1061,68 @@ APExecutionData SolverFactory::solveNewfresh(SolverDef::SOLVER_KIND aSolverKind,
 	}
 
 	return( anED );
+}
+
+
+////////////////////////////////////////////////////////////////////////////
+// TO_SMT
+////////////////////////////////////////////////////////////////////////////
+
+bool SolverFactory::to_smt(OutStream & os,
+		const BF & aCondition, SolverDef::SOLVER_KIND aSolverKind)
+{
+	switch( aSolverKind )
+	{
+#if defined( _AVM_SOLVER_CVC4_ )
+		case SolverDef::SOLVER_CVC4_KIND:
+		case SolverDef::SOLVER_CVC_KIND:
+		{
+			CVC4Solver aSolver(true /*to set option << produce-models >>*/);
+
+			return( aSolver.to_smt(os, aCondition) );
+		}
+#endif /* _AVM_SOLVER_CVC4_ */
+
+
+#if( defined( _AVM_SOLVER_Z3_ ) or defined( _AVM_SOLVER_Z3_C_ ) )
+		case SolverDef::SOLVER_Z3_KIND:
+		{
+			Z3Solver aSolver;
+
+			return aSolver.to_smt(os, aCondition);
+		}
+#endif /* _AVM_SOLVER_Z3_ */
+
+
+#if defined( _AVM_SOLVER_YICES_V2_ )
+		case SolverDef::SOLVER_YICES2_KIND:
+		case SolverDef::SOLVER_YICES_KIND:
+		{
+			Yices2Solver aSolver;
+
+			return aSolver.to_smt(os, aCondition);
+		}
+#endif /* _AVM_SOLVER_YICES_V2_ */
+
+
+#if defined( _AVM_SOLVER_OMEGA_ )
+		case SolverDef::SOLVER_OMEGA_KIND:
+#endif /* _AVM_SOLVER_OMEGA_ */
+
+
+		default:
+		{
+			AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( theDefaultSolver4ModelsProduction )
+					<< "SolverFactory::to_smt:> Unknown solver << "
+					<< SolverDef::strSolver( aSolverKind )
+					<< " >> in this executable and and there are no default alternative solver !"
+					<< SEND_EXIT;
+
+			return theDefaultSolver4ModelsProduction->to_smt(os, aCondition);
+		}
+	}
+
+	return false;
 }
 
 

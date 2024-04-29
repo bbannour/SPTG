@@ -30,31 +30,45 @@ namespace sep
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-BF CommunicationDependency::getCommunicationCode(
-		AvmProgram * anAvmProgram, const BFCode & aCode,
-		bool (*isCom)(AvmCode * comCode), bool & hasMutableSchedule )
+BF CommunicationDependency::getCommunicationCodeOfTargetActivity(
+		const AvmProgram & anAvmProgram,
+		const BFCode & aCode, AVM_OPCODE activityOpCode,
+		bool (*isCom)(const AvmCode & comCode), bool & hasMutableSchedule)
 {
-	if( aCode.invalid() )
+	const ExecutableForm * targetExec = StatementFactory::
+				getActivityTargetExecutable(anAvmProgram, (* aCode));
+
+	if( targetExec != nullptr )
 	{
-		//!! NOTHING
-		return( BF::REF_NULL );
+		return( getCommunicationCode((* targetExec),
+				targetExec->getOnActivity(activityOpCode),
+				isCom, hasMutableSchedule) );
 	}
-	else if( isCom(aCode) )
+
+	return( BF::REF_NULL );
+}
+
+BF CommunicationDependency::getCommunicationCode(
+		const AvmProgram & anAvmProgram, const BFCode & aCode,
+		bool (*isCom)(const AvmCode & comCode), bool & hasMutableSchedule )
+{
+	if( isCom(* aCode) )
 	{
 		return( aCode );
 	}
 	else
 	{
-		ExecutableForm * activityExec = NULL;
+		AVM_OPCODE activityOpCode = ( anAvmProgram.isScopeTransition()
+				? AVM_OPCODE_NULL : aCode.getAvmOpCode() );
 
-		switch( anAvmProgram->isScopeTransition() ? //is< AvmTransition >()
-				AVM_OPCODE_NULL : aCode->getAvmOpCode() )
+		switch( activityOpCode )
 		{
 			case AVM_OPCODE_SCHEDULE_INVOKE:
 			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
+				const ExecutableForm * activityExec =
+						StatementFactory::getActivityTargetExecutable(
+								anAvmProgram, (* aCode));
+				if( activityExec != nullptr )
 				{
 					if( activityExec->isMutableSchedule() )
 					{
@@ -62,7 +76,7 @@ BF CommunicationDependency::getCommunicationCode(
 					}
 					else
 					{
-						getCommunicationCode(activityExec,
+						getCommunicationCode(*activityExec,
 								activityExec->getOnSchedule(), isCom,
 								hasMutableSchedule );
 					}
@@ -73,184 +87,74 @@ BF CommunicationDependency::getCommunicationCode(
 
 			case AVM_OPCODE_INVOKE_TRANSITION:
 			{
+				const AvmProgram & argProgram =
+						aCode->first().to< AvmProgram >();
+
 				// Pour éviter les récursions infinis !!!
 				if( isCom == (& CommunicationDependency::isCommunicationCode) )
 				{
-					return( aCode->first().to_ptr< AvmProgram >()
-							->getCommunicationCode() );
+					return( argProgram.getCommunicationCode() );
 				}
 				else if( isCom ==
 						(& CommunicationDependency::isInternalCommunicationCode) )
 				{
-					return( aCode->first().to_ptr< AvmProgram >()
-							->getCommunicationCode() );
+					return( argProgram.getCommunicationCode() );
 				}
 				else if( isCom == (& CommunicationDependency::isEnvironmentCom) )
 				{
-					return( aCode->first().to_ptr< AvmProgram >()
-							->getEnvironmentCom() );
+					return( argProgram.getEnvironmentCom() );
 				}
 				else if( isCom ==
 						(& CommunicationDependency::isEnvironmentInputCom) )
 				{
-					return( aCode->first().to_ptr< AvmProgram >()
-							->getEnvironmentInputCom() );
+					return( argProgram.getEnvironmentInputCom() );
 				}
 				else if( isCom ==
 						(& CommunicationDependency::isEnvironmentOutputCom) )
 				{
-					return( aCode->first().to_ptr< AvmProgram >()
-							->getEnvironmentOutputCom() );
+					return( argProgram.getEnvironmentOutputCom() );
 				}
 
 				else
 				{
-					return( getCommunicationCode(
-							aCode->first().to_ptr< AvmProgram >(),
-							aCode->first().to_ptr< AvmProgram >()->getCode(),
-							isCom, hasMutableSchedule) );
+					return( getCommunicationCode(argProgram,
+							argProgram.getCode(), isCom, hasMutableSchedule) );
 				}
 
 				return( BF::REF_NULL );
 			}
 
 			case AVM_OPCODE_IRUN:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					return( getCommunicationCode(activityExec,
-							activityExec->getOnIRun(), isCom,
-							hasMutableSchedule) );
-				}
-
-				return( BF::REF_NULL );
-			}
 			case AVM_OPCODE_RUN:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					return( getCommunicationCode(activityExec,
-							activityExec->getOnRun(), isCom,
-							hasMutableSchedule) );
-				}
-
-				return( BF::REF_NULL );
-			}
 			case AVM_OPCODE_RTC:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					return( getCommunicationCode(activityExec,
-							activityExec->getOnRtc(), isCom,
-							hasMutableSchedule) );
-				}
-
-				return( BF::REF_NULL );
-			}
 
 			case AVM_OPCODE_IENABLE_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					return( getCommunicationCode(activityExec,
-							activityExec->getOnIEnable(), isCom,
-							hasMutableSchedule) );
-				}
-
-				return( BF::REF_NULL );
-			}
 			case AVM_OPCODE_ENABLE_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					return( getCommunicationCode(activityExec,
-							activityExec->getOnEnable(), isCom,
-							hasMutableSchedule) );
-				}
-
-				return( BF::REF_NULL );
-			}
 
 			case AVM_OPCODE_IDISABLE_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					return( getCommunicationCode(activityExec,
-							activityExec->getOnIDisable(), isCom,
-							hasMutableSchedule) );
-				}
-
-				return( BF::REF_NULL );
-			}
 			case AVM_OPCODE_DISABLE_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					return( getCommunicationCode(activityExec,
-							activityExec->getOnDisable(), isCom,
-							hasMutableSchedule) );
-				}
-
-				return( BF::REF_NULL );
-			}
 
 			case AVM_OPCODE_IABORT_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					return( getCommunicationCode(activityExec,
-							activityExec->getOnIAbort(), isCom,
-							hasMutableSchedule) );
-				}
-
-				return( BF::REF_NULL );
-			}
 			case AVM_OPCODE_ABORT_INVOKE:
 			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					return( getCommunicationCode(activityExec,
-							activityExec->getOnAbort(), isCom,
-							hasMutableSchedule) );
-				}
-
-				return( BF::REF_NULL );
+				return( getCommunicationCodeOfTargetActivity(anAvmProgram,
+						aCode, activityOpCode, isCom, hasMutableSchedule) );
 			}
 
 
 			default:
 			{
-				if( OperatorManager::isSchedule(aCode->getOperator()) )
+				if( OperatorManager::isSchedule(aCode.getOperator()) )
 				{
-					AvmCode::this_container_type listOfComArg;
+					AvmCode::OperandCollectionT listOfComArg;
 					BF comArg;
 
-					AvmCode::iterator itArg = aCode->begin();
-					AvmCode::iterator itEndArg = aCode->end();
-					for( ; itArg != itEndArg ; ++itArg )
+					for( auto & itOperand : aCode->getOperands() )
 					{
-						if( (*itArg).is< AvmCode >() )
+						if( itOperand.is< AvmCode >() )
 						{
 							comArg = getCommunicationCode(anAvmProgram,
-								(*itArg).bfCode(), isCom, hasMutableSchedule);
+								itOperand.bfCode(), isCom, hasMutableSchedule);
 
 							if( comArg.valid() )
 							{
@@ -262,7 +166,7 @@ BF CommunicationDependency::getCommunicationCode(
 					if( listOfComArg.populated() )
 					{
 						return( ExpressionConstructor::newCode(
-								aCode->getOperator(), listOfComArg) );
+								aCode.getOperator(), listOfComArg) );
 					}
 					else if( listOfComArg.nonempty() )
 					{
@@ -283,35 +187,48 @@ BF CommunicationDependency::getCommunicationCode(
  * Collect information about
  * static input enabled communication
  */
-void CommunicationDependency::computeInputEnabledCom(AvmProgram * anAvmProgram,
-		ListOfInstanceOfPort & inputEnabledCom, AvmCode * aCode,
-		bool (*isCom)(AvmCode * comCode), bool & hasMutableSchedule )
+void CommunicationDependency::computeInputEnabledComOfTargetActivity(
+		const AvmProgram & anAvmProgram, ListOfInstanceOfPort & inputEnabledCom,
+		const AvmCode & aCode, AVM_OPCODE activityOpCode,
+		bool (*isCom)(const AvmCode & comCode), bool & hasMutableSchedule)
 {
-	if( aCode == NULL )
+	const ExecutableForm * targetExec = StatementFactory::
+			getActivityTargetExecutable(anAvmProgram, aCode);
+
+	if( targetExec != nullptr )
 	{
-		//!! NOTHING
-		return;
+		computeInputEnabledCom((* targetExec), inputEnabledCom,
+			targetExec->getOnActivity(activityOpCode),
+			isCom, hasMutableSchedule );
 	}
-	else if( isCom(aCode) )
+
+}
+
+void CommunicationDependency::computeInputEnabledCom(
+		const AvmProgram & anAvmProgram,
+		ListOfInstanceOfPort & inputEnabledCom, const AvmCode & aCode,
+		bool (*isCom)(const AvmCode & comCode), bool & hasMutableSchedule )
+{
+	if( isCom(aCode) )
 	{
-		if( aCode->first().is< InstanceOfPort >() )
+		if( aCode.first().is< InstanceOfPort >() )
 		{
-			inputEnabledCom.add_union( aCode->first().to_ptr< InstanceOfPort >() );
+			inputEnabledCom.add_unique(
+					aCode.first().to_ptr< InstanceOfPort >() );
 		}
 	}
 	else
 	{
-		ExecutableForm * activityExec = NULL;
-
-		switch( ( anAvmProgram->isScopeTransition() && //is< AvmTransition >()
-				(not OperatorManager::isSchedule(aCode->getOperator())) ) ?
-						AVM_OPCODE_NULL : aCode->getAvmOpCode() )
+		AVM_OPCODE activityOpCode = ( anAvmProgram.isScopeTransition()
+				&& (not OperatorManager::isSchedule(aCode.getOperator())) )
+						? AVM_OPCODE_NULL : aCode.getAvmOpCode();
+		switch( activityOpCode )
 		{
 			case AVM_OPCODE_SCHEDULE_INVOKE:
 			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
+				const ExecutableForm * activityExec = StatementFactory::
+						getActivityTargetExecutable(anAvmProgram, aCode);
+				if( activityExec != nullptr )
 				{
 					if( activityExec->isMutableSchedule() )
 					{
@@ -319,7 +236,7 @@ void CommunicationDependency::computeInputEnabledCom(AvmProgram * anAvmProgram,
 					}
 					else
 					{
-						computeInputEnabledCom(activityExec, inputEnabledCom,
+						computeInputEnabledCom((* activityExec), inputEnabledCom,
 								activityExec->getOnSchedule(), isCom,
 								hasMutableSchedule );
 					}
@@ -330,166 +247,62 @@ void CommunicationDependency::computeInputEnabledCom(AvmProgram * anAvmProgram,
 
 			case AVM_OPCODE_INVOKE_TRANSITION:
 			{
+				const AvmProgram & argProgram =
+						aCode.first().to< AvmProgram >();
+
 				// Pour éviter les récursions infinis !!!
 				if( isCom == (& CommunicationDependency::isInputEnabledCom) )
 				{
-					inputEnabledCom.add_union( aCode->first().
-							to_ptr< AvmProgram >()->getInputEnabledCom() );
+					inputEnabledCom.add_unique( argProgram.getInputEnabledCom() );
 				}
 				else if( isCom == (& CommunicationDependency::isInputEnabledSave) )
 				{
-					inputEnabledCom.add_union( aCode->first().
-							to_ptr< AvmProgram >()->getInputEnabledSave() );
+					inputEnabledCom.add_unique( argProgram.getInputEnabledSave() );
 				}
 
 				else if( isCom == (& CommunicationDependency::isInputCom) )
 				{
-					inputEnabledCom.add_union( aCode->first().
-							to_ptr< AvmProgram >()->getInputCom() );
+					inputEnabledCom.add_unique( argProgram.getInputCom() );
 				}
 				else if( isCom == (& CommunicationDependency::isOutputCom) )
 				{
-					inputEnabledCom.add_union( aCode->first().
-							to_ptr< AvmProgram >()->getOutputCom() );
+					inputEnabledCom.add_unique( argProgram.getOutputCom() );
 				}
 
 				else
 				{
-					computeInputEnabledCom(
-							aCode->first().to_ptr< AvmProgram >(),
-							inputEnabledCom,
-							aCode->first().to_ptr< AvmProgram >()->getCode(),
-							isCom, hasMutableSchedule );
+					computeInputEnabledCom(argProgram, inputEnabledCom,
+							argProgram.getCode(), isCom, hasMutableSchedule );
 				}
 
 				break;
 			}
 
 			case AVM_OPCODE_IRUN:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					computeInputEnabledCom(activityExec, inputEnabledCom,
-							activityExec->getOnIRun(), isCom,
-							hasMutableSchedule );
-				}
-
-				break;
-			}
 			case AVM_OPCODE_RUN:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					computeInputEnabledCom(activityExec, inputEnabledCom,
-							activityExec->getOnRun(), isCom,
-							hasMutableSchedule );
-				}
-
-				break;
-			}
 			case AVM_OPCODE_RTC:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode)) != NULL )
-				{
-					computeInputEnabledCom(activityExec, inputEnabledCom,
-							activityExec->getOnRtc(), isCom,
-							hasMutableSchedule );
-				}
-
-				break;
-			}
 
 			case AVM_OPCODE_IENABLE_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					computeInputEnabledCom(activityExec, inputEnabledCom,
-							activityExec->getOnIEnable(), isCom,
-							hasMutableSchedule );
-				}
-
-				break;
-			}
 			case AVM_OPCODE_ENABLE_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					computeInputEnabledCom(activityExec, inputEnabledCom,
-							activityExec->getOnEnable(), isCom,
-							hasMutableSchedule );
-				}
-
-				break;
-			}
 
 			case AVM_OPCODE_IDISABLE_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					computeInputEnabledCom(activityExec, inputEnabledCom,
-							activityExec->getOnIDisable(), isCom,
-							hasMutableSchedule );
-				}
-
-				break;
-			}
 			case AVM_OPCODE_DISABLE_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					computeInputEnabledCom(activityExec, inputEnabledCom,
-							activityExec->getOnDisable(), isCom,
-							hasMutableSchedule );
-				}
-
-				break;
-			}
 
 			case AVM_OPCODE_IABORT_INVOKE:
-			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					computeInputEnabledCom(activityExec, inputEnabledCom,
-							activityExec->getOnIAbort(), isCom,
-							hasMutableSchedule );
-				}
-
-				break;
-			}
 			case AVM_OPCODE_ABORT_INVOKE:
 			{
-				if( (activityExec = StatementFactory::
-						getActivityTargetExecutable(anAvmProgram, aCode))
-						!= NULL )
-				{
-					computeInputEnabledCom(activityExec, inputEnabledCom,
-							activityExec->getOnAbort(), isCom,
-							hasMutableSchedule );
-				}
+				computeInputEnabledComOfTargetActivity(
+						anAvmProgram, inputEnabledCom, aCode,
+						activityOpCode, isCom, hasMutableSchedule );
 
 				break;
 			}
 
 
 			// Justification of these switch statement
-//			switch( ( anAvmProgram->isScopeTransition() &&
-//					(not OperatorManager::isSchedule(aCode->getOperator())) ) ?
-//							AVM_OPCODE_NULL : aCode->getAvmOpCode() )
+//			switch( ( anAvmProgram.isScopeTransition() &&
+//					(not OperatorManager::isSchedule(aCode.getOperator())) ) ?
+//							AVM_OPCODE_NUaCode.ode->getAvmOpCode() )
 
 			case AVM_OPCODE_SEQUENCE:
 			case AVM_OPCODE_ATOMIC_SEQUENCE:
@@ -498,19 +311,17 @@ void CommunicationDependency::computeInputEnabledCom(AvmProgram * anAvmProgram,
 			{
 				ListOfInstanceOfPort localPorts;
 
-				AvmCode::const_iterator itArg = aCode->begin();
-				AvmCode::const_iterator itEndArg = aCode->end();
-				for( ; itArg != itEndArg ; ++itArg )
+				for( auto & itOperand : aCode.getOperands() )
 				{
-					if( (*itArg).is< AvmCode >() )
+					if( itOperand.is< AvmCode >() )
 					{
 						computeInputEnabledCom( anAvmProgram, localPorts,
-								(*itArg).to_ptr< AvmCode >(), isCom,
+								itOperand.to< AvmCode >(), isCom,
 								hasMutableSchedule );
 
 						if( localPorts.nonempty() )
 						{
-							inputEnabledCom.add_union(localPorts);
+							inputEnabledCom.add_unique(localPorts);
 
 							break;
 						}
@@ -523,19 +334,21 @@ void CommunicationDependency::computeInputEnabledCom(AvmProgram * anAvmProgram,
 			{
 				ListOfInstanceOfPort localPorts;
 
-				AvmCode::const_reverse_iterator itArg = aCode->rbegin();
-				AvmCode::const_reverse_iterator itEndArg = aCode->rend();
+				AvmCode::OperandCollectionT::const_reverse_iterator itArg =
+						aCode.getOperands().rbegin();
+				AvmCode::OperandCollectionT::const_reverse_iterator itEndArg =
+						aCode.getOperands().rend();
 				for( ; itArg != itEndArg ; ++itArg )
 				{
 					if( (*itArg).is< AvmCode >() )
 					{
 						computeInputEnabledCom( anAvmProgram, localPorts,
-								(*itArg).to_ptr< AvmCode >(), isCom,
+								(*itArg).to< AvmCode >(), isCom,
 								hasMutableSchedule );
 
 						if( localPorts.nonempty() )
 						{
-							inputEnabledCom.add_union(localPorts);
+							inputEnabledCom.add_unique(localPorts);
 
 							break;
 						}
@@ -546,17 +359,15 @@ void CommunicationDependency::computeInputEnabledCom(AvmProgram * anAvmProgram,
 
 			default:
 			{
-				if( OperatorManager::isSchedule(aCode->getOperator()) )
+				if( OperatorManager::isSchedule(aCode.getOperator()) )
 				{
-					AvmCode::const_iterator itArg = aCode->begin();
-					AvmCode::const_iterator itEndArg = aCode->end();
-					for( ; itArg != itEndArg ; ++itArg )
+					for( const auto & itOperand : aCode.getOperands() )
 					{
-						if( (*itArg).is< AvmCode >() )
+						if( itOperand.is< AvmCode >() )
 						{
 							computeInputEnabledCom(
 									anAvmProgram, inputEnabledCom,
-									(*itArg).to_ptr< AvmCode >(), isCom,
+									itOperand.to< AvmCode >(), isCom,
 									hasMutableSchedule );
 						}
 					}
@@ -576,33 +387,28 @@ void CommunicationDependency::computeInputEnabledCom(AvmProgram * anAvmProgram,
 void CommunicationDependency::computeInputEnabledCom(
 		const ExecutionData & anED, const RuntimeID & aRID,
 		ListOfInstanceOfPort & inputEnabledCom,
-		AvmCode * aCode, bool (*isCom)(AvmCode * comCode) )
+		const AvmCode & aCode, bool (*isCom)(const AvmCode & comCode) )
 {
-	if( aCode == NULL )
+	if( isCom(aCode) )
 	{
-		//!! NOTHING
-		return;
-	}
-	else if( isCom(aCode) )
-	{
-		if( aCode->first().is< InstanceOfPort >() )
+		if( aCode.first().is< InstanceOfPort >() )
 		{
-			inputEnabledCom.add_union(
-					aCode->first().to_ptr< InstanceOfPort >() );
+			inputEnabledCom.add_unique(
+					aCode.first().to_ptr< InstanceOfPort >() );
 		}
 	}
 	else
 	{
 		RuntimeID activityRID;
 
-		switch( aCode->getAvmOpCode() )
+		switch( aCode.getAvmOpCode() )
 		{
 			case AVM_OPCODE_SCHEDULE_INVOKE:
 			{
 				if( (activityRID = StatementFactory::
 						getActivityTargetRID(anED, aRID, aCode)).valid() )
 				{
-					if( activityRID.getExecutable()->isMutableSchedule() )
+					if( activityRID.refExecutable().isMutableSchedule() )
 					{
 						computeInputEnabledCom(anED, activityRID, inputEnabledCom,
 							anED.getRuntimeFormOnSchedule(activityRID), isCom);
@@ -610,7 +416,7 @@ void CommunicationDependency::computeInputEnabledCom(
 					else
 					{
 						computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-								activityRID.getExecutable()->getOnSchedule(),
+								activityRID.refExecutable().getOnSchedule(),
 								isCom );
 					}
 				}
@@ -620,33 +426,32 @@ void CommunicationDependency::computeInputEnabledCom(
 
 			case AVM_OPCODE_INVOKE_TRANSITION:
 			{
+				const AvmProgram & argProgram =
+						aCode.first().to< AvmProgram >();
+
 				// Pour éviter les récursions infinis !!!
 				if( isCom == (& CommunicationDependency::isInputEnabledCom) )
 				{
-					inputEnabledCom.add_union( aCode->first().
-							to_ptr< AvmProgram >()->getInputEnabledCom() );
+					inputEnabledCom.add_unique( argProgram.getInputEnabledCom() );
 				}
 				else if( isCom == (& CommunicationDependency::isInputEnabledSave) )
 				{
-					inputEnabledCom.add_union( aCode->first().
-							to_ptr< AvmProgram >()->getInputEnabledSave() );
+					inputEnabledCom.add_unique( argProgram.getInputEnabledSave() );
 				}
 
 				else if( isCom == (& CommunicationDependency::isInputCom) )
 				{
-					inputEnabledCom.add_union( aCode->first().
-							to_ptr< AvmProgram >()->getInputCom() );
+					inputEnabledCom.add_unique( argProgram.getInputCom() );
 				}
 				else if( isCom == (& CommunicationDependency::isOutputCom) )
 				{
-					inputEnabledCom.add_union( aCode->first().
-							to_ptr< AvmProgram >()->getOutputCom() );
+					inputEnabledCom.add_unique( argProgram.getOutputCom() );
 				}
 
 				else
 				{
-					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-						aCode->first().to_ptr< AvmProgram >()->getCode(), isCom);
+					computeInputEnabledCom(anED, activityRID,
+							inputEnabledCom, argProgram.getCode(), isCom);
 				}
 
 				break;
@@ -658,7 +463,7 @@ void CommunicationDependency::computeInputEnabledCom(
 						getActivityTargetRID(anED, aRID, aCode)).valid() )
 				{
 					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-							activityRID.getExecutable()->getOnIRun(), isCom );
+							activityRID.refExecutable().getOnIRun(), isCom );
 				}
 
 				break;
@@ -669,7 +474,7 @@ void CommunicationDependency::computeInputEnabledCom(
 						getActivityTargetRID(anED, aRID, aCode)).valid() )
 				{
 					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-							activityRID.getExecutable()->getOnRun(), isCom );
+							activityRID.refExecutable().getOnRun(), isCom );
 				}
 
 				break;
@@ -677,10 +482,10 @@ void CommunicationDependency::computeInputEnabledCom(
 			case AVM_OPCODE_RTC:
 			{
 				if( (activityRID = StatementFactory::
-						getActivityTargetRID(anED, aRID, aCode)) != NULL )
+						getActivityTargetRID(anED, aRID, aCode)) != nullptr )
 				{
 					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-							activityRID.getExecutable()->getOnRtc(), isCom );
+							activityRID.refExecutable().getOnRtc(), isCom );
 				}
 
 				break;
@@ -692,7 +497,7 @@ void CommunicationDependency::computeInputEnabledCom(
 						getActivityTargetRID(anED, aRID, aCode)).valid() )
 				{
 					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-							activityRID.getExecutable()->getOnIEnable(),
+							activityRID.refExecutable().getOnIEnable(),
 							isCom );
 				}
 
@@ -704,7 +509,7 @@ void CommunicationDependency::computeInputEnabledCom(
 						getActivityTargetRID(anED, aRID, aCode)).valid() )
 				{
 					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-							activityRID.getExecutable()->getOnEnable(),
+							activityRID.refExecutable().getOnEnable(),
 							isCom );
 				}
 
@@ -717,7 +522,7 @@ void CommunicationDependency::computeInputEnabledCom(
 						getActivityTargetRID(anED, aRID, aCode)).valid() )
 				{
 					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-							activityRID.getExecutable()->getOnIDisable(),
+							activityRID.refExecutable().getOnIDisable(),
 							isCom );
 				}
 
@@ -729,7 +534,7 @@ void CommunicationDependency::computeInputEnabledCom(
 						getActivityTargetRID(anED, aRID, aCode)).valid() )
 				{
 					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-							activityRID.getExecutable()->getOnDisable(),
+							activityRID.refExecutable().getOnDisable(),
 							isCom );
 				}
 
@@ -742,7 +547,7 @@ void CommunicationDependency::computeInputEnabledCom(
 						getActivityTargetRID(anED, aRID, aCode)).valid() )
 				{
 					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-							activityRID.getExecutable()->getOnIAbort(),
+							activityRID.refExecutable().getOnIAbort(),
 							isCom );
 				}
 
@@ -754,7 +559,7 @@ void CommunicationDependency::computeInputEnabledCom(
 						getActivityTargetRID(anED, aRID, aCode)).valid() )
 				{
 					computeInputEnabledCom(anED, activityRID, inputEnabledCom,
-							activityRID.getExecutable()->getOnAbort(), isCom );
+							activityRID.refExecutable().getOnAbort(), isCom );
 				}
 
 				break;
@@ -768,18 +573,16 @@ void CommunicationDependency::computeInputEnabledCom(
 			{
 				ListOfInstanceOfPort localPorts;
 
-				AvmCode::const_iterator itArg = aCode->begin();
-				AvmCode::const_iterator itEndArg = aCode->end();
-				for( ; itArg != itEndArg ; ++itArg )
+				for( auto & itOperand : aCode.getOperands() )
 				{
-					if( (*itArg).is< AvmCode >() )
+					if( itOperand.is< AvmCode >() )
 					{
 						computeInputEnabledCom(anED, aRID, localPorts,
-								(*itArg).to_ptr< AvmCode >(), isCom );
+								itOperand.to< AvmCode >(), isCom );
 
 						if( localPorts.nonempty() )
 						{
-							inputEnabledCom.add_union(localPorts);
+							inputEnabledCom.add_unique(localPorts);
 
 							break;
 						}
@@ -792,18 +595,20 @@ void CommunicationDependency::computeInputEnabledCom(
 			{
 				ListOfInstanceOfPort localPorts;
 
-				AvmCode::const_reverse_iterator itArg = aCode->rbegin();
-				AvmCode::const_reverse_iterator itEndArg = aCode->rend();
+				AvmCode::OperandCollectionT::const_reverse_iterator itArg =
+						aCode.getOperands().rbegin();
+				AvmCode::OperandCollectionT::const_reverse_iterator itEndArg =
+						aCode.getOperands().rend();
 				for( ; itArg != itEndArg ; ++itArg )
 				{
 					if( (*itArg).is< AvmCode >() )
 					{
 						computeInputEnabledCom(anED, aRID, localPorts,
-								(*itArg).to_ptr< AvmCode >(), isCom );
+								(*itArg).to< AvmCode >(), isCom );
 
 						if( localPorts.nonempty() )
 						{
-							inputEnabledCom.add_union(localPorts);
+							inputEnabledCom.add_unique(localPorts);
 
 							break;
 						}
@@ -814,17 +619,15 @@ void CommunicationDependency::computeInputEnabledCom(
 
 			default:
 			{
-				if( OperatorManager::isSchedule(aCode->getOperator()) )
+				if( OperatorManager::isSchedule(aCode.getOperator()) )
 				{
-					AvmCode::const_iterator itArg = aCode->begin();
-					AvmCode::const_iterator itEndArg = aCode->end();
-					for( ; itArg != itEndArg ; ++itArg )
+					for( auto & itOperand : aCode.getOperands() )
 					{
-						if( (*itArg).is< AvmCode >() )
+						if( itOperand.is< AvmCode >() )
 						{
 							computeInputEnabledCom(
 									anED, aRID, inputEnabledCom,
-									(*itArg).to_ptr< AvmCode >(), isCom );
+									itOperand.to< AvmCode >(), isCom );
 						}
 					}
 				}

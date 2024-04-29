@@ -17,20 +17,19 @@
 
 #include <common/BF.h>
 
-#include <fml/executable/AvmLambda.h>
-#include <fml/executable/AvmProgram.h>
 #include <fml/executable/ExecutableForm.h>
 #include <fml/executable/ExecutableSystem.h>
 
 #include <fml/expression/AvmCode.h>
 
+
 namespace sep
 {
 
-
-bool MachineDependency::computeVariableDependency(ExecutableSystem * anExecSystem)
+bool MachineDependency::computeVariableDependency(
+		const ExecutableSystem & anExecSystem)
 {
-	const TableOfExecutableForm & executables = anExecSystem->getExecutables();
+	const TableOfExecutableForm & executables = anExecSystem.getExecutables();
 
 	TableOfExecutableForm::const_raw_iterator itExec = executables.begin();
 	TableOfExecutableForm::const_raw_iterator endExec = executables.end();
@@ -47,21 +46,22 @@ bool MachineDependency::computeVariableDependency(ExecutableSystem * anExecSyste
 
 
 
-bool MachineDependency::computeVariableDependency(ExecutableForm * anExecutable)
+bool MachineDependency::computeVariableDependency(
+		const ExecutableForm & anExecutable)
 {
-	avm_size_t endOffset = anExecutable->getTransition().size();
-	for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+	std::size_t endOffset = anExecutable.getTransition().size();
+	for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 	{
-		if( not computeVariableDependency( anExecutable->rawTransition(offset) ) )
+		if( not computeVariableDependency( anExecutable.rawTransition(offset) ) )
 		{
 			return( false );
 		}
 	}
 
-	endOffset = anExecutable->getProgram().size();
-	for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+	endOffset = anExecutable.getProgram().size();
+	for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 	{
-		if( not computeVariableDependency( anExecutable->rawProgram(offset) ) )
+		if( not computeVariableDependency( anExecutable.rawProgram(offset) ) )
 		{
 			return( false );
 		}
@@ -72,13 +72,13 @@ bool MachineDependency::computeVariableDependency(ExecutableForm * anExecutable)
 
 
 bool MachineDependency::isVariableDependency(
-		ExecutableForm * anExecutable, AvmCode * aCode)
+		const ExecutableForm & anExecutable, AvmCode * aCode)
 {
 	return( false );
 }
 
 bool MachineDependency::isVariableDependency(
-		ExecutableForm * anExecutable, const BF & aVar)
+		const ExecutableForm & anExecutable, const BF & aVar)
 {
 	return( false );
 }

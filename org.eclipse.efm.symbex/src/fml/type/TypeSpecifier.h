@@ -58,11 +58,13 @@ namespace sep
 
 class BF;
 
-class TypeAliasSpecifier;
+class BaseSymbolTypeSpecifier;
+
 class ClassTypeSpecifier;
-class EnumTypeSpecifier;
 class ContainerTypeSpecifier;
+class EnumTypeSpecifier;
 class IntervalTypeSpecifier;
+class TypeAliasSpecifier;
 class UnionTypeSpecifier;
 
 class InstanceOfData;
@@ -74,6 +76,7 @@ class TableOfSymbol;
 class TypeSpecifier :
 		public BasePointer< BaseTypeSpecifier >,
 		public ITypeSpecifier,
+		AVM_INJECT_STATIC_NULL_REFERENCE( TypeSpecifier ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( TypeSpecifier )
 {
 
@@ -82,12 +85,6 @@ private:
 	 * TYPEDEF
 	 */
 	typedef  BasePointer< BaseTypeSpecifier >  base_this_type;
-
-public:
-	/**
-	 * DEFAULT NULL
-	 */
-	static TypeSpecifier REF_NULL;
 
 
 
@@ -133,19 +130,46 @@ public:
 		//!!! NOTHING
 	}
 
+	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static TypeSpecifier & nullref()
+	{
+		static 	TypeSpecifier _NULL_;
+
+		return( _NULL_ );
+	}
+
 
 	/**
 	 * GETTER
 	 * pointer
 	 */
-	inline pointer rawType() const
+	inline operator pointer_t () const
 	{
-		return( static_cast< pointer >( mPTR ) );
+		return( static_cast< pointer_t >( mPTR ) );
 	}
 
-	operator BaseTypeSpecifier * () const
+	inline const_pointer_t rawType() const
 	{
-		return( static_cast< pointer >( mPTR ) );
+		return( static_cast< const_pointer_t >( mPTR ) );
+	}
+
+
+	inline operator const_reference_t () const
+	{
+		return( static_cast< const_reference_t >( *mPTR ) );
+	}
+
+	inline const_reference_t refType() const
+	{
+		return( static_cast< const_reference_t & >( *mPTR ) );
+	}
+
+	inline reference_t refType()
+	{
+		return( static_cast< reference_t & >( *mPTR ) );
 	}
 
 
@@ -157,7 +181,7 @@ public:
 	 */
 	TypeSpecifier & operator=(const BF & aType);
 
-	TypeSpecifier & operator=(pointer aPtr)
+	inline TypeSpecifier & operator=(pointer_t aPtr)
 	{
 		if( mPTR != aPtr )
 		{
@@ -179,25 +203,25 @@ public:
 	 * GETTER - SETTER
 	 * theTypeSpecifier
 	 */
-	inline virtual const BaseTypeSpecifier * thisTypeSpecifier() const
+	inline virtual const BaseTypeSpecifier & thisTypeSpecifier() const override
 	{
-		return( rawType() );
+		return( refType() );
 	}
 
-	inline BaseTypeSpecifier * getTypeSpecifier() const
+	inline const BaseTypeSpecifier & getTypeSpecifier() const
 	{
-		return( rawType() );
+		return( refType() );
 	}
 
 
-	inline virtual avm_type_specifier_kind_t getTypeSpecifierKind() const
+	inline virtual avm_type_specifier_kind_t getTypeSpecifierKind() const override
 	{
-		return( rawType()->getTypeSpecifierKind() );
+		return( refType().getTypeSpecifierKind() );
 	}
 
 	inline void setSpecifierKind(avm_type_specifier_kind_t aSpecifierKind)
 	{
-		rawType()->setSpecifierKind( aSpecifierKind );
+		refType().setSpecifierKind( aSpecifierKind );
 	}
 
 
@@ -205,14 +229,14 @@ public:
 	 * GETTER - SETTER
 	 * theSize
 	 */
-	inline avm_size_t size() const
+	inline std::size_t size() const
 	{
-		return( rawType()->size() );
+		return( refType().size() );
 	}
 
-	inline void setSize(avm_size_t aSize)
+	inline void setSize(std::size_t aSize)
 	{
-		rawType()->setSize( aSize );
+		refType().setSize( aSize );
 	}
 
 
@@ -220,28 +244,28 @@ public:
 	 * GETTER - SETTER
 	 * theDataSize
 	 */
-	inline avm_size_t getDataSize() const
+	inline std::size_t getDataSize() const
 	{
-		return( rawType()->getDataSize() );
+		return( refType().getDataSize() );
 	}
 
-	inline void setDataSize(avm_size_t aDataSize)
+	inline void setDataSize(std::size_t aDataSize)
 	{
-		rawType()->setDataSize( aDataSize );
+		refType().setDataSize( aDataSize );
 	}
 
 	/**
 	 * GETTER - SETTER
 	 * theBitSize
 	 */
-	inline avm_size_t getBitSize() const
+	inline std::size_t getBitSize() const
 	{
-		return( rawType()->getBitSize() );
+		return( refType().getBitSize() );
 	}
 
-	inline void setBitSize(avm_size_t aBitSize)
+	inline void setBitSize(std::size_t aBitSize)
 	{
-		rawType()->setBitSize( aBitSize );
+		refType().setBitSize( aBitSize );
 	}
 
 
@@ -251,7 +275,7 @@ public:
 	 */
 	inline void updateSize()
 	{
-		rawType()->updateSize();
+		refType().updateSize();
 	}
 
 
@@ -259,14 +283,14 @@ public:
 	 * CONSTRAINT generation
 	 * for a given parameter
 	 */
-	bool couldGenerateConstraint() const
+	inline bool couldGenerateConstraint() const
 	{
-		return( rawType()->couldGenerateConstraint() );
+		return( refType().couldGenerateConstraint() );
 	}
 
-	BF genConstraint(const BF & aParam) const
+	inline BF genConstraint(const BF & aParam) const
 	{
-		return( rawType()->genConstraint( aParam ) );
+		return( refType().genConstraint( aParam ) );
 	}
 
 
@@ -276,17 +300,17 @@ public:
 	 */
 	inline const BF & getDefaultValue() const
 	{
-		return( rawType()->getDefaultValue() );
+		return( refType().getDefaultValue() );
 	}
 
 	inline bool hasDefaultValue() const
 	{
-		return( rawType()->hasDefaultValue() );
+		return( refType().hasDefaultValue() );
 	}
 
 	inline void setDefaultValue(const BF & aDefaultValue)
 	{
-		rawType()->setDefaultValue( aDefaultValue );
+		refType().setDefaultValue( aDefaultValue );
 	}
 
 
@@ -296,24 +320,23 @@ public:
 	 */
 	inline const BF & getConstraint() const
 	{
-		return( rawType()->getConstraint() );
+		return( refType().getConstraint() );
 	}
 
 	inline bool hasConstraint() const
 	{
-		return( rawType()->hasConstraint() );
+		return( refType().hasConstraint() );
 	}
 
 	inline void saveConstraint(Element * aConstraint)
 	{
-		rawType()->saveConstraint( aConstraint );
+		refType().saveConstraint( aConstraint );
 	}
 
 	inline void setConstraint(const BF & aConstraint)
 	{
-		rawType()->setConstraint( aConstraint );
+		refType().setConstraint( aConstraint );
 	}
-
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -328,9 +351,7 @@ public:
 
 	TypeAliasSpecifier * rawAlias() const;
 
-//	operator TypeAliasSpecifier * () const;
-
-	BaseTypeSpecifier * aliasTypeSpecifier() const;
+	const BaseTypeSpecifier & aliasTypeSpecifier() const;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -356,7 +377,7 @@ public:
 	const Symbol & getSymbolByNameID(const std::string & aNameID) const;
 
 	const Symbol & getSymbolByAstElement(
-			const ObjectElement * objElement) const;
+			const ObjectElement & astElement) const;
 
 	bool hasSymbol() const;
 
@@ -396,7 +417,7 @@ public:
 	const Symbol & getSymbolDataByValue(const BF & aValue) const;
 
 
-	avm_size_t getRandomSymbolOffset();
+	std::size_t getRandomSymbolOffset();
 
 	const Symbol & getRandomSymbolData();
 
@@ -467,9 +488,9 @@ public:
 	 */
 	inline void formatStream(OutStream & os, const BF & bfValue) const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
-			rawType()->formatStream( os , bfValue );
+			refType().formatStream( os , bfValue );
 		}
 		else
 		{
@@ -477,11 +498,11 @@ public:
 		}
 	}
 
-	void formatStream(OutStream & os, const ArrayBF & arrayValue) const
+	inline void formatStream(OutStream & os, const ArrayBF & arrayValue) const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
-			rawType()->formatStream( os , arrayValue );
+			refType().formatStream( os , arrayValue );
 		}
 		else
 		{
@@ -492,14 +513,14 @@ public:
 
 	inline std::string strT() const
 	{
-		return( ( mPTR != NULL ) ? rawType()->strT() : "Type::strT<null>" );
+		return( ( mPTR != nullptr ) ? refType().strT() : "Type::strT<null>" );
 	}
 
-	inline void strHeader(OutStream & os) const
+	inline void strHeader(OutStream & os) const override
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
-			rawType()->strHeader(os);
+			refType().strHeader(os);
 		}
 		else
 		{
@@ -508,11 +529,11 @@ public:
 	}
 
 
-	virtual void toStream(OutStream & os) const
+	virtual void toStream(OutStream & os) const override
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
-			rawType()->toStream( os );
+			refType().toStream( os );
 		}
 		else
 		{
@@ -520,11 +541,11 @@ public:
 		}
 	}
 
-	virtual void toFscn(OutStream & os) const
+	inline virtual void toFscn(OutStream & os) const
 	{
-		if( mPTR != NULL )
+		if( mPTR != nullptr )
 		{
-			rawType()->toFscn( os );
+			refType().toFscn( os );
 		}
 		else
 		{
@@ -533,7 +554,7 @@ public:
 	}
 
 	inline virtual std::string toString(
-			const AvmIndent & indent = AVM_TAB_INDENT) const
+			const AvmIndent & indent = AVM_TAB_INDENT) const override
 	{
 		StringOutStream oss(indent);
 
@@ -542,16 +563,16 @@ public:
 		return( oss.str() );
 	}
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
-		return( ( mPTR != NULL ) ? rawType()->str() : "Type::str<null>" );
+		return( ( mPTR != nullptr ) ? refType().str() : "Type::str<null>" );
 	}
 
 	inline virtual std::string strNum(
-			uint8_t precision = AVM_MUMERIC_PRECISION) const
+			uint8_t precision = AVM_MUMERIC_PRECISION) const override
 	{
-		return( ( mPTR != NULL ) ?
-				rawType()->strNum(precision) : "Type::num<null>" );
+		return( ( mPTR != nullptr ) ?
+				refType().strNum(precision) : "Type::num<null>" );
 	}
 
 };
@@ -560,7 +581,7 @@ public:
 /**
  * operator<<
  */
-AVM_OS_STREAM( TypeSpecifier )
+//AVM_OS_STREAM( TypeSpecifier )
 
 
 } /* namespace sep */

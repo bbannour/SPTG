@@ -39,7 +39,7 @@ class TableOfSymbol :
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( TableOfSymbol )
 {
 
-	AVM_DECLARE_CLONABLE_CLASS( TableOfSymbol )
+	AVM_DECLARE_CLONABLE_BASE_CLASS( TableOfSymbol )
 
 
 public:
@@ -64,7 +64,7 @@ public:
 		//!! NOTHING
 	}
 
-	TableOfSymbol(avm_size_t aSize)
+	TableOfSymbol(std::size_t aSize)
 	: AvmObject( ),
 	ContainerOfSymbol( aSize )
 	{
@@ -121,7 +121,7 @@ public:
 	/**
 	 * GETTER
 	 */
-	inline const Symbol & get(avm_size_t offset) const
+	inline const Symbol & get(std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_OFFSET_EXIT( offset, ContainerOfSymbol::size() )
 				<< "Unbound Symbol offset !!!" << std::endl << str_header( this )
@@ -130,26 +130,49 @@ public:
 		return( ContainerOfSymbol::at(offset) );
 	}
 
+	inline const Symbol & getByID(const std::string & anID) const
+	{
+		if( anID.find('.') == std::string::npos )
+		{
+			return( getByNameID( anID ) );
+		}
+		else
+		{
+			return( getByQualifiedNameID( anID ) );
+		}
+	}
 
 	const Symbol & getByFQNameID(
-			const std::string & aFullyQualifiedNameID) const;
+			const std::string & aFullyQualifiedNameID,
+			bool enabledOnlyLocationComparisonElse = true) const;
 
 
 	const Symbol & getByQualifiedNameID(
 			const std::string & aQualifiedNameID) const;
 
-	avm_size_t getByQualifiedNameID(
+	std::size_t getByQualifiedNameID(
 			const std::string & aQualifiedNameID,
 			ListOfSymbol & listofFound) const;
 
 
-	const Symbol & getByNameID(const std::string & id) const;
+	const Symbol & getByNameID(const std::string & aNameID) const;
 
-	avm_size_t getByNameID(
+	std::size_t getByNameID(
 			const std::string & id, ListOfSymbol & listofFound) const;
 
 
-	const Symbol & getByAstElement(const ObjectElement * objElement) const;
+	const Symbol & getByAstElement(const ObjectElement & astElement) const;
+
+
+	/**
+	 * GETTER
+	 * Element by aREGEX
+	 */
+	std::size_t getByQualifiedNameREGEX(
+			const std::string & aREGEX, ListOfSymbol & listofFound) const;
+
+	std::size_t getByNameREGEX(
+			const std::string & aREGEX, ListOfSymbol & listofFound) const;
 
 
 	/**
@@ -163,7 +186,7 @@ public:
 		return( ContainerOfSymbol::back() );
 	}
 
-	inline void append(const Symbol & aSymbol)
+	inline void append(const Symbol & aSymbol) override
 	{
 		ContainerOfSymbol::append( aSymbol );
 	}
@@ -177,6 +200,9 @@ public:
 	{
 		ContainerOfSymbol::append( dataList );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using VectorOfSymbol::append;
 
 
 	/**
@@ -198,12 +224,14 @@ public:
 	 */
 	bool contains(ConstPointerBaseT aSymbol) const;
 
-	bool contains(const Symbol & aSymbol) const
+	bool contains(const Symbol & aSymbol) const override
 	{
 		return( ContainerOfSymbol::contains(aSymbol) );
 	}
 
 	bool contains(const BF & aSymbol) const;
+
+	using VectorOfSymbol::contains;
 
 
 	/**
@@ -211,7 +239,7 @@ public:
 	 */
 	virtual void strHeader(OutStream & os) const;
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 	virtual void toFscn(OutStream & os) const;
 

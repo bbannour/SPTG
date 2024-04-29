@@ -27,6 +27,7 @@
 #include <fml/template/TimedMachine.h>
 
 #include <fml/runtime/ExecutionConfiguration.h>
+#include <fml/runtime/ExecutionInformation.h>
 
 #include <fml/trace/TraceFactory.h>
 #include <fml/trace/TraceSequence.h>
@@ -39,6 +40,153 @@
 
 namespace sep
 {
+
+/**
+ * CONSTRUCTOR
+ * Default
+ */
+TraceFilter::TraceFilter(const std::string & aNameID)
+: mNameID( aNameID ),
+mainTracePointFiter( OperatorManager::OPERATOR_OR ),
+
+listOfBufferTracePoint( ),
+listOfVariableTracePoint( ),
+
+////////////////////////////////////////////////////////////////////////////
+// Computing Variables
+objectDeltaTime( nullptr ),
+
+mStepHeaderSeparatorFlag( false ),
+mStepBeginSeparatorFlag( false ),
+mStepEndSeparatorFlag( false ),
+
+mConditionFlag( false ),
+mDecisionFlag( false ),
+
+mPathConditionFlag( false ),
+mPathTimedConditionFlag( false ),
+
+mPathConditionLeafNodeFlag( false ),
+mPathTimedConditionLeafNodeFlag( false ),
+
+mNodeConditionFlag( false ),
+mNodeTimedConditionFlag( false ),
+
+mNodeConditionLeafNodeFlag( false ),
+mNodeTimedConditionLeafNodeFlag( false ),
+
+mTimeFilterFlag( false ),
+mAssignFilterFlag( false ),
+mNewfreshFilterFlag( false ),
+
+mInputEnvFilterFlag( false ),
+mInputRdvFilterFlag( false ),
+
+mInputExternalFilterFlag( false ),
+mInputInternalFilterFlag( false ),
+mInputFilterFlag( false ),
+
+mOutputEnvFilterFlag( false ),
+mOutputRdvFilterFlag( false ),
+
+mOutputExternalFilterFlag( false ),
+mOutputInternalFilterFlag( false ),
+mOutputFilterFlag( false ),
+
+mMachineFilterFlag( false ),
+mStateFilterFlag( false ),
+mStatemachineFilterFlag( false ),
+mTransitionFilterFlag( false ),
+mRoutineFilterFlag( false ),
+
+mComExternalFilterFlag( false ),
+mComInternalFilterFlag( false ),
+mComFilterFlag( false ),
+
+mComBufferFilterFlag( false ),
+
+mMetaInformalFilterFlag( false ),
+mMetaTraceFilterFlag( false ),
+mMetaDebugFilterFlag( false ),
+
+mIOTraceFilterFlag( false ),
+mRunnableFilterFlag( false ),
+
+mExecutionInformationFilterFlag( false )
+{
+	//!! NOTHING
+}
+
+
+
+/**
+ * [RE]SET TracePoint ID
+ */
+void TraceFilter::resetTracePointID()
+{
+	for( auto & itPoint : mainTracePointFiter.getOperands() )
+	{
+		resetTracePointID( itPoint );
+	}
+
+	for( auto & itPoint : listOfVariableTracePoint )
+	{
+		itPoint->to< TracePoint >().tpid = 0;
+	}
+	for( auto & itPoint : listOfBufferTracePoint )
+	{
+		itPoint->to< TracePoint >().tpid = 0;
+	}
+}
+
+void TraceFilter::resetTracePointID(BF & point)
+{
+	if( point.is< TracePoint >() )
+	{
+		point.to< TracePoint >().tpid = 0;
+	}
+	else if( point.is< AvmCode >() )
+	{
+		for( auto & itPoint :point.to< AvmCode >().getOperands() )
+		{
+			resetTracePointID( itPoint );
+		}
+	}
+}
+
+void TraceFilter::setTracePointID(std::size_t intialTPID)
+{
+	for( auto & itPoint : mainTracePointFiter.getOperands() )
+	{
+		setTracePointID( itPoint , intialTPID );
+	}
+
+	for( auto & itPoint : listOfVariableTracePoint )
+	{
+		itPoint->to< TracePoint >().tpid = intialTPID++;
+	}
+	for( auto & itPoint : listOfBufferTracePoint )
+	{
+		itPoint->to< TracePoint >().tpid = intialTPID++;
+	}
+}
+
+void TraceFilter::setTracePointID(BF & point, std::size_t & intialTPID)
+{
+	if( point.is< TracePoint >() )
+	{
+		point.to< TracePoint >().tpid = intialTPID++;
+	}
+	else if( point.is< AvmCode >() )
+	{
+		for( auto & itPoint :point.to< AvmCode >().getOperands() )
+		{
+			setTracePointID( itPoint , intialTPID );
+		}
+	}
+}
+
+
 
 /*
 prototype process::trace_generator as &avm::processor.TRACE_GENERATOR is
@@ -76,21 +224,22 @@ endprototype
 // CONFIGURE API
 ////////////////////////////////////////////////////////////////////////////////
 
+#define LEAF_PATH_REGEX_PATTERN     "(leaf|end|last|tail)"
+
 #define LEAF_NODE_REGEX_PATTERN     "\\S?(leaf|end|last|tail)\\S?"
 
 #define LEAF_NODE_DEFAULT_PATTERN   ":leaf:"
 
 
 bool TraceFilter::configure(EvaluationEnvironment & ENV,
-		WObject * wfParameterObject, WObject * wfTraceObject)
+		const WObject * wfParameterObject, const WObject * wfTraceObject)
 {
-
-	if( TimedMachine::SYSTEM_VAR_DELTA_TIME != NULL )
+	if( TimedMachine::SYSTEM_VAR_DELTA_TIME != nullptr )
 	{
 		ExecutableQuery XQuery( ENV.getConfiguration() );
 
-		objectDeltaTime = XQuery.getDataByAstElement(
-			TimedMachine::SYSTEM_VAR_DELTA_TIME).to_ptr< InstanceOfData >();
+		objectDeltaTime = XQuery.getVariableByAstElement(
+			(* TimedMachine::SYSTEM_VAR_DELTA_TIME)).to_ptr< InstanceOfData >();
 	}
 
 	// default main combinator
@@ -98,16 +247,33 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
 
 	// Configuration of TRACE
 	TraceFactory traceFactory(ENV.getConfiguration(),
-			ENV, wfParameterObject, NULL, objectDeltaTime);
-	if( not traceFactory.configure(wfTraceObject, (& mainTracePointFiter)) )
+			ENV, wfParameterObject, ExecutableForm::nullref(), objectDeltaTime);
+	if( not traceFactory.configure(
+			wfTraceObject, mainTracePointFiter.getOperands()) )
 	{
 //		return( false );
 	}
+
+	listOfBufferTracePoint.append( traceFactory.getBufferTracePoints() );
 
 	listOfVariableTracePoint.append( traceFactory.getVariableTracePoints() );
 
 
 	// Initialize Filter Point Flags
+	mStepHeaderSeparatorFlag = Query::hasRegexWProperty(
+			wfTraceObject, CONS_WID2("step", "header"));
+
+	mStepBeginSeparatorFlag = Query::hasRegexWProperty(
+			wfTraceObject, CONS_WID2("step", "begin"));
+
+	mStepEndSeparatorFlag = Query::hasRegexWProperty(
+			wfTraceObject, CONS_WID2("step", "end"));
+
+
+	mExecutionInformationFilterFlag = Query::hasRegexWProperty(wfTraceObject,
+			ENUM_TRACE_POINT::ATTRIBUTE_EXECUTION_INFORMATION_ID);
+
+
 	mConditionFlag = Query::hasRegexWProperty(wfTraceObject, "condition");
 	mDecisionFlag = mConditionFlag
 			|| Query::hasRegexWProperty(wfTraceObject, "decision");
@@ -129,7 +295,7 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
 
 		mPathConditionLeafNodeFlag = mPathConditionFlag
 				|| Query::hasRegexWProperty(wfTraceObject,
-					CONS_WID3("path", "condition", "(leaf|end|last|tail)"))
+					CONS_WID3("path", "condition", LEAF_PATH_REGEX_PATTERN))
 				|| REGEX_MATCH(Query::getRegexWPropertyString(
 							wfTraceObject, CONS_WID2("path", "condition"), ""),
 					LEAF_NODE_REGEX_PATTERN );
@@ -142,7 +308,7 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
 
 		mNodeConditionLeafNodeFlag = mNodeConditionFlag
 				|| Query::hasRegexWProperty(wfTraceObject,
-					CONS_WID3("node", "condition", "(leaf|end|last|tail)"))
+					CONS_WID3("node", "condition", LEAF_PATH_REGEX_PATTERN))
 				|| REGEX_MATCH(Query::getRegexWPropertyString(
 							wfTraceObject, CONS_WID2("node", "condition"), ""),
 					LEAF_NODE_REGEX_PATTERN );
@@ -156,7 +322,7 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
 
 		mPathTimedConditionLeafNodeFlag = mPathTimedConditionFlag
 				|| Query::hasRegexWProperty(wfTraceObject, CONS_WID4(
-						"path", "timed", "condition", "(leaf|end|last|tail)") )
+						"path", "timed", "condition", LEAF_PATH_REGEX_PATTERN) )
 				|| REGEX_MATCH(Query::getRegexWPropertyString(wfTraceObject,
 						CONS_WID3("path", "timed", "condition"), ""),
 					LEAF_NODE_REGEX_PATTERN );
@@ -170,7 +336,7 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
 
 		mNodeTimedConditionLeafNodeFlag = mNodeTimedConditionFlag
 				|| Query::hasRegexWProperty(wfTraceObject, CONS_WID4(
-						"node", "timed", "condition", "(leaf|end|last|tail)") )
+						"node", "timed", "condition", LEAF_PATH_REGEX_PATTERN) )
 				|| REGEX_MATCH(Query::getRegexWPropertyString(wfTraceObject,
 						CONS_WID3("node", "timed", "condition"), ""),
 					LEAF_NODE_REGEX_PATTERN );
@@ -179,7 +345,7 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
 	mTimeFilterFlag = Query::hasRegexWProperty(wfTraceObject, "\\S?time");
 
 	mAssignFilterFlag = listOfVariableTracePoint.nonempty()
-			|| Query::hasWPropertyString(wfTraceObject, "variable", "var")
+			|| Query::hasRegexWPropertyString(wfTraceObject, "var(iable)?")
 			|| Query::hasWPropertyString(wfTraceObject, "assign"  );
 
 	mNewfreshFilterFlag = Query::hasWPropertyString(wfTraceObject, "newfresh");
@@ -250,6 +416,10 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
 		mComFilterFlag = mInputFilterFlag || mOutputFilterFlag || containsCom();
 	}
 
+	mComBufferFilterFlag = listOfBufferTracePoint.nonempty()
+			|| Query::hasWPropertyString(wfTraceObject, "buffer");
+
+
 	mMachineFilterFlag =
 			Query::hasWPropertyString(wfTraceObject, "machine");
 	mStateFilterFlag =
@@ -262,29 +432,36 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
 	mRoutineFilterFlag =
 			Query::hasWPropertyString(wfTraceObject, "routine");
 
-	mIOTraceFilterFlag = mComFilterFlag || mNewfreshFilterFlag;
 
-	mRunnableFilterFlag = mMachineFilterFlag
-			|| mStateFilterFlag      || mStatemachineFilterFlag
-			|| mTransitionFilterFlag || mRoutineFilterFlag;
+	mMetaTraceFilterFlag =
+			Query::hasWPropertyString(wfTraceObject, "trace");
+
+	mMetaDebugFilterFlag =
+			Query::hasWPropertyString(wfTraceObject, "debug");
+
+
+	resetIOTracePoint();
+
+	resetRunnablePoint();
 
 
 	// Update Filter Point Flags
 	//updateFilterFlags();
 
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRACE )
-	AVM_OS_TRACE << "TraceFilter:> "; toStream(AVM_OS_TRACE);
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRACE )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , CONFIGURING , TRACE )
+	AVM_OS_LOG << "TraceFilter:> "; toStream(AVM_OS_LOG);
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , CONFIGURING , TRACE )
 
 	return( true );
 }
 
 
 bool TraceFilter::configure(EvaluationEnvironment & ENV,
-		WObject * wfParameterObject, const std::string & aWSequenceNameID,
+		const WObject * wfParameterObject,
+		const std::string & aWSequenceNameID,
 		const std::string & aWSequenceElseNameID)
 {
-	WObject * theTRACE = Query::getWSequenceOrElse(
+	const WObject * theTRACE = Query::getWSequenceOrElse(
 			wfParameterObject, aWSequenceNameID, aWSequenceElseNameID);
 
 //	if( (theTRACE == WObject::_NULL_) || theTRACE->hasnoOwnedElement() )
@@ -335,8 +512,10 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
 //	mTransitionFilterFlag = contains(ENUM_TRACE_POINT::TRACE_TRANSITION_NATURE);
 //	mRoutineFilterFlag    = contains(ENUM_TRACE_POINT::TRACE_ROUTINE_NATURE);
 //
-//
 //	mComFilterFlag = mInputFilterFlag || mOutputFilterFlag || containsCom();
+//
+//  mComBufferFilterFlag = listOfBufferTracePoint.nonempty()
+//			|| contains(ENUM_TRACE_POINT::TRACE_BUFFER_NATURE);
 //
 //	mIOTraceFilterFlag = mComFilterFlag || mNewfreshFilterFlag;
 //
@@ -351,13 +530,11 @@ bool TraceFilter::configure(EvaluationEnvironment & ENV,
  * Filter Point Flags
  */
 bool TraceFilter::contains(ENUM_TRACE_POINT::TRACE_NATURE nature,
-		AVM_OPCODE op, AvmCode * aCode) const
+		AVM_OPCODE op, const AvmCode & aCode) const
 {
-	AvmCode::const_iterator it = aCode->begin();
-	AvmCode::const_iterator endIt = aCode->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		if( contains(nature, op, (*it)) )
+		if( contains(nature, op, itOperand) )
 		{
 			return( true );
 		}
@@ -372,23 +549,21 @@ bool TraceFilter::contains(ENUM_TRACE_POINT::TRACE_NATURE nature,
 	if( arg.is< TracePoint >() )
 	{
 		return( ((nature == ENUM_TRACE_POINT::TRACE_UNDEFINED_NATURE) ||
-						(arg.to_ptr< TracePoint >()->nature == nature)) &&
+						(arg.to< TracePoint >().nature == nature)) &&
 				((op == AVM_OPCODE_NULL) ||
-						(arg.to_ptr< TracePoint >()->op == op)) );
+						(arg.to< TracePoint >().op == op)) );
 	}
 
 	else if( arg.is< AvmCode >() )
 	{
-		return( contains(nature, op, arg.to_ptr< AvmCode >()) );
+		return( contains(nature, op, arg.to< AvmCode >()) );
 	}
 
 	else if( arg.is< TraceSequence >() )
 	{
-		BFList::const_iterator it = arg.to_ptr< TraceSequence >()->points.begin();
-		BFList::const_iterator endIt = arg.to_ptr< TraceSequence >()->points.end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itPoint : arg.to< TraceSequence >().points )
 		{
-			if( contains(nature, op, (*it)) )
+			if( contains(nature, op, itPoint) )
 			{
 				return( true );
 			}
@@ -403,40 +578,40 @@ bool TraceFilter::contains(ENUM_TRACE_POINT::TRACE_NATURE nature,
 // FILTERING API : check if TRACE POINT pass
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraceFilter::pass(TracePoint * filterTP, TracePoint * aTP)
+bool TraceFilter::pass(const TracePoint & filterTP, const TracePoint & aTP) const
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 	AVM_OS_TRACE << TAB;
-	filterTP->toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
 	AVM_OS_TRACE << END_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
-	if( aTP->isVirtual() )
+	if( aTP.isVirtual() )
 	{
 		return( true );
 	}
-	else if( (filterTP->nature != ENUM_TRACE_POINT::TRACE_UNDEFINED_NATURE) )
+	else if( (filterTP.nature != ENUM_TRACE_POINT::TRACE_UNDEFINED_NATURE) )
 	{
-		if( (filterTP->nature != aTP->nature) )
+		if( (filterTP.nature != aTP.nature) )
 		{
-			if( aTP->nature == ENUM_TRACE_POINT::TRACE_MACHINE_NATURE )
+			if( aTP.nature == ENUM_TRACE_POINT::TRACE_MACHINE_NATURE )
 			{
-				if( filterTP->nature == ENUM_TRACE_POINT::TRACE_STATE_NATURE )
+				if( filterTP.nature == ENUM_TRACE_POINT::TRACE_STATE_NATURE )
 				{
-					if( (aTP->object != NULL)
-						&& (not aTP->object->to< InstanceOfMachine >()->
+					if( (aTP.object != nullptr)
+						&& (not aTP.object->to_ptr< InstanceOfMachine >()->
 								getSpecifier().isFamilyComponentState()) )
 					{
 						return( false );
 					}
 				}
-				else if( filterTP->nature ==
+				else if( filterTP.nature ==
 						ENUM_TRACE_POINT::TRACE_STATEMACHINE_NATURE )
 				{
-					if( (aTP->object != NULL)
-						&& (not aTP->object->to< InstanceOfMachine >()->
+					if( (aTP.object != nullptr)
+						&& (not aTP.object->to_ptr< InstanceOfMachine >()->
 							getSpecifier().isComponentStatemachine()) )
-//						&& (not aTP->object->to< InstanceOfMachine >()->
+//						&& (not aTP.object->to_ptr< InstanceOfMachine >()->
 //							getSpecifier().isMocStateTransitionStructure()) )
 					{
 						return( false );
@@ -444,21 +619,21 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 				}
 			}
 
-			else if( (filterTP->nature != ENUM_TRACE_POINT::TRACE_COM_NATURE)
-					|| (not ENUM_TRACE_POINT::is_com(aTP->nature)) )
+			else if( (filterTP.nature != ENUM_TRACE_POINT::TRACE_COM_NATURE)
+					|| (not ENUM_TRACE_POINT::is_com(aTP.nature)) )
 			{
 				return( false );
 			}
 		}
 	}
 
-	if( (filterTP->op != AVM_OPCODE_NULL) && (filterTP->op != aTP->op) )
+	if( (filterTP.op != AVM_OPCODE_NULL) && (filterTP.op != aTP.op) )
 	{
-		switch( filterTP->op )
+		switch( filterTP.op )
 		{
 			case AVM_OPCODE_INPUT:
 			{
-				switch( aTP->op )
+				switch( aTP.op )
 				{
 					case AVM_OPCODE_INPUT:
 					case AVM_OPCODE_INPUT_BROADCAST:
@@ -484,7 +659,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
 			case AVM_OPCODE_OUTPUT:
 			{
-				switch( aTP->op )
+				switch( aTP.op )
 				{
 					case AVM_OPCODE_OUTPUT:
 					case AVM_OPCODE_OUTPUT_BROADCAST:
@@ -508,9 +683,10 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 				break;
 			}
 
+			case AVM_OPCODE_ENABLE_INVOKE:
 			case AVM_OPCODE_ENABLE_SET:
 			{
-				switch( aTP->op )
+				switch( aTP.op )
 				{
 					case AVM_OPCODE_RUN:
 					case AVM_OPCODE_IRUN:
@@ -533,16 +709,16 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 		}
 	}
 
-	if( (filterTP->machine != NULL) && (filterTP->machine != aTP->machine) )
+	if( (filterTP.machine != nullptr) && (filterTP.machine != aTP.machine) )
 	{
-		if( aTP->config != NULL )
+		if( aTP.config.isnotNullref() )
 		{
-			if( filterTP->machine->getSpecifier().isDesignModel() )
+			if( filterTP.machine->getSpecifier().isDesignModel() )
 			{
-				RuntimeID aRID = aTP->config->getRuntimeID();
+				RuntimeID aRID = aTP.config.getRuntimeID();
 
 				while( aRID.valid()
-					&& (aRID.getModelInstance() != filterTP->machine) )
+					&& (aRID.getModelInstance() != filterTP.machine) )
 				{
 					aRID = aRID.getPRID();
 				}
@@ -554,10 +730,10 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 			}
 			else
 			{
-				RuntimeID aRID = aTP->config->getRuntimeID();
+				RuntimeID aRID = aTP.config.getRuntimeID();
 
 				while( aRID.valid() &&
-						(aRID.getInstance() != filterTP->machine) )
+						(aRID.getInstance() != filterTP.machine) )
 				{
 					aRID = aRID.getPRID();
 				}
@@ -570,12 +746,12 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 		}
 	}
 
-	if( (filterTP->object != NULL) && (filterTP->object != aTP->object) )
+	if( (filterTP.object != nullptr) && (filterTP.object != aTP.object) )
 	{
 		return( false );
 	}
 
-	if( filterTP->value.valid() && filterTP->value.isEQ(aTP->value) )
+	if( filterTP.value.valid() && filterTP.value.isEQ(aTP.value) )
 	{
 		return( false );
 	}
@@ -584,20 +760,40 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-// FILTERING API : check if VARIABLE pass
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+// FILTERING API : check if TRANSITION pass
+////////////////////////////////////////////////////////////////////////////
 
-bool TraceFilter::pass(const RuntimeID & aRID, InstanceOfData * aVariable)
+bool TraceFilter::pass(const TracePoint & filterTP,
+		const AvmTransition & aTransition) const
 {
-	if( listOfVariableTracePoint.nonempty() )
-	{
-		ListOfTracePoint::const_iterator it = listOfVariableTracePoint.begin();
-		ListOfTracePoint::const_iterator itEnd = listOfVariableTracePoint.end();
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
+	AVM_OS_TRACE << TAB << "Transition :"
+			<< (filterTP.object == (& aTransition))  << "  ";
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	AVM_OS_TRACE << END_INDENT;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
-		for( ; it != itEnd ; ++it )
+	return( (filterTP.nature == ENUM_TRACE_POINT::TRACE_TRANSITION_NATURE)
+			&& (filterTP.op == AVM_OPCODE_INVOKE_TRANSITION)
+			&& (filterTP.any_object
+//				|| (filterTP.object == nullptr)
+				|| (filterTP.object == (& aTransition))) );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// FILTERING API : check if BUFFER pass
+////////////////////////////////////////////////////////////////////////////////
+
+bool TraceFilter::pass(const RuntimeID & aRID,
+		const InstanceOfBuffer & aBuffer) const
+{
+	if( listOfBufferTracePoint.nonempty() )
+	{
+		for( const auto & itTracePoint : listOfBufferTracePoint )
 		{
-			if( pass(*it, aRID, aVariable) )
+			if( pass(*itTracePoint, aRID, aBuffer) )
 			{
 				return( true );
 			}
@@ -608,31 +804,95 @@ bool TraceFilter::pass(const RuntimeID & aRID, InstanceOfData * aVariable)
 }
 
 
-bool TraceFilter::pass(TracePoint * filterTP,
-		const RuntimeID & aRID, InstanceOfData * aVariable)
+bool TraceFilter::pass(const TracePoint & filterTP,
+		const RuntimeID & aRID, const InstanceOfBuffer & aBuffer) const
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 	AVM_OS_TRACE << TAB;
-	filterTP->toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
 	AVM_OS_TRACE << END_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
-		if( filterTP->nature == ENUM_TRACE_POINT::TRACE_VARIABLE_NATURE )
+		if( filterTP.nature == ENUM_TRACE_POINT::TRACE_BUFFER_NATURE )
 		{
-			if( filterTP->op == AVM_OPCODE_ASSIGN )
+			if( filterTP.op == AVM_OPCODE_ASSIGN )
 			{
 				//!! IGNORED
 			}
 
-
-			if( (filterTP->machine == NULL)
-				|| ( (filterTP->machine == aRID.getInstance())
-					&& filterTP->machine->getSpecifier().hasDesignInstance() )
-				|| ( (filterTP->machine->getExecutable() == aRID.getExecutable())
-					&& filterTP->machine->getSpecifier().hasDesignModel() ) )
+			if( filterTP.any_object
+//				|| (filterTP.object == nullptr)
+				|| (filterTP.object == (& aBuffer)) )
 			{
-				return( filterTP->any_object ||
-						(filterTP->object == aVariable) );
+				if( filterTP.RID.valid() )
+				{
+					return( aRID.hasAsAncestor(filterTP.RID) );
+				}
+				else
+				{
+					return( (filterTP.machine == nullptr)
+						|| filterTP.machine->getSpecifier().isDesignModel()
+						|| aRID.hasAsAncestor(* filterTP.machine) );
+				}
+			}
+		}
+
+		return( false );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// FILTERING API : check if VARIABLE pass
+////////////////////////////////////////////////////////////////////////////////
+
+bool TraceFilter::pass(const RuntimeID & aRID,
+		const InstanceOfData & aVariable) const
+{
+	if( listOfVariableTracePoint.nonempty() )
+	{
+		for( const auto & itTracePoint : listOfVariableTracePoint )
+		{
+			if( pass(*itTracePoint, aRID, aVariable) )
+			{
+				return( true );
+			}
+		}
+	}
+
+	return( false );
+}
+
+
+bool TraceFilter::pass(const TracePoint & filterTP,
+		const RuntimeID & aRID, const InstanceOfData & aVariable) const
+{
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
+	AVM_OS_TRACE << TAB;
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	AVM_OS_TRACE << END_INDENT;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
+
+		if( filterTP.nature == ENUM_TRACE_POINT::TRACE_VARIABLE_NATURE )
+		{
+			if( filterTP.op == AVM_OPCODE_ASSIGN )
+			{
+				//!! IGNORED
+			}
+
+			if( filterTP.any_object
+//				|| (filterTP.object == nullptr)
+				|| (filterTP.object == (& aVariable)) )
+			{
+				if( filterTP.RID.valid() )
+				{
+					return( aRID.hasAsAncestor(filterTP.RID) );
+				}
+				else
+				{
+					return( (filterTP.machine == nullptr)
+						|| filterTP.machine->getSpecifier().isDesignModel()
+						|| aRID.hasAsAncestor(* filterTP.machine) );
+				}
 			}
 		}
 
@@ -645,32 +905,33 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 // a.k.a. ExecutionConfiguration pass
 ////////////////////////////////////////////////////////////////////////////
 
-bool TraceFilter::pass(TracePoint * filterTP,
-		ExecutionConfiguration * anExecConfTP)
+bool TraceFilter::pass(const TracePoint & filterTP,
+		const ExecutionConfiguration & anExecConfTP) const
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 	AVM_OS_TRACE << TAB;
-	filterTP->toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
 	AVM_OS_TRACE << END_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
-	if( anExecConfTP->isAvmCode() )
+	if( anExecConfTP.isAvmCode() )
 	{
-		return( pass(filterTP, anExecConfTP->getAvmCode()) );
+		return( pass(filterTP, anExecConfTP.toAvmCode()) );
 	}
-	else if( anExecConfTP->isTransition() )
+	else if( anExecConfTP.isTransition() )
 	{
-		return( pass(filterTP, anExecConfTP->getRuntimeID(),
-				anExecConfTP->getTransition()) );
+		return( pass(filterTP, anExecConfTP.getRuntimeID(),
+				anExecConfTP.toTransition()) );
 	}
-	else if( anExecConfTP->isOperator() && (filterTP->op != AVM_OPCODE_NULL) )
+	else if( anExecConfTP.isOperator() && (filterTP.op != AVM_OPCODE_NULL) )
 	{
-		AVM_OPCODE opcodeTP = anExecConfTP->getOperator()->getOptimizedOpCode();
+		AVM_OPCODE opcodeTP = anExecConfTP.getOperator().getOptimizedOpCode();
 
-		if( (filterTP->op != AVM_OPCODE_NULL) && (filterTP->op != opcodeTP ) )
+		if( (filterTP.op != AVM_OPCODE_NULL) && (filterTP.op != opcodeTP ) )
 		{
-			switch( filterTP->op )
+			switch( filterTP.op )
 			{
+				case AVM_OPCODE_ENABLE_INVOKE:
 				case AVM_OPCODE_ENABLE_SET:
 				{
 					switch( opcodeTP )
@@ -694,15 +955,15 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 			}
 		}
 
-		if( (filterTP->machine == NULL)
-			|| ( (filterTP->machine ==
-					anExecConfTP->getRuntimeID().getInstance())
-				&& filterTP->machine->getSpecifier().hasDesignInstance() )
-			|| ( (filterTP->machine->getExecutable() ==
-					anExecConfTP->getRuntimeID().getExecutable())
-				&& filterTP->machine->getSpecifier().hasDesignModel() ) )
+		if( filterTP.RID.valid() )
 		{
-			return( true );
+			return( anExecConfTP.getRuntimeID().hasAsAncestor(filterTP.RID) );
+		}
+		else
+		{
+			return( (filterTP.machine == nullptr)
+				|| filterTP.machine->getSpecifier().isDesignModel()
+				|| anExecConfTP.getRuntimeID().hasAsAncestor(* filterTP.machine) );
 		}
 	}
 
@@ -714,23 +975,43 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 // FILTERING API : check if a Compiled Element pass
 ////////////////////////////////////////////////////////////////////////////
 
-bool TraceFilter::pass(TracePoint * filterTP,
-		const RuntimeID & aRID, BaseCompiledForm * anElement)
+bool TraceFilter::pass(
+		const TracePoint & filterTP, const ObjectElement & anElement) const
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 	AVM_OS_TRACE << TAB;
-	filterTP->toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
 	AVM_OS_TRACE << END_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
-	if( (filterTP->machine == NULL)
-		|| ( (filterTP->machine == aRID.getInstance())
-			&& filterTP->machine->getSpecifier().hasDesignInstance() )
-		|| ( (filterTP->machine->getExecutable() == aRID.getExecutable())
-			&& filterTP->machine->getSpecifier().hasDesignModel() ) )
+	return( filterTP.any_object
+//			|| (filterTP.object == nullptr)
+			|| (filterTP.object == (& anElement)) );
+}
+
+bool TraceFilter::pass(const TracePoint & filterTP,
+		const RuntimeID & aRID, const ObjectElement & anElement) const
+{
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
+	AVM_OS_TRACE << TAB;
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	AVM_OS_TRACE << END_INDENT;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
+
+	if( filterTP.any_object
+//		|| (filterTP.object == nullptr)
+		|| (filterTP.object == (& anElement)) )
 	{
-		return( filterTP->any_object ||
-				(filterTP->object == anElement) );
+		if( filterTP.RID.valid() )
+		{
+			return( aRID.hasAsAncestor(filterTP.RID) );
+		}
+		else
+		{
+			return( (filterTP.machine == nullptr)
+				|| filterTP.machine->getSpecifier().isDesignModel()
+				|| aRID.hasAsAncestor(* filterTP.machine) );
+		}
 	}
 
 	return( false );
@@ -738,18 +1019,44 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
 
 ////////////////////////////////////////////////////////////////////////////
-// FILTERING API : check if a Runtime Machine ID pass
+// FILTERING API : check if an AST Element pass
 ////////////////////////////////////////////////////////////////////////////
 
-bool TraceFilter::pass(TracePoint * filterTP, const RuntimeID & aRID)
+bool TraceFilter::pass(const TracePoint & filterTP, const Port & aPort) const
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 	AVM_OS_TRACE << TAB;
-	filterTP->toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
 	AVM_OS_TRACE << END_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
-	switch( filterTP->nature )
+	if( filterTP.any_object || (filterTP.object == (& aPort)) )
+		//|| (filterTP.object == nullptr) )
+	{
+		return true;
+	}
+	else if( filterTP.object->is< InstanceOfPort >() )
+	{
+		return( filterTP.object->to< InstanceOfPort >().isAstElement(aPort) );
+	}
+
+	return false;
+}
+
+
+////////////////////////////////////////////////////////////////////////////
+// FILTERING API : check if a Runtime Machine ID pass
+////////////////////////////////////////////////////////////////////////////
+
+bool TraceFilter::pass(const TracePoint & filterTP, const RuntimeID & aRID) const
+{
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
+	AVM_OS_TRACE << TAB;
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	AVM_OS_TRACE << END_INDENT;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
+
+	switch( filterTP.nature )
 	{
 		case ENUM_TRACE_POINT::TRACE_RUNNABLE_NATURE:
 		case ENUM_TRACE_POINT::TRACE_MACHINE_NATURE:
@@ -782,17 +1089,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 		}
 	}
 
-	if( filterTP->machine == NULL )
+	if( filterTP.RID.valid() )
 	{
-		return( filterTP->any_object
-				|| (filterTP->object == aRID.getInstance()) );
+		return( aRID.hasAsAncestor(filterTP.RID) );
+	}
+	else if( filterTP.machine == nullptr )
+	{
+		return( filterTP.any_object
+//				|| (filterTP.object == nullptr)
+				|| (filterTP.object == aRID.getInstance()) );
 	}
 	else
 	{
-		return( ( (filterTP->machine == aRID.getInstance())
-				&& filterTP->machine->getSpecifier().hasDesignInstance() )
-			|| ( (filterTP->machine->getExecutable() == aRID.getExecutable())
-				&& filterTP->machine->getSpecifier().hasDesignModel() ) );
+		return( ( (filterTP.machine == aRID.getInstance())
+				&& filterTP.machine->getSpecifier().hasDesignInstance() )
+			|| ( (filterTP.machine->getExecutable() == aRID.getExecutable())
+				&& filterTP.machine->getSpecifier().hasDesignModel() ) );
 	}
 
 	return( false );
@@ -802,19 +1114,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 // FILTERING API : check if AVM CODE pass
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraceFilter::pass(TracePoint * filterTP, AvmCode * aCodeTP)
+bool TraceFilter::pass(const TracePoint & filterTP, const AvmCode & aCodeTP) const
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 	AVM_OS_TRACE << TAB;
-	filterTP->toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
+	filterTP.toStream(AVM_OS_TRACE << AVM_TAB_INDENT);
 	AVM_OS_TRACE << END_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
-	AVM_OPCODE opcodeTP = aCodeTP->getOptimizedOpCode();
+	AVM_OPCODE opcodeTP = aCodeTP.getOptimizedOpCode();
 
-	if( (filterTP->op != AVM_OPCODE_NULL) && (filterTP->op != opcodeTP ) )
+//	ENUM_TRACE_POINT::TRACE_NATURE nature =
+//			ENUM_TRACE_POINT::TRACE_UNDEFINED_NATURE;
+
+	if( (filterTP.op != AVM_OPCODE_NULL) && (filterTP.op != opcodeTP ) )
 	{
-		switch( filterTP->op )
+		switch( filterTP.op )
 		{
 			case AVM_OPCODE_INPUT:
 			{
@@ -831,6 +1146,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 					case AVM_OPCODE_INPUT_DELEGATE:
 					case AVM_OPCODE_INPUT_VAR:
 					{
+//						nature = ENUM_TRACE_POINT::TRACE_COM_NATURE;
 						break;
 					}
 
@@ -857,6 +1173,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 					case AVM_OPCODE_OUTPUT_DELEGATE:
 					case AVM_OPCODE_OUTPUT_VAR:
 					{
+//						nature = ENUM_TRACE_POINT::TRACE_COM_NATURE;
 						break;
 					}
 
@@ -868,6 +1185,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 				break;
 			}
 
+			case AVM_OPCODE_ENABLE_INVOKE:
 			case AVM_OPCODE_ENABLE_SET:
 			{
 				switch( opcodeTP )
@@ -893,38 +1211,38 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 		}
 	}
 
-	if( aCodeTP->empty() )
+	if( aCodeTP.noOperand() )
 	{
 		return( true );
 	}
 
-	if( (filterTP->machine != NULL)
-		&& (aCodeTP->first() == filterTP->machine) )
+	if( (filterTP.machine != nullptr)
+		&& (aCodeTP.first() == filterTP.machine) )
 	{
 		return( true );
 	}
 
-	if( (filterTP->object != NULL)
-		&& (aCodeTP->first() == filterTP->object) )
+	if( (filterTP.object != nullptr)
+		&& (aCodeTP.first() == filterTP.object) )
 	{
 		return( true );
 	}
 
-	if( filterTP->value.valid() && aCodeTP->populated() )
+	if( filterTP.value.valid() && aCodeTP.hasManyOperands() )
 	{
-		if( filterTP->value.is< ArrayBF >() )
+		if( filterTP.value.is< ArrayBF >() )
 		{
-			const ArrayBF & arrayValue = filterTP->value.to_ref< ArrayBF >();
-			avm_size_t arraySize = arrayValue.size();
+			const ArrayBF & arrayValue = filterTP.value.to< ArrayBF >();
+			std::size_t arraySize = arrayValue.size();
 
-			if( arraySize == aCodeTP->size() )
+			if( arraySize == aCodeTP.size() )
 			{
-				AvmCode::const_iterator itTP = aCodeTP->begin();
+				AvmCode::const_iterator itOperandTP = aCodeTP.begin();
 
-				for( avm_size_t offset = 0 ;
-						(offset < arraySize) ; ++offset , ++itTP )
+				for( std::size_t offset = 0 ;
+						(offset < arraySize) ; ++offset , ++itOperandTP )
 				{
-					if( not (*itTP).isEQ( arrayValue[offset] ) )
+					if( not (*itOperandTP).isEQ( arrayValue[offset] ) )
 					{
 						return( false );
 					}
@@ -939,11 +1257,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 		}
 		else
 		{
-			return( filterTP->value.isEQ( aCodeTP->second() ) );
+			return( filterTP.value.isEQ( aCodeTP.second() ) );
 		}
 	}
 
 	return( true );
+}
+
+
+////////////////////////////////////////////////////////////////////////////
+// FILTERING API : check if Execution Information pass
+////////////////////////////////////////////////////////////////////////////
+
+bool TraceFilter::pass(const TracePoint & filterTP,
+		const ExecutionInformation & anExecInfoTP) const
+{
+	return true;
 }
 
 
@@ -953,15 +1282,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , TRACE )
 
 void TraceFilter::toStream(OutStream & os) const
 {
-	os << TAB << "filter { "
+	os << TAB << "filter " << mNameID << " { "
 			<< OperatorLib::to_string(mainTracePointFiter.getAvmOpCode())
 			<< EOL_INCR_INDENT;
 
-	AvmCode::const_iterator it = mainTracePointFiter.begin();
-	AvmCode::const_iterator endIt = mainTracePointFiter.end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : mainTracePointFiter.getOperands() )
 	{
-		(*it).toStream(os);
+		itOperand.toStream(os);
 	}
 
 	os << DECR_INDENT_TAB << "}" << EOL_FLUSH;
@@ -984,7 +1311,7 @@ void TraceFilter::toStream(OutStream & os) const
 		<< " ]"<< EOL
 
 		<< TAB << "Variable   : [ time:" << mTimeFilterFlag
-		<< " , assign:" << mAssignFilterFlag
+		<< " , assign:"   << mAssignFilterFlag
 		<< " , newfresh:" << mNewfreshFilterFlag
 		<< " ]"<< EOL
 
@@ -998,7 +1325,7 @@ void TraceFilter::toStream(OutStream & os) const
 		<< " ]"<< EOL
 
 		<< TAB << "Machine    : [ " << mMachineFilterFlag
-		<< " , state:" << mStateFilterFlag
+		<< " , state:"        << mStateFilterFlag
 		<< " , statemachine:" << mStatemachineFilterFlag
 		<< " ]"<< EOL
 
@@ -1007,8 +1334,18 @@ void TraceFilter::toStream(OutStream & os) const
 		<< " ]"<< EOL
 
 		<< TAB << "Abstract   : [ com:" << mComFilterFlag
-		<< " , io#trace:" << mIOTraceFilterFlag
-		<< " , runnable:" << mRunnableFilterFlag
+		<< " , io#trace:"  << mIOTraceFilterFlag
+		<< " , runnable:"  << mRunnableFilterFlag
+		<< " , exec#info:" << mExecutionInformationFilterFlag
+		<< " ]"<< EOL
+
+		<< TAB << "Meta:Stmnt : [ " << " @trace:" << mMetaTraceFilterFlag
+		<< " , @debug:"    << mMetaDebugFilterFlag
+		<< " ]"<< EOL
+
+		<< TAB << "Meta:Step  : [ header:" << mStepHeaderSeparatorFlag
+		<< " , begin:" << mStepBeginSeparatorFlag
+		<< " , end:"   << mStepEndSeparatorFlag
 		<< " ]"<< EOL
 		<< DECR_INDENT_TAB << "]" << EOL_FLUSH;
 }

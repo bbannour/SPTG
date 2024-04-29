@@ -16,7 +16,6 @@
 #ifndef EXECUTIONINFORMATION_H_
 #define EXECUTIONINFORMATION_H_
 
-#include <common/AvmPointer.h>
 #include <common/Element.h>
 
 #include <common/BF.h>
@@ -31,12 +30,6 @@ namespace sep
 
 class AbstractProcessorUnit;
 class IProcessorUnitRegistration;
-
-class FormulaCoverageFilterInfo;
-
-class HitOrJumpObjectiveInfo;
-
-class OfflineTestProcessorInfo;
 
 
 /**
@@ -136,7 +129,7 @@ public:
 		return( mID.isTEQ(anID) || (mID.str() == anID.str()) );
 	}
 
-	inline bool isID(Element * anID) const
+	inline bool isID(const Element * anID) const
 	{
 		return( mID.isTEQ(anID) );
 	}
@@ -242,7 +235,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
 
 	virtual void toFscn(OutStream & out) const;
 
@@ -265,11 +258,7 @@ protected:
 	 */
 	BFList mGenericInfos;
 
-	FormulaCoverageFilterInfo * mFormulaCoverageFilterInfo;
-
-	HitOrJumpObjectiveInfo * mHitOrJumpObjectiveInfo;
-
-	OfflineTestProcessorInfo * mOfflineTestProcessorInfo;
+	Element * mSpecificInfo;
 
 
 public:
@@ -280,10 +269,7 @@ public:
 	ExecutionInformation()
 	: Element( CLASS_KIND_T( ExecutionInformation ) ),
 	mGenericInfos(),
-
-	mFormulaCoverageFilterInfo( NULL ),
-	mHitOrJumpObjectiveInfo( NULL ),
-	mOfflineTestProcessorInfo( NULL )
+	mSpecificInfo( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -295,10 +281,7 @@ public:
 	ExecutionInformation(const ExecutionInformation & anExecInfo)
 	: Element( anExecInfo ),
 	mGenericInfos( anExecInfo.mGenericInfos ),
-
-	mFormulaCoverageFilterInfo( anExecInfo.mFormulaCoverageFilterInfo ),
-	mHitOrJumpObjectiveInfo( anExecInfo.mHitOrJumpObjectiveInfo ),
-	mOfflineTestProcessorInfo( anExecInfo.mOfflineTestProcessorInfo )
+	mSpecificInfo( anExecInfo.mSpecificInfo )
 	{
 		//!! NOTHING
 	}
@@ -307,7 +290,11 @@ public:
 	/**
 	 * DESTRUCTOR
 	 */
-	virtual ~ExecutionInformation();
+	virtual ~ExecutionInformation()
+	{
+		sep::destroyElement( mSpecificInfo );
+	}
+
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -381,58 +368,58 @@ public:
 
 	inline bool hasInfo(const IProcessorUnitRegistration & aRegisterTool) const
 	{
-		return( getInfo(aRegisterTool) != NULL );
+		return( getInfo(aRegisterTool) != nullptr );
 	}
 
 	bool hasInfo(const AbstractProcessorUnit & aProcessor) const
 	{
-		return( getInfo(aProcessor) != NULL );
+		return( getInfo(aProcessor) != nullptr );
 	}
 
 	bool noneInfo(const AbstractProcessorUnit & aProcessor) const
 	{
-		return( getInfo(aProcessor) == NULL );
+		return( getInfo(aProcessor) == nullptr );
 	}
 
 	bool hasInfo(
 			const AbstractProcessorUnit & aProcessor, const BF & anID) const
 	{
-		return( getInfo(aProcessor, anID) != NULL );
+		return( getInfo(aProcessor, anID) != nullptr );
 	}
 
 	bool hasInfoWithData(
 			const AbstractProcessorUnit & aProcessor, const BF & aData) const
 	{
-		return( getInfoWithData(aProcessor, aData) != NULL );
+		return( getInfoWithData(aProcessor, aData) != nullptr );
 	}
 
 
 	inline bool hasInfo(const BF & anID) const
 	{
-		return( getInfo(anID) != NULL );
+		return( getInfo(anID) != nullptr );
 	}
 
 	inline bool hasInfo(Element * anID) const
 	{
-		return( getInfo(anID) != NULL );
+		return( getInfo(anID) != nullptr );
 	}
 
 	inline bool hasInfo(const std::string & anID,
 			AVM_OPCODE aPredicate = AVM_OPCODE_EQ) const
 	{
-		return( getInfo(anID, aPredicate) != NULL );
+		return( getInfo(anID, aPredicate) != nullptr );
 	}
 
 
 	inline bool hasInfoByData(const BF & aData) const
 	{
-		return( getInfoByData(aData) != NULL );
+		return( getInfoByData(aData) != nullptr );
 	}
 
 	inline bool hasInfoByData(const std::string & aData,
 			AVM_OPCODE aPredicate = AVM_OPCODE_EQ) const
 	{
-		return( getInfoByData(aData, aPredicate) != NULL );
+		return( getInfoByData(aData, aPredicate) != nullptr );
 	}
 
 
@@ -469,59 +456,61 @@ public:
 
 
 	/**
-	 * Serialization
+	 * GETTER - SETTER
 	 */
+	template< class T >
+	T * getUniqSpecificInfo()
+	{
+		if( mSpecificInfo == nullptr )
+		{
+			mSpecificInfo = new T();
+		}
+		return( static_cast< T * >( mSpecificInfo ) );
+	}
+
+
+	inline bool hasSpecificInfo() const
+	{
+		return(	(mSpecificInfo != nullptr) );
+	}
+
+	inline void getSpecificInfo(Element * anInfo)
+	{
+		mSpecificInfo = anInfo ;
+	}
+
+
+	/**
+	 * Serialization
+	 * toStream
+	 */
+	virtual void toStream(OutStream & out) const override
+	{
+		toStreamInfo(out);
+
+		if( mSpecificInfo != nullptr )
+		{
+			mSpecificInfo->toStream(out);
+		}
+	}
+
 	virtual void toStreamInfo(OutStream & out) const;
+
+
+	/**
+	 * Serialization
+	 * toFscn
+	 */
+	virtual void toFscn(OutStream & out) const
+	{
+		if( mSpecificInfo != nullptr )
+		{
+			mSpecificInfo->toFscn(out);
+		}
+	}
 
 	virtual void toFscnInfo(OutStream & out) const;
 
-
-	////////////////////////////////////////////////////////////////////////////
-	// FormulaCoverageFilter Information
-	////////////////////////////////////////////////////////////////////////////
-	/**
-	 * GETTER - SETTER
-	 * mFormulaCoverageFilterInfo
-	 */
-	FormulaCoverageFilterInfo * getUniqFormulaCoverageFilterInfo();
-
-
-	////////////////////////////////////////////////////////////////////////////
-	// AvmHitOrJumpObjective Information
-	////////////////////////////////////////////////////////////////////////////
-	/**
-	 * GETTER - SETTER
-	 * mHitOrJumpObjectiveInfo
-	 */
-	HitOrJumpObjectiveInfo * getUniqHitOrJumpObjectiveInfo();
-
-
-	////////////////////////////////////////////////////////////////////////////
-	// OfflineTestProcessor Information
-	////////////////////////////////////////////////////////////////////////////
-	/**
-	 * GETTER - SETTER
-	 */
-	OfflineTestProcessorInfo * getUniqOfflineTestProcessorInfo();
-
-
-	/**
-	 * TESTER
-	 * has any specific info ?
-	 */
-	inline bool hasSpecificInfo() const
-	{
-		return(	(mFormulaCoverageFilterInfo     != NULL) );
-//				(mHitOrJumpObjectiveInfo        != NULL) ||
-//				(mOfflineTestProcessorInfo      != NULL) );
-	}
-
-	/**
-	 * Serialization
-	 */
-	virtual void toStream(OutStream & out) const;
-
-	virtual void toFscn(OutStream & out) const;
 
 };
 

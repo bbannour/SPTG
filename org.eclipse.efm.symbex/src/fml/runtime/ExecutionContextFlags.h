@@ -16,6 +16,9 @@
 #ifndef FML_RUNTIME_EXECUTIONCONTEXTFLAGS_H_
 #define FML_RUNTIME_EXECUTIONCONTEXTFLAGS_H_
 
+
+#include <cstdint>
+
 #include <util/avm_string.h>
 
 
@@ -27,33 +30,35 @@ struct ExecutionContextFlags
 
 	/**
 	 * REACHED_LIMIT
-	 * 4 bits
+	 * 5 bits
 	 */
 	enum REACHED_LIMIT
 	{
-		REACHED_UNDEFINED_LIMIT          = 0x00,
+		REACHED_UNDEFINED_LIMIT          = 0x000,
 
-		REACHED_NODE_HEIGHT_LIMIT        = 0x01,
+		REACHED_NODE_HEIGHT_LIMIT        = 0x001,
 
-		REACHED_NODE_WIDTH_LIMIT         = 0x02,
+		REACHED_NODE_WIDTH_LIMIT         = 0x002,
 
-		REACHED_NODE_COUNT_LIMIT         = 0x04,
+		REACHED_NODE_COUNT_LIMIT         = 0x004,
 
-		REACHED_SYMBEX_STEP_LIMIT        = 0x08,
+		REACHED_SYMBEX_EVAL_LIMIT        = 0x008,
+
+		REACHED_SYMBEX_STEP_LIMIT        = 0x010,
 
 	};
 
 	/**
 	 * INTERRUPT_REQUEST
-	 * 2 bits
+	 * 1 bits
 	 */
 	enum INTERRUPT_REQUEST
 	{
 		INTERRUPT_UNDEFINED_REQUEST      = 0x00,
 
-		INTERRUPT_FAM_REQUEST            = 0x01,
+		INTERRUPT_USER_REQUEST           = 0x01,
 
-		INTERRUPT_USER_REQUEST           = 0x02,
+//		INTERRUPT_FAM_REQUEST            = 0x02,
 
 	};
 
@@ -88,20 +93,30 @@ struct ExecutionContextFlags
 	};
 
 	/**
-	 * FORMAL ANALYSIS MODULE as FAM_TRACE
-	 * 3 bits
+	 * FORMAL ANALYSIS MODULE as FAM_VERDICT
+	 * 6 bits
 	 */
-	enum FAM_TRACE
+	enum FAM_VERDICT
 	{
-		FAM_UNDEFINED_TRACE              = 0x00,
+		FAM_UNDEFINED_VERDICT              = 0x000,
 
-		FAM_COVERAGE_ELEMENT_TRACE       = 0x01,
+		FAM_COVERAGE_ELEMENT_VERDICT       = 0x001,
 
-		FAM_OBJECTIVE_ACHIEVED_TRACE     = 0x02,
+		FAM_OBJECTIVE_ACHIEVED_VERDICT     = 0x002,
 
-		FAM_OBJECTIVE_FAILED_TRACE       = 0x04,
+		FAM_OBJECTIVE_INCONCLUSIVE_VERDICT = 0x004,
 
-		FAM_OBJECTIVE_ABORTED_TRACE      = 0x08,
+		FAM_OBJECTIVE_FAILED_VERDICT       = 0x008,
+
+		FAM_OBJECTIVE_ABORTED_VERDICT      = 0x010,
+
+		FAM_OBJECTIVE_TIMEOUT_VERDICT      = 0x020,
+
+		FAM_ANY_OBJECTIVE_VERDICT          = FAM_OBJECTIVE_ACHIEVED_VERDICT
+		                                   | FAM_OBJECTIVE_INCONCLUSIVE_VERDICT
+		                                   | FAM_OBJECTIVE_FAILED_VERDICT
+		                                   | FAM_OBJECTIVE_ABORTED_VERDICT
+		                                   | FAM_OBJECTIVE_TIMEOUT_VERDICT
 
 	};
 
@@ -110,18 +125,19 @@ struct ExecutionContextFlags
 	/**
 	 * TYPEDEF
 	 */
-	typedef unsigned short  bit_field_t;
+	typedef std::uint16_t  bit_field_t;
 
 	/**
 	 * BIT FIELDS
 	 */
-	bit_field_t limit          : 4;
+	// group 1 : 16 bits
+	bit_field_t limit          : 5;
 
-	bit_field_t interrupt      : 2;
+	bit_field_t interrupt      : 1;
 
 	bit_field_t execution      : 4;
 
-	bit_field_t analysis       : 4;
+	bit_field_t analysis       : 6;
 
 
 
@@ -132,7 +148,7 @@ struct ExecutionContextFlags
 	: limit( REACHED_UNDEFINED_LIMIT ),
 	interrupt( INTERRUPT_UNDEFINED_REQUEST ),
 	execution( EXECUTION_UNDEFINED_TRACE ),
-	analysis( FAM_UNDEFINED_TRACE )
+	analysis( FAM_UNDEFINED_VERDICT )
 	{
 		//!! NOTHING
 	}
@@ -152,10 +168,10 @@ struct ExecutionContextFlags
 	 */
 	inline bool isDefined() const
 	{
-		return(    (limit     != REACHED_UNDEFINED_LIMIT  )
-				|| (interrupt != EXECUTION_UNDEFINED_TRACE)
-				|| (execution != EXECUTION_UNDEFINED_TRACE)
-				|| (analysis != EXECUTION_UNDEFINED_TRACE ) );
+		return(    (limit     != REACHED_UNDEFINED_LIMIT    )
+				|| (interrupt != INTERRUPT_UNDEFINED_REQUEST)
+				|| (execution != EXECUTION_UNDEFINED_TRACE  )
+				|| (analysis  != FAM_UNDEFINED_VERDICT      ) );
 	}
 
 	inline bool hasReachedLimitOrExecutionTrace() const
@@ -166,10 +182,10 @@ struct ExecutionContextFlags
 
 	inline bool isUndefined() const
 	{
-		return(    (limit     == REACHED_UNDEFINED_LIMIT  )
-				&& (interrupt == EXECUTION_UNDEFINED_TRACE)
-				&& (execution == EXECUTION_UNDEFINED_TRACE)
-				&& (analysis == EXECUTION_UNDEFINED_TRACE ) );
+		return(    (limit     == REACHED_UNDEFINED_LIMIT    )
+				&& (interrupt == INTERRUPT_UNDEFINED_REQUEST)
+				&& (execution == EXECUTION_UNDEFINED_TRACE  )
+				&& (analysis == FAM_UNDEFINED_VERDICT       ) );
 	}
 
 
@@ -318,6 +334,35 @@ struct ExecutionContextFlags
 	 * GETTER - SETTER
 	 * "execution step" limit
 	 */
+	inline bool isReachedSymbexEvalLimit() const
+	{
+		return( limit == REACHED_SYMBEX_EVAL_LIMIT );
+	}
+
+	inline bool hasReachedSymbexEvalLimit() const
+	{
+		return( (limit & REACHED_SYMBEX_EVAL_LIMIT) != 0 );
+	}
+
+
+	inline ExecutionContextFlags & addReachedSymbexEvalLimit()
+	{
+		limit |= REACHED_SYMBEX_EVAL_LIMIT;
+
+		return( *this );
+	}
+
+	inline ExecutionContextFlags & setReachedSymbexEvalLimit()
+	{
+		limit = REACHED_SYMBEX_EVAL_LIMIT;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "execution step" limit
+	 */
 	inline bool isReachedSymbexStepLimit() const
 	{
 		return( limit == REACHED_SYMBEX_STEP_LIMIT );
@@ -342,6 +387,7 @@ struct ExecutionContextFlags
 
 		return( *this );
 	}
+
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -391,17 +437,17 @@ struct ExecutionContextFlags
 	 * GETTER - SETTER
 	 * "formal analysis module" as "fam" request
 	 */
-	inline bool isInterruptModuleRequest() const
-	{
-		return( interrupt == INTERRUPT_FAM_REQUEST );
-	}
-
-	inline ExecutionContextFlags & setInterruptModuleRequest()
-	{
-		interrupt = INTERRUPT_FAM_REQUEST;
-
-		return( *this );
-	}
+//	inline bool isInterruptModuleRequest() const
+//	{
+//		return( interrupt == INTERRUPT_FAM_REQUEST );
+//	}
+//
+//	inline ExecutionContextFlags & setInterruptModuleRequest()
+//	{
+//		interrupt = INTERRUPT_FAM_REQUEST;
+//
+//		return( *this );
+//	}
 
 	/**
 	 * GETTER - SETTER
@@ -651,9 +697,9 @@ struct ExecutionContextFlags
 	 * GETTER - SETTER
 	 * analysis
 	 */
-	inline FAM_TRACE getAnalysisTrace() const
+	inline FAM_VERDICT getAnalysisTrace() const
 	{
-		return( static_cast< FAM_TRACE >( analysis ) );
+		return( static_cast< FAM_VERDICT >( analysis ) );
 	}
 
 	inline bool hasAnalysisTrace() const
@@ -666,17 +712,17 @@ struct ExecutionContextFlags
 		return( analysis == REACHED_UNDEFINED_LIMIT );
 	}
 
-	inline bool hasAnalysisTrace(FAM_TRACE analysisTrace) const
+	inline bool hasAnalysisTrace(FAM_VERDICT analysisTrace) const
 	{
 		return( (analysis & analysisTrace) != 0 );
 	}
 
-	inline bool isAnalysisTrace(FAM_TRACE analysisTrace) const
+	inline bool isAnalysisTrace(FAM_VERDICT analysisTrace) const
 	{
 		return( analysis == analysisTrace );
 	}
 
-	inline ExecutionContextFlags & setAnalysisTrace(FAM_TRACE analysisTrace)
+	inline ExecutionContextFlags & setAnalysisTrace(FAM_VERDICT analysisTrace)
 	{
 		analysis = analysisTrace;
 
@@ -685,7 +731,7 @@ struct ExecutionContextFlags
 
 	inline ExecutionContextFlags & unsetAnalysisTrace()
 	{
-		analysis = FAM_UNDEFINED_TRACE;
+		analysis = FAM_UNDEFINED_VERDICT;
 
 		return( *this );
 	}
@@ -696,118 +742,159 @@ struct ExecutionContextFlags
 	 */
 	inline bool hasCoverageElementTrace() const
 	{
-		return( (analysis & FAM_COVERAGE_ELEMENT_TRACE) != 0 );
+		return( (analysis & FAM_COVERAGE_ELEMENT_VERDICT) != 0 );
 	}
 
 	inline bool isCoverageElementTrace() const
 	{
-		return( analysis == FAM_COVERAGE_ELEMENT_TRACE );
+		return( analysis == FAM_COVERAGE_ELEMENT_VERDICT );
 	}
 
 	inline bool noneCoverageElementTrace() const
 	{
-		return( (analysis & FAM_COVERAGE_ELEMENT_TRACE) == 0 );
+		return( (analysis & FAM_COVERAGE_ELEMENT_VERDICT) == 0 );
 	}
 
 	inline ExecutionContextFlags & addCoverageElementTrace()
 	{
-		analysis |= FAM_COVERAGE_ELEMENT_TRACE;
+		analysis |= FAM_COVERAGE_ELEMENT_VERDICT;
 
 		return( *this );
 	}
 
 	inline ExecutionContextFlags & setCoverageElementTrace()
 	{
-		analysis = FAM_COVERAGE_ELEMENT_TRACE;
+		analysis = FAM_COVERAGE_ELEMENT_VERDICT;
 
 		return( *this );
 	}
 
+
 	/**
 	 * GETTER - SETTER
-	 * "coverage" analysis
+	 * "any objective" analysis
+	 */
+	inline bool hasAnyObjectiveVerdict() const
+	{
+		return( (analysis & FAM_ANY_OBJECTIVE_VERDICT) != 0 );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * "objective achieved" analysis
 	 */
 	inline bool hasObjectiveAchievedTrace() const
 	{
-		return( (analysis & FAM_OBJECTIVE_ACHIEVED_TRACE) != 0 );
+		return( (analysis & FAM_OBJECTIVE_ACHIEVED_VERDICT) != 0 );
 	}
 
 	inline bool isObjectiveAchievedTrace() const
 	{
-		return( analysis == FAM_OBJECTIVE_ACHIEVED_TRACE );
+		return( analysis == FAM_OBJECTIVE_ACHIEVED_VERDICT );
 	}
 
 	inline bool noneObjectiveAchievedTrace() const
 	{
-		return( (analysis & FAM_OBJECTIVE_ACHIEVED_TRACE) == 0 );
-	}
-
-	inline ExecutionContextFlags & addObjectiveAchievedTrace()
-	{
-		analysis |= FAM_OBJECTIVE_ACHIEVED_TRACE;
-
-		return( *this );
+		return( (analysis & FAM_OBJECTIVE_ACHIEVED_VERDICT) == 0 );
 	}
 
 	inline ExecutionContextFlags & setObjectiveAchievedTrace()
 	{
-		analysis = FAM_OBJECTIVE_ACHIEVED_TRACE;
+		analysis |= FAM_OBJECTIVE_ACHIEVED_VERDICT;
+
+		return( *this );
+	}
+
+	inline ExecutionContextFlags & unsetObjectiveAchievedTrace()
+	{
+		analysis = (analysis & (~ FAM_OBJECTIVE_ACHIEVED_VERDICT));
 
 		return( *this );
 	}
 
 	/**
 	 * GETTER - SETTER
-	 * "coverage" analysis
+	 * "objective inconclusive" analysis
+	 */
+	inline bool hasObjectiveInconclusiveTrace() const
+	{
+		return( (analysis & FAM_OBJECTIVE_INCONCLUSIVE_VERDICT) != 0 );
+	}
+
+	inline bool isObjectiveInconclusiveTrace() const
+	{
+		return( analysis == FAM_OBJECTIVE_INCONCLUSIVE_VERDICT );
+	}
+
+	inline ExecutionContextFlags & setObjectiveInconclusiveTrace()
+	{
+		analysis |= FAM_OBJECTIVE_INCONCLUSIVE_VERDICT;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "objective failed" analysis
 	 */
 	inline bool hasObjectiveFailedTrace() const
 	{
-		return( (analysis & FAM_OBJECTIVE_FAILED_TRACE) != 0 );
+		return( (analysis & FAM_OBJECTIVE_FAILED_VERDICT) != 0 );
 	}
 
 	inline bool isObjectiveFailedTrace() const
 	{
-		return( analysis == FAM_OBJECTIVE_FAILED_TRACE );
+		return( analysis == FAM_OBJECTIVE_FAILED_VERDICT );
 	}
 
-	inline ExecutionContextFlags & addObjectiveFailedTrace()
-	{
-		analysis |= FAM_OBJECTIVE_FAILED_TRACE;
-
-		return( *this );
-	}
 
 	inline ExecutionContextFlags & setObjectiveFailedTrace()
 	{
-		analysis = FAM_OBJECTIVE_FAILED_TRACE;
+		analysis |= FAM_OBJECTIVE_FAILED_VERDICT;
 
 		return( *this );
 	}
 
 	/**
 	 * GETTER - SETTER
-	 * "coverage" analysis
+	 * "objective aborted" analysis
 	 */
 	inline bool hasObjectiveAbortedTrace() const
 	{
-		return( (analysis & FAM_OBJECTIVE_ABORTED_TRACE) != 0 );
+		return( (analysis & FAM_OBJECTIVE_ABORTED_VERDICT) != 0 );
 	}
 
 	inline bool isObjectiveAbortedTrace() const
 	{
-		return( analysis == FAM_OBJECTIVE_ABORTED_TRACE );
-	}
-
-	inline ExecutionContextFlags & addObjectiveAbortedTrace()
-	{
-		analysis |= FAM_OBJECTIVE_ABORTED_TRACE;
-
-		return( *this );
+		return( analysis == FAM_OBJECTIVE_ABORTED_VERDICT );
 	}
 
 	inline ExecutionContextFlags & setObjectiveAbortedTrace()
 	{
-		analysis = FAM_OBJECTIVE_ABORTED_TRACE;
+		analysis |= FAM_OBJECTIVE_ABORTED_VERDICT;
+
+		return( *this );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * "objective timeout" analysis
+	 */
+	inline bool hasObjectiveTimeoutTrace() const
+	{
+		return( (analysis & FAM_OBJECTIVE_TIMEOUT_VERDICT) != 0 );
+	}
+
+	inline bool isObjectiveTimeoutTrace() const
+	{
+		return( analysis == FAM_OBJECTIVE_TIMEOUT_VERDICT );
+	}
+
+	inline ExecutionContextFlags & setObjectiveTimeoutTrace()
+	{
+		analysis |= FAM_OBJECTIVE_TIMEOUT_VERDICT;
 
 		return( *this );
 	}
@@ -862,6 +949,11 @@ struct ExecutionContextFlags
 		return( hasObjectiveAchievedTrace() );
 	}
 
+	inline bool hasObjectiveInconclusive() const
+	{
+		return( hasObjectiveInconclusiveTrace() );
+	}
+
 	inline bool hasObjectiveFailed() const
 	{
 		return( hasObjectiveFailedTrace() );
@@ -870,6 +962,11 @@ struct ExecutionContextFlags
 	inline bool hasObjectiveAborted() const
 	{
 		return( hasObjectiveAbortedTrace() );
+	}
+
+	inline bool hasObjectiveTimeout() const
+	{
+		return( hasObjectiveTimeoutTrace() );
 	}
 
 	inline bool hasRedundancy() const
@@ -930,16 +1027,16 @@ struct ExecutionContextFlags
 			const std::string & separator = SEPARATOR);
 
 	/**
-	 * ANALYSIS TRACE to STRING
+	 * ANALYSIS VERDICT to STRING
 	 */
-	inline std::string strAnalysisTrace(
+	inline std::string strAnalysisVerdict(
 			const std::string & separator = " ") const
 	{
-		return( ExecutionContextFlags::strAnalysisTrace(
+		return( ExecutionContextFlags::strAnalysisVerdict(
 				analysis , separator ) );
 	}
 
-	static std::string strAnalysisTrace(bit_field_t analysisTrace,
+	static std::string strAnalysisVerdict(bit_field_t analysisTrace,
 			const std::string & separator = SEPARATOR);
 
 	/**
@@ -960,7 +1057,7 @@ struct ExecutionContextFlags
 						interrupt , separator ) +
 				ExecutionContextFlags::strExecutionTrace(
 						execution , separator ) +
-				ExecutionContextFlags::strAnalysisTrace(
+				ExecutionContextFlags::strAnalysisVerdict(
 						analysis , separator ) );
 	}
 

@@ -16,7 +16,6 @@
 #ifndef TRACESEQUENCE_H_
 #define TRACESEQUENCE_H_
 
-#include <common/AvmPointer.h>
 #include <common/Element.h>
 
 #include <collection/BFContainer.h>
@@ -30,7 +29,11 @@
 namespace sep
 {
 
+class Bitset;
+
 class ExecutionContext;
+
+class ObjectElement;
 
 class RuntimeID;
 
@@ -38,8 +41,7 @@ class TraceFormatter;
 class TracePoint;
 
 
-class TraceSequence  :
-		public Element ,
+class TraceSequence  : public Element ,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( TraceSequence )
 {
 
@@ -50,13 +52,13 @@ public:
 	/**
 	 * ATTRIBUTES
 	 */
-	Operator * combinator;
+	const Operator * combinator;
 
 	BFList points;
 
 	const ExecutionContext * mEC;
 
-	avm_size_t tid;
+	std::size_t tid;
 
 
 public:
@@ -64,7 +66,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	TraceSequence(const ExecutionContext * anEC = NULL, avm_size_t aTID = 0)
+	TraceSequence(const ExecutionContext * anEC = nullptr, std::size_t aTID = 0)
 	: Element( CLASS_KIND_T( TraceSequence ) ),
 	combinator( OperatorManager::OPERATOR_SEQUENCE ),
 	points( ),
@@ -75,11 +77,11 @@ public:
 	}
 
 
-	TraceSequence(TraceSequence * aContainer, Operator * aCombinator)
+	TraceSequence(TraceSequence * aContainer, const Operator * aCombinator)
 	: Element( CLASS_KIND_T( TraceSequence ) ),
 	combinator( aCombinator ),
 	points( ),
-	mEC( /*aContainer->mEC*/NULL ),
+	mEC( /*aContainer->mEC*/nullptr ),
 	tid( aContainer->tid )
 	{
 		//!! NOTHING
@@ -93,7 +95,7 @@ public:
 	: Element( aClassKind ),
 	combinator( OperatorManager::OPERATOR_SEQUENCE ),
 	points( ),
-	mEC( NULL ),
+	mEC( nullptr ),
 	tid( 0 )
 	{
 		//!! NOTHING
@@ -161,21 +163,29 @@ public:
 	}
 
 
-	inline avm_size_t size() const
+	inline virtual std::size_t size() const override
 	{
 		return( points.size() );
 	}
 
 
 	/**
+	 * [RE]SET TracePoint ID
+	 */
+	void resetTracePointID();
+
+	void setTracePointID(std::size_t intialTPID = 0);
+
+
+	/**
 	 * Contains an Object
 	 * points
 	 */
-	bool containsObject(BaseCompiledForm  * anObject) const;
+	bool containsObject(const ObjectElement  * anObject) const;
 
-	bool containsPoint(TracePoint * aPoint, BF & foundPoint) const;
+	bool containsPoint(const TracePoint * aPoint, BF & foundPoint) const;
 
-	bool containsPoint(TracePoint * aPoint, bool withValue = true) const;
+	bool containsPoint(const TracePoint * aPoint, bool withValue = true) const;
 
 
 	/**
@@ -193,7 +203,7 @@ public:
 	// LIFELINE API
 	////////////////////////////////////////////////////////////////////////////
 
-	avm_size_t toLifeline(TraceSequence & lifelineTrace,
+	std::size_t toLifeline(TraceSequence & lifelineTrace,
 			const RuntimeID & lifelineRID) const;
 
 	bool lifelineContains(const RuntimeID & lifelineRID,
@@ -204,14 +214,20 @@ public:
 	// SERIALIZATION API
 	////////////////////////////////////////////////////////////////////////////
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		return( OSS() << "trace#" << tid );
 	}
 
-	virtual void toStream(OutStream & os) const;
+	inline virtual void toStream(OutStream & out) const override
+	{
+		toStream(out, AVM_NUMERIC_MAX_SIZE_T);
+	}
 
-	virtual void traceMinimum(OutStream & os) const;
+	void toStream(OutStream & out, std::size_t printCount) const;
+
+	void toStream(OutStream & out,
+			const Bitset & coverageBitSet, std::size_t printCount) const;
 
 };
 

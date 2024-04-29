@@ -13,8 +13,6 @@
 #ifndef EXECUTABLESYSTEM_H_
 #define EXECUTABLESYSTEM_H_
 
-#include <common/AvmPointer.h>
-
 #include <fml/executable/BaseCompiledForm.h>
 
 #include <collection/Typedef.h>
@@ -26,10 +24,14 @@
 #include <fml/executable/InstanceOfMachine.h>
 #include <fml/executable/InstanceOfPort.h>
 
+#include <fml/infrastructure/System.h>
+
 #include <fml/symbol/Symbol.h>
 
 #include <fml/runtime/RuntimeForm.h>
 #include <fml/runtime/RuntimeID.h>
+
+#include <vector>
 
 
 
@@ -46,52 +48,47 @@ class System;
 
 class ExecutableSystem :
 		public BaseCompiledForm ,
+		AVM_INJECT_STATIC_NULL_REFERENCE( ExecutableSystem ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( ExecutableSystem )
 
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( ExecutableSystem )
 
-
 protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	TableOfExecutableForm mExecutables;
+	std::vector< ExecutableForm > mExecutableForms;
 
-	ExecutableForm    mNullExecutable;
-	Symbol            mNullInstance;
+	TableOfExecutableForm mExecutables;
 
 	ExecutableForm    mParametersExecutable;
 	InstanceOfMachine mParametersInstance;
 
 	Symbol mSystemInstance;
 
-	ExecutableForm * mDefaultProcessExecutableForm;
+	ExecutableForm mDefaultProcessExecutableForm;
 
 public:
 	/**
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	ExecutableSystem(System & astSystem)
-	: BaseCompiledForm( CLASS_KIND_T( ExecutableSystem ) , NULL, &astSystem ),
+	ExecutableSystem(const System & astSystem)
+	: BaseCompiledForm( CLASS_KIND_T( ExecutableSystem ) , nullptr, astSystem ),
+
+	mExecutableForms( ),
+
 	mExecutables( ),
 
-	mNullExecutable( *this , 0 ),
-	mNullInstance( new InstanceOfMachine(
-			&mNullExecutable, NULL, &mNullExecutable, NULL, 0,
-			Specifier::DESIGN_INSTANCE_STATIC_SPECIFIER) ),
-
-	mParametersExecutable( *this, NULL, &astSystem, 0 ),
-	mParametersInstance( NULL, &astSystem, &mParametersExecutable, NULL, 0 ),
+	mParametersExecutable( *this, nullptr, astSystem, 0 ),
+	mParametersInstance( nullptr, astSystem, mParametersExecutable, nullptr, 0 ),
 
 	mSystemInstance( ),
-	mDefaultProcessExecutableForm( NULL )
+	mDefaultProcessExecutableForm( (* this) , 0  )
 	{
-		mNullInstance.machine().setInstanceModel(mNullInstance.rawMachine());
-
-		ExecutableLib::MACHINE_NULL.setExecutable( &mNullExecutable );
+		mExecutableForms.reserve( 16 + astSystem.getExecutableMachineCount() );
 
 		mParametersExecutable.incrPossibleStaticInstanciationCount(1);
 		mParametersExecutable.setAllNameID("exec::#PARAMETERS#" , "#PARAMETERS#");
@@ -107,18 +104,16 @@ public:
 	 */
 	ExecutableSystem(const ExecutableSystem & anExecutable)
 	: BaseCompiledForm( anExecutable ),
-	mExecutables( anExecutable.mExecutables ),
 
-	mNullExecutable( anExecutable.mNullExecutable ),
-	mNullInstance( anExecutable.mNullInstance ),
+	mExecutableForms( anExecutable.mExecutableForms ),
+
+	mExecutables( anExecutable.mExecutables ),
 
 	mParametersExecutable( anExecutable.mParametersExecutable ),
 	mParametersInstance( anExecutable.mParametersInstance ),
 
 	mSystemInstance( anExecutable.mSystemInstance ),
-	mDefaultProcessExecutableForm(
-		(anExecutable.mDefaultProcessExecutableForm == NULL) ? NULL :
-			new ExecutableForm( *(anExecutable.mDefaultProcessExecutableForm) ) )
+	mDefaultProcessExecutableForm( anExecutable.mDefaultProcessExecutableForm )
 	{
 		//!! NOTHING
 	}
@@ -129,10 +124,21 @@ public:
 	 */
 	virtual ~ExecutableSystem()
 	{
-		if( mDefaultProcessExecutableForm != NULL )
-		{
-			delete( mDefaultProcessExecutableForm );
-		}
+		//!! NOTHING
+	}
+
+
+	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static ExecutableSystem & nullref()
+	{
+		static ExecutableSystem _NULL_( System::nullref() );
+		_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+//		_NULL_.setSpecifier( Specifier::OBJECT_NULL_SPECIFIER );
+
+		return( _NULL_ );
 	}
 
 
@@ -140,7 +146,7 @@ public:
 	 * SETTER
 	 * updateFullyQualifiedNameID()
 	 */
-	virtual void updateFullyQualifiedNameID();
+	virtual void updateFullyQualifiedNameID() override;
 
 
 	/**
@@ -149,7 +155,36 @@ public:
 	 */
 	const Specifier & getSpecifier() const
 	{
-		return( rawSystemInstance()->getExecutable()->getSpecifier() );
+		return( rawSystemInstance()->refExecutable().getSpecifier() );
+	}
+
+
+	/**
+	 * GETTER
+	 * Compiled ObjectElement as Compiled System
+	 */
+	inline const System & getAstSystem() const
+	{
+		return( safeAstElement().as< System >() );
+	}
+
+	/**
+	 * FACTORY - GETTER
+	 * mExecutableSystems
+	 */
+	template<typename... _Args>
+	ExecutableForm & newExecutableForm( _Args && ... __args )
+	{
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mExecutableForms.size() <
+				getAstSystem().getExecutableMachineCount() )
+				<< "Out Of Memory for Table of Executable !!!";
+
+		return mExecutableForms.emplace_back( (* this), __args ... ) ;
+	}
+
+	inline std::vector< ExecutableForm > & getExecutableForms()
+	{
+		return( mExecutableForms );
 	}
 
 
@@ -163,7 +198,7 @@ public:
 	}
 
 
-	inline avm_size_t size() const
+	inline virtual std::size_t size() const override
 	{
 		return( mExecutables.size() );
 	}
@@ -174,7 +209,7 @@ public:
 	 * mExecutableForm
 	 */
 //	inline ExecutableForm & newExecutable(ExecutableForm * aContainer,
-//			const ObjectElement * aCompiled, avm_size_t aDataSize = 0)
+//			const ObjectElement * aCompiled, std::size_t aDataSize = 0)
 //	{
 //		mExecutables.push_front(
 //				ExecutableForm(aContainer, aCompiled, aDataSize) );
@@ -243,12 +278,8 @@ public:
 	/**
 	 * mDefaultProcessExecutableForm
 	 */
-	inline ExecutableForm * defaultExecutableForm()
+	inline ExecutableForm & defaultExecutableForm()
 	{
-		if( mDefaultProcessExecutableForm != NULL )
-		{
-			mDefaultProcessExecutableForm = new ExecutableForm( *this , 0 );
-		}
 		return( mDefaultProcessExecutableForm );
 	}
 
@@ -256,7 +287,7 @@ public:
 	 * NEW TMP EXECUTABLE
 	 */
 	inline void initProcessExecutableForm(
-			ExecutableForm & anExecutableForm, avm_size_t aDataSize = 0) const
+			ExecutableForm & anExecutableForm, std::size_t aDataSize = 0) const
 	{
 		anExecutableForm.init(
 				rawSystemInstance()->getExecutable(), aDataSize);
@@ -267,18 +298,21 @@ public:
 	 * GETTER - SETTER
 	 * Machine Count
 	 */
-	inline avm_size_t getMachineCount() const
+	inline std::size_t getMachineCount() const
 	{
-		return( rawSystemInstance()->getExecutable()->getrecMachineCount() +1 );
+		return( rawSystemInstance()->refExecutable().getrecMachineCount() +1 );
 	}
 
 
 	/**
 	 * Serialization
 	 */
-	void strHeader(OutStream & os) const;
+	virtual void strHeader(OutStream & os) const override;
 
-	virtual void toStream(OutStream & os) const;
+	// Due to [-Woverloaded-virtual=]
+	using BaseCompiledForm::strHeader;
+
+	virtual void toStream(OutStream & os) const override;
 
 };
 

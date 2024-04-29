@@ -14,6 +14,7 @@
 #define FML_COMMON_OBJECTELEMENT_H_
 
 #include <common/NamedElement.h>
+#include <fml/common/LifecycleElement.h>
 #include <fml/common/ModifierElement.h>
 #include <fml/common/TraceableElement.h>
 
@@ -23,6 +24,7 @@
 namespace sep
 {
 
+class BF;
 class Machine;
 class Modifier;
 class PropertyElement;
@@ -38,11 +40,13 @@ class WObject;
 
 class ObjectElement :
 		public NamedElement ,
+		public LifecycleImpl,
 		public ModifierImpl,
 		public TraceableElement,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( ObjectElement )
 {
 
+public:
 	/*
 	 * ATTRIBUTES
 	 */
@@ -55,9 +59,11 @@ protected:
 	 */
 	ObjectElement * mContainer;
 
-	WObject * mWObject;
+	const WObject * mWObject;
 
-	avm_offset_t mOffset;
+	avm_offset_t mOwnedOffset;
+
+	avm_offset_t mRuntimeOffset;
 
 
 public:
@@ -68,11 +74,13 @@ public:
 	ObjectElement(class_kind_t aClassKind, ObjectElement * aContainer,
 			const Modifier & aModifier = Modifier::PROPERTY_UNDEFINED_MODIFIER)
 	: NamedElement( aClassKind ),
+	LifecycleImpl( ),
 	ModifierImpl( aModifier ),
 	TraceableElement( ),
 	mContainer( aContainer ),
-	mWObject( NULL ),
-	mOffset( 0 )
+	mWObject( nullptr ),
+	mOwnedOffset( 0 ),
+	mRuntimeOffset( 0 )
 	{
 		//!! DEBUG_MEMORY_NEW;
 	}
@@ -83,11 +91,13 @@ public:
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID)
 	: NamedElement( aClassKind , aFullyQualifiedNameID, aNameID ),
+	LifecycleImpl( ),
 	ModifierImpl( aModifier ),
 	TraceableElement( ),
 	mContainer( aContainer ),
-	mWObject( NULL ),
-	mOffset( 0 )
+	mWObject( nullptr ),
+	mOwnedOffset( 0 ),
+	mRuntimeOffset( 0 )
 	{
 		//!! DEBUG_MEMORY_NEW;
 	}
@@ -98,11 +108,13 @@ public:
 			const std::string & anUnrestrictedName)
 	: NamedElement( aClassKind ,
 			aFullyQualifiedNameID, aNameID , anUnrestrictedName ),
+	LifecycleImpl( ),
 	ModifierImpl( ),
 	TraceableElement( ),
 	mContainer( aContainer ),
-	mWObject( NULL ),
-	mOffset( 0 )
+	mWObject( nullptr ),
+	mOwnedOffset( 0 ),
+	mRuntimeOffset( 0 )
 	{
 		//!! DEBUG_MEMORY_NEW;
 	}
@@ -111,11 +123,13 @@ public:
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID)
 	: NamedElement( aClassKind , aFullyQualifiedNameID, aNameID ),
+	LifecycleImpl( ),
 	ModifierImpl( ),
 	TraceableElement( ),
 	mContainer( aContainer ),
-	mWObject( NULL ),
-	mOffset( 0 )
+	mWObject( nullptr ),
+	mOwnedOffset( 0 ),
+	mRuntimeOffset( 0 )
 	{
 		//!! DEBUG_MEMORY_NEW;
 	}
@@ -125,11 +139,13 @@ public:
 	: NamedElement( aClassKind ,
 			makeFullyQualifiedNameID(aContainer, aNameID) ,
 			aNameID , aNameID ),
+	LifecycleImpl( ),
 	ModifierImpl( ),
 	TraceableElement( ),
 	mContainer( aContainer ),
-	mWObject( NULL ),
-	mOffset( 0 )
+	mWObject( nullptr ),
+	mOwnedOffset( 0 ),
+	mRuntimeOffset( 0 )
 	{
 		//!! DEBUG_MEMORY_NEW;
 	}
@@ -139,11 +155,13 @@ public:
 	: NamedElement( aClassKind ,
 			makeFullyQualifiedNameID(aContainer, aNameID) ,
 			aNameID , aNameID ),
+	LifecycleImpl( ),
 	ModifierImpl( aModifier ),
 	TraceableElement( ),
 	mContainer( aContainer ),
-	mWObject( NULL ),
-	mOffset( 0 )
+	mWObject( nullptr ),
+	mOwnedOffset( 0 ),
+	mRuntimeOffset( 0 )
 	{
 		//!! DEBUG_MEMORY_NEW;
 	}
@@ -157,11 +175,13 @@ public:
 	: NamedElement( aClassKind ,
 			makeFullyQualifiedNameID(aContainer, aPattern.getNameID()) ,
 			aPattern.getNameID() , aPattern.getUnrestrictedName() ),
+	LifecycleImpl( ),
 	ModifierImpl( aPattern.getModifier() ),
 	TraceableElement( ),
 	mContainer( aContainer ),
-	mWObject( NULL ),
-	mOffset( 0 )
+	mWObject( nullptr ),
+	mOwnedOffset( 0 ),
+	mRuntimeOffset( 0 )
 	{
 		//!! DEBUG_MEMORY_NEW;
 	}
@@ -171,11 +191,13 @@ public:
 	: NamedElement( aClassKind ,
 			makeFullyQualifiedNameID(aContainer, aPattern.getNameID()) ,
 			aPattern.getNameID() , aPattern.getUnrestrictedName() ),
+	LifecycleImpl( ),
 	ModifierImpl( aModifier ),
 	TraceableElement( ),
 	mContainer( aContainer ),
-	mWObject( NULL ),
-	mOffset( 0 )
+	mWObject( nullptr ),
+	mOwnedOffset( 0 ),
+	mRuntimeOffset( 0 )
 	{
 		//!! DEBUG_MEMORY_NEW;
 	}
@@ -187,11 +209,13 @@ public:
 	 */
 	ObjectElement(const ObjectElement & objElement)
 	: NamedElement( objElement ),
+	LifecycleImpl( objElement ),
 	ModifierImpl( objElement ),
 	TraceableElement( objElement ),
 	mContainer( objElement.mContainer ),
 	mWObject( objElement.mWObject ),
-	mOffset( objElement.mOffset )
+	mOwnedOffset( objElement.mOwnedOffset ),
+	mRuntimeOffset( objElement.mRuntimeOffset )
 	{
 		//!! DEBUG_MEMORY_NEW;
 	}
@@ -203,6 +227,21 @@ public:
 	virtual ~ObjectElement()
 	{
 		//!! DEBUG_MEMORY_DEL;
+	}
+
+
+	/**
+	 * VALIDITY TEST
+	 * _NULL_
+	 */
+	inline bool isNullObjectReference() const
+	{
+		return( getModifier().isNullFlagEnabled() );
+	}
+
+	inline bool isnotNullObjectReference() const
+	{
+		return( getModifier().isNullFlagDisabled() );
 	}
 
 
@@ -224,6 +263,11 @@ public:
 				makeFullyQualifiedNameID(getContainer(), aNameID);
 
 		mNameID = aNameID;
+
+		if( mUnrestrictedName.empty() )
+		{
+			mUnrestrictedName = mNameID;
+		}
 	}
 
 
@@ -246,7 +290,7 @@ public:
 
 	inline bool hasContainer() const
 	{
-		return( mContainer != NULL );
+		return( mContainer != nullptr );
 	}
 
 	inline void setContainer(ObjectElement * aContainer)
@@ -265,6 +309,8 @@ public:
 	 * UTIL
 	 * the first specific type container
 	 */
+	virtual bool isContainerMachine() const;
+
 	virtual Machine * getContainerMachine() const;
 
 	virtual PropertyElement * getContainerProperty() const;
@@ -274,17 +320,17 @@ public:
 	 * GETTER - SETTER
 	 * "design" of a USER FORM
 	 */
-	inline WObject * getWObject() const
+	inline const WObject * getWObject() const
 	{
 		return( mWObject );
 	}
 
 	inline bool hasWObject() const
 	{
-		return( mWObject != NULL );
+		return( mWObject != nullptr );
 	}
 
-	inline void setWObject(WObject * wfObject)
+	inline void setWObject(const WObject * wfObject)
 	{
 		mWObject = wfObject;
 	}
@@ -292,16 +338,30 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * mOffset
+	 * mOwnedOffset
 	 */
-	inline avm_offset_t getOffset() const
+	inline avm_offset_t getOwnedOffset() const
 	{
-		return( mOffset );
+		return( mOwnedOffset );
 	}
 
-	inline void setOffset(avm_offset_t anOffset)
+	inline void setOwnedOffset(avm_offset_t anOwnedOffset)
 	{
-		mOffset = anOffset;
+		mOwnedOffset = anOwnedOffset;
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * mOffset
+	 */
+	inline avm_offset_t getRuntimeOffset() const
+	{
+		return( mRuntimeOffset );
+	}
+
+	inline void setRuntimeOffset(avm_offset_t aRuntimeOffset)
+	{
+		mRuntimeOffset = aRuntimeOffset;
 	}
 
 
@@ -323,9 +383,12 @@ public:
 
 		if( hasUnrestrictedName() )
 		{
-			out << " '" << getUnrestrictedName() << "'";
+			out << " \"" << getUnrestrictedName() << "\"";
 		}
 	}
+
+
+	static void toStreamStaticCom(OutStream & out, const BF & comBF);
 
 };
 

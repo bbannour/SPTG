@@ -15,8 +15,6 @@
 
 #include <common/NamedElement.h>
 
-#include <common/AvmPointer.h>
-
 #include <fml/operator/OperatorLib.h>
 
 
@@ -25,6 +23,7 @@ namespace sep
 
 
 class Operator : public NamedElement ,
+		AVM_INJECT_STATIC_NULL_REFERENCE( Operator ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( Operator )
 {
 
@@ -71,6 +70,38 @@ public:
 	virtual ~Operator()
 	{
 		//!! NOTHING
+	}
+
+
+	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static Operator & nullref()
+	{
+		static Operator _NULL_( "_::null<Operator>", "$null<Operator>",
+				AVM_OPCODE_NULL, AVM_OPCODE_NULL,
+				ALGEBRA_QUALIFIER::ALGEBRA_STD, FIX_NOTATION::NOTATION_INFIX,
+				"$null<Operator>", "$null<Operator>", "$null<Operator>" );
+
+		return( _NULL_ );
+	}
+
+
+	/**
+	 * VALIDITY TEST
+	 * _NULL_
+	 */
+	inline bool isNull() const
+	{
+		return( (mAvmOpCode == AVM_OPCODE_NULL) );
+//				&& (mOptimizedOpCode == AVM_OPCODE_NULL) );
+	}
+
+	inline bool isnotNull() const
+	{
+		return( (mAvmOpCode != AVM_OPCODE_NULL) );
+//				|| (mOptimizedOpCode != AVM_OPCODE_NULL) );
 	}
 
 
@@ -172,15 +203,19 @@ public:
 	 * COMPARISON EQUAL
 	 * for mOperator
 	 */
-	inline bool isEQ(Operator * op) const
+	inline bool isEQ(const Operator & op) const
+	{
+		return( (this == &op) || (mAvmOpCode == op.mAvmOpCode) );
+	}
+
+	inline bool isEQ(const Operator * op) const
 	{
 		return( (this == op) || (mAvmOpCode == op->mAvmOpCode) );
 	}
 
-	inline bool isNEQ(Operator * op) const
-	{
-		return( (this != op) && (mAvmOpCode != op->mAvmOpCode) );
-	}
+	// Due to [-Woverloaded-virtual=]
+	using Element::isEQ;
+
 
 	inline bool isOpCode(AVM_OPCODE opCode) const
 	{
@@ -201,7 +236,7 @@ public:
 				(mAvmOpCode == opCode3) );
 	}
 
-	inline bool isOpCode(Operator * op) const
+	inline bool isOpCode(const Operator * op) const
 	{
 		return( mAvmOpCode == op->mAvmOpCode );
 	}
@@ -221,7 +256,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
 		os << TAB;
 		toStream(os, PRINT_OPERATOR_SYMBOL_FORMAT);
@@ -233,7 +268,7 @@ public:
 
 
 	inline virtual std::string toString(
-			const AvmIndent & indent = AVM_TAB_INDENT) const
+			const AvmIndent & indent = AVM_TAB_INDENT) const override
 	{
 		StringOutStream oss;
 
@@ -244,7 +279,7 @@ public:
 		return( oss.str() );
 	}
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		return( mStandardSymbol );
 	}

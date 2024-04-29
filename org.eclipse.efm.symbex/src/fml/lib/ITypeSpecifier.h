@@ -58,15 +58,21 @@ enum TYPE_SPECIFIER
 	TYPE_INTEGER_SPECIFIER,
 
 
+	TYPE_POS_RATIONAL_SPECIFIER,
+
 	TYPE_URATIONAL_SPECIFIER,
 
 	TYPE_RATIONAL_SPECIFIER,
 
 
+	TYPE_POS_FLOAT_SPECIFIER,
+
 	TYPE_UFLOAT_SPECIFIER,
 
 	TYPE_FLOAT_SPECIFIER,
 
+
+	TYPE_POS_REAL_SPECIFIER,
 
 	TYPE_UREAL_SPECIFIER,
 
@@ -82,6 +88,8 @@ enum TYPE_SPECIFIER
 	TYPE_TIME_SPECIFIER,
 
 	TYPE_CONTINUOUS_TIME_SPECIFIER,
+
+	TYPE_DENSE_TIME_SPECIFIER,
 
 	TYPE_DISCRETE_TIME_SPECIFIER,
 
@@ -188,7 +196,7 @@ enum TYPE_SPECIFIER
 	// BUFFER
 	TYPE_BUFFER_SPECIFIER,
 
-	// CONNECT
+	// CONNECTOR
 	TYPE_CONNECTOR_SPECIFIER,
 
 	// MACHINE
@@ -246,23 +254,65 @@ public:
 	 * GETTER
 	 */
 
-	virtual const BaseTypeSpecifier * thisTypeSpecifier() const = 0;
+	virtual const BaseTypeSpecifier & thisTypeSpecifier() const = 0;
 
 	virtual avm_type_specifier_kind_t getTypeSpecifierKind() const = 0;
+
+	inline virtual bool isTypeSpecifierKind(
+			avm_type_specifier_kind_t typeSpecifierKind) const
+	{
+		return( getTypeSpecifierKind() == typeSpecifierKind );
+	}
+
+	virtual bool isTypeSpecifierKind(
+			avm_type_specifier_kind_t typeSpecifierKind_1,
+			avm_type_specifier_kind_t typeSpecifierKind_2) const
+	{
+		avm_type_specifier_kind_t typeSpecifierKind = getTypeSpecifierKind();
+
+		return( (typeSpecifierKind == typeSpecifierKind_1)
+			 || (typeSpecifierKind == typeSpecifierKind_2) );
+	}
+
+	virtual bool isTypeSpecifierKind(
+			avm_type_specifier_kind_t typeSpecifierKind_1,
+			avm_type_specifier_kind_t typeSpecifierKind_2,
+			avm_type_specifier_kind_t typeSpecifierKind_3) const
+	{
+		avm_type_specifier_kind_t typeSpecifierKind = getTypeSpecifierKind();
+
+		return( (typeSpecifierKind == typeSpecifierKind_1)
+			 || (typeSpecifierKind == typeSpecifierKind_2)
+			 || (typeSpecifierKind == typeSpecifierKind_3) );
+	}
+
+	virtual bool isTypeSpecifierKind(
+			avm_type_specifier_kind_t typeSpecifierKind_1,
+			avm_type_specifier_kind_t typeSpecifierKind_2,
+			avm_type_specifier_kind_t typeSpecifierKind_3,
+			avm_type_specifier_kind_t typeSpecifierKind_4) const
+	{
+		avm_type_specifier_kind_t typeSpecifierKind = getTypeSpecifierKind();
+
+		return( (typeSpecifierKind == typeSpecifierKind_1)
+			 || (typeSpecifierKind == typeSpecifierKind_2)
+			 || (typeSpecifierKind == typeSpecifierKind_3)
+			 || (typeSpecifierKind == typeSpecifierKind_4) );
+	}
 
 
 	//////////////////////////////
 	// TYPE ALGEBRA
 	//////////////////////////////
 
-	inline bool isTyped(avm_type_specifier_kind_t otherTSK)
-	{
-		return( getTypeSpecifierKind() == otherTSK );
-	}
+//	inline bool isTyped(avm_type_specifier_kind_t otherTSK) const
+//	{
+//		return( getTypeSpecifierKind() == otherTSK );
+//	}
 
-	bool isTypeFamily(avm_type_specifier_kind_t typeFamily);
+	bool isTypeFamily(avm_type_specifier_kind_t typeFamily) const;
 
-	bool weaklyTyped(avm_type_specifier_kind_t otherTSK);
+	bool weaklyTyped(avm_type_specifier_kind_t otherTSK) const;
 
 
 	//////////////////////////////
@@ -271,57 +321,53 @@ public:
 
 	inline bool isTypedEnumeration() const
 	{
-		switch( getTypeSpecifierKind() )
-		{
-			case TYPE_BOOLEAN_SPECIFIER:
-			case TYPE_CHARACTER_SPECIFIER:
-			case TYPE_ENUM_SPECIFIER:
-				return( true );
-
-			default:
-				return( false );
-		}
+		return( isTypeSpecifierKind(TYPE_BOOLEAN_SPECIFIER,
+				TYPE_CHARACTER_SPECIFIER, TYPE_ENUM_SPECIFIER) );
 	}
 
 	inline bool isTypedBoolean() const
 	{
-		return( getTypeSpecifierKind() == TYPE_BOOLEAN_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_BOOLEAN_SPECIFIER ) );
 	}
 
 	inline bool isTypedCharacter() const
 	{
-		return( getTypeSpecifierKind() == TYPE_CHARACTER_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_CHARACTER_SPECIFIER ) );
 	}
 
 	inline bool isTypedString() const
 	{
-		return( getTypeSpecifierKind() == TYPE_STRING_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_STRING_SPECIFIER ) );
 	}
 
 	inline bool isTypedEnum() const
 	{
-		return( getTypeSpecifierKind() == TYPE_ENUM_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_ENUM_SPECIFIER ) );
 	}
 
 
 	inline bool isTypedIdentifier() const
 	{
-		return( getTypeSpecifierKind() == TYPE_IDENTIFIER_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_IDENTIFIER_SPECIFIER ) );
 	}
 
 	inline bool isTypedQualifiedIdentifier() const
 	{
-		return( getTypeSpecifierKind() == TYPE_QUALIFIED_IDENTIFIER_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_QUALIFIED_IDENTIFIER_SPECIFIER ) );
 	}
 
 	inline bool weaklyTypedIdentifier() const
 	{
-		return( (getTypeSpecifierKind() == TYPE_IDENTIFIER_SPECIFIER)
-			 || (getTypeSpecifierKind() == TYPE_QUALIFIED_IDENTIFIER_SPECIFIER) );
+		return( isTypeSpecifierKind(TYPE_IDENTIFIER_SPECIFIER ,
+				TYPE_QUALIFIED_IDENTIFIER_SPECIFIER) );
 	}
 
 
 	bool isTypedNumeric() const;
+
+	bool isTypedPositiveNumber() const;
+
+	bool isTypedStrictlyPositiveNumber() const;
 
 
 	///////////////////
@@ -335,7 +381,7 @@ public:
 
 	inline bool isTypedClock() const
 	{
-		return( getTypeSpecifierKind() == TYPE_CLOCK_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_CLOCK_SPECIFIER ) );
 	}
 
 	bool weaklyTypedClockInteger() const;
@@ -353,24 +399,31 @@ public:
 
 	inline bool hasTypedTime() const
 	{
-		return( (getTypeSpecifierKind() == TYPE_TIME_SPECIFIER)
-			 || (getTypeSpecifierKind() == TYPE_DISCRETE_TIME_SPECIFIER)
-			 || (getTypeSpecifierKind() == TYPE_CONTINUOUS_TIME_SPECIFIER) );
+		return( isTypeSpecifierKind(
+				TYPE_TIME_SPECIFIER,
+				TYPE_CONTINUOUS_TIME_SPECIFIER,
+				TYPE_DENSE_TIME_SPECIFIER,
+				TYPE_DISCRETE_TIME_SPECIFIER) );
 	}
 
 	inline bool isTypedTime() const
 	{
-		return( getTypeSpecifierKind() == TYPE_TIME_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_TIME_SPECIFIER ) );
 	}
 
 	bool isTypedContinuousTime() const
 	{
-		return( getTypeSpecifierKind() == TYPE_CONTINUOUS_TIME_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_CONTINUOUS_TIME_SPECIFIER ) );
+	}
+
+	bool isTypedDenseTime() const
+	{
+		return( isTypeSpecifierKind( TYPE_DENSE_TIME_SPECIFIER ) );
 	}
 
 	bool isTypedDiscreteTime() const
 	{
-		return( getTypeSpecifierKind() == TYPE_DISCRETE_TIME_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_DISCRETE_TIME_SPECIFIER ) );
 	}
 
 	bool weaklyTypedTimeInteger() const;
@@ -412,12 +465,12 @@ public:
 
 	inline bool isTypedPosInteger() const
 	{
-		return( getTypeSpecifierKind() == TYPE_POS_INTEGER_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_POS_INTEGER_SPECIFIER ) );
 	}
 
 	inline bool isTypedUInteger() const
 	{
-		return( (getTypeSpecifierKind() == TYPE_UINTEGER_SPECIFIER)
+		return( isTypeSpecifierKind( TYPE_UINTEGER_SPECIFIER )
 				|| isTypedPosInteger() );
 	}
 
@@ -425,8 +478,8 @@ public:
 
 	inline bool isTypedInteger() const
 	{
-		return( (getTypeSpecifierKind() == TYPE_INTEGER_SPECIFIER)
-				|| isTypedUInteger() );
+		return( isTypeSpecifierKind( TYPE_INTEGER_SPECIFIER )
+				|| isTypedUInteger() || isTypedPosInteger() );
 	}
 
 	bool weaklyTypedInteger() const;
@@ -436,17 +489,22 @@ public:
 	// RATIONAL TYPE
 	///////////////////
 
+	inline bool isTypedPosRational() const
+	{
+		return( isTypeSpecifierKind( TYPE_POS_RATIONAL_SPECIFIER ) );
+	}
+
 	inline bool isTypedURational() const
 	{
-		return( getTypeSpecifierKind() == TYPE_URATIONAL_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_URATIONAL_SPECIFIER ) );
 	}
 
 	bool weaklyTypedURational() const;
 
 	inline bool isTypedRational() const
 	{
-		return( (getTypeSpecifierKind() == TYPE_RATIONAL_SPECIFIER)
-				|| isTypedURational() );
+		return( isTypeSpecifierKind( TYPE_RATIONAL_SPECIFIER )
+				|| isTypedURational() || isTypedPosRational() );
 	}
 
 	bool weaklyTypedRational() const;
@@ -456,17 +514,22 @@ public:
 	// FLOAT TYPE
 	///////////////////
 
+	inline bool isTypedPosFloat() const
+	{
+		return( isTypeSpecifierKind( TYPE_POS_FLOAT_SPECIFIER ) );
+	}
+
 	inline bool isTypedUFloat() const
 	{
-		return( getTypeSpecifierKind() == TYPE_UFLOAT_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_UFLOAT_SPECIFIER ) );
 	}
 
 	bool weaklyTypedUFloat() const;
 
 	inline bool isTypedFloat() const
 	{
-		return( (getTypeSpecifierKind() == TYPE_FLOAT_SPECIFIER)
-				|| isTypedUFloat() );
+		return( isTypeSpecifierKind( TYPE_FLOAT_SPECIFIER )
+				|| isTypedUFloat() || isTypedPosFloat() );
 	}
 
 	bool weaklyTypedFloat() const;
@@ -476,17 +539,22 @@ public:
 	// REAL TYPE
 	///////////////////
 
+	inline bool isTypedPosReal() const
+	{
+		return( isTypeSpecifierKind( TYPE_POS_REAL_SPECIFIER ) );
+	}
+
 	inline bool isTypedUReal() const
 	{
-		return( getTypeSpecifierKind() == TYPE_UREAL_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_UREAL_SPECIFIER ) );
 	}
 
 	bool weaklyTypedUReal() const;
 
 	inline bool isTypedReal() const
 	{
-		return( (getTypeSpecifierKind() == TYPE_REAL_SPECIFIER)
-				|| isTypedUReal() );
+		return( isTypeSpecifierKind( TYPE_REAL_SPECIFIER )
+				|| isTypedUReal() || isTypedPosReal() );
 	}
 
 	bool weaklyTypedReal() const;
@@ -498,7 +566,7 @@ public:
 
 	inline bool isTypedInterval() const
 	{
-		return( getTypeSpecifierKind() == TYPE_INTERVAL_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_INTERVAL_SPECIFIER ) );
 	}
 
 
@@ -509,47 +577,47 @@ public:
 
 	inline bool isTypedOperator() const
 	{
-		return( getTypeSpecifierKind() == TYPE_OPERATOR_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_OPERATOR_SPECIFIER ) );
 	}
 
 	inline bool isTypedAvmcode() const
 	{
-		return( getTypeSpecifierKind() == TYPE_AVMCODE_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_AVMCODE_SPECIFIER ) );
 	}
 
 	inline bool isTypedChannel() const
 	{
-		return( getTypeSpecifierKind() == TYPE_CHANNEL_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_CHANNEL_SPECIFIER ) );
 	}
 
 	inline bool isTypedPort() const
 	{
-		return( getTypeSpecifierKind() == TYPE_PORT_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_PORT_SPECIFIER ) );
 	}
 
 	inline bool isTypedMessage() const
 	{
-		return( getTypeSpecifierKind() == TYPE_MESSAGE_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_MESSAGE_SPECIFIER ) );
 	}
 
 	inline bool isTypedSignal() const
 	{
-		return( getTypeSpecifierKind() == TYPE_SIGNAL_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_SIGNAL_SPECIFIER ) );
 	}
 
 	inline bool isTypedBuffer() const
 	{
-		return( getTypeSpecifierKind() == TYPE_BUFFER_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_BUFFER_SPECIFIER ) );
 	}
 
-	inline bool isTypedConnection() const
+	inline bool isTypedConnector() const
 	{
-		return( getTypeSpecifierKind() == TYPE_CONNECTOR_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_CONNECTOR_SPECIFIER ) );
 	}
 
 	inline bool isTypedMachine() const
 	{
-		return( getTypeSpecifierKind() == TYPE_MACHINE_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_MACHINE_SPECIFIER ) );
 	}
 
 
@@ -578,7 +646,7 @@ public:
 
 	inline bool isTypedArray() const
 	{
-		return( getTypeSpecifierKind() == TYPE_ARRAY_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_ARRAY_SPECIFIER ) );
 	}
 
 
@@ -588,84 +656,75 @@ public:
 
 	inline bool isTypedVector() const
 	{
-		return( getTypeSpecifierKind() == TYPE_VECTOR_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_VECTOR_SPECIFIER ) );
 	}
 
 	inline bool isTypedReverseVector() const
 	{
-		return( getTypeSpecifierKind() == TYPE_REVERSE_VECTOR_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_REVERSE_VECTOR_SPECIFIER ) );
 	}
 
 	inline bool hasTypeVector() const
 	{
-		switch( getTypeSpecifierKind() )
-		{
-			case TYPE_VECTOR_SPECIFIER:
-			case TYPE_REVERSE_VECTOR_SPECIFIER:
-				return( true );
-
-			default:
-				return( false );
-		}
+		return( isTypeSpecifierKind(
+				TYPE_VECTOR_SPECIFIER, TYPE_REVERSE_VECTOR_SPECIFIER) );
 	}
 
 
 	inline bool isTypedList() const
 	{
-		return( getTypeSpecifierKind() == TYPE_LIST_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_LIST_SPECIFIER ) );
 	}
 
 	inline bool isTypedSet() const
 	{
-		return( getTypeSpecifierKind() == TYPE_SET_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_SET_SPECIFIER ) );
 	}
 
 	inline bool isTypedMultiset() const
 	{
-		return( getTypeSpecifierKind() == TYPE_MULTISET_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_MULTISET_SPECIFIER ) );
+	}
+
+	inline bool hasTypeSetOrMultiset() const
+	{
+		return( isTypeSpecifierKind(
+				TYPE_SET_SPECIFIER, TYPE_MULTISET_SPECIFIER ) );
 	}
 
 
 	inline bool isTypedFifo() const
 	{
-		return( getTypeSpecifierKind() == TYPE_FIFO_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_FIFO_SPECIFIER ) );
 	}
 
 	inline bool isTypedLifo() const
 	{
-		return( getTypeSpecifierKind() == TYPE_LIFO_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_LIFO_SPECIFIER ) );
 	}
 
 
 	inline bool isTypedMultiFifo() const
 	{
-		return( getTypeSpecifierKind() == TYPE_MULTI_FIFO_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_MULTI_FIFO_SPECIFIER ) );
 	}
 
 	inline bool isTypedMultiLifo() const
 	{
-		return( getTypeSpecifierKind() == TYPE_MULTI_LIFO_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_MULTI_LIFO_SPECIFIER ) );
 	}
 
 
 	inline bool isTypedRam() const
 	{
-		return( getTypeSpecifierKind() == TYPE_RAM_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_RAM_SPECIFIER ) );
 	}
 
 
 	inline bool hasTypeArrayVector() const
 	{
-		switch( getTypeSpecifierKind() )
-		{
-			case TYPE_ARRAY_SPECIFIER:
-			case TYPE_VECTOR_SPECIFIER:
-			case TYPE_REVERSE_VECTOR_SPECIFIER:
-				return( true );
-
-			default:
-				return( false );
-		}
+		return( isTypeSpecifierKind(TYPE_ARRAY_SPECIFIER,
+				TYPE_VECTOR_SPECIFIER, TYPE_REVERSE_VECTOR_SPECIFIER) );
 	}
 
 	inline bool hasTypeQueue() const
@@ -699,6 +758,8 @@ public:
 			default:
 				return( hasTypeQueue() );
 		}
+//		return( isTypeSpecifierKind(TYPE_LIST_SPECIFIER,
+//				TYPE_SET_SPECIFIER, TYPE_MULTISET_SPECIFIER) );
 	}
 
 	inline bool hasTypeCollection() const
@@ -718,36 +779,43 @@ public:
 
 	inline bool isTypedStructure() const
 	{
-		return( getTypeSpecifierKind() == TYPE_CLASS_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_CLASS_SPECIFIER ) );
 	}
 
 	inline bool isTypedClass() const
 	{
-		return( getTypeSpecifierKind() == TYPE_CLASS_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_CLASS_SPECIFIER ) );
+	}
+
+
+	inline bool isTypedUnion() const
+	{
+		return( isTypeSpecifierKind( TYPE_UNION_SPECIFIER ) );
+	}
+
+	inline bool hasTypeStructureOrUnion() const
+	{
+		return( isTypeSpecifierKind(
+				TYPE_CLASS_SPECIFIER, TYPE_UNION_SPECIFIER) );
 	}
 
 
 	inline bool isTypedChoice() const
 	{
-		return( getTypeSpecifierKind() == TYPE_CHOICE_SPECIFIER );
-	}
-
-	inline bool isTypedUnion() const
-	{
-		return( getTypeSpecifierKind() == TYPE_UNION_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_CHOICE_SPECIFIER ) );
 	}
 
 	inline bool hasTypeChoiceOrUnion() const
 	{
-		return( (getTypeSpecifierKind() == TYPE_CHOICE_SPECIFIER)
-			 || (getTypeSpecifierKind() == TYPE_UNION_SPECIFIER) );
+		return( isTypeSpecifierKind(
+				TYPE_CHOICE_SPECIFIER, TYPE_UNION_SPECIFIER) );
 	}
+
 
 	inline bool hasTypeStructureOrChoiceOrUnion() const
 	{
-		return( (getTypeSpecifierKind() == TYPE_CLASS_SPECIFIER  )
-			 || (getTypeSpecifierKind() == TYPE_CHOICE_SPECIFIER )
-			 || (getTypeSpecifierKind() == TYPE_UNION_SPECIFIER) );
+		return( isTypeSpecifierKind(TYPE_CLASS_SPECIFIER,
+				TYPE_CHOICE_SPECIFIER, TYPE_UNION_SPECIFIER) );
 	}
 
 
@@ -757,17 +825,7 @@ public:
 
 	inline bool isTypedLambda() const
 	{
-		return( getTypeSpecifierKind() == TYPE_LAMBDA_SPECIFIER );
-	}
-
-
-	//////////////////////////////
-	// ALIAS TYPE
-	//////////////////////////////
-
-	inline bool isTypedAlias() const
-	{
-		return( getTypeSpecifierKind() == TYPE_ALIAS_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_LAMBDA_SPECIFIER ) );
 	}
 
 
@@ -777,7 +835,7 @@ public:
 
 	inline bool isTypedUniversal() const
 	{
-		return( getTypeSpecifierKind() == TYPE_UNIVERSAL_SPECIFIER );
+		return( isTypeSpecifierKind( TYPE_UNIVERSAL_SPECIFIER ) );
 	}
 
 
@@ -799,6 +857,9 @@ public:
 			case TYPE_REAL_SPECIFIER:
 
 			case TYPE_POS_INTEGER_SPECIFIER:
+			case TYPE_POS_RATIONAL_SPECIFIER:
+			case TYPE_POS_FLOAT_SPECIFIER:
+			case TYPE_POS_REAL_SPECIFIER:
 
 			case TYPE_UINTEGER_SPECIFIER:
 			case TYPE_URATIONAL_SPECIFIER:
@@ -808,6 +869,7 @@ public:
 			case TYPE_CLOCK_SPECIFIER:
 			case TYPE_TIME_SPECIFIER:
 			case TYPE_CONTINUOUS_TIME_SPECIFIER:
+			case TYPE_DENSE_TIME_SPECIFIER:
 			case TYPE_DISCRETE_TIME_SPECIFIER:
 				return( true );
 

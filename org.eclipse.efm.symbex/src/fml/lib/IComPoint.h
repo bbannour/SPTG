@@ -35,7 +35,7 @@ public:
 	/**
 	 * ComPoint NATURE
 	 */
-	typedef avm_uint8_t         ENUM_IO_NATURE;
+	typedef std::uint8_t         ENUM_IO_NATURE;
 
 	enum
 	{
@@ -94,6 +94,16 @@ public:
 	inline bool isSignal() const
 	{
 		return( getComPointNature() == IO_SIGNAL_NATURE );
+	}
+
+	inline bool isChannel() const
+	{
+		return( getComPointNature() == IO_CHANNEL_NATURE );
+	}
+
+	inline bool isMessage() const
+	{
+		return( getComPointNature() == IO_MESSAGE_NATURE );
 	}
 
 	inline std::string strComPointNature() const

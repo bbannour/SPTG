@@ -43,36 +43,18 @@ public:
 	/**
 	 * TYPEDEF
 	 */
-	typedef avm_uint8_t            TFLAG;
-
-	enum
-	{
-		EXECUTABLE_UNDEFINED_FLAG  = 0x00,
-
-		EXECUTABLE_COMPILED_FLAG   = 0x01,
-
-		EXECUTABLE_OPTIMIZED_FLAG  = 0x02,
-
-		EXECUTABLE_FINALIZED_FLAG  = EXECUTABLE_COMPILED_FLAG
-		                           | EXECUTABLE_OPTIMIZED_FLAG
-	};
-
-
 protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	TFLAG mFlag;
+	TableOfInstanceOfData mVariables;
 
-	TableOfInstanceOfData mData;
+	TableOfInstanceOfData * mBasicVariables;
+	TableOfInstanceOfData * mAllVariables;
 
-	TableOfInstanceOfData * mBasicData;
-	TableOfInstanceOfData * mAllData;
+	TableOfInstanceOfData mVariablesAlias;
 
-
-	TableOfInstanceOfData mDataAlias;
-
-	// Static Analysis Data
+	// Static Analysis on Variables
 	// The list of reachable machine per machine
 	STATIC_ANALYSIS::VARIABLE_DEPENDENCY_RING mVariableDependencyFlag;
 
@@ -83,14 +65,12 @@ public:
 	 * Default
 	 */
 	BaseAvmProgram(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			const ObjectElement * astProgram, avm_size_t aSize)
+			const ObjectElement & astProgram, std::size_t aSize)
 	: BaseCompiledForm(aClassKind, aContainer, astProgram),
-	mFlag( EXECUTABLE_UNDEFINED_FLAG ),
-
-	mData( aSize ),
-	mBasicData( &mData ),
-	mAllData( &mData ),
-	mDataAlias( ),
+	mVariables( aSize ),
+	mBasicVariables( & mVariables ),
+	mAllVariables( & mVariables ),
+	mVariablesAlias( ),
 
 	mVariableDependencyFlag( STATIC_ANALYSIS::UNDEFINED_DEPENDENCY )
 	{
@@ -98,14 +78,13 @@ public:
 	}
 
 	BaseAvmProgram(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			const std::string & aNameID, avm_size_t aSize)
-	: BaseCompiledForm(aClassKind, aContainer, aNameID),
-	mFlag( EXECUTABLE_UNDEFINED_FLAG ),
-
-	mData( aSize ),
-	mBasicData( &mData ),
-	mAllData( &mData ),
-	mDataAlias( ),
+			const ObjectElement & astProgram,
+			const std::string & aNameID, std::size_t aSize)
+	: BaseCompiledForm(aClassKind, aContainer, astProgram, aNameID),
+	mVariables( aSize ),
+	mBasicVariables( & mVariables ),
+	mAllVariables( & mVariables ),
+	mVariablesAlias( ),
 
 	mVariableDependencyFlag( STATIC_ANALYSIS::UNDEFINED_DEPENDENCY )
 	{
@@ -119,16 +98,14 @@ public:
 	 */
 	BaseAvmProgram(const BaseAvmProgram & aProgram)
 	: BaseCompiledForm( aProgram ),
-	mFlag( aProgram.mFlag ),
+	mVariables( aProgram.mVariables ),
 
-	mData( aProgram.mData ),
+	mBasicVariables( (aProgram.mBasicVariables == &(aProgram.mVariables) )
+			? &mVariables : aProgram.mBasicVariables ),
 
-	mBasicData( (aProgram.mBasicData == &(aProgram.mData) )
-			? &mData : aProgram.mBasicData ),
-
-	mAllData( (aProgram.mAllData == &(aProgram.mData) )
-			? &mData : aProgram.mAllData ),
-	mDataAlias( aProgram.mDataAlias ),
+	mAllVariables( (aProgram.mAllVariables == &(aProgram.mVariables) )
+			? &mVariables : aProgram.mAllVariables ),
+	mVariablesAlias( aProgram.mVariablesAlias ),
 
 	mVariableDependencyFlag( aProgram.mVariableDependencyFlag )
 	{
@@ -141,14 +118,14 @@ public:
 	 */
 	virtual ~BaseAvmProgram()
 	{
-		if( mBasicData != &mData )
+		if( mBasicVariables != (& mVariables) )
 		{
-			sep::destroy( mBasicData );
+			sep::destroy( mBasicVariables );
 		}
 
-		if( mAllData != &mData )
+		if( mAllVariables != (& mVariables) )
 		{
-			sep::destroy( mAllData );
+			sep::destroy( mAllVariables );
 		}
 	}
 
@@ -172,10 +149,12 @@ public:
 	ExecutableForm * getExecutableContainer() const;
 	ExecutableForm * getExecutable() const;
 
+	ExecutableForm & refExecutable() const;
+
 	inline bool isAncestor(BaseAvmProgram * omrProg)
 	{
 		BaseAvmProgram * aProg = getContainer();
-		for( ; aProg != NULL ; aProg = aProg->getContainer() )
+		for( ; aProg != nullptr ; aProg = aProg->getContainer() )
 		{
 			if( aProg == omrProg )
 			{
@@ -187,247 +166,226 @@ public:
 
 
 	/**
-	 * GETTER - SETTER
-	 * mFlag
-	 */
-	bool isCompiledFlag()
-	{
-		return( (mFlag & EXECUTABLE_COMPILED_FLAG) != 0 );
-	}
-
-	void setCompiledFlag()
-	{
-		mFlag = mFlag | EXECUTABLE_COMPILED_FLAG;
-	}
-
-
-	bool isOptimizedFlag()
-	{
-		return( (mFlag & EXECUTABLE_OPTIMIZED_FLAG) != 0 );
-	}
-
-	void setOptimizedFlag()
-	{
-		mFlag = mFlag | EXECUTABLE_OPTIMIZED_FLAG;
-	}
-
-
-	bool isFinalizedFlag()
-	{
-		return( (mFlag & EXECUTABLE_FINALIZED_FLAG) != 0 );
-	}
-
-
-	/**
 	 * Initialize
 	 */
-	inline void init(BaseAvmProgram * aContainer, avm_size_t aSize)
+	inline void init(BaseAvmProgram * aContainer, std::size_t aSize)
 	{
 		setContainer( aContainer );
 
-		mData.resize(aSize);
+		mVariables.resize(aSize);
 
-		mBasicData = &mData;
-		mAllData = &mData;
+		mBasicVariables = (& mVariables);
+		mAllVariables = (& mVariables);
 	}
 
 
 	/*
 	 * contains DATA
 	 */
-	inline bool containsData(InstanceOfData * anInstance) const
+	inline bool containsVariable(InstanceOfData * aVariable) const
 	{
-		return( mData.contains(anInstance) ||
-				mDataAlias.contains(anInstance) );
+		return( mVariables.contains(aVariable)
+				|| mVariablesAlias.contains(aVariable) );
 	}
 
-	inline bool containsData(const BF & anInstance) const
+	inline bool containsVariable(const BF & aVariable) const
 	{
-		return( mData.contains(anInstance) ||
-				mDataAlias.contains(anInstance) );
+		return( mVariables.contains(aVariable)
+				|| mVariablesAlias.contains(aVariable) );
 	}
 
 
-	inline bool containsAllData(InstanceOfData * anInstance) const
+	inline bool containsAllVariable(InstanceOfData * aVariable) const
 	{
-		return( mAllData->contains(anInstance) ||
-				mDataAlias.contains(anInstance) );
+		return( mAllVariables->contains(aVariable)
+				|| mVariablesAlias.contains(aVariable) );
 	}
 
-//	inline bool containsAllData(const BF & anInstance) const
+//	inline bool containsAllVariable(const BF & aVariable) const
 //	{
-//		return( mAllData->contains(anInstance) ||
-//				mDataAlias.contains(anInstance) );
+//		return( mAllVariables->contains(aVariable)
+//				|| mVariablesAlias.contains(aVariable) );
 //	}
 
 
 	/**
 	 * GETTER - SETTER
-	 * mData
+	 * mVariables
 	 */
-	inline const BF & saveData(InstanceOfData * anInstance)
+	inline const BF & saveVariable(InstanceOfData * aVariable)
 	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( anInstance )
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aVariable )
 				<< "InstanceOfData !!!"
 				<< SEND_EXIT;
 
-		anInstance->setContainer(this);
+		aVariable->setContainer(this);
 
-		return( mData.save(anInstance) );
+		return( mVariables.save(aVariable) );
 	}
 
-	inline void appendData(const BFList & dataList)
+	inline void appendVariables(const BFList & variablesList)
 	{
-		mData.append( dataList );
+		mVariables.append( variablesList );
 	}
 
-	inline void appendData(const BFVector & dataList)
+	inline void appendVariables(const BFVector & variablesList)
 	{
-		mData.append( dataList );
-	}
-
-
-	inline const TableOfInstanceOfData & getData() const
-	{
-		return( mData );
+		mVariables.append( variablesList );
 	}
 
 
-	inline avm_size_t getDataSize() const
+	inline const TableOfInstanceOfData & getVariables() const
 	{
-		return( mData.size() );
+		return( mVariables );
+	}
+
+	inline TableOfInstanceOfData & getVariables()
+	{
+		return( mVariables );
 	}
 
 
-	inline bool hasData() const
+	inline std::size_t getVariablesSize() const
 	{
-		return( mData.nonempty() );
+		return( mVariables.size() );
 	}
 
 
-	inline void setData(avm_offset_t offset, InstanceOfData * anInstance)
+	inline bool hasVariable() const
 	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( anInstance )
+		return( mVariables.nonempty() );
+	}
+
+
+	inline void setVariable(avm_offset_t offset, InstanceOfData * aVariable)
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aVariable )
 				<< "InstanceOfData !!!"
 				<< SEND_EXIT;
 
-		anInstance->setContainer(this);
+		aVariable->setContainer(this);
 
-		mData.set(offset, anInstance);
+		mVariables.set(offset, aVariable);
 	}
 
-	inline void setData(avm_offset_t offset, const BF & anInstance)
+	inline void setVariable(avm_offset_t offset, const BF & aVariable)
 	{
-		AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( anInstance )
+		AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( aVariable )
 				<< "InstanceOfData !!!"
 				<< SEND_EXIT;
 
-		anInstance.to_ptr< InstanceOfData >()->setContainer(this);
+		aVariable.to_ptr< InstanceOfData >()->setContainer(this);
 
-		mData.set(offset, anInstance);
+		mVariables.set(offset, aVariable);
 	}
 
 
-	inline void setData(TableOfInstanceOfData & tableOfData)
+	inline void setVariables(TableOfInstanceOfData & tableOfVariables)
 	{
-		resetData( tableOfData );
+		resetVariables( tableOfVariables );
 
-		updateDataTable();
+		updateVariableTable();
 	}
 
-	inline void resetData(TableOfInstanceOfData & tableOfData)
+	inline void resetVariables(TableOfInstanceOfData & tableOfVariables)
 	{
-//		mData.realloc( tableOfData );
+//		mVariables.realloc( tableOfVariables );
 
-		mData.clear();
-		mData.append( tableOfData );
+		mVariables.clear();
+		mVariables.append( tableOfVariables );
 	}
 
 
 	/**
 	 * GETTER - SETTER
-	 * mBasicData
+	 * mBasicVariables
 	 */
-	inline const TableOfInstanceOfData & getBasicData() const
+	inline const TableOfInstanceOfData & getBasicVariables() const
 	{
-		return( * mBasicData );
+		return( * mBasicVariables );
 	}
 
-	inline avm_size_t getBasicDataSize() const
+	inline std::size_t getBasicVariablesSize() const
 	{
-		return( getBasicData().size() );
+		return( getBasicVariables().size() );
 	}
 
-	inline bool hasBasicData() const
+	inline bool hasBasicVariable() const
 	{
-		return( (mBasicData != NULL) && mBasicData->nonempty() );
+		return( (mBasicVariables != nullptr) && mBasicVariables->nonempty() );
 	}
 
 
 	/**
 	 * GETTER - SETTER
-	 * mAllData
+	 * mAllVariables
 	 */
-	inline const TableOfInstanceOfData & getAllData() const
+	inline const TableOfInstanceOfData & getAllVariables() const
 	{
-		return( * mAllData );
+		return( * mAllVariables );
 	}
 
-	inline avm_size_t getAllDataSize() const
+	inline TableOfInstanceOfData & getAllVariables()
 	{
-		return( (mAllData != NULL) ? mAllData->size() : 0 );
+		return( * mAllVariables );
 	}
 
-	inline bool hasAllData() const
+	inline std::size_t getAllVariablesSize() const
 	{
-		return( (mAllData != NULL) && mAllData->nonempty() );
+		return( (mAllVariables != nullptr) ? mAllVariables->size() : 0 );
+	}
+
+	inline bool hasAllVariable() const
+	{
+		return( (mAllVariables != nullptr) && mAllVariables->nonempty() );
 	}
 
 
 	/**
 	 * UPDATE DATA TABLE
-	 * mBasicData
-	 * mallData
+	 * mBasicVariables
+	 * mallVariables
 	 */
-	void updateDataTable();
+	void updateVariableTable();
 
-	void collectAllData(TableOfInstanceOfData & tableofAllData,
-			TableOfInstanceOfData & tableofBasicData, InstanceOfData * mainInstance,
-			TableOfSymbol & relativeDataPath, InstanceOfData * anInstance);
+	void collectAllVariables(TableOfInstanceOfData & tableofAllVariables,
+			TableOfInstanceOfData & tableofBasicVariables,
+			InstanceOfData * mainVariableInstance,
+			TableOfSymbol & relativeDataPath, InstanceOfData * aVariable);
 
 
 	/**
 	 * GETTER - SETTER
-	 * mDataAlias
+	 * mVariablesAlias
 	 */
 
-	inline void appendDataAlias(const Symbol & anAlias)
+	inline void appendVariableAlias(const Symbol & anAlias)
 	{
 		AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( anAlias )
 				<< "InstanceOfData !!!"
 				<< SEND_EXIT;
 
-		mDataAlias.append(anAlias);
+		mVariablesAlias.append(anAlias);
 	}
 
-	inline const BF & saveDataAlias(InstanceOfData * anInstance)
+	inline const BF & saveVariableAlias(InstanceOfData * aVariable)
 	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( anInstance )
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aVariable )
 				<< "InstanceOfData !!!"
 				<< SEND_EXIT;
 
-		return( mDataAlias.save(anInstance) );
+		return( mVariablesAlias.save(aVariable) );
 	}
 
-	inline const TableOfInstanceOfData & getDataAlias() const
+	inline const TableOfInstanceOfData & getVariableAlias() const
 	{
-		return( mDataAlias );
+		return( mVariablesAlias );
 	}
 
 
-	bool hasDataAlias() const
+	bool hasVariableAlias() const
 	{
-		return( mDataAlias.nonempty() );
+		return( mVariablesAlias.nonempty() );
 	}
 
 
@@ -448,7 +406,7 @@ public:
 
 
 	virtual const BF & getSymbolByAstElement(
-			const ObjectElement * astElement,
+			const ObjectElement & astElement,
 			avm_type_specifier_kind_t typeFamily) const;
 
 
@@ -462,7 +420,7 @@ public:
 			avm_type_specifier_kind_t typeFamily) const
 	{
 		const BaseAvmProgram * aProgram = this;
-		for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+		for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 		{
 			const BF & theSymbol =
 					aProgram->getSymbol(aFullyQualifiedNameID, typeFamily);
@@ -481,7 +439,7 @@ public:
 			avm_type_specifier_kind_t typeFamily) const
 	{
 		const BaseAvmProgram * aProgram = this;
-		for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+		for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 		{
 			const BF & theSymbol = aProgram->
 					getSymbolByQualifiedNameID(aQualifiedNameID, typeFamily);
@@ -499,7 +457,7 @@ public:
 			avm_type_specifier_kind_t typeFamily) const
 	{
 		const BaseAvmProgram * aProgram = this;
-		for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+		for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 		{
 			const BF & theSymbol =
 					aProgram->getSymbolByNameID(aNameID, typeFamily);
@@ -512,24 +470,24 @@ public:
 		return( BF::REF_NULL );
 	}
 
-
-	inline const BF & getymbolByAstElement(
-			const ObjectElement * astElement,
-			avm_type_specifier_kind_t typeFamily) const
-	{
-		const BaseAvmProgram * aProgram = this;
-		for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
-		{
-			const BF & theSymbol =
-					aProgram->getSymbolByAstElement(astElement, typeFamily);
-			if( theSymbol.valid() )
-			{
-				return( theSymbol );
-			}
-		}
-
-		return( BF::REF_NULL );
-	}
+//!@?UNUSED:
+//	inline const BF & getymbolByAstElement(
+//			const ObjectElement & astElement,
+//			avm_type_specifier_kind_t typeFamily) const
+//	{
+//		const BaseAvmProgram * aProgram = this;
+//		for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
+//		{
+//			const BF & theSymbol =
+//					aProgram->getSymbolByAstElement(astElement, typeFamily);
+//			if( theSymbol.valid() )
+//			{
+//				return( theSymbol );
+//			}
+//		}
+//
+//		return( BF::REF_NULL );
+//	}
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -584,7 +542,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 	virtual void toFscn(OutStream & os) const
 	{

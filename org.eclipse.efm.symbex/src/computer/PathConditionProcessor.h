@@ -42,9 +42,9 @@ public:
 	///// FIRED TIMED CONDITION
 	////////////////////////////////////////////////////////////////////////////
 
-	static bool setNodeCondition(APExecutionData & apED,
+	static bool setNodeCondition(ExecutionData & apED,
 			const BF & theCondition);
-	static bool addNodeCondition(APExecutionData & apED,
+	static bool addNodeCondition(ExecutionData & apED,
 			const BF & theCondition);
 
 
@@ -52,9 +52,9 @@ public:
 	///// FIRED TIMED CONDITION
 	////////////////////////////////////////////////////////////////////////////
 
-	static bool setNodeTimedCondition(APExecutionData & apED,
+	static bool setNodeTimedCondition(ExecutionData & apED,
 			const BF & theTimedCondition);
-	static bool addNodeTimedCondition(APExecutionData & apED,
+	static bool addNodeTimedCondition(ExecutionData & apED,
 			const BF & theTimedCondition);
 
 
@@ -62,15 +62,15 @@ public:
 	///// PATH CONDITION
 	////////////////////////////////////////////////////////////////////////////
 
-	static bool addPathCondition(APExecutionData & apED,
+	static bool addPathCondition(ExecutionData & apED,
 			const BF & theCondition, bool considerFiredConditon = true);
 
 
-	static bool appendPathCondition(APExecutionData & apED, BF & theCondition,
-			CollectionOfAPExecutionData & listOfOutputED);
+	static bool appendPathCondition(ExecutionData & apED, BF & theCondition,
+			CollectionOfExecutionData & listOfOutputED);
 
 	inline static bool appendPathCondition(ExecutionEnvironment & ENV,
-			APExecutionData & apED, BF & theCondition)
+			ExecutionData & apED, BF & theCondition)
 	{
 		return( appendPathCondition(apED, theCondition, ENV.outEDS) );
 	}
@@ -82,7 +82,7 @@ public:
 
 
 	static bool setCondition(
-			APExecutionData & apED, const BF & theNodeCondition,
+			ExecutionData & apED, const BF & theNodeCondition,
 			const BF & thePathCondition, bool considerFiredConditon = true);
 
 
@@ -90,21 +90,21 @@ public:
 	// PATH TIMED CONDITION
 	////////////////////////////////////////////////////////////////////////////
 
-	static bool addPathTimedCondition(APExecutionData & apED,
+	static bool addPathTimedCondition(ExecutionData & apED,
 			const BF & theTimedCondition);
 
 	inline static bool appendPathTimedCondition(ExecutionEnvironment & ENV,
-			APExecutionData & apED, BF & theTimedCondition)
+			ExecutionData & apED, BF & theTimedCondition)
 	{
 		return( appendPathTimedCondition(apED,
 				theTimedCondition, ENV.outEDS) );
 	}
 
-	static bool appendPathTimedCondition(APExecutionData & apED,
+	static bool appendPathTimedCondition(ExecutionData & apED,
 			BF & theTimedCondition,
-			CollectionOfAPExecutionData & listOfOutputED);
+			CollectionOfExecutionData & listOfOutputED);
 
-	static bool setTimedCondition(APExecutionData & apED,
+	static bool setTimedCondition(ExecutionData & apED,
 			const BF & theNodeTimedCondition,
 			const BF & thePathTimedCondition);
 
@@ -114,9 +114,14 @@ public:
 	/*
 	 * ATTRIBUTE
 	 */
-	static bool checkPathcondSat;
-	static bool separationOfPcDisjunction;
+	static bool CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED;
 
+	static bool STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED;
+
+
+	static bool PATH_CONDIDITON_DISJONCTION_SEPARATION_ENABLED;
+
+	static bool NODE_CONDITION_COMPUTATION_ENABLED;
 
 
 };

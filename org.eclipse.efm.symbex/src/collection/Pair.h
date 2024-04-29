@@ -13,7 +13,7 @@
 #ifndef CONTAINER_PAIR_H_
 #define CONTAINER_PAIR_H_
 
-#include <base/SmartPointerUtil.h>
+#include <common/Element.h>
 
 
 namespace sep
@@ -97,14 +97,9 @@ public:
 		return( theFirst );
 	}
 
-	void setFirst(T one)
+	void setFirst(referenceT first)
 	{
-		theFirst = one;
-	}
-
-	void setFirst(const_referenceT one)
-	{
-		theFirst = one;
+		theFirst = first;
 	}
 
 
@@ -122,14 +117,9 @@ public:
 		return( theSecond );
 	}
 
-	void setSecond(U two)
+	void setSecond(referenceU second)
 	{
-		theSecond = two;
-	}
-
-	void setSecond(const_referenceU two)
-	{
-		theSecond = two;
+		theSecond = second;
 	}
 
 
@@ -173,7 +163,7 @@ void destroy(Pair< T *  , U * > * aPair)
 
 	delete( aPair );
 
-	aPair = NULL;
+	aPair = nullptr;
 }
 
 
@@ -184,7 +174,7 @@ void destroy(Pair< T *  , U > * aPair)
 
 	delete( aPair );
 
-	aPair = NULL;
+	aPair = nullptr;
 }
 
 
@@ -195,7 +185,7 @@ void destroy(Pair< T , U * > * aPair)
 
 	delete( aPair );
 
-	aPair = NULL;
+	aPair = nullptr;
 }
 
 
@@ -204,7 +194,7 @@ void destroy(Pair< T , U > * aPair)
 {
 	delete( aPair );
 
-	aPair = NULL;
+	aPair = nullptr;
 }
 
 

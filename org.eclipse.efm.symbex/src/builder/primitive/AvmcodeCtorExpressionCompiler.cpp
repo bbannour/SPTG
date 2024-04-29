@@ -44,16 +44,18 @@ BF AvmcodeCtorExpressionCompiler::compileExpression(
 		return( aCode );
 	}
 
-	BaseTypeSpecifier * ctorTypeSpecifier =
-			ctorType.to_ptr< BaseTypeSpecifier >();
+	const BaseTypeSpecifier & ctorTypeSpecifier =
+			ctorType.as< BaseTypeSpecifier >();
 
 	BF bfExpr = aCode->second();
-	if( bfExpr.is< BuiltinArray >() && ctorTypeSpecifier->hasTypeComposite() )
+
+	if( bfExpr.is< BuiltinArray >()
+		&& ctorTypeSpecifier.hasTypeComposite() )
 	{
 		bfExpr = compileArgRvalue(aCTX->clone(ctorTypeSpecifier), bfExpr);
 
-		if( bfExpr.to_ptr< BuiltinArray >()->
-				getTypeSpecifier() == ctorTypeSpecifier )
+		if( bfExpr.to< BuiltinArray >().
+				getTypeSpecifier().isTEQ( ctorTypeSpecifier ) )
 		{
 			return( bfExpr );
 		}
@@ -65,7 +67,7 @@ BF AvmcodeCtorExpressionCompiler::compileExpression(
 	{
 		return( ExpressionConstructor::newCode(
 				aCode->getOperator(), ctorType,
-				compileArgRvalue(aCTX, bfExpr) ) );
+				compileArgRvalue(aCTX, bfExpr, false) ) );
 	}
 }
 
@@ -79,25 +81,28 @@ BF AvmcodeCtorExpressionCompiler::optimizeExpression(
 			/*processor*/ AVM_ARG_NOP_CPU,
 			/*operation*/ AVM_ARG_NOP_VALUE,
 			/*operand  */ AVM_ARG_CTOR_TYPE_KIND,
-			/*type     */ aCode->first().as_ptr< BaseTypeSpecifier >() );
+			/*type     */ aCode->first().as< BaseTypeSpecifier >() );
 
 	optimizeArgExpression(aCTX, aCode, 1);
 	argsInstruction->at(1).dtype = aCode->first().to_ptr< BaseTypeSpecifier >();
-	setArgcodeRValue(aCTX, argsInstruction->at(1), aCode->second());
+	setArgcodeRValue(aCTX, argsInstruction->at(1), aCode->second(), false);
 
 	avm_arg_processor_t mainProcessor =
-			processorOf( argsInstruction->dtype(0) );
+			processorOf(* argsInstruction->dtype(0) );
 
 	switch( argsInstruction->operand(1) )
 	{
 		case AVM_ARG_STRING_KIND:
+		case AVM_ARG_ENUM_LITERAL_KIND:
 		{
-			mainProcessor = AVM_ARG_STRING_CPU;
+			mainProcessor = argsInstruction->at(1).dtype->isTypedEnum() ?
+					AVM_ARG_STRING_CPU : AVM_ARG_STRING_CPU;
 			break;
 		}
 		case AVM_ARG_CHARACTER_KIND:
 		{
-			mainProcessor = AVM_ARG_CHARACTER_CPU;
+			mainProcessor = argsInstruction->at(1).dtype->isTypedEnum() ?
+					AVM_ARG_STRING_CPU : AVM_ARG_CHARACTER_CPU;
 			break;
 		}
 		case AVM_ARG_BOOLEAN_KIND:
@@ -105,7 +110,8 @@ BF AvmcodeCtorExpressionCompiler::optimizeExpression(
 		case AVM_ARG_RATIONAL_KIND:
 		case AVM_ARG_FLOAT_KIND:
 		{
-			mainProcessor = AVM_ARG_ARITHMETIC_LOGIC_CPU;
+			mainProcessor = argsInstruction->at(1).dtype->isTypedEnum() ?
+					AVM_ARG_STRING_CPU : AVM_ARG_ARITHMETIC_LOGIC_CPU;
 			break;
 		}
 
@@ -119,7 +125,7 @@ BF AvmcodeCtorExpressionCompiler::optimizeExpression(
 		{
 			if( argsInstruction->dtype(1) != TypeManager::UNIVERSAL )
 			{
-				mainProcessor = processorOf( argsInstruction->dtype(1) );
+				mainProcessor = processorOf(* argsInstruction->dtype(1) );
 			}
 			break;
 		}
@@ -129,8 +135,8 @@ BF AvmcodeCtorExpressionCompiler::optimizeExpression(
 			/*context  */ AVM_ARG_RETURN_CTX,
 			/*processor*/ mainProcessor,
 			/*operation*/ AVM_ARG_SEVAL_RVALUE,
-			/*operand  */ operandOf( argsInstruction->dtype(0) ),
-			/*dtype    */ argsInstruction->dtype(0));
+			/*operand  */ operandOf(* argsInstruction->dtype(0) ),
+			/*dtype    */ argsInstruction->dtype(0) );
 
 	return( aCode );
 }

@@ -13,32 +13,41 @@
 
 #include "AvmLauncher.h"
 
+#include <filesystem>
+
 #include <base/ClassKindInfo.h>
 
 #include <builder/Builder.h>
-#include <builder/Loader.h>
 
+#include <main/FamExposer.h>
 #include <main/SignalHandler.h>
+#include <main/StaticInitializer.h>
 
 #include <computer/EnvironmentFactory.h>
 
-#include <fam/api/ProcessorUnitRepository.h>
+#include <famcore/api/ProcessorUnitRepository.h>
 
 #include <fml/executable/ExecutableLib.h>
 
 #include <fml/expression/ExpressionFactory.h>
 
+#include <fml/lib/AvmLang.h>
+
 #include <fml/runtime/RuntimeLib.h>
 
 #include <fml/type/TypeManager.h>
 
+#if defined( _EXPERIMENTAL_SERVER_GRPC_FEATURE_ )
+
+#include <server/grpc/SymbexServer.h>
+
+#endif /* _EXPERIMENTAL_SERVER_GRPC_FEATURE_ */
+
 #include <solver/api/SolverDef.h>
 #include <solver/api/SolverFactory.h>
 
-#include <util/avm_string.h>
+#include <util/avm_vfs.h>
 #include <util/ExecutionTime.h>
-
-#include <boost/filesystem.hpp>
 
 #ifdef _AVM_BUILT_WITH_CMAKE_
 #include "version.h"
@@ -92,8 +101,10 @@ bool AvmLauncher::load()
 
 	if( getArgNumber() > 1 )
 	{
+		StaticInitializer::load();
+
 		std::string arg;
-		for( avm_size_t i = 1 ; i < getArgNumber() ; ++i )
+		for( std::size_t i = 1 ; i < getArgNumber() ; ++i )
 		{
 			arg = getArgument( i );
 
@@ -101,84 +112,199 @@ bool AvmLauncher::load()
 			{
 				VFS::WorkflowPath = arg;
 			}
+			else if( arg.find("--sew=") == 0 )
+			{
+				VFS::WorkflowPath =
+						arg.substr(std::strlen("--sew="), arg.size());
+			}
 			else if( (arg.find("--favm=") == 0) || (arg.find("--spec=") == 0) )
 			{
 				VFS::WorkflowPath =
 						arg.substr(std::strlen("--favm="), arg.size());
 			}
-			else if( (arg == "--favm") || (arg == "--spec") )
+			else if( (arg == "--sew") || (arg == "--favm") || (arg == "--spec") )
 			{
 				VFS::WorkflowPath = getArgument( ++i );
 			}
 
-			else if( arg == "--standalone" )
+			else if( arg == "--enable-standalone-mode" )
 			{
 				AVM_EXEC_MODE_SET( STANDALONE );
 			}
-			else if( (arg == "--server") || (arg == "-server") )
+			else if( arg == "--enable-server-mode" )
 			{
 				AVM_EXEC_MODE_SET( SERVER );
 			}
-			else if( arg == "--interactive" )
+
+#if defined( _EXPERIMENTAL_SERVER_GRPC_FEATURE_ )
+			else if( arg == "--enable-server-grpc-mode" )
+			{
+				AVM_EXEC_MODE_SET( SERVER_GRPC );
+			}
+			else if( arg.find("--host=") == 0 )
+			{
+				_AVM_EXEC_SERVER_HOST_ADDRESS_ =
+					arg.substr(std::strlen("--host="), arg.size());
+			}
+
+			else if( arg.find("--port=") == 0 )
+			{
+				std::string strPortNumber =
+					arg.substr(std::strlen("--port="), arg.size());
+
+				try
+				{
+					if( std::stol(strPortNumber.c_str()) > 0)
+					{
+						_AVM_EXEC_SERVER_PORT_NUMBER_ = strPortNumber;
+					}
+					else
+					{
+						std::cerr << "Unexpected negative port number< " << strPortNumber
+								<< " > as argument !"<< std::endl;
+					}
+				}
+				catch (std::invalid_argument & invalid_arg)
+				{
+					std::cerr << "Invalid port number< " << strPortNumber
+							<< " > as argument !" << std::endl;
+				}
+				catch (std::out_of_range & oor)
+				{
+					std::cerr << "Out of range port number< " << strPortNumber
+							<< " > as argument !" << std::endl;
+				}
+				catch (std::exception  & e)
+				{
+					std::cerr << "Unexpected port number< " << strPortNumber
+							<< " > as argument ! --> exception : "
+							<< e.what() << std::endl;
+				}
+			}
+			else if( arg == "--port" )
+			{
+				std::string strPortNumber = getArgument( ++i );
+
+				try
+				{
+					if( std::stol(strPortNumber.c_str()) > 0)
+					{
+						_AVM_EXEC_SERVER_PORT_NUMBER_ = strPortNumber;
+					}
+					else
+					{
+						std::cerr << "Unexpected negative port number< " << strPortNumber
+								<< " > as argument !"<< std::endl;
+					}
+				}
+				catch (std::invalid_argument & invalid_arg)
+				{
+					std::cerr << "Invalid port number< " << strPortNumber
+							<< " > as argument !" << std::endl;
+				}
+				catch (std::out_of_range & oor)
+				{
+					std::cerr << "Out of range port number< " << strPortNumber
+							<< " > as argument !" << std::endl;
+				}
+				catch (std::exception  & e)
+				{
+					std::cerr << "Unexpected port number< " << strPortNumber
+							<< " > as argument ! --> exception : "
+							<< e.what() << std::endl;
+				}
+			}
+#endif // _EXPERIMENTAL_SERVER_GRPC_FEATURE_
+
+#if defined( EXPERIMENTAL_FEATURE )
+			else if( arg == "--enable-server-json_rpc-mode" )
+			{
+				AVM_EXEC_MODE_SET( SERVER_JSON_RPC );
+			}
+#endif // EXPERIMENTAL_FEATURE
+
+			else if( arg == "--enable-interactive-mode" )
 			{
 				AVM_EXEC_MODE_SET( INTERACTIVE );
 			}
 
-			else if( arg.find("--log=") == 0 )
+			else if( arg.find("--log-output-file=") == 0 )
 			{
 				AVM_LOG_FILE_LOCATION =
-						arg.substr(std::strlen("--log="), arg.size());
+					arg.substr(std::strlen("--log-output-file="), arg.size());
 			}
-			else if( arg == "--log" )
+			else if( arg == "--log-output-file" )
 			{
 				AVM_LOG_FILE_LOCATION = getArgument( ++i );
 			}
 
-			else if( arg.find("--trace=") == 0 )
+			else if( arg.find("--trace-output-file=") == 0 )
 			{
-				AVM_LOG_FILE_LOCATION =
-						arg.substr(std::strlen("--trace="), arg.size());
+				AVM_TRACE_FILE_LOCATION =
+					arg.substr(std::strlen("--trace-output-file="), arg.size());
 			}
-			else if( arg == "--trace" )
+			else if( arg == "--trace-output-file" )
 			{
 				AVM_TRACE_FILE_LOCATION = getArgument( ++i );
 			}
 
-			else if( arg.find("--debug=") == 0 )
+			else if( arg.find("--debug-options=") == 0 )
 			{
 				avm_setDebugLevel(
-						arg.substr(std::strlen("--debug="), arg.size()) );
+					arg.substr(std::strlen("--debug-options="), arg.size()) );
 			}
-			else if( arg == "--debug" )
+			else if( arg == "--debug-options" )
 			{
 				avm_setDebugLevel( getArgument( ++i ) );
 			}
 
-			else if( arg == "--silent" )
+			else if( arg == "--verbosity-silent" )
+			{
+				AVM_EXEC_VERBOSITY_SET( SILENT );
+			}
+			else if( arg == "--verbosity-minimum" )
 			{
 				AVM_EXEC_VERBOSITY_SET( MINIMUM );
 			}
+			else if( arg == "--verbosity-medium" )
+			{
+				AVM_EXEC_VERBOSITY_SET( MEDIUM );
+			}
+			else if( arg == "--verbosity-maximum" )
+			{
+				AVM_EXEC_VERBOSITY_SET( MAXIMUM );
+			}
 
-			else if( arg.find("--verbosity=") == 0 )
+			else if( arg.find("--verbosity-level=") == 0 )
 			{
 				avm_setExecVerbosityLevel(
-						arg.substr(std::strlen("--verbosity="), arg.size()) );
+					arg.substr(std::strlen("--verbosity-level="), arg.size()) );
 			}
-			else if( arg == "--verbosity" )
+			else if( arg == "--verbosity-level" )
 			{
 				avm_setExecVerbosityLevel( getArgument( ++i ) );
 			}
 
-			else if( (arg == "--enabled-processors-list")
-					|| (arg == "--enabled-fam-list") )
+			else if( arg == "--enable-print-spider-positions" )
+			{
+				avm_enabledSpiderVerbosity( true );
+			}
+
+			else if( (arg == "--print-enabled-processors-list")
+					|| (arg == "--print-enabled-fam-list") )
 			{
 				ProcessorUnitRepository::toStreamAll( AVM_OS_COUT );
 
-				ProcessorUnitRepository::toStreamExported( AVM_OS_COUT );
+				FamExposer::toStreamExported( AVM_OS_COUT );
 			}
-			else if( arg == "--enabled-solvers-list" )
+			else if( arg == "--print-enabled-solvers-list" )
 			{
 				SolverDef::toStreamSolverList( AVM_OS_COUT );
+			}
+
+			else if( (arg == "--help") || (arg == "-help") || (arg == "-h") )
+			{
+				help();
 			}
 
 			else
@@ -188,42 +314,20 @@ bool AvmLauncher::load()
 						<< SEND_ALERT;
 			}
 		}
+
+		mWorkflow.load();
+
+		reportInstanceCounterUsage(AVM_OS_LOG, "AvmLauncher::load at the end");
+
+		return( true );
 	}
 	else
 	{
 		usage();
 
-		::exit(1);
+		return( false );
+
 	}
-
-	/*
-	 * LOAD
-	 * Predefined FORM
-	 */
-	XLIA_SYNTAX::load();
-
-	ExpressionFactory::load();
-
-	// after loading parameter...
-	//	SolverFactory::load();
-
-	TypeManager::load();
-
-
-	EnvironmentFactory::load();
-
-	Builder::load();
-
-	ExecutableLib::load();
-
-	RuntimeLib::load();
-
-
-	mWorkflow.load();
-
-	avm_report(AVM_OS_LOG, "AvmLauncher::load at the end");
-
-	return( true );
 }
 
 
@@ -232,43 +336,14 @@ bool AvmLauncher::load()
  */
 void AvmLauncher::dispose()
 {
-	EnvironmentFactory::dispose();
-
-	SolverFactory::dispose();
-
-
 	mWorkflow.dispose();
 
-
-	RuntimeLib::dispose();
-
-	ExecutableLib::dispose();
-
-	Builder::dispose();
-
-
-	TypeManager::dispose();
-
-	ExpressionFactory::dispose();
-
-	XLIA_SYNTAX::dispose();
+	StaticInitializer::dispose();
 
 	copyright();
 }
 
 
-/*******************************************************************************
- * Copyright (c) 2016 CEA LIST.
- *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * Contributors:
- *  Arnault Lapitre (CEA LIST) arnault.lapitre@cea.fr
- *   - Initial API and implementation
- ******************************************************************************/
 void AvmLauncher::copyright()
 {
 	AVM_OS_COUT << std::endl << AVM_TAB1_INDENT
@@ -283,7 +358,8 @@ void AvmLauncher::copyright()
 #endif /*_BUILT_WITH_CMAKE_*/
 
 			<< " @ " << __DATE__ << std::endl
-			<< TAB << "2010 - 2016 CEA List" << std::endl
+			<< TAB << "2024 CEA List" << std::endl
+//			<< TAB << "2010 - 2019 CEA List" << std::endl
 //			<< TAB << "1998 - 2013 CEA List" << std::endl
 			<< TAB << "All Rights Reserved" << std::endl
 			<< TAB << "Launch @ " << ExecutionTime::current_time()
@@ -295,9 +371,35 @@ void AvmLauncher::copyright()
  * AvmLauncher::usage
  *
  */
+void AvmLauncher::help()
+{
+	AVM_OS_COUT << "Usage : ${DIVERSITY_EXEC} [options] [workflow-params-file]"
+		<< std::endl
+		<< "Workflow : a file that specifies the type of formal analysis"
+			"\n           to be performed via a list of parameters"
+			"\n           (as \"key-value pairs\" representation) for"
+			"\n           xLIA model file, module analysis configuration,"
+			"\n           stop criterion, reporting options ..."
+		<< std::endl
+		<< "Options :"
+		<< std::endl
+		<< TAB2 << "--print-enabled-fam-list , --print-enabled-processors-list" << std::endl
+		<< TAB4 << "print the list of enabled FAM, Formal Analysis Modules"
+		<< std::endl
+		<< TAB2 << "--print-enabled-solvers-list" << std::endl
+		<< TAB4 << "print the list of available SMT-Solvers" << std::endl
+#if defined( _EXPERIMENTAL_SERVER_GRPC_FEATURE_ )
+		<< TAB2 << "--enable-server-grpc-mode [--port=number]" << std::endl
+		<< TAB4 << "execute DIVERSITY using the gRPC server mode on 'localhost:port' with default port 50051" << std::endl
+#endif // _EXPERIMENTAL_SERVER_GRPC_FEATURE_
+		<< std::endl;
+}
+
 void AvmLauncher::usage()
 {
-	AVM_OS_LOG << " Usage :> avm.exe parameterfile (in FAVM format)" << std::endl;
+	AVM_OS_COUT << "Usage : DIVERSITY_EXEC [options] [workflow-params-file]"
+		<< std::endl
+		<< "try DIVERSITY_EXEC --help" << std::endl;
 
 	std::cin.get();
 }
@@ -311,24 +413,22 @@ void AvmLauncher::start()
 {
 	/*
 	 * INITIALIZATION
-	 * parameter FORM
+	 * Loading  Workflow Parameter
 	 */
-	if( not mWorkflow.loadConfiguration(VFS::WorkflowPath) )
+	if( not mWorkflowParameter.loadConfiguration(VFS::WorkflowPath) )
 	{
 		return;
 	}
 
-	SolverFactory::load();
-
 	/*
 	 * RUNNING
-	 * parameter FORM
+	 * parameter
 	 */
 	try
 	{
 		SignalHandler::setSIGINT_handler();
 
-		if( mWorkflow.configure() )
+		if( mWorkflow.configure(mWorkflowParameter) )
 		{
 			mWorkflow.startComputing();
 		}
@@ -348,28 +448,35 @@ void AvmLauncher::start()
 
 int AvmLauncher::run( int argc , char * argv[] )
 {
-	if( argv != NULL )
+	if( argv != nullptr )
 	{
 		VFS::ExecutablePath = argv[0];
 	}
-	VFS::LaunchPath = boost::filesystem::current_path().string();
-
-	ClassKindInfoInitializer::load();
+	VFS::LaunchPath = std::filesystem::current_path().string();
 
 	std::string strAction = " The AvmLauncher::main";
-
-	OutStream::load();
 
 	try
 	{
 		sep::AvmLauncher theAvmLauncher(
-				(argc < 0)? 0 : static_cast< avm_size_t >(argc) , argv);
+				(argc < 0)? 0 : static_cast< std::size_t >(argc) , argv);
 
 		strAction = " The AvmLauncher::load";
 		if( theAvmLauncher.load() )
 		{
 			switch( _AVM_EXEC_MODE_ )
 			{
+				case  AVM_EXEC_SERVER_GRPC_MODE:
+				case  AVM_EXEC_SERVER_JSON_RPC_MODE:
+				{
+#if defined( _EXPERIMENTAL_SERVER_GRPC_FEATURE_ )
+
+					grpc::SymbexServer::runServer();
+
+#endif // _EXPERIMENTAL_SERVER_GRPC_FEATURE_
+
+					break;
+				}
 				case AVM_EXEC_STANDALONE_MODE:
 				case AVM_EXEC_SERVER_MODE:
 				case AVM_EXEC_INTERACTIVE_MODE:
@@ -386,7 +493,7 @@ int AvmLauncher::run( int argc , char * argv[] )
 
 							theAvmLauncher.start();
 
-							avm_report(AVM_OS_LOG,
+							reportInstanceCounterUsage(AVM_OS_LOG,
 									"AvmLauncher::run after this.start()");
 						}
 						else
@@ -420,21 +527,8 @@ int AvmLauncher::run( int argc , char * argv[] )
 			(strAction + "< unknown::exception > !!!"), '*', 80);
 	}
 
-
-	avm_report(AVM_OS_LOG, "::main at the end");
-
-AVM_IF_DEBUG_FLAG( REFERENCE_COUNTING )
-
-	avm_report(AVM_OS_COUT, "::main at the end");
-
-AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
-
-
-	OutStream::dispose();
-
-	ClassKindInfoInitializer::dispose();
-
 	AVM_OS_COUT << exit_msg( _AVM_EXIT_CODE_ );
+
 
 	return( _AVM_EXIT_CODE_ );
 }

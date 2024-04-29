@@ -15,8 +15,6 @@
 
 #include <bits/move.h>
 
-#include "SmartPointerUtil.h"
-
 #include <util/avm_numeric.h>
 
 
@@ -38,21 +36,21 @@ protected:
 	/**
 	 * TYPEDEF
 	 */
-	typedef       T   value_type;
+	typedef       T   value_t;
 
-	typedef       T & reference;
-	typedef const T & const_reference;
+	typedef       T & reference_t;
+	typedef const T & const_reference_t;
 
 
-	typedef       T * pointer;
-	typedef const T * const_pointer;
+	typedef       T * pointer_t;
+	typedef const T * const_pointer_t;
 
 
 protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	pointer mPTR;
+	pointer_t mPTR;
 
 
 public:
@@ -61,7 +59,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	explicit SmartPointer(pointer ptr = NULL)
+	explicit SmartPointer(pointer_t ptr = nullptr)
 	: mPTR( ptr )
 	{
 		//!! NOTHING
@@ -72,14 +70,14 @@ public:
 	 * Copy
 	 */
 	SmartPointer(const SmartPointer & other)
-	: mPTR( NULL )
+	: mPTR( nullptr )
 	{
 		acquire( other.mPTR );
 	}
 
 	template< class U >
 	SmartPointer(const SmartPointer< U , Tdestructor > & other)
-	: mPTR( NULL )
+	: mPTR( nullptr )
 	{
 		acquire( other.raw_pointer() );
 	}
@@ -94,27 +92,27 @@ public:
 
 	inline void destroy()
 	{
-		release( NULL );
+		release( nullptr );
 	}
 
 
 	/**
 	 * REFCOUNT
 	 */
-	inline avm_uint32_t getRefCount() const
+	inline std::uint32_t getRefCount() const
 	{
-		return( ( mPTR != NULL )? mPTR->getRefCount() : 0 );
+		return( ( mPTR != nullptr )? mPTR->getRefCount() : 0 );
 	}
 
 
 	inline bool isUnique() const
 	{
-		return( (mPTR != NULL)? mPTR->isUnique() : false );
+		return( (mPTR != nullptr)? mPTR->isUnique() : false );
 	}
 
 	inline bool isMultiple() const
 	{
-		return( (mPTR != NULL)? mPTR->isMultiple() : false );
+		return( (mPTR != nullptr)? mPTR->isMultiple() : false );
 	}
 
 
@@ -149,25 +147,25 @@ public:
 	/**
 	 * [IN]VALIDITY
 	 */
-	inline bool isNull() const
+	inline bool isNullptr() const
 	{
-		return( mPTR == NULL );
+		return( mPTR == nullptr );
 	}
 
 	inline bool invalid() const
 	{
-		return( mPTR == NULL );
+		return( mPTR == nullptr );
 	}
 
 
-	inline bool isnotNull() const
+	inline bool isnotNullptr() const
 	{
-		return( mPTR != NULL );
+		return( mPTR != nullptr );
 	}
 
 	inline bool valid() const
 	{
-		return( mPTR != NULL );
+		return( mPTR != nullptr );
 	}
 
 
@@ -184,7 +182,7 @@ public:
 	{
 		release( other.mPTR );
 
-		other.mPTR = NULL;
+		other.mPTR = nullptr;
 	}
 
 
@@ -192,19 +190,19 @@ public:
 	 * GETTER
 	 * mPTR
 	 */
-	inline pointer raw_pointer() const
+	inline pointer_t raw_pointer() const
 	{
-		return( mPTR  );
+		return( mPTR );
 	}
 
-	inline const_reference raw_reference() const
+	inline const_reference_t raw_reference() const
 	{
-		return( * mPTR  );
+		return( * mPTR );
 	}
 
-	inline avm_address_t raw_address() const
+	inline std::intptr_t raw_address() const
 	{
-		return( avm_address_t( mPTR ) );
+		return( std::intptr_t( mPTR ) );
 	}
 
 
@@ -212,74 +210,27 @@ public:
 	 * [RE]SETTER
 	 * mPTR
 	 */
-	inline void acquirePointer(pointer aPtr)
+	inline void acquirePointer(pointer_t aPtr)
 	{
 		release_acquire( aPtr );
 	}
 
-	inline void setPointer(pointer aPtr)
+	inline void setPointer(pointer_t aPtr)
 	{
 		release( aPtr );
 	}
 
 
-	inline void replacePointer(pointer aPtr)
+	inline void replacePointer(pointer_t aPtr)
 	{
 		mPTR = aPtr;
 	}
 
 
 	/**
-	 * OPERATORS
-	 */
-//	inline reference operator* () const throw()
-//	{
-//		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-//				<< "raw_pointer in an SmartPointer !!!"
-//				<< SEND_EXIT;
-//
-//		return( *mPTR );
-//	}
-//
-//	inline pointer operator-> () const
-//	{
-//		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-//				<< "raw_pointer in an SmartPointer !!!"
-//				<< SEND_EXIT;
-//
-//		return( mPTR );
-//    }
-
-	// COMMENT FOR USE IN STL CONTAINER
-//	inline pointer operator & () const
-//	{
-//		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
-//				<< "raw_pointer in an SmartPointer !!!"
-//				<< SEND_EXIT;
-//
-//		return( mPTR );
-//	}
-
-
-	/**
-	 * CAST
-	 */
-//	inline operator pointer () const
-//	{
-//		return( mPTR );
-//	}
-//
-//	// Desactive call of << delete >> using compiler ambiguous mecanism
-//	inline operator void * () const
-//	{
-//		return( mPTR );
-//	}
-
-
-	/**
 	 * ASSIGNMENT
 	 */
-	inline SmartPointer & operator=(pointer aPtr)
+	inline SmartPointer & operator=(pointer_t aPtr)
 	{
 		if( mPTR != aPtr )
 		{
@@ -325,7 +276,7 @@ public:
 	 * OPERATOR
 	 */
 
-	inline bool operator==(pointer aPtr) const
+	inline bool operator==(pointer_t aPtr) const
 	{
 		return( mPTR == aPtr);
 	}
@@ -343,7 +294,7 @@ public:
 	}
 
 
-	inline bool operator!=(pointer aPtr) const
+	inline bool operator!=(pointer_t aPtr) const
 	{
 		return( mPTR != aPtr );
 	}
@@ -368,9 +319,9 @@ protected:
 	 * release_acquire
 	 */
 	// increment the count
-	inline void acquire(pointer aPtr)
+	inline void acquire(pointer_t aPtr)
 	{
-		if( aPtr != NULL )
+		if( aPtr != nullptr )
 		{
 			aPtr->incrRefCount();
 		}
@@ -379,7 +330,7 @@ protected:
 
 
 	// decrement the count, delete if it is 0
-	inline void release(pointer aPtr)
+	inline void release(pointer_t aPtr)
 	{
 		Tdestructor::destroy( mPTR );
 
@@ -387,11 +338,11 @@ protected:
 	}
 
 
-	inline void release_acquire(pointer aPtr)
+	inline void release_acquire(pointer_t aPtr)
 	{
 		Tdestructor::destroy( mPTR );
 
-		if( aPtr != NULL )
+		if( aPtr != nullptr )
 		{
 			aPtr->incrRefCount();
 		}
@@ -399,6 +350,118 @@ protected:
 	}
 
 };
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Extension for operators:  * ->
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+template< class T , class Tdestructor >
+class XSmartPointer  :  public SmartPointer< T , Tdestructor >
+{
+
+private:
+	/**
+	 * TYPEDEF
+	 */
+	typedef       SmartPointer < T , Tdestructor >  base_this_type;
+	typedef       XSmartPointer< T , Tdestructor >  this_type;
+
+protected:
+	typedef       T    value_t;
+
+	typedef       T &  reference_t;
+	typedef const T &  const_reference_t;
+
+
+	typedef       T *  pointer_t;
+	typedef const T *  const_pointer_t;
+
+
+public:
+	/**
+	 * CONSTRUCTOR
+	 * Default
+	 */
+	XSmartPointer()
+	: base_this_type( )
+	{
+		//!!! NOTHING
+	}
+
+	explicit XSmartPointer(pointer_t ptr)
+	: base_this_type( ptr )
+	{
+		//!!! NOTHING
+	}
+
+	/**
+	 * CONSTRUCTOR
+	 * Copy
+	 */
+	XSmartPointer(const XSmartPointer & other)
+	: base_this_type( other )
+	{
+		//!!! NOTHING
+	}
+
+
+	/**
+	 * DESTRUCTOR
+	 */
+	virtual ~XSmartPointer()
+	{
+		//!!! NOTHING
+	}
+
+
+	/**
+	 * CAST
+	 */
+//	inline operator pointer_t () const
+//	{
+//		return( base_this_type::mPTR );
+//	}
+//
+//	// Desactive call of << delete >> using compiler ambiguous mecanism
+//	inline operator void * () const
+//	{
+//		return( this_type::mPTR );
+//	}
+
+
+	/**
+	 * OPERATORS
+	 */
+//	inline reference_t operator* () const throw()
+//	{
+//		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
+//				<< "raw_pointer in an XSmartPointer !!!"
+//				<< SEND_EXIT;
+//
+//		return( *mPTR );
+//	}
+
+	inline pointer_t operator-> () const
+	{
+		return( base_this_type::mPTR );
+	}
+
+	// COMMENT FOR USE IN STL CONTAINER
+//	inline pointer_t operator & () const
+//	{
+//		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mPTR )
+//				<< "raw_pointer in an XSmartPointer !!!"
+//				<< SEND_EXIT;
+//
+//		return( mPTR );
+//	}
+
+};
+
 
 
 } /* namespace sep */

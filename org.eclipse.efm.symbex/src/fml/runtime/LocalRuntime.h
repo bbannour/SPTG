@@ -14,6 +14,7 @@
 #define LOCALRUNTIME_H_
 
 #include <base/SmartPointer.h>
+
 #include <common/Element.h>
 
 #include <fml/executable/BaseAvmProgram.h>
@@ -61,7 +62,7 @@ public:
 
 	mProgram( aProgram ),
 	mOffset( 0 ),
-	mDataTable( aProgram.getDataSize() )
+	mDataTable( aProgram.getVariablesSize() )
 	{
 		//!! NOTHING
 	}
@@ -93,7 +94,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 };
 
@@ -207,7 +208,7 @@ public:
 	}
 
 
-	inline BF & getData(avm_size_t index) const
+	inline BF & getData(std::size_t index) const
 	{
 		return( base_this_type::mPTR->mDataTable.at(index) );
 	}
@@ -217,7 +218,7 @@ public:
 		return( base_this_type::mPTR->mDataTable.nonempty() );
 	}
 
-	inline void setData(avm_size_t index, const BF & aData) const
+	inline void setData(std::size_t index, const BF & aData) const
 	{
 		base_this_type::mPTR->mDataTable.set(index, aData);
 	}
@@ -228,7 +229,7 @@ public:
 	 */
 	inline void toStream(OutStream & os) const
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
 			base_this_type::mPTR->toStream(os);
 		}
@@ -249,7 +250,7 @@ class StackOfLocalRuntime :  public AvmObject ,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( StackOfLocalRuntime )
 {
 
-	AVM_DECLARE_CLONABLE_CLASS( StackOfLocalRuntime )
+	AVM_DECLARE_CLONABLE_BASE_CLASS( StackOfLocalRuntime )
 
 
 public:
@@ -291,7 +292,7 @@ public:
 	 */
 
 	inline void setLocalRuntime(
-			avm_size_t offset, const LocalRuntime & aLocalRuntime)
+			std::size_t offset, const LocalRuntime & aLocalRuntime)
 	{
 		Vector< LocalRuntime >::set(offset, aLocalRuntime);
 	}
@@ -322,7 +323,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & os) const
+	virtual void toStream(OutStream & os) const override
 	{
 		for( const_iterator it = begin() ; it != end() ; ++it )
 		{
@@ -336,16 +337,6 @@ public:
 	}
 
 };
-
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-// TYPE DEFINITION for SMART POINTER and CONTAINER
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-AVM_DEFINE_AP_CLASS( StackOfLocalRuntime )
-
 
 
 }

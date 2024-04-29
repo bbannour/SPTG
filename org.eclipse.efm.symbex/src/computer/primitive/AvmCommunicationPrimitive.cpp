@@ -54,11 +54,11 @@ AVM_IF_DEBUG_FLAG_AND_NOT_FLAG( COMMUNICATION , STATEMENT )
 AVM_ENDIF_DEBUG_FLAG_AND_NOT_FLAG( COMMUNICATION , STATEMENT )
 
 	if( not AvmCommunicationFactory::popMessage(ENV,
-			ENV.mARG->at(0).to_ptr< InstanceOfPort >()) )
+			ENV.mARG->at(0).to< InstanceOfPort >()) )
 	{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << TAB << "THROW UNSATISFIED << INPUT >> :> "
-			<< ENV.mARG->outED->mRID.strUniqId()
+			<< ENV.mARG->outED.getRID().strUniqId()
 			<< " |=> " << ENV.inCODE->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 	}
@@ -69,16 +69,17 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 
 bool AvmPrimitive_InputVar::run(ExecutionEnvironment & ENV)
 {
-	InstanceOfData * anInstance = ENV.mARG->at(0).to_ptr< InstanceOfData >();
+	InstanceOfData & anInstance = ENV.mARG->at(0).to< InstanceOfData >();
 
 	BFList paramList;
-	BF aNewSymbolicConstant( ENV.createNewFreshParam(ENV.mARG->outED->mRID,
+	BF aNewSymbolicConstant( ENV.createNewFreshParam(ENV.mARG->outED.getRID(),
 			anInstance, paramList) );
 
 	ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
-			BF( new ExecutionConfiguration(ENV.mARG->outED->mRID,
-					BFCode(OperatorManager::OPERATOR_INPUT,
-								ENV.mARG->at(0), aNewSymbolicConstant)) ) );
+			BF( new ExecutionConfiguration(ENV.mARG->outED.getRID(),
+					BFCode(OperatorManager::OPERATOR_INPUT_VAR,
+								ENV.mARG->at(0), aNewSymbolicConstant),
+					ENV.mARG->outED.getTimeValue(ENV.mARG->outED.getRID()) )));
 
 	if( ENV.setRvalue(ENV.mARG->outED, anInstance, aNewSymbolicConstant) )
 	{
@@ -99,14 +100,13 @@ bool AvmPrimitive_InputEnv::run(ExecutionEnvironment & ENV)
 
 	bool allSuccess = true;
 
-	if( ENV.inCODE->populated() )
+	if( ENV.inCODE->hasManyOperands() )
 	{
 		ENV.mARG->outED.makeModifiableParamTable();
 
-		InstanceOfPort * aPort = ENV.mARG->at(0).to_ptr< InstanceOfPort >();
-		avm_size_t offset = 0;
+		const InstanceOfPort & aPort = ENV.mARG->at(0).to< InstanceOfPort >();
+		std::size_t offset = 0;
 
-		InstanceOfData * aVar = NULL;
 		BF aNewSymbolicConstant;
 		BFList paramList;
 
@@ -115,10 +115,10 @@ bool AvmPrimitive_InputEnv::run(ExecutionEnvironment & ENV)
 		{
 			paramList.clear();
 
-			aVar = ENV.mARG->current().to_ptr< InstanceOfData >();
+			InstanceOfData & aVar = ENV.mARG->current().to< InstanceOfData >();
 
 			aNewSymbolicConstant = ENV.createNewFreshParam(
-					ENV.mARG->outED->mRID, aPort->getParameterType(offset),
+					ENV.mARG->outED.getRID(), aPort.getParameterType(offset),
 					aVar, paramList);
 
 			if( not ENV.setRvalue(ENV.mARG->outED, aVar, aNewSymbolicConstant) )
@@ -138,7 +138,9 @@ bool AvmPrimitive_InputEnv::run(ExecutionEnvironment & ENV)
 	{
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 				BF( new ExecutionConfiguration(
-						ENV.mARG->outED->mRID, aTraceInput) ) );
+						ENV.mARG->outED.getRID(), aTraceInput,
+						ENV.mARG->outED.getTimeValue(
+								ENV.mARG->outED.getRID()) )));
 
 		ENV.outEDS.append( ENV.mARG->outED );
 
@@ -156,14 +158,14 @@ bool AvmPrimitive_InputBuffer::run(ExecutionEnvironment & ENV)
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "begin AvmPrimitive_InputBuffer::run" << std::endl;
 
-	ENV.mARG->outED->getRuntime(1).toStreamData(
+	ENV.mARG->outED.getRuntime(1).toStreamData(
 			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT_TAB);
 	AVM_OS_TRACE << DECR2_INDENT;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 
 	const RoutingData & aRoutingData =
-			ENV.mARG->at(0).to_ptr< InstanceOfPort >()->getInputRoutingData();
+			ENV.mARG->at(0).to< InstanceOfPort >().getInputRoutingData();
 
 	const RuntimeID & aRoutingRID = aRoutingData.getRuntimeRID();
 
@@ -171,8 +173,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 	InstanceOfBuffer * aBuffer = aRoutingData.getBufferInstance().first();
 
-	bufferDeclRID = ENV.mARG->outED->getRuntimeContainerRID(
-			ENV.mARG->outED->mRID, aBuffer);
+	bufferDeclRID = ENV.mARG->outED.getRuntimeContainerRID(
+			ENV.mARG->outED.getRID(), aBuffer);
 	if( bufferDeclRID.valid() )
 	{
 		BaseBufferForm & bbf =
@@ -181,15 +183,15 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 		Message popMsg;
 /*!!INPUT#ENABLED!!
-		if( ENV.mARG->outED->getRuntime(ENV.mARG->outED->mRID).isInputEnabled()
-			|| ENV.mARG->outED->getRuntime(aRoutingRID).isInputEnabled()
+		if( ENV.mARG->outED.getRuntime(ENV.mARG->outED.getRID()).isInputEnabled()
+			|| ENV.mARG->outED.getRuntime(aRoutingRID).isInputEnabled()
 			|| aRoutingData.isInputEnabled() || bbf->isInputEnabled() )
 		{
 			popMsg = bbf->popUntil(aRoutingData.getMID());
 		}
 		else*/
 		{
-			popMsg = bbf.pop(aRoutingData.getMID(), ENV.mARG->outED->mRID);
+			popMsg = bbf.pop(aRoutingData.getMID(), ENV.mARG->outED.getRID());
 		}
 
 		if( popMsg.valid() )
@@ -204,7 +206,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 					ENV.mARG->next() , ++itVal )
 			{
 				if( ENV.setRvalue(ENV.mARG->outED,
-						ENV.mARG->current().to_ptr< InstanceOfData >(), *itVal) )
+						ENV.mARG->current().to< InstanceOfData >(), *itVal) )
 				{
 					aTraceInput->append( *itVal );
 
@@ -217,12 +219,14 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 			ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 					BF( new ExecutionConfiguration(
-							ENV.mARG->outED->mRID, aTraceInput, popMsg) ) );
+							ENV.mARG->outED.getRID(), aTraceInput, popMsg,
+							ENV.mARG->outED.getTimeValue(
+									ENV.mARG->outED.getRID()) )));
 
 			ENV.outEDS.append( ENV.mARG->outED );
 
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
-	ENV.mARG->outED->getRuntime(1).toStreamData(
+	ENV.mARG->outED.getRuntime(1).toStreamData(
 			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT_TAB);
 
 	AVM_OS_TRACE << DECR2_INDENT_TAB
@@ -243,12 +247,12 @@ bool AvmPrimitive_InputRdv::run(ExecutionEnvironment & ENV)
 	const BF & aPort = ENV.mARG->at(0);
 
 	const RoutingData & aRoutingData =
-			aPort.to_ptr< InstanceOfPort >()->getInputRoutingData();
+			aPort.to< InstanceOfPort >().getInputRoutingData();
 
 	const RuntimeID & aRoutingRID = aRoutingData.getRuntimeRID();
 
-	Message inMsg( aRoutingData.getMID(),
-			RuntimeID::REF_NULL, ENV.mARG->outED->mRID, aPort );
+	Message inMsg( aRoutingData,
+			RuntimeID::REF_NULL, ENV.mARG->outED.getRID(), aPort );
 
 	// We have to ignore the << Port >> InstanceOfPort
 	for( ENV.mARG->begin(1) ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -306,11 +310,11 @@ bool AvmPrimitive_Output::run(ExecutionEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG_AND_NOT_FLAG( COMMUNICATION , STATEMENT )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "<!?!" << ENV.inED->mRID.strUniqId()
+			<< "<!?!" << ENV.inED.getRID().strUniqId()
 			<< " |=> " << ENV.inCODE->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG_AND_NOT_FLAG( COMMUNICATION , STATEMENT )
 
-	Message anOutputMsg(ENV.mARG->outED->mRID, ENV.mARG->at(0) );
+	Message anOutputMsg( ENV.mARG->outED.getRID(), ENV.mARG->at(0) );
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "Output Message to build" << std::endl;
@@ -331,11 +335,11 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 
 	if( not AvmCommunicationFactory::pushMessage(ENV,
-			anOutputMsg, ENV.mARG->outED->mRID) )
+			anOutputMsg, ENV.mARG->outED.getRID()) )
 	{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << TAB << "THROW UNSATISFIED << OUTPUT >> : <<< "
-			<< ENV.mARG->outED->mRID.strUniqId()
+			<< ENV.mARG->outED.getRID().strUniqId()
 			<< " |=> " << ENV.inCODE->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 	}
@@ -343,7 +347,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "!?!> " << ENV.inED->mRID.strUniqId()
+			<< "!?!> " << ENV.inED.getRID().strUniqId()
 			<< " |=> " <<  ENV.inCODE->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
@@ -354,9 +358,10 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 bool AvmPrimitive_OutputVar::run(ExecutionEnvironment & ENV)
 {
 	ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
-			BF( new ExecutionConfiguration(ENV.mARG->outED->mRID,
-					BFCode(OperatorManager::OPERATOR_OUTPUT,
-							ENV.mARG->at(0), ENV.mARG->at(1))) ) );
+			BF( new ExecutionConfiguration(ENV.mARG->outED.getRID(),
+					BFCode(OperatorManager::OPERATOR_OUTPUT_VAR,
+							ENV.mARG->at(0), ENV.mARG->at(1)),
+					ENV.mARG->outED.getTimeValue(ENV.mARG->outED.getRID()) )));
 
 	ENV.appendOutput( ENV.mARG->outED );
 
@@ -375,7 +380,8 @@ bool AvmPrimitive_OutputEnv::run(ExecutionEnvironment & ENV)
 
 	ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 			BF( new ExecutionConfiguration(
-					ENV.mARG->outED->mRID, aTraceOutput) ) );
+					ENV.mARG->outED.getRID(), aTraceOutput,
+					ENV.mARG->outED.getTimeValue(ENV.mARG->outED.getRID()) )));
 
 	ENV.outEDS.append( ENV.mARG->outED );
 
@@ -388,7 +394,7 @@ bool AvmPrimitive_OutputBuffer::run(ExecutionEnvironment & ENV)
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "begin AvmPrimitive_OutputBuffer::run" << std::endl;
 
-	ENV.mARG->outED->getRuntime(1).toStream(
+	ENV.mARG->outED.getRuntime(1).toStream(
 			AVM_OS_TRACE << INCR2_INDENT_TAB);
 	AVM_OS_TRACE << DECR2_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
@@ -396,16 +402,16 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	const BF & aPort = ENV.mARG->at(0);
 
 	const RoutingData & aRoutingData =
-			aPort.to_ptr< InstanceOfPort >()->getOutputRoutingData();
+			aPort.to< InstanceOfPort >().getOutputRoutingData();
 
 	const RuntimeID & aRoutingRID = aRoutingData.getRuntimeRID();
 
 	RuntimeID bufferDeclRID = aRoutingRID;
 
-	InstanceOfBuffer * aBuffer = aRoutingData.getBufferInstance().first();
+	const InstanceOfBuffer * aBuffer = aRoutingData.getBufferInstance().first();
 
-	bufferDeclRID = ENV.mARG->outED->getRuntimeContainerRID(
-			ENV.mARG->outED->mRID, aBuffer);
+	bufferDeclRID = ENV.mARG->outED.getRuntimeContainerRID(
+			ENV.mARG->outED.getRID(), aBuffer);
 
 	if( bufferDeclRID.valid() )
 	{
@@ -413,8 +419,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 				ENV.mARG->outED.getWritableRuntime(
 						bufferDeclRID ).getWritableBuffer( aBuffer );
 
-		Message outMsg( aRoutingData.getMID(),
-				ENV.mARG->outED->mRID, ENV.mARG->outED->mRID, aPort );
+		Message outMsg( aRoutingData,
+				ENV.mARG->outED.getRID(), ENV.mARG->outED.getRID(), aPort );
 
 		// We have to ignore the << Port >> InstanceOfPort
 		for( ENV.mARG->begin(1) ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -430,13 +436,15 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 
 			ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 					BF( new ExecutionConfiguration(
-							ENV.mARG->outED->mRID, aTraceOutput, outMsg) ) );
+							ENV.mARG->outED.getRID(), aTraceOutput, outMsg,
+							ENV.mARG->outED.getTimeValue(
+									ENV.mARG->outED.getRID()) )));
 
 			ENV.outEDS.append( ENV.mARG->outED );
 
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
-	ENV.mARG->outED->getRuntime(1).toStream(
+	ENV.mARG->outED.getRuntime(1).toStream(
 			AVM_OS_TRACE << INCR2_INDENT_TAB);
 
 	AVM_OS_TRACE << DECR2_INDENT_TAB
@@ -457,12 +465,12 @@ bool AvmPrimitive_OutputRdv::run(ExecutionEnvironment & ENV)
 	const BF & aPort = ENV.mARG->at(0);
 
 	const RoutingData & aRoutingData =
-			aPort.to_ptr< InstanceOfPort >()->getOutputRoutingData();
+			aPort.to< InstanceOfPort >().getOutputRoutingData();
 
 	const RuntimeID & aRoutingRID = aRoutingData.getRuntimeRID();
 
-	Message outMsg( aRoutingData.getMID(),
-			ENV.mARG->outED->mRID, ENV.mARG->outED->mRID, aPort );
+	Message outMsg( aRoutingData,
+			ENV.mARG->outED.getRID(), ENV.mARG->outED.getRID(), aPort );
 
 	// We have to ignore the << Port >> InstanceOfPort
 	for( ENV.mARG->begin(1) ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -488,12 +496,12 @@ bool AvmPrimitive_OutputTo::run(ExecutionEnvironment & ENV)
 {
 AVM_IF_DEBUG_FLAG_AND_NOT_FLAG( COMMUNICATION , STATEMENT )
 	AVM_OS_TRACE << INCR_INDENT_TAB
-			<< "<!?!" << ENV.inED->mRID.strUniqId()
+			<< "<!?!" << ENV.inED.getRID().strUniqId()
 			<< " |=> " << ENV.inCODE->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG_AND_NOT_FLAG( COMMUNICATION , STATEMENT )
 
-	Message anOutputMsg( ENV.mARG->outED->mRID,
-			ENV.mARG->at(1).bfRID(), ENV.mARG->at(0) );
+	Message anOutputMsg( ENV.mARG->outED.getRID(),
+			ENV.mARG->at(0), ENV.mARG->at(1).bfRID() );
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "Output Message to build" << std::endl;
@@ -513,18 +521,18 @@ AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 
-	if( ENV.mARG->at(0).to_ptr< InstanceOfPort >()->isPort() )
+	if( ENV.mARG->at(0).to< InstanceOfPort >().isPort() )
 	{
 		if( not AvmCommunicationFactory::pushMessageTo(ENV, anOutputMsg) )
 		{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << TAB << "THROW UNSATISFIED << OUTPUT >> : <<< "
-			<< ENV.mARG->outED->mRID.strUniqId()
+			<< ENV.mARG->outED.getRID().strUniqId()
 			<< " |=> " << ENV.inCODE->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 		}
 	}
-	else// if( ENV.mARG->at(0).to_ptr< InstanceOfPort >()->isSignal() )
+	else// if( ENV.mARG->at(0).to< InstanceOfPort >().isSignal() )
 	{
 		if( ENV.mARG->at(1).bfRID().valid() )
 		{
@@ -540,7 +548,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << TAB << "THROW UNSATISFIED << OUTPUT#TO<"
 			<< ENV.mARG->at(1).bfRID().getFullyQualifiedNameID() << "> >> : <<< "
-			<< ENV.mARG->outED->mRID.strUniqId()
+			<< ENV.mARG->outED.getRID().strUniqId()
 			<< " |=> " << ENV.inCODE->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 			}
@@ -550,7 +558,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << TAB << "THROW UNKNOWN RECEIVER << OUTPUT#TO<"
 			<< ENV.mARG->at(1).bfRID().getFullyQualifiedNameID() << "?> >> : <<< "
-			<< ENV.mARG->outED->mRID.strUniqId()
+			<< ENV.mARG->outED.getRID().strUniqId()
 			<< " |=> " << ENV.inCODE->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 
@@ -560,7 +568,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< "!?!> " << ENV.inED->mRID.strUniqId()
+			<< "!?!> " << ENV.inED.getRID().strUniqId()
 			<< " |=> " <<  ENV.inCODE->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
@@ -576,7 +584,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 bool AvmPrimitive_Present::run(ExecutionEnvironment & ENV)
 {
 	if( AvmCommunicationFactory::computePresence(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfPort >()) )
+			ENV.mARG->at(0).to< InstanceOfPort >()) )
 	{
 		ENV.outEDS.append( ENV.mARG->outED );
 	}
@@ -597,7 +605,7 @@ bool AvmPrimitive_Present::seval(EvaluationEnvironment & ENV)
 {
 	ENV.outVAL = ExpressionConstructor::newBoolean(
 			AvmCommunicationFactory::computePresence(ENV.mARG->outED,
-					ENV.mARG->at(0).to_ptr< InstanceOfPort >()) );
+					ENV.mARG->at(0).to< InstanceOfPort >()) );
 
 	return( true );
 }
@@ -612,7 +620,7 @@ bool AvmPrimitive_Present::seval(EvaluationEnvironment & ENV)
 bool AvmPrimitive_Absent::run(ExecutionEnvironment & ENV)
 {
 	if( AvmCommunicationFactory::computeAbsence(ENV.mARG->outED,
-			ENV.mARG->at(0).to_ptr< InstanceOfPort >()) )
+			ENV.mARG->at(0).to< InstanceOfPort >()) )
 	{
 		ENV.outEDS.append( ENV.mARG->outED );
 	}
@@ -633,7 +641,7 @@ bool AvmPrimitive_Absent::seval(EvaluationEnvironment & ENV)
 {
 	ENV.outVAL = ExpressionConstructor::newBoolean(
 			AvmCommunicationFactory::computeAbsence(ENV.mARG->outED,
-					ENV.mARG->at(0).to_ptr< InstanceOfPort >()) );
+					ENV.mARG->at(0).to< InstanceOfPort >()) );
 
 	return( true );
 }
@@ -656,7 +664,7 @@ bool AvmPrimitive_UpdateBuffer::run(ExecutionEnvironment & ENV)
 				ExecutionEnvironment tmpENV(ENV, ENV.inCODE->first());
 				if( tmpENV.run() )
 				{
-					APExecutionData tmpED;
+					ExecutionData tmpED;
 					while( tmpENV.outEDS.nonempty() )
 					{
 						tmpENV.outEDS.pop_first_to( tmpED );
@@ -688,7 +696,7 @@ bool AvmPrimitive_UpdateBuffer::run(ExecutionEnvironment & ENV)
 	}
 	else
 	{
-		APExecutionData anOutputED = ENV.inED;
+		ExecutionData anOutputED = ENV.inED;
 		if( AvmCommunicationFactory::updateBuffer(anOutputED) )
 		{
 			ENV.outEDS.append( anOutputED );
@@ -719,11 +727,11 @@ bool AvmPrimitive_OBS::run(ExecutionEnvironment & ENV)
 	else if( ENV.mARG->at(2).isEqualFalse()  )
 	{
 AVM_IF_DEBUG_FLAG( STATEMENT)
-	AVM_OS_TRACE << "THROW UNSATISFIED << OBS >> : "
-			<< ENV.mARG->outED->mRID.strUniqId() << " |=> "
+	AVM_OS_TRACE << "THROW UNSATISFIED << OBS >> POST CONDITION : "
+			<< ENV.mARG->outED.getRID().strUniqId() << " |=> "
 			<< ENV.inCODE->str() << std::endl;
 //	AVM_OS_TRACE << "THROW UNSATISFIED << GUARD >> : "
-//			<< ENV.mARG->outED->mRID.strUniqId() << " , ";
+//			<< ENV.mARG->outED.getRID().strUniqId() << " , ";
 //	AVM_OS_TRACE << ENV.inCODE->str()  << " |=> "
 //			<< ENV.mARG->at(2).str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
@@ -737,11 +745,11 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 				ENV, ENV.mARG->outED, ENV.mARG->at(2)) )
 		{
 AVM_IF_DEBUG_FLAG( STATEMENT)
-	AVM_OS_TRACE << "THROW UNSATISFIED << OBS >> : "
-			<< ENV.mARG->outED->mRID.strUniqId() << " |=> "
+	AVM_OS_TRACE << "THROW UNSATISFIED << OBS >> POST CONDITION : "
+			<< ENV.mARG->outED.getRID().strUniqId() << " |=> "
 			<< ENV.inCODE->str() << std::endl;
 //	AVM_OS_TRACE << "THROW UNSATISFIED << GUARD >> : "
-//			<< ENV.mARG->outED->mRID.strUniqId() << " , ";
+//			<< ENV.mARG->outED.getRID().strUniqId() << " , ";
 //	AVM_OS_TRACE << ENV.inCODE->str()  << " |=> "
 //			<< ENV.mARG->at(2).str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
@@ -755,30 +763,28 @@ bool AvmPrimitive_OBS::seval(EvaluationEnvironment & ENV)
 {
 	if( ENV.mARG->at(0).is< AvmCode >() )
 	{
-		const BFCode & evtCondition = ENV.mARG->at(0).bfCode();
+		const AvmCode & evtCondition = ENV.mARG->at(0).to< AvmCode >();
 
-		switch( evtCondition->getAvmOpCode() )
+		switch( evtCondition.getAvmOpCode() )
 		{
 			case AVM_OPCODE_INPUT:
 			case AVM_OPCODE_OUTPUT:
 			{
-				if( evtCondition->first().is< BaseInstanceForm >() )
+				if( evtCondition.first().is< BaseInstanceForm >() )
 				{
-					BaseInstanceForm * ioInstance =
-							evtCondition->first().to_ptr< BaseInstanceForm >();
+					const BaseInstanceForm & ioInstance =
+							evtCondition.first().to< BaseInstanceForm >();
 
-					if( ioInstance->is< InstanceOfPort >() )
+					if( ioInstance.is< InstanceOfPort >() )
 					{
-						AvmCode * ioTrace = NULL;
+						AvmCode * ioTrace = ENV.searchTraceIO(
+								ENV.outED.getIOElementTrace(), evtCondition);
 
-						ioTrace = ENV.searchTraceIO(
-								ENV.outED->getIOElementTrace(), evtCondition);
-
-						if( ioTrace != NULL )
+						if( ioTrace != nullptr )
 						{
 							ENV.outVAL = ENV.ioSubst( ENV.outED,
-									ENV.outED->mRID.getExecutable(),
-									evtCondition, ioTrace, ENV.mARG->at(1) );
+									ENV.outED.getRID().getExecutable(),
+									evtCondition, *ioTrace, ENV.mARG->at(1) );
 						}
 						else
 						{
@@ -787,10 +793,10 @@ bool AvmPrimitive_OBS::seval(EvaluationEnvironment & ENV)
 
 						return( true );
 					}
-					else if( ioInstance->is< InstanceOfData >() )
+					else if( ioInstance.is< InstanceOfData >() )
 					{
-						if( ENV.isAssigned(ENV.outED, ENV.outED->mRID,
-								ioInstance->to< InstanceOfData >()) )
+						if( ENV.isAssigned(ENV.outED, ENV.outED.getRID(),
+								ioInstance.to< InstanceOfData >()) )
 						{
 							if( not ENV.seval(ENV.mARG->at(1)) )
 							{

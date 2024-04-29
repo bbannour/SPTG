@@ -49,16 +49,16 @@ struct ARGS_ENV
 	 * Default
 	 */
 	ARGS_ENV(BaseEnvironment * aENV,
-			const APExecutionData & outED,
-			avm_size_t aCapacity, avm_size_t aCount)
-	: NEXT( NULL ),
+			const ExecutionData & outED,
+			std::size_t aCapacity, std::size_t aCount)
+	: NEXT( nullptr ),
 	ENV( aENV ),
 	outED( outED ),
 	table( aCount ),
 	values( & table ),
 
-	argsInstruction( NULL ),
-	argsBytecode( NULL ),
+	argsInstruction( nullptr ),
+	argsBytecode( nullptr ),
 
 	capacity( aCapacity ),
 	count( aCount ),
@@ -70,7 +70,7 @@ AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	AVM_OS_TRACE << "new ARGS_ENV :>"
 			<< " capacity = " << std::setw(4) << capacity
 			<< " : count = " << std::setw(4) << count
-			<< " @" << avm_address_t( this ) << std::endl;
+			<< " @" << std::intptr_t( this ) << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	}
 
@@ -80,7 +80,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	 */
 	virtual ~ARGS_ENV()
 	{
-		values = NULL;
+		values = nullptr;
 		table.clear();
 		capacity = count = idx = 0;
 	}
@@ -103,7 +103,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	/**
 	 * ITERATOR
 	 */
-	inline void begin(avm_size_t offset = 0)
+	inline void begin(std::size_t offset = 0)
 	{
 		idx = offset;
 	}
@@ -118,7 +118,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		return( (*values)[ idx ] );
 	}
 
-	inline BF & current(avm_size_t offset)
+	inline BF & current(std::size_t offset)
 	{
 		return( (*values)[ offset ] );
 	}
@@ -143,23 +143,23 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	/**
 	 * GETTER
 	 */
-	inline BF & operator[](avm_size_t offset)
+	inline BF & operator[](std::size_t offset)
 	{
 		return( (*values)[ offset ] );
 	}
 
-	inline const BF & operator[](avm_size_t offset) const
+	inline const BF & operator[](std::size_t offset) const
 	{
 		return( (*values)[ offset ] );
 	}
 
 
-	inline BF & at(avm_size_t offset)
+	inline BF & at(std::size_t offset)
 	{
 		return( (*values)[ offset ] );
 	}
 
-	inline const BF & at(avm_size_t offset) const
+	inline const BF & at(std::size_t offset) const
 	{
 		return( (*values)[ offset ] );
 	}
@@ -171,17 +171,17 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	 */
 	bool main_decode_eval(BFCode & inCODE);
 
-	bool main_decode_eval_args(AvmCode * inCODE);
+	bool main_decode_eval_args(AvmCode & inCODE);
 
 
-	bool decode_eval_args_context(AvmBytecode & bytecode, AvmCode * inCODE);
+	bool decode_eval_args_context(AvmBytecode & bytecode, AvmCode & inCODE);
 
 	/**
 	 * DECODE EVAL PROCESSOR
 	 */
-	bool decode_eval_args_processor(AvmBytecode & bytecode, AvmCode * inCODE);
+	bool decode_eval_args_processor(AvmBytecode & bytecode, AvmCode & inCODE);
 
-	bool decode_eval_processor(AvmBytecode & bytecode, AvmCode * inCODE);
+	bool decode_eval_processor(AvmBytecode & bytecode, AvmCode & inCODE);
 	bool decode_eval_processor(AvmBytecode & bytecode, BF & arg);
 
 	BF return_decode_eval_processor(AvmBytecode & bytecode, BF & arg);
@@ -213,7 +213,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	 * EVAL PROCESSOR < AVM_ARG_MEMORY_RVALUE_CPU >
 	 */
 	bool eval_processor_dma_rvalue(AvmBytecode & bytecode, BF & arg);
-	bool eval_processor_dma_rvalue(AvmBytecode & bytecode, AvmCode * aCode);
+	bool eval_processor_dma_rvalue(AvmBytecode & bytecode, AvmCode & aCode);
 
 	bool decode_eval_rvalue(BF & arg);
 
@@ -223,7 +223,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	 * EVAL PROCESSOR < AVM_ARG_MEMORY_MACHINE_CPU >
 	 */
 	bool eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg);
-	bool eval_processor_dma_machine(AvmBytecode & bytecode, AvmCode * aCode);
+	bool eval_processor_dma_machine(AvmBytecode & bytecode, AvmCode & aCode);
 
 	const RuntimeID & return_decode_eval_machine(const BF & anElement);
 
@@ -231,24 +231,24 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	 * EVAL PROCESSOR < AVM_ARG_ARITHMETIC_LOGIC_CPU >
 	 */
 	bool eval_processor_alu(AvmBytecode & bytecode, BF & arg);
-	bool eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode);
+	bool eval_processor_alu(AvmBytecode & bytecode, AvmCode & aCode);
 
 	/**
 	 * EVAL PROCESSOR < AVM_ARG_STATEMENT_CPU >
 	 */
-	bool eval_processor_statement(AvmBytecode & bytecode, AvmCode * aCode);
+	bool eval_processor_statement(AvmBytecode & bytecode, AvmCode & aCode);
 
 	/**
 	 * EVAL PROCESSOR < AVM_ARG_CHARACTER_CPU >
 	 */
 	bool eval_processor_character(AvmBytecode & bytecode, BF & arg);
-	bool eval_processor_character(AvmBytecode & bytecode, AvmCode * aCode);
+	bool eval_processor_character(AvmBytecode & bytecode, AvmCode & aCode);
 
 	/**
 	 * EVAL PROCESSOR < AVM_ARG_STRING_CPU >
 	 */
 	bool eval_processor_string(AvmBytecode & bytecode, BF & arg);
-	bool eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode);
+	bool eval_processor_string(AvmBytecode & bytecode, AvmCode & aCode);
 
 	/**
 	 * EVAL PROCESSOR < AVM_ARG_ARRAY_[L|V]_CPU >
@@ -257,16 +257,16 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 	bool eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg);
 
-	BF genArray(ContainerTypeSpecifier * arrayT, const BF & arg);
+	BF genArray(const ContainerTypeSpecifier & arrayT, const BF & arg);
 
-	bool eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCode);
+	bool eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode & aCode);
 
 
 	/**
 	 * EVAL PROCESSOR < AVM_ARG_VECTOR_CPU >
 	 */
 	bool eval_processor_vector(AvmBytecode & bytecode, BF & arg);
-	bool eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode);
+	bool eval_processor_vector(AvmBytecode & bytecode, AvmCode & aCode);
 
 
 	/**
@@ -275,20 +275,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	 * EVAL PROCESSOR < AVM_ARG_COLLECTION_CPU >
 	 */
 	bool eval_processor_collection(AvmBytecode & bytecode, BF & arg);
-	bool eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode);
+	bool eval_processor_collection(AvmBytecode & bytecode, AvmCode & aCode);
 
 
 	/**
 	 * EVAL PROCESSOR < AVM_ARG_BUFFER_CPU >
 	 */
 	bool eval_processor_buffer(AvmBytecode & bytecode, BF & arg);
-	bool eval_processor_buffer(AvmBytecode & bytecode, AvmCode * aCode);
-
-
-	/**
-	 * DECODE EVAL RVALUE
-	 */
-	BF ginac_return_decode_eval_rvalue(BF & arg);
+	bool eval_processor_buffer(AvmBytecode & bytecode, AvmCode & aCode);
 
 
 	/**
@@ -302,7 +296,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 	BaseEnvironment * ENV;
 
-	APExecutionData outED;
+	ExecutionData outED;
 
 	RuntimeID mCTX;
 
@@ -313,14 +307,12 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	AvmInstruction * argsInstruction;
 	AvmBytecode * argsBytecode;
 
-	avm_size_t capacity;
-	avm_size_t count;
-	avm_size_t idx;
+	std::size_t capacity;
+	std::size_t count;
+	std::size_t idx;
 
 
-	static avm_size_t CALL_COUNT;
-
-	static avm_size_t CALL_COUNT_GINAC;
+	static std::size_t CALL_COUNT;
 
 };
 
@@ -331,7 +323,7 @@ class InstructionEnvironment :
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( InstructionEnvironment )
 {
 
-	AVM_DECLARE_CLONABLE_CLASS( InstructionEnvironment )
+	AVM_DECLARE_CLONABLE_BASE_CLASS( InstructionEnvironment )
 
 
 public:
@@ -342,10 +334,10 @@ public:
 	 */
 	InstructionEnvironment(BaseEnvironment & ENV);
 
-	InstructionEnvironment(BaseEnvironment & ENV, avm_size_t count);
+	InstructionEnvironment(BaseEnvironment & ENV, std::size_t count);
 
 	InstructionEnvironment(BaseEnvironment * ENV,
-			const APExecutionData & outED, avm_size_t count)
+			const ExecutionData & outED, std::size_t count)
 	: AvmObject( ),
 	mARG( newARGS(ENV, outED, count) ),
 	itARG( mARG )
@@ -371,7 +363,7 @@ public:
 //		return( theArg->values[ idx ] );
 //	}
 //
-//	inline const BF & get(const avm_size_t offset) const
+//	inline const BF & get(const std::size_t offset) const
 //	{
 //		return( theArg->values[ offset ] );
 //	}
@@ -381,7 +373,7 @@ public:
 //		theArg->values[theArg->idx ] = bf;
 //	}
 //
-//	inline void set(const avm_size_t offset, const BF & bf)
+//	inline void set(const std::size_t offset, const BF & bf)
 //	{
 //		theArg->values[ offset ] = bf;
 //	}
@@ -390,7 +382,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
 		//!! NOTHING
 	}
@@ -416,7 +408,7 @@ public:
 
 
 	static ARGS_ENV * newARGS(BaseEnvironment * ENV,
-			const APExecutionData & anED, avm_size_t count);
+			const ExecutionData & anED, std::size_t count);
 
 	static void freeARGS(ARGS_ENV * & arg);
 

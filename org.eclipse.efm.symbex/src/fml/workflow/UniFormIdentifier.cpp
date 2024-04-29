@@ -250,9 +250,9 @@ std::string UniFormIdentifier::str() const
 		if( (*it).is< BaseInstanceForm >() )
 		{
 AVM_IF_DEBUG_FLAG( QUALIFIED_NAME_ID )
-			oss << (*it).to_ptr< BaseInstanceForm >()->getFullyQualifiedNameID();
+			oss << (*it).to< BaseInstanceForm >().getFullyQualifiedNameID();
 AVM_ELSE
-			oss << (*it).to_ptr< BaseInstanceForm >()->getNameID();
+			oss << (*it).to< BaseInstanceForm >().getNameID();
 AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 		}
 
@@ -268,7 +268,7 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 		else if( (*it).is< ObjectElement >() )
 		{
 			oss << "&"
-				<< (*it).to_ptr< ObjectElement >()->getFullyQualifiedNameID();
+				<< (*it).to< ObjectElement >().getFullyQualifiedNameID();
 		}
 
 		else if( (*it).isIdentifier() )
@@ -292,7 +292,7 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 		else if( (*it).is< UniFormIdentifier >() )
 		{
 			oss << "${ ufi "
-					<< (*it).to_ptr< UniFormIdentifier >()->str() << " }";
+					<< (*it).to< UniFormIdentifier >().str() << " }";
 		}
 		else
 		{
@@ -308,13 +308,13 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 
 				if( (*it).is< ObjectElement >() )
 				{
-					oss << "&" << (*it).to_ptr<
-							ObjectElement >()->getFullyQualifiedNameID();
+					oss << "&" << (*it).to<
+							ObjectElement >().getFullyQualifiedNameID();
 				}
 				else if( (*it).is< BaseInstanceForm >() )
 				{
-					oss << "&" << (*it).to_ptr<
-							BaseInstanceForm >()->getFullyQualifiedNameID();
+					oss << "&" << (*it).to<
+							BaseInstanceForm >().getFullyQualifiedNameID();
 				}
 				else
 				{
@@ -329,13 +329,13 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 
 				if( (*it).is< ObjectElement >() )
 				{
-					oss << "&" << (*it).to_ptr<
-							ObjectElement >()->getFullyQualifiedNameID();
+					oss << "&" << (*it).to<
+							ObjectElement >().getFullyQualifiedNameID();
 				}
 				else if( (*it).is< BaseInstanceForm >() )
 				{
-					oss << "&" << (*it).to_ptr<
-							BaseInstanceForm >()->getFullyQualifiedNameID();
+					oss << "&" << (*it).to<
+							BaseInstanceForm >().getFullyQualifiedNameID();
 				}
 				else
 				{
@@ -353,14 +353,14 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 
 			else if( (*it).is< ObjectElement >() )
 			{
-				oss << SEPARATOR_LOCATION << "&" << (*it).to_ptr<
-						ObjectElement >()->getFullyQualifiedNameID();
+				oss << SEPARATOR_LOCATION << "&" << (*it).to<
+						ObjectElement >().getFullyQualifiedNameID();
 			}
 
 			else if( (*it).is< BaseInstanceForm >() )
 			{
-				oss << SEPARATOR_LOCATION << "&" << (*it).to_ptr<
-						BaseInstanceForm >()->getFullyQualifiedNameID();
+				oss << SEPARATOR_LOCATION << "&" << (*it).to<
+						BaseInstanceForm >().getFullyQualifiedNameID();
 			}
 
 			else if( (*it).is< RuntimeID >() )
@@ -400,9 +400,9 @@ void UniFormIdentifier::toStreamLocation(OutStream & out,
 		if( (*it).is< BaseInstanceForm >() )
 		{
 AVM_IF_DEBUG_FLAG( QUALIFIED_NAME_ID )
-			out << (*it).to_ptr< BaseInstanceForm >()->getFullyQualifiedNameID();
+			out << (*it).to< BaseInstanceForm >().getFullyQualifiedNameID();
 AVM_ELSE
-			out << (*it).to_ptr< BaseInstanceForm >()->getNameID();
+			out << (*it).to< BaseInstanceForm >().getNameID();
 AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 		}
 
@@ -417,8 +417,8 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 
 		else if( (*it).is< ObjectElement >() )
 		{
-			out << "&" << (*it).to_ptr<
-					ObjectElement >()->getFullyQualifiedNameID();
+			out << "&" << (*it).to<
+					ObjectElement >().getFullyQualifiedNameID();
 		}
 
 		else if( (*it).isIdentifier() )
@@ -442,7 +442,7 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 		else if( (*it).is< UniFormIdentifier >() )
 		{
 			out << "${ ufi "
-				<< (*it).to_ptr< UniFormIdentifier >()->str() << " }";
+				<< (*it).to< UniFormIdentifier >().str() << " }";
 		}
 
 		else
@@ -459,13 +459,13 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 
 				if( (*it).is< ObjectElement >() )
 				{
-					out << "&" << (*it).to_ptr<
-							ObjectElement >()->getFullyQualifiedNameID();
+					out << "&" << (*it).to<
+							ObjectElement >().getFullyQualifiedNameID();
 				}
 				else if( (*it).is< BaseInstanceForm >() )
 				{
-					out << "&" << (*it).to_ptr<
-							BaseInstanceForm >()->getFullyQualifiedNameID();
+					out << "&" << (*it).to<
+							BaseInstanceForm >().getFullyQualifiedNameID();
 				}
 				else
 				{
@@ -480,8 +480,8 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 
 				if( (*it).is< ObjectElement >() )
 				{
-					out << "&" << (*it).to_ptr<
-							ObjectElement >()->getFullyQualifiedNameID();
+					out << "&" << (*it).to<
+							ObjectElement >().getFullyQualifiedNameID();
 				}
 				else
 				{
@@ -499,14 +499,14 @@ AVM_ENDIF_DEBUG_FLAG( QUALIFIED_NAME_ID )
 
 			else if( (*it).is< ObjectElement >() )
 			{
-				out << SEPARATOR_LOCATION << "&" << (*it).to_ptr<
-						ObjectElement >()->getFullyQualifiedNameID();
+				out << SEPARATOR_LOCATION << "&" << (*it).to<
+						ObjectElement >().getFullyQualifiedNameID();
 			}
 
 			else if( (*it).is< BaseInstanceForm >() )
 			{
-				out << SEPARATOR_LOCATION << "&" << (*it).to_ptr<
-						BaseInstanceForm >()->getFullyQualifiedNameID();
+				out << SEPARATOR_LOCATION << "&" << (*it).to<
+						BaseInstanceForm >().getFullyQualifiedNameID();
 			}
 
 			else if( (*it).is< RuntimeID >() )
@@ -551,7 +551,7 @@ std::string UniFormIdentifier::toStringId() const
 		{
 			if( ListOfField::last().is< BaseInstanceForm >() )
 			{
-				return( ListOfField::last().to_ptr< BaseInstanceForm >()->getNameID() );
+				return( ListOfField::last().to< BaseInstanceForm >().getNameID() );
 			}
 
 			else if( ListOfField::last().is< RuntimeID >() )
@@ -561,8 +561,8 @@ std::string UniFormIdentifier::toStringId() const
 
 			else if( ListOfField::last().is< ObjectElement >() )
 			{
-				return( ListOfField::last().to_ptr<
-						ObjectElement >()->getNameID() );
+				return( ListOfField::last().to<
+						ObjectElement >().getNameID() );
 			}
 
 			else
@@ -602,13 +602,13 @@ void UniFormIdentifier::toStreamAvm(OutStream & out) const
 		// CASE OBJECT ELEMENT
 		if( (*it).is< ObjectElement >() )
 		{
-			out << "&" << (*it).to_ptr< ObjectElement >()->getFullyQualifiedNameID();
+			out << "&" << (*it).to< ObjectElement >().getFullyQualifiedNameID();
 		}
 
 		// CASE INSTANCE ELEMENT
 		else if( (*it).is< BaseInstanceForm >() )
 		{
-			out << "&" << (*it).to_ptr< BaseInstanceForm >()->getFullyQualifiedNameID();
+			out << "&" << (*it).to< BaseInstanceForm >().getFullyQualifiedNameID();
 		}
 
 		// CASE RUNTIME_FORM_ID ELEMENT

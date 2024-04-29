@@ -135,54 +135,55 @@ public:
 	 * CREATOR
 	 */
 	inline static ContainerTypeSpecifier * newArray(const std::string & aTypeID,
-			const TypeSpecifier & aTypeSpecifier, avm_size_t aSize)
+			const TypeSpecifier & aTypeSpecifier, std::size_t aSize)
 	{
 		return( new ContainerTypeSpecifier(TYPE_ARRAY_SPECIFIER,
 				aTypeID, aTypeSpecifier, aSize) );
 	}
 
-	inline static ContainerTypeSpecifier * newArray(const BF & aCompiledType,
-			const TypeSpecifier & aTypeSpecifier, avm_size_t aSize)
+	inline static ContainerTypeSpecifier * newArray(const BF & astType,
+			const TypeSpecifier & aTypeSpecifier, std::size_t aSize)
 	{
 		return( new ContainerTypeSpecifier(TYPE_ARRAY_SPECIFIER,
-				aCompiledType.to_ptr< DataType >(), aTypeSpecifier, aSize) );
+				astType.to< DataType >(), aTypeSpecifier, aSize) );
 	}
 
 
-	inline static ClassTypeSpecifier * newClass(DataType * aCompiledType)
+	inline static ClassTypeSpecifier * newClass(const DataType & astType)
 	{
-		return( new ClassTypeSpecifier(aCompiledType) );
+		return( new ClassTypeSpecifier(astType) );
 	}
 
-	inline static ChoiceTypeSpecifier * newChoice(DataType * aCompiledType)
+	inline static ChoiceTypeSpecifier * newChoice(const DataType & astType)
 	{
-		return( new ChoiceTypeSpecifier(aCompiledType) );
+		return( new ChoiceTypeSpecifier(astType) );
 	}
 
-	inline static UnionTypeSpecifier * newUnion(DataType * aCompiledType)
+	inline static UnionTypeSpecifier * newUnion(const DataType & astType)
 	{
-		return( new UnionTypeSpecifier(aCompiledType) );
+		return( new UnionTypeSpecifier(astType) );
 	}
 
 
 	inline static ContainerTypeSpecifier * newCollection(
-			DataType * aCompiledType,
+			const DataType & astType,
 			avm_type_specifier_kind_t aTypeSpecifierKind,
-			const TypeSpecifier & aTypeSpecifier, avm_size_t aSize)
+			const TypeSpecifier & aTypeSpecifier, std::size_t aSize)
 	{
 		return( new ContainerTypeSpecifier(aTypeSpecifierKind,
-				aCompiledType, aTypeSpecifier, aSize) );
+				astType, aTypeSpecifier, aSize) );
 	}
 
 
-	inline static EnumTypeSpecifier * newEnum(DataType * aCompiledType)
+	inline static EnumTypeSpecifier * newEnum(const DataType & astType)
 	{
-		return( new EnumTypeSpecifier(aCompiledType) );
+		return( new EnumTypeSpecifier(astType) );
 	}
 
 	inline static EnumTypeSpecifier * newEnum(const std::string & aNameID)
 	{
-		EnumTypeSpecifier * enumT = new EnumTypeSpecifier(NULL);
+		EnumTypeSpecifier * enumT =
+				new EnumTypeSpecifier(DataType::nullref());
 		enumT->setAllNameID(aNameID, aNameID);
 
 		return( enumT );
@@ -190,7 +191,7 @@ public:
 
 
 	inline static BaseTypeSpecifier * newNumericTypeSpecifier(
-			BaseTypeSpecifier * aTypeSpecifier, avm_size_t aBitSize,
+			BaseTypeSpecifier * aTypeSpecifier, std::size_t aBitSize,
 			const BF & defaultValue)
 	{
 		return( new BaseTypeSpecifier(
@@ -202,7 +203,7 @@ public:
 	inline static BaseTypeSpecifier * newNumericTypeSpecifier(
 			const std::string & aTypeID,
 			avm_type_specifier_kind_t aTypeSpecifierKind,
-			avm_size_t aDataSize, avm_size_t aBitSize, const BF & defaultValue)
+			std::size_t aDataSize, std::size_t aBitSize, const BF & defaultValue)
 	{
 		return( new BaseTypeSpecifier(aTypeSpecifierKind, aTypeID,
 				1, aDataSize, aBitSize, defaultValue) );
@@ -210,26 +211,40 @@ public:
 
 
 	inline static IntervalTypeSpecifier * newInterval(
-			DataType * aCompiledType,
-			const TypeSpecifier & aTypeSpecifier,
+			const DataType & astType, const TypeSpecifier & aTypeSpecifier,
 			IIntervalKind::KIND aNature, const BF & aMin, const BF & aMax)
 	{
-		return( new IntervalTypeSpecifier(aCompiledType,
+		return( new IntervalTypeSpecifier(astType,
 				aTypeSpecifier, aNature, aMin, aMax) );
 	}
 
 
 	inline static ContainerTypeSpecifier * newClockTime(
+			const std::string & aTypeID,
 			avm_type_specifier_kind_t aTypeSpecifierKind,
-			const TypeSpecifier & aTimeDomain, avm_size_t aSize = 1)
+			const TypeSpecifier & aTimeDomain, std::size_t aSize = 1)
 	{
-		return( new ContainerTypeSpecifier(aTypeSpecifierKind,
-				NULL, aTimeDomain, aSize) );
+		auto * typeSpecifier = new ContainerTypeSpecifier(
+				aTypeSpecifierKind, aTypeID, aTimeDomain, aSize);
+		typeSpecifier->setDefaultValue( ExpressionConstant::INTEGER_ZERO );
+
+		return( typeSpecifier );
+	}
+
+	inline static ContainerTypeSpecifier * newClockTime(
+			avm_type_specifier_kind_t aTypeSpecifierKind,
+			const TypeSpecifier & aTimeDomain, std::size_t aSize = 1)
+	{
+		auto * typeSpecifier = new ContainerTypeSpecifier(aTypeSpecifierKind,
+				DataType::nullref(), aTimeDomain, aSize);
+		typeSpecifier->setDefaultValue( ExpressionConstant::INTEGER_ZERO );
+
+		return( typeSpecifier );
 	}
 
 
 	inline static BaseTypeSpecifier * newCharacter(
-			const std::string & aTypeID, avm_size_t aSize)
+			const std::string & aTypeID, std::size_t aSize)
 	{
 		return( newTypeSpecifier(aTypeID,
 				TYPE_CHARACTER_SPECIFIER, aSize, 1, 0,
@@ -237,7 +252,7 @@ public:
 	}
 
 	inline static BaseTypeSpecifier * newString(
-			avm_size_t minSize, avm_size_t maxSize)
+			std::size_t minSize, std::size_t maxSize)
 	{
 		return( newTypeSpecifier(TYPE_STRING_ID, TYPE_STRING_SPECIFIER,
 				minSize, maxSize, 1, 0, ExpressionConstant::STRING_EMPTY) );
@@ -245,17 +260,17 @@ public:
 
 
 	inline static TypeAliasSpecifier * newTypeAlias(
-			DataType * aCompiledType, const TypeSpecifier & aTypeSpecifier)
+			const DataType & astType, const TypeSpecifier & aTypeSpecifier)
 	{
-		return( new TypeAliasSpecifier(aCompiledType, aTypeSpecifier) );
+		return( new TypeAliasSpecifier(astType, aTypeSpecifier) );
 	}
 
 
 	inline static BaseTypeSpecifier * newTypeSpecifier(
 			const std::string & aTypeID,
 			avm_type_specifier_kind_t aTypeSpecifierKind,
-			avm_size_t aSize, avm_size_t aDataSize,
-			avm_size_t aBitSize, const BF & defaultValue = BF::REF_NULL)
+			std::size_t aSize, std::size_t aDataSize,
+			std::size_t aBitSize, const BF & defaultValue = BF::REF_NULL)
 	{
 		return( new BaseTypeSpecifier(aTypeSpecifierKind, aTypeID,
 				aSize, aDataSize, aBitSize, defaultValue) );
@@ -264,8 +279,8 @@ public:
 	inline static BaseTypeSpecifier * newTypeSpecifier(
 			const std::string & aTypeID,
 			avm_type_specifier_kind_t aTypeSpecifierKind,
-			avm_size_t minSize, avm_size_t maxSize, avm_size_t aDataSize,
-			avm_size_t aBitSize, const BF & defaultValue = BF::REF_NULL)
+			std::size_t minSize, std::size_t maxSize, std::size_t aDataSize,
+			std::size_t aBitSize, const BF & defaultValue = BF::REF_NULL)
 	{
 		return( new BaseTypeSpecifier(aTypeSpecifierKind, aTypeID,
 				minSize, maxSize, aDataSize, aBitSize, defaultValue) );
@@ -326,12 +341,18 @@ public:
 
 	static const std::string & TYPE_URAT_ID;
 	static const std::string & TYPE_URATIONAL_ID;
+	static const std::string & TYPE_POS_RATIONAL_ID;
 
 	static const std::string & TYPE_UFLOAT_ID;
 	static const std::string & TYPE_UDOUBLE_ID;
 	static const std::string & TYPE_UREAL_ID;
 
+	static const std::string & TYPE_POS_FLOAT_ID;
+	static const std::string & TYPE_POS_DOUBLE_ID;
+	static const std::string & TYPE_POS_REAL_ID;
+
 	static const std::string & TYPE_CONTINUOUS_TIME_ID;
+	static const std::string & TYPE_DENSE_TIME_ID;
 	static const std::string & TYPE_DISCRETE_TIME_ID;
 	static const std::string & TYPE_TIME_ID;
 	static const std::string & TYPE_CLOCK_ID;
@@ -409,20 +430,25 @@ public:
 
 	static TypeSpecifier RATIONAL;
 	static TypeSpecifier URATIONAL;
+	static TypeSpecifier POS_RATIONAL;
 
 	static TypeSpecifier FLOAT;
 	static TypeSpecifier UFLOAT;
+	static TypeSpecifier POS_FLOAT;
 
 	static TypeSpecifier DOUBLE;
 	static TypeSpecifier UDOUBLE;
+	static TypeSpecifier POS_DOUBLE;
 
 	static TypeSpecifier REAL;
 	static TypeSpecifier UREAL;
+	static TypeSpecifier POS_REAL;
 
 
 	static TypeSpecifier CLOCK;
 	static TypeSpecifier TIME;
 	static TypeSpecifier CONTINUOUS_TIME;
+	static TypeSpecifier DENSE_TIME;
 	static TypeSpecifier DISCRETE_TIME;
 
 	static TypeSpecifier CHAR;

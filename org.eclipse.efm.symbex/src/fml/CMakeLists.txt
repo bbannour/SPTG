@@ -16,6 +16,3 @@ target_include_directories (fml PUBLIC ${GMP_INCLUDE_DIR} ${GMPXX_INCLUDE_DIR})
 target_include_directories (fml PUBLIC ${Boost_INCLUDE_DIRS})
 target_include_directories (fml PUBLIC ${CVC4_INCLUDE_DIR})
 
-
-add_dependencies(fml rescan_cvc4)
-

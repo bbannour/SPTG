@@ -40,13 +40,13 @@ RuntimeID RuntimeLib::RID_ENVIRONMENT;
 void RuntimeLib::load()
 {
 	RID_NIL.create(-1, 0, ExecutableLib::MACHINE_NULL.rawMachine());
-	RID_NIL.setQualifiedNameID("null#machine" /*"null< machine >"*/);
+	RID_NIL.setQualifiedNameID("null#machine" /*"$null<machine>"*/);
 
 	ExecutableLib::MACHINE_NULL.setRuntimeRID( RID_NIL );
 
 	RID_ENVIRONMENT.create(-2, 0,
 			ExecutableLib::MACHINE_ENVIRONMENT.rawMachine());
-	RID_ENVIRONMENT.setQualifiedNameID("env");
+	RID_ENVIRONMENT.setQualifiedNameID("$env");
 }
 
 

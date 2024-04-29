@@ -16,16 +16,16 @@
 #ifndef SYSTEM_H_
 #define SYSTEM_H_
 
+#include <iostream>
+
 #include <fml/infrastructure/Machine.h>
 
 #include <collection/BFContainer.h>
 
 #include <fml/infrastructure/Package.h>
 
-
 namespace sep
 {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // SYSTEM POINTER
@@ -40,6 +40,7 @@ namespace sep
 
 class System :
 		public Machine,
+		AVM_INJECT_STATIC_NULL_REFERENCE( System ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( System )
 {
 
@@ -52,15 +53,15 @@ protected:
 	 */
 	BFList mPackages;
 
-
 public:
 	/**
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	System(const std::string & aNameID)
-	: Machine(CLASS_KIND_T( System ), NULL, "spec::" + aNameID,
-			aNameID, aNameID, Specifier::COMPONENT_SYSTEM_SPECIFIER),
+	System(const std::string & aNameID,
+			const Specifier & aSpecifier = Specifier::COMPONENT_SYSTEM_SPECIFIER)
+	: Machine(CLASS_KIND_T( System ), nullptr, "spec::" + aNameID,
+			aNameID, aNameID, aSpecifier),
 	mPackages( )
 	{
 		//!! NOTHING
@@ -78,12 +79,26 @@ public:
 
 	/**
 	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static System & nullref()
+	{
+		static System _NULL_("$null<System>", Specifier::OBJECT_NULL_SPECIFIER);
+		_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+		_NULL_.setSpecifier( Specifier::OBJECT_NULL_SPECIFIER );
+
+		return( _NULL_ );
+	}
+
+
+	/**
+	 * GETTER
 	 * the machine container
 	 * LC[R]A
 	 */
-	inline virtual Machine * getContainerMachine() const
+	inline virtual Machine * getContainerMachine() const override
 	{
-		return( hasContainer() ? getContainer()->to< Machine >() : NULL );
+		return( hasContainer() ? getContainer()->to_ptr< Machine >() : nullptr );
 	}
 
 
@@ -110,11 +125,14 @@ public:
 	/**
 	 * Serialization
 	 */
-	void strHeader(OutStream & os) const;
+	virtual void strHeader(OutStream & out) const override;
 
-	void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
+
+
 
 };
+
 
 
 }

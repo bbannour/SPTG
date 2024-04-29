@@ -41,7 +41,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	BroadcastBuffer(InstanceOfBuffer * aBuffer)
+	BroadcastBuffer(const InstanceOfBuffer & aBuffer)
 	: RamBuffer(CLASS_KIND_T( BroadcastBuffer ), aBuffer),
 	mNextStepMessage( )
 	{
@@ -74,29 +74,34 @@ public:
 	/**
 	 * BUFFER MANAGEMENT
 	 */
-	virtual bool push(const Message & aMsg)
+	inline virtual bool push(const Message & aMsg) override
 	{
 		mNextStepMessage = aMsg;
 
 		return( true );
 	}
 
-	virtual bool top(const Message & aMsg)
+	inline virtual bool top(const Message & aMsg) override
 	{
 		mNextStepMessage = aMsg;
 
 		return( true );
 	}
+
+	// Due to [-Woverloaded-virtual=]
+	using RamBuffer::top;
 
 	/**
 	 ***************************************************************************
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & out) const override;
 
-	void toFscn(OutStream & os, const RuntimeID & aRID,
-			const BaseBufferForm * prevBuf = NULL) const;
+	virtual void toStreamValue(OutStream & out) const override;
+
+	void toFscn(OutStream & out, const RuntimeID & aRID,
+			const BaseBufferForm * prevBuf = nullptr) const override;
 
 };
 

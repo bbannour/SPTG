@@ -19,7 +19,6 @@
 #include <fml/common/ObjectClassifier.h>
 #include <fml/common/ObjectElement.h>
 
-#include <common/AvmPointer.h>
 #include <common/BF.h>
 
 
@@ -43,10 +42,10 @@ protected:
 	 */
 	BF mModel;
 
-	avm_size_t mInitialInstanceCount;
-	avm_size_t mMaximalInstanceCount;
+	std::size_t mInitialInstanceCount;
+	std::size_t mMaximalInstanceCount;
 
-	avm_size_t mPossibleDynamicInstanciationCount;
+	std::size_t mPossibleDynamicInstanciationCount;
 
 	bool mModifierAutoStart;
 
@@ -61,8 +60,8 @@ public:
 			const std::string & aNameID = "instance");
 
 	InstanceSpecifierPart(Machine * aContainer, const BF & aModel,
-			avm_size_t anInitialInstanceCount = 1,
-			avm_size_t aMaximalInstanceCount = AVM_NUMERIC_MAX_SIZE_T,
+			std::size_t anInitialInstanceCount = 1,
+			std::size_t aMaximalInstanceCount = AVM_NUMERIC_MAX_SIZE_T,
 			const std::string & aNameID = "instance");
 
 
@@ -97,7 +96,7 @@ public:
 	inline std::string strModel() const
 	{
 		return( mModel.is< ObjectElement >() ?
-				mModel.to_ptr< ObjectElement >()->getFullyQualifiedNameID() :
+				mModel.to< ObjectElement >().getFullyQualifiedNameID() :
 				mModel.str() );
 	}
 
@@ -106,7 +105,7 @@ public:
 	 * GETTER - SETTER
 	 * mInitialInstanceCount
 	 */
-	inline avm_size_t getInitialInstanceCount() const
+	inline std::size_t getInitialInstanceCount() const
 	{
 		return( mInitialInstanceCount );
 	}
@@ -116,7 +115,7 @@ public:
 		return( mInitialInstanceCount > 0 );
 	}
 
-	inline void setInitialInstanceCount(avm_size_t anInitialInstanceCount)
+	inline void setInitialInstanceCount(std::size_t anInitialInstanceCount)
 	{
 		mInitialInstanceCount = anInitialInstanceCount;
 	}
@@ -126,7 +125,7 @@ public:
 	 * GETTER - SETTER
 	 * mMaximalInstanceCount
 	 */
-	inline avm_size_t getMaximalInstanceCount() const
+	inline std::size_t getMaximalInstanceCount() const
 	{
 		return( mMaximalInstanceCount );
 	}
@@ -142,7 +141,7 @@ public:
 				(mMaximalInstanceCount != AVM_NUMERIC_MAX_SIZE_T) );
 	}
 
-	inline void setMaximalInstanceCount(avm_size_t aMaximalInstanceCount)
+	inline void setMaximalInstanceCount(std::size_t aMaximalInstanceCount)
 	{
 		mMaximalInstanceCount = aMaximalInstanceCount;
 	}
@@ -154,8 +153,8 @@ public:
 	 * mMaximalInstanceCount
 	 */
 	inline void setInstanceCount(
-			avm_size_t anInitialInstanceCount,
-			avm_size_t aMaximalInstanceCount)
+			std::size_t anInitialInstanceCount,
+			std::size_t aMaximalInstanceCount)
 	{
 		mInitialInstanceCount = anInitialInstanceCount;
 
@@ -181,19 +180,19 @@ public:
 	/**
 	 * Serialization
 	 */
-	static void strMultiplicity(OutStream & os,
-			avm_size_t anInitialCount, avm_size_t aMaximalCount,
+	static void strMultiplicity(OutStream & out,
+			std::size_t anInitialCount, std::size_t aMaximalCount,
 			const std::string & leftSeparator = "[ ",
 			const std::string & rightSeparator = " ]");
 
-	static void strMultiplicity(OutStream & os, avm_size_t anInitialCount,
-			avm_size_t aPossibleDynamicCount, avm_size_t aMaximalCount,
+	static void strMultiplicity(OutStream & out, std::size_t anInitialCount,
+			std::size_t aPossibleDynamicCount, std::size_t aMaximalCount,
 			const std::string & leftSeparator = "[ ",
 			const std::string & rightSeparator = " ]");
 
-	void header(OutStream & os, bool & hasChevron) const;
+	void header(OutStream & out, bool & hasChevron) const;
 
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & out) const override;
 
 };
 

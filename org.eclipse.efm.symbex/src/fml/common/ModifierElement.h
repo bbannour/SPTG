@@ -27,6 +27,18 @@ namespace sep
 
 struct Modifier
 {
+	/**
+	 * NULL_FLAG
+	 * 1 bits
+	 */
+	enum NULL_FLAG
+	{
+		NULL_FALSE_FLAG  = 0x00, // IS NOT NULL
+
+		NULL_TRUE_FLAG   = 0x01, // IS NULL
+
+	};
+
 
 	/**
 	 * VISIBILITY_KIND
@@ -87,6 +99,9 @@ struct Modifier
 		NATURE_PARAMETER_BIND_KIND       = NATURE_PARAMETER_KIND
 		                                 | NATURE_BIND_KIND,
 
+		NATURE_PARAMETER_MACRO_KIND      = NATURE_PARAMETER_KIND
+		                                 | NATURE_MACRO_KIND,
+
 		NATURE_REFERENCE_MACRO_KIND      = NATURE_REFERENCE_KIND
 		                                 | NATURE_MACRO_KIND,
 
@@ -100,7 +115,7 @@ struct Modifier
 
 	/**
 	 * FEATURE_KIND
-	 * 5 bits
+	 * 6 bits
 	 */
 	enum FEATURE_KIND
 	{
@@ -117,6 +132,8 @@ struct Modifier
 
 		FEATURE_UNSAFE_KIND        = 0x010,
 
+		FEATURE_OPTIONAL_KIND      = 0x020,
+
 		FEATURE_FINAL_STATIC_KIND  = FEATURE_FINAL_KIND
 		                           | FEATURE_STATIC_KIND
 
@@ -126,18 +143,21 @@ struct Modifier
 	/**
 	 * TYPEDEF
 	 */
-	typedef unsigned short  bit_field_t;
+	typedef std::uint16_t  bit_field_t;
 
 	/**
 	 * BIT FIELDS
 	 */
+	// group 1 : 16 bits
 	bit_field_t visibility     : 2;
 
 	bit_field_t direction      : 3;
 
 	bit_field_t nature         : 4;
 
-	bit_field_t feature        : 5;
+	bit_field_t feature        : 6;
+
+	bit_field_t is_null_flag   : 1;
 
 
 	/**
@@ -163,6 +183,8 @@ struct Modifier
 	/**
 	 * STATIC PROPERTY MODIFIER
 	 */
+	static Modifier OBJECT_NULL_MODIFIER;
+
 	static Modifier PROPERTY_UNDEFINED_MODIFIER;
 
 	/**
@@ -177,12 +199,23 @@ struct Modifier
 	/**
 	 * DIRECTION
 	 */
+	static Modifier PROPERTY_INPUT_DIRECTION;
 	static Modifier PROPERTY_INOUT_DIRECTION;
+	static Modifier PROPERTY_OUTPUT_DIRECTION;
 
 	/**
 	 * NATURE
 	 */
-	static Modifier PROPERTY_MACRO_MODIFIER;
+	static Modifier PROPERTY_PARAMETER_MACRO_MODIFIER;
+
+	static Modifier PROPERTY_RETURN_PARAMETER_MACRO_MODIFIER;
+
+	/**
+	 * VARIABLE ALIAS
+	 * CONSTANT
+	 */
+	static Modifier PROPERTY_VARIABLE_CONST_MODIFIER;
+	static Modifier PROPERTY_PUBLIC_VARIABLE_CONST_MODIFIER;
 
 	/**
 	 * ALIAS
@@ -194,7 +227,7 @@ struct Modifier
 	static Modifier PARAMETER_PUBLIC_FINAL_STATIC_MODIFIER;
 
 	/**
-	 * [ DIRECTION ] PARAMETER
+	 * [ DIRECTED ] PARAMETER
 	 */
 	static Modifier PROPERTY_PARAMETER_MODIFIER;
 
@@ -206,6 +239,8 @@ struct Modifier
 
 	static Modifier PROPERTY_RETURN_PARAMETER_MODIFIER;
 
+	static Modifier PROPERTY_QUANTIFIER_PARAMETER_MODIFIER;
+
 	/**
 	 * [ BIND ] PARAMETER
 	 */
@@ -215,30 +250,35 @@ struct Modifier
 	/**
 	 * CONSTRUCTORS
 	 */
-	Modifier()
+	Modifier(NULL_FLAG is_null = NULL_FALSE_FLAG )
 	: visibility( VISIBILITY_UNDEFINED_KIND ),
 	direction   ( DIRECTION_UNDEFINED_KIND  ),
 	nature      ( NATURE_UNDEFINED_KIND     ),
-	feature     ( FEATURE_UNDEFINED_KIND    )
+	feature     ( FEATURE_UNDEFINED_KIND    ),
+	is_null_flag( is_null                   )
 	{
 		//!! NOTHING
 	}
 
-//	Modifier(const Modifier & aModifier)
-//	: visibility( aModifier.visibility ),
-//	direction   ( aModifier.direction  ),
-//	nature      ( aModifier.nature     ),
-//	feature     ( aModifier.feature    )
+//	Modifier( const Modifier & aModifier )
+//	: visibility( aModifier.visibility   ),
+//	direction   ( aModifier.direction    ),
+//	nature      ( aModifier.nature       ),
+//	feature     ( aModifier.feature      ),
+//	is_null_flag( aModifier.is_null_flag )
 //	{
 //		//!! NOTHING
 //	}
 
 	Modifier(bit_field_t visibilityKind, bit_field_t directionKind,
-			bit_field_t natureKind, bit_field_t featureKind)
-	: visibility( visibilityKind ),
-	direction   ( directionKind  ),
-	nature      ( natureKind  ),
-	feature     ( featureKind )
+			bit_field_t natureKind  = NATURE_UNDEFINED_KIND,
+			bit_field_t featureKind = FEATURE_UNDEFINED_KIND)
+	: visibility( visibilityKind  ),
+	direction   ( directionKind   ),
+	nature      ( natureKind      ),
+	feature     ( featureKind     ),
+
+	is_null_flag( NULL_FALSE_FLAG )
 	{
 		//!! NOTHING
 	}
@@ -246,18 +286,33 @@ struct Modifier
 	Modifier(NATURE_KIND natureKindind, FEATURE_KIND featureKindind)
 	: visibility( VISIBILITY_UNDEFINED_KIND ),
 	direction   ( DIRECTION_UNDEFINED_KIND  ),
-	nature      ( natureKindind  ),
-	feature     ( featureKindind )
+	nature      ( natureKindind   ),
+	feature     ( featureKindind  ),
+
+	is_null_flag( NULL_FALSE_FLAG )
 	{
 		//!! NOTHING
 	}
 
 
+	Modifier(VISIBILITY_KIND visibilityKind, DIRECTION_KIND directionKind)
+	: visibility( visibilityKind ),
+	direction   ( directionKind  ),
+	nature      ( NATURE_UNDEFINED_KIND     ),
+	feature     ( FEATURE_UNDEFINED_KIND    ),
+
+	is_null_flag( NULL_FALSE_FLAG           )
+	{
+		//!! NOTHING
+	}
+
 	Modifier(VISIBILITY_KIND visibilityKind)
 	: visibility( visibilityKind ),
 	direction   ( DIRECTION_UNDEFINED_KIND  ),
 	nature      ( NATURE_UNDEFINED_KIND     ),
-	feature     ( FEATURE_UNDEFINED_KIND    )
+	feature     ( FEATURE_UNDEFINED_KIND    ),
+
+	is_null_flag( NULL_FALSE_FLAG           )
 	{
 		//!! NOTHING
 	}
@@ -266,7 +321,9 @@ struct Modifier
 	: visibility( VISIBILITY_UNDEFINED_KIND ),
 	direction   ( directionKind             ),
 	nature      ( NATURE_UNDEFINED_KIND     ),
-	feature     ( FEATURE_UNDEFINED_KIND    )
+	feature     ( FEATURE_UNDEFINED_KIND    ),
+
+	is_null_flag( NULL_FALSE_FLAG           )
 	{
 		//!! NOTHING
 	}
@@ -275,7 +332,9 @@ struct Modifier
 	: visibility( VISIBILITY_UNDEFINED_KIND ),
 	direction   ( DIRECTION_UNDEFINED_KIND  ),
 	nature      ( natureKind                ),
-	feature     ( FEATURE_UNDEFINED_KIND    )
+	feature     ( FEATURE_UNDEFINED_KIND    ),
+
+	is_null_flag( NULL_FALSE_FLAG           )
 	{
 		//!! NOTHING
 	}
@@ -284,7 +343,9 @@ struct Modifier
 	: visibility( VISIBILITY_UNDEFINED_KIND ),
 	direction   ( DIRECTION_UNDEFINED_KIND  ),
 	nature      ( NATURE_UNDEFINED_KIND     ),
-	feature     ( featureKind               )
+	feature     ( featureKind               ),
+
+	is_null_flag( NULL_FALSE_FLAG           )
 	{
 		//!! NOTHING
 	}
@@ -296,6 +357,26 @@ struct Modifier
 	~Modifier()
 	{
 		//!! NOTHING
+	}
+
+
+	/**
+	 * VALIDITY TEST
+	 * _NULL_
+	 */
+	inline bool isNullFlagEnabled() const
+	{
+		return( is_null_flag == NULL_TRUE_FLAG );
+	}
+
+	inline bool isNullFlagDisabled() const
+	{
+		return( is_null_flag != NULL_TRUE_FLAG );
+	}
+
+	inline void setNullFlag(bool enabled = true)
+	{
+		is_null_flag = (enabled ? NULL_TRUE_FLAG : NULL_FALSE_FLAG);
 	}
 
 
@@ -349,16 +430,17 @@ struct Modifier
 		return( *this );
 	}
 
-
-	inline Modifier & operator=(const Modifier & other)
-	{
-		visibility = other.visibility;
-		direction  = other.direction;
-		nature     = other.nature;
-		feature    = other.feature;
-
-		return( *this );
-	}
+//!@?NO_NEED:
+//	inline Modifier & operator=(const Modifier & other)
+//	{
+//		visibility   = other.visibility;
+//		direction    = other.direction;
+//		nature       = other.nature;
+//		feature      = other.feature;
+//		is_null_flag = other.is_null_flag;
+//
+//		return( *this );
+//	}
 
 	inline Modifier & operator=(VISIBILITY_KIND visibilityKind)
 	{
@@ -481,18 +563,20 @@ struct Modifier
 
 	inline bool operator==(const Modifier & other) const
 	{
-		return(    (visibility == other.visibility)
-				&& (direction  == other.direction )
-				&& (nature     == other.nature    )
-				&& (feature    == other.feature   ) );
+		return(    (visibility   == other.visibility  )
+				&& (direction    == other.direction   )
+				&& (nature       == other.nature      )
+				&& (feature      == other.feature     )
+				&& (is_null_flag == other.is_null_flag) );
 	}
 
 	inline bool operator!=(const Modifier & other) const
 	{
-		return(    (visibility != other.visibility)
-				|| (direction  != other.direction )
-				|| (nature     != other.nature    )
-				|| (feature    != other.feature   ) );
+		return(    (visibility   != other.visibility  )
+				|| (direction    != other.direction   )
+				|| (nature       != other.nature      )
+				|| (feature      != other.feature     )
+				|| (is_null_flag != other.is_null_flag) );
 	}
 
 
@@ -617,6 +701,11 @@ struct Modifier
 	inline bool isVisibilityPublic() const
 	{
 		return( visibility == VISIBILITY_PUBLIC_KIND );
+	}
+
+	inline bool isnotVisibilityPublic() const
+	{
+		return( visibility != VISIBILITY_PUBLIC_KIND );
 	}
 
 	inline bool isVisibilityPublic(const Modifier & mask) const
@@ -969,21 +1058,23 @@ struct Modifier
 	/**
 	 * GETTER - SETTER
 	 * "variable" nature
+	 * Due to :> NATURE_KIND::NATURE_VARIABLE_KIND = 0x000, // default
+	 * NATURE_VARIABLE_KIND is set <if only if> NATURE_PARAMETER_KIND is not set
 	 */
 	inline bool hasNatureVariable() const
 	{
-		return( (nature & NATURE_VARIABLE_KIND) != 0 );
+		return( (nature & NATURE_PARAMETER_KIND) == 0 );
 	}
 
 	inline Modifier & setNatureVariable(bool bNatureVariable = true)
 	{
-		if( bNatureVariable )
+		if( bNatureVariable )  // this is not a Parameter
 		{
-			nature |= NATURE_VARIABLE_KIND;
+			nature &= (~ NATURE_PARAMETER_KIND);
 		}
-		else
+		else // this is a Parameter
 		{
-			nature &= (~ NATURE_VARIABLE_KIND);
+			nature &= NATURE_PARAMETER_KIND;
 		}
 
 		return( *this );
@@ -1009,7 +1100,7 @@ struct Modifier
 		{
 			nature |= NATURE_PARAMETER_KIND;
 		}
-		else
+		else // this is a Variable
 		{
 			nature &= (~ NATURE_PARAMETER_KIND);
 		}
@@ -1366,6 +1457,35 @@ struct Modifier
 	}
 
 
+	/**
+	 * GETTER - SETTER
+	 * "optional" feature
+	 */
+	inline bool hasFeatureOptional() const
+	{
+		return( (feature & FEATURE_OPTIONAL_KIND) != 0 );
+	}
+
+	inline bool noFeatureOptional() const
+	{
+		return( (feature & FEATURE_OPTIONAL_KIND) == 0 );
+	}
+
+	inline Modifier & setFeatureOptional(bool bFeatureOptional = true)
+	{
+		if( bFeatureOptional )
+		{
+			feature |= FEATURE_OPTIONAL_KIND;
+		}
+		else
+		{
+			feature &= (~ FEATURE_OPTIONAL_KIND);
+		}
+
+		return( *this );
+	}
+
+
 	////////////////////////////////////////////////////////////////////////////
 	// MIX-IN MODIFIER
 	////////////////////////////////////////////////////////////////////////////
@@ -1586,14 +1706,14 @@ struct Modifier
 };
 
 
-//ostream & operator<<(ostream & os, const Modifier & aModifier)
+//inline ostream & operator<<(ostream & out, const Modifier & aModifier)
 //{
-//	os  << Modifier::strVisibility( aModifier.visibility )
+//	oout << Modifier::strVisibility( aModifier.visibility )
 //		<< Modifier::strDirection(  aModifier.direction )
 //		<< Modifier::strFeature(  aModifier.feature )
 //		<< Modifier::strNature(  aModifier.nature );
 //
-//	return( os );
+//	return( oout );
 //}
 
 
@@ -1633,7 +1753,7 @@ public:
 	}
 
 	ModifierImpl(const ModifierImpl * aCopy)
-	: mModifier( (aCopy != NULL) ?
+	: mModifier( (aCopy != nullptr) ?
 			aCopy->mModifier : Modifier::PROPERTY_UNDEFINED_MODIFIER )
 	{
 		//!! NOTHING
@@ -1665,7 +1785,7 @@ public:
 
 	inline bool hasModifier() const
 	{
-		return( mModifier != Modifier::PROPERTY_UNDEFINED_MODIFIER );
+		return( mModifier.hasModifier() );
 	}
 
 	inline void setModifier(const Modifier & aModifier)

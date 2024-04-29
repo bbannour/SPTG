@@ -19,35 +19,50 @@ namespace sep
 {
 
 
-void BroadcastBuffer::toStream(OutStream & os) const
+void BroadcastBuffer::toStream(OutStream & out) const
 {
-	os << TAB << "buffer broadcast "
-			<< ( hasInstance() ? getInstance()->getFullyQualifiedNameID() : "_")
-			<< " {";
+	out << TAB << "buffer broadcast "
+		<< getInstance().getFullyQualifiedNameID()
+		<< " {";
 
-	AVM_DEBUG_REF_COUNTER(os);
-	os << EOL_INCR_INDENT;
+	AVM_DEBUG_REF_COUNTER(out);
+	out << EOL_INCR_INDENT;
 
 	if( nonempty() )
 	{
-		mMessage.toStream(os);
+		mMessage.toStream(out);
 	}
 
-	os << DECR_INDENT_TAB << "}" << EOL_FLUSH;
+	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
 }
 
 
-void BroadcastBuffer::toFscn(OutStream & os,
+void BroadcastBuffer::toStreamValue(OutStream & out) const
+{
+	out << TAB << "broadcast {";
+	AVM_DEBUG_REF_COUNTER(out);
+	out << EOL_INCR_INDENT;
+
+	if( nonempty() )
+	{
+		mMessage.toStreamValue(out);
+	}
+
+	out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
+}
+
+
+void BroadcastBuffer::toFscn(OutStream & out,
 		const RuntimeID & aRID, const BaseBufferForm * prevBuf) const
 {
 	if( nonempty() )
 	{
-		bool hasDifference = (prevBuf == NULL);
+		bool hasDifference = (prevBuf == nullptr);
 
 		if( (not hasDifference)
 			&& prevBuf->is< BroadcastBuffer >() )
 		{
-			const BroadcastBuffer * prev = prevBuf->to< BroadcastBuffer >();
+			const BroadcastBuffer * prev = prevBuf->to_ptr< BroadcastBuffer >();
 			if(prev->mMessage!=mMessage)
 			{
 				hasDifference = true;
@@ -56,12 +71,12 @@ void BroadcastBuffer::toFscn(OutStream & os,
 
 		if( hasDifference )
 		{
-			os << TAB << ":pid#" << aRID.getRid() << ":" << "<BROADCAST>#"
-					<< getInstance()->getOffset() << "{" << EOL_INCR_INDENT;
+			out << TAB << ":" << aRID.strPid() << ":" << "<BROADCAST>#"
+					<< getInstance().getOffset() << "{" << EOL_INCR_INDENT;
 
-			mMessage.toFscn(os);
+			mMessage.toFscn(out);
 
-			os << DECR_INDENT_TAB << "}" << EOL_FLUSH;
+			out << DECR_INDENT_TAB << "}" << EOL_FLUSH;
 		}
 	}
 }

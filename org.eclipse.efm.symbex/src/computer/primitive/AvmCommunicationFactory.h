@@ -21,6 +21,8 @@
 
 #include <fml/executable/InstanceOfPort.h>
 
+#include <fml/operator/OperatorLib.h>
+
 #include <fml/runtime/ExecutionData.h>
 #include <fml/runtime/RuntimeID.h>
 
@@ -71,54 +73,83 @@ public:
 	/**
 	 * SEARCH ROUTING DATA
 	 */
-	static const RoutingData & searchInputRoutingData(
-			const ExecutionData & anED, InstanceOfPort * aPort,
-			RuntimeID & aRoutingRID );
-
-	inline static const RoutingData & searchInputRoutingData(
-			const APExecutionData & anED, InstanceOfPort * aPort,
-			RuntimeID & aRoutingRID )
+	inline static const RoutingData & searchRoutingData(
+			const ExecutionData & anED, AVM_OPCODE opcode,
+			const InstanceOfPort & aPort, RuntimeID & aRoutingRID )
 	{
-		return( searchInputRoutingData( (* anED) , aPort , aRoutingRID ) );
+		switch( opcode )
+		{
+			case AVM_OPCODE_INPUT            :
+			case AVM_OPCODE_INPUT_FROM       :
+			case AVM_OPCODE_INPUT_ENV        :
+			case AVM_OPCODE_INPUT_RDV        :
+			case AVM_OPCODE_INPUT_MULTI_RDV  :
+			case AVM_OPCODE_INPUT_BUFFER     :
+			case AVM_OPCODE_INPUT_BROADCAST  :
+			case AVM_OPCODE_INPUT_DELEGATE   :
+			case AVM_OPCODE_INPUT_FLOW       :
+				return( searchInputRoutingData(anED, aPort, aRoutingRID) );
+
+
+			case AVM_OPCODE_OUTPUT           :
+			case AVM_OPCODE_OUTPUT_TO        :
+			case AVM_OPCODE_OUTPUT_ENV       :
+			case AVM_OPCODE_OUTPUT_RDV       :
+			case AVM_OPCODE_OUTPUT_MULTI_RDV :
+			case AVM_OPCODE_OUTPUT_BUFFER    :
+			case AVM_OPCODE_OUTPUT_BROADCAST :
+			case AVM_OPCODE_OUTPUT_DELEGATE  :
+			case AVM_OPCODE_OUTPUT_FLOW      :
+				return( searchOutputRoutingData(anED, aPort, aRoutingRID) );
+
+			default:
+				return( RoutingData::_NULL_ );
+		}
 	}
 
+	static const RoutingData & searchInputRoutingData(
+			const ExecutionData & anED, const InstanceOfPort & aPort,
+			RuntimeID & aRoutingRID );
 
 	static const RoutingData & searchOutputRoutingData(
-			const ExecutionData & anED, InstanceOfPort * aPort,
+			const ExecutionData & anED, const InstanceOfPort & aPort,
 			RuntimeID & aRoutingRID );
-
-	inline static const RoutingData & searchOutputRoutingData(
-			const APExecutionData & anED, InstanceOfPort * aPort,
-			RuntimeID & aRoutingRID )
-	{
-		return( searchOutputRoutingData( (* anED) , aPort , aRoutingRID ) );
-	}
-
 
 	/*
 	 * CHECK ROUTING INFORMATION
 	 */
 	static bool isRoutingProtocolEnv(COMPILE_CONTEXT * aCTX,
-			InstanceOfPort * aPort);
+			const InstanceOfPort & aPort);
 
 	static bool isRoutingProtocolRdv(COMPILE_CONTEXT * aCTX,
-			InstanceOfPort * aPort);
+			const InstanceOfPort & aPort);
 
 
 	/*
 	 * POP MESSAGE
 	 */
 	static bool popMessage(ExecutionEnvironment & ENV,
-			InstanceOfPort * aPort);
+			const InstanceOfPort & aPort);
 
 	static bool popMessage_environment(ExecutionEnvironment & ENV,
 			const RuntimeID & aRoutingRID, const RoutingData & aRoutingData,
-			avm_size_t firstParameterOffset = 1);
+			std::size_t firstParameterOffset = 1);
 
 	static bool popMessage_transfert(ExecutionEnvironment & ENV,
 			const RuntimeID & aRoutingRID, const RoutingData & aRoutingData);
 
 	static bool popMessage_buffer(ExecutionEnvironment & ENV,
+			const RuntimeID & aRoutingRID, const RoutingData & aRoutingData);
+
+	static bool popMessage_buffer_deterministic(
+			ExecutionEnvironment & ENV, const RoutingData & aRoutingData,
+			const RuntimeID & bufferDeclRID, InstanceOfBuffer & buffer);
+
+	static bool popMessage_buffer_nondeterministic(
+			ExecutionEnvironment & ENV, const RoutingData & aRoutingData,
+			const RuntimeID & bufferDeclRID, InstanceOfBuffer & buffer);
+
+	static bool popMessageManycast_buffer(ExecutionEnvironment & ENV,
 			const RuntimeID & aRoutingRID, const RoutingData & aRoutingData);
 
 	static bool popMessage_rdv(ExecutionEnvironment & ENV,
@@ -222,32 +253,36 @@ public:
 	/*
 	 * UPDATE BUFFER
 	 */
-	static bool updateBuffer(APExecutionData & anED);
+	static bool updateBuffer(ExecutionData & anED);
 
 
 	/*
 	 * PRESENCE / ABSENCE status
 	 */
 	static bool computePresence(const ExecutionData & anED,
-			const RuntimeID & aReceiverRID, InstanceOfPort * aPort);
+			const RuntimeID & aReceiverRID, const InstanceOfPort & aPort);
+
+	static bool computePresence(const ExecutionData & anED,
+			const RuntimeID & aRoutingRID, const RoutingData & aRoutingData,
+			const RuntimeID & aReceiverRID, const InstanceOfPort & aPort);
 
 	inline static bool computePresence(
-			const APExecutionData & anED, InstanceOfPort * aPort)
+			const ExecutionData & anED, const InstanceOfPort & aPort)
 	{
-		return( computePresence((* anED), anED->mRID, aPort) );
+		return( computePresence(anED, anED.getRID(), aPort) );
 	}
 
 
 	inline static bool computeAbsence(const ExecutionData & anED,
-			const RuntimeID & aReceiverRID, InstanceOfPort * aPort)
+			const RuntimeID & aReceiverRID, const InstanceOfPort & aPort)
 	{
 		return( not computePresence(anED, aReceiverRID, aPort) );
 	}
 
 	inline static bool computeAbsence(
-			const APExecutionData & anED, InstanceOfPort * aPort)
+			const ExecutionData & anED, const InstanceOfPort & aPort)
 	{
-		return( not computePresence((* anED), anED->mRID, aPort) );
+		return( not computePresence(anED, anED.getRID(), aPort) );
 	}
 
 
@@ -256,12 +291,6 @@ public:
 	 */
 	static void collectBufferMessage(
 			const ExecutionData & anED, BaseBufferForm & aBuffer);
-
-	inline static void collectBufferMessage(
-			const APExecutionData & anED, BaseBufferForm & aBuffer)
-	{
-		collectBufferMessage( (* anED) , aBuffer );
-	}
 
 };
 

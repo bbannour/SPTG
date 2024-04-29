@@ -38,7 +38,7 @@ avm_uinteger_t RANDOM::gen_uinteger(avm_uinteger_t min, avm_uinteger_t max)
 		// but you can probably get away with it for most situations.
 		// Consider using more precise timers such as gettimeofday on *nix or
 		// GetTickCount/timeGetTime/QueryPerformanceCounter on Windows.
-		boost::mt19937 randGen(static_cast< avm_uint64_t >(clock()));
+		boost::mt19937 randGen(static_cast< std::uint64_t >(clock()));
 
 		// Now we set up a distribution. Boost provides a bunch of these as well.
 		// This is the preferred way to generate numbers in a certain range.
@@ -75,7 +75,7 @@ avm_integer_t RANDOM::gen_integer(avm_integer_t min, avm_integer_t max)
 		// but you can probably get away with it for most situations.
 		// Consider using more precise timers such as gettimeofday on *nix or
 		// GetTickCount/timeGetTime/QueryPerformanceCounter on Windows.
-		boost::mt19937 randGen(static_cast< avm_uint64_t >(clock()));
+		boost::mt19937 randGen(static_cast< std::uint64_t >(clock()));
 
 		// Now we set up a distribution. Boost provides a bunch of these as well.
 		// This is the preferred way to generate numbers in a certain range.
@@ -98,7 +98,7 @@ avm_integer_t RANDOM::gen_integer(avm_integer_t min, avm_integer_t max)
 
 
 
-avm_uint32_t RANDOM::gen_uint(avm_uint32_t min, avm_uint32_t max)
+std::uint32_t RANDOM::gen_uint(std::uint32_t min, std::uint32_t max)
 {
 	if( min < max )
 	{
@@ -113,17 +113,17 @@ avm_uint32_t RANDOM::gen_uint(avm_uint32_t min, avm_uint32_t max)
 		// but you can probably get away with it for most situations.
 		// Consider using more precise timers such as gettimeofday on *nix or
 		// GetTickCount/timeGetTime/QueryPerformanceCounter on Windows.
-		boost::mt19937 randGen(static_cast< avm_uint64_t >(clock()));
+		boost::mt19937 randGen(static_cast< std::uint64_t >(clock()));
 
 		// Now we set up a distribution. Boost provides a bunch of these as well.
 		// This is the preferred way to generate numbers in a certain range.
-		boost::uniform_int<avm_uint32_t> uIntDist(min, max);
+		boost::uniform_int<std::uint32_t> uIntDist(min, max);
 
 		// Finally, declare a variate_generator which maps the random number
 		// generator and the distribution together. This variate_generator
 		// is usable like a function call.
 		boost::variate_generator< boost::mt19937 & ,
-				boost::uniform_int<avm_uint32_t> > GetRand(randGen, uIntDist);
+				boost::uniform_int<std::uint32_t> > GetRand(randGen, uIntDist);
 
 		// Generate a random number
 		return( GetRand() );
@@ -135,7 +135,7 @@ avm_uint32_t RANDOM::gen_uint(avm_uint32_t min, avm_uint32_t max)
 }
 
 
-avm_int32_t RANDOM::gen_int(avm_int32_t min, avm_int32_t max)
+std::int32_t RANDOM::gen_int(std::int32_t min, std::int32_t max)
 {
 	if( min < max )
 	{
@@ -150,17 +150,17 @@ avm_int32_t RANDOM::gen_int(avm_int32_t min, avm_int32_t max)
 		// but you can probably get away with it for most situations.
 		// Consider using more precise timers such as gettimeofday on *nix or
 		// GetTickCount/timeGetTime/QueryPerformanceCounter on Windows.
-		boost::mt19937 randGen(static_cast< avm_uint64_t >(clock()));
+		boost::mt19937 randGen(static_cast< std::uint64_t >(clock()));
 
 		// Now we set up a distribution. Boost provides a bunch of these as well.
 		// This is the preferred way to generate numbers in a certain range.
-		boost::uniform_int<avm_int32_t> uIntDist(min, max);
+		boost::uniform_int<std::int32_t> uIntDist(min, max);
 
 		// Finally, declare a variate_generator which maps the random number
 		// generator and the distribution together. This variate_generator
 		// is usable like a function call.
 		boost::variate_generator< boost::mt19937 & ,
-				boost::uniform_int<avm_int32_t> > GetRand(randGen, uIntDist);
+				boost::uniform_int<std::int32_t> > GetRand(randGen, uIntDist);
 
 		// Generate a random number
 		return( GetRand() );
@@ -173,7 +173,7 @@ avm_int32_t RANDOM::gen_int(avm_int32_t min, avm_int32_t max)
 
 
 
-double RANDOM::gen_double(double min, double max, avm_uint64_t previous)
+double RANDOM::gen_double(double min, double max, std::uint64_t previous)
 {
 	if( min < max )
 	{
@@ -196,7 +196,7 @@ double RANDOM::gen_double(double min, double max, avm_uint64_t previous)
 //				<< std::endl;
 //		unsigned int tps = (unsigned int)tps0;
 //		AVM_OS_TRACE << "Valeur tps = " << tps << std::endl;
-		boost::mt19937 randGen(static_cast< avm_uint64_t >(clock()) + previous);
+		boost::mt19937 randGen(static_cast< std::uint64_t >(clock()) + previous);
 
 		// Now we set up a distribution. Boost provides a bunch of these as well.
 		// This is the preferred way to generate numbers in a certain range.

@@ -22,8 +22,6 @@
 
 #include <collection/Array.h>
 
-#include <common/AvmPointer.h>
-
 #include <fml/common/ModifierElement.h>
 #include <fml/common/ObjectElement.h>
 
@@ -54,12 +52,20 @@ class BaseInstanceForm :
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( BaseInstanceForm )
 {
 
+public:
+	/**
+	* GLOBALS
+	* PRETTY PRINTER PROPERTIES
+	*/
+	static bool EXPRESSION_PRETTY_PRINTER_FQN_BASED;
+
+
 protected:
 	/*
 	 * ATTRIBUTES
 	 */
 	// the Type Specifier
-	BaseTypeSpecifier * mTypeSpecifier;
+	const BaseTypeSpecifier & mTypeSpecifier;
 
 	avm_offset_t mOffset;
 
@@ -73,9 +79,9 @@ protected:
 	// the Relative Machine Path for an Alias Instance from this Machine Container
 	ArrayOfInstanceOfMachine * mRelativeMachinePath;
 
-	BaseInstanceForm * mAliasTarget;
+	const BaseInstanceForm * mAliasTarget;
 
-	avm_uint32_t mInstanciationCount;
+	std::uint32_t mInstanciationCount;
 
 
 public:
@@ -92,11 +98,11 @@ public:
 	mCreatorContainerRID( anInstance.mCreatorContainerRID ),
 	mRuntimeContainerRID( anInstance.mRuntimeContainerRID ),
 	mRelativeMachinePath(
-			(anInstance.mRelativeMachinePath != NULL) ?
+			(anInstance.mRelativeMachinePath != nullptr) ?
 					new ArrayOfInstanceOfMachine(
-							*(anInstance.mRelativeMachinePath)) : NULL ),
+							*(anInstance.mRelativeMachinePath)) : nullptr ),
 
-	mAliasTarget( NULL ),
+	mAliasTarget( nullptr ),
 	mInstanciationCount( anInstance.mInstanciationCount )
 	{
 		//!! NOTHING
@@ -107,8 +113,8 @@ public:
 	 * Default
 	 */
 	BaseInstanceForm(class_kind_t aClassKind,
-			BaseAvmProgram * aContainer, const ObjectElement * astElement,
-			BaseTypeSpecifier * aTypeSpecifier, avm_offset_t anOffset)
+			BaseAvmProgram * aContainer, const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier, avm_offset_t anOffset)
 	: BaseCompiledForm(aClassKind, aContainer, astElement),
 	mTypeSpecifier( aTypeSpecifier ),
 	mOffset( anOffset ),
@@ -117,14 +123,15 @@ public:
 	mRuntimeContainerRID( ),
 	mRelativeMachinePath( ),
 
-	mAliasTarget( NULL ),
+	mAliasTarget( nullptr ),
 	mInstanciationCount( 0 )
 	{
 		updateFullyQualifiedNameID();
 	}
 
 	BaseInstanceForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			const ObjectElement * astElement, BaseTypeSpecifier * aTypeSpecifier,
+			const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier,
 			avm_offset_t anOffset, const Modifier & aModifier)
 	: BaseCompiledForm(aClassKind, aContainer, astElement, aModifier),
 	mTypeSpecifier( aTypeSpecifier ),
@@ -134,7 +141,7 @@ public:
 	mRuntimeContainerRID( ),
 	mRelativeMachinePath( ),
 
-	mAliasTarget( NULL ),
+	mAliasTarget( nullptr ),
 	mInstanciationCount( 0 )
 	{
 		updateFullyQualifiedNameID();
@@ -145,7 +152,8 @@ public:
 	 * Other
 	 */
 	BaseInstanceForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			const ObjectElement * astElement, BaseTypeSpecifier * aTypeSpecifier,
+			const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier,
 			const std::string & aFullyQualifiedNameID, avm_offset_t anOffset,
 			const Modifier & aModifier = Modifier::PROPERTY_UNDEFINED_MODIFIER)
 	: BaseCompiledForm(aClassKind, aContainer,
@@ -155,9 +163,9 @@ public:
 
 	mCreatorContainerRID( ),
 	mRuntimeContainerRID( ),
-	mRelativeMachinePath( NULL ),
+	mRelativeMachinePath( nullptr ),
 
-	mAliasTarget( NULL ),
+	mAliasTarget( nullptr ),
 	mInstanciationCount( 0 )
 	{
 		//!! NOTHING
@@ -165,39 +173,40 @@ public:
 
 
 	BaseInstanceForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			const ObjectElement * astElement, BaseTypeSpecifier * aTypeSpecifier,
+			const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier,
 			const std::string & aFullyQualifiedNameID,
-			avm_offset_t anOffset, BaseInstanceForm * aParent)
+			avm_offset_t anOffset, const BaseInstanceForm & aParent)
 	: BaseCompiledForm(aClassKind, aContainer, astElement,
-			aParent->getModifier(), aFullyQualifiedNameID),
+			aParent.getModifier(), aFullyQualifiedNameID),
 	mTypeSpecifier( aTypeSpecifier ),
 	mOffset( anOffset ),
 
 	mCreatorContainerRID( ),
 	mRuntimeContainerRID( ),
-	mRelativeMachinePath( NULL ),
+	mRelativeMachinePath( nullptr ),
 
-	mAliasTarget( NULL ),
+	mAliasTarget( nullptr ),
 	mInstanciationCount( 0 )
 	{
 		//!! NOTHING
 	}
 
 
-	BaseInstanceForm(
-			class_kind_t aClassKind, BaseTypeSpecifier * aTypeSpecifier,
+	BaseInstanceForm(class_kind_t aClassKind, const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier,
 			std::string aFullyQualifiedNameID, avm_offset_t anOffset,
 			const Modifier & aModifier = Modifier::PROPERTY_UNDEFINED_MODIFIER)
 	: BaseCompiledForm(aClassKind,
-			NULL, NULL, aModifier, aFullyQualifiedNameID),
+			nullptr, astElement, aModifier, aFullyQualifiedNameID),
 	mTypeSpecifier( aTypeSpecifier ),
 	mOffset( anOffset ),
 
 	mCreatorContainerRID( ),
 	mRuntimeContainerRID( ),
-	mRelativeMachinePath( NULL ),
+	mRelativeMachinePath( nullptr ),
 
-	mAliasTarget( NULL ),
+	mAliasTarget( nullptr ),
 	mInstanciationCount( 0 )
 	{
 		//!! NOTHING
@@ -209,40 +218,63 @@ public:
 	 * for UFI
 	 */
 	BaseInstanceForm(class_kind_t aClassKind,
-			BaseAvmProgram * aContainer, BaseInstanceForm * aParent)
+			BaseAvmProgram * aContainer, const BaseInstanceForm & aParent)
 	: BaseCompiledForm( aClassKind, aContainer,
-			aParent->getAstElement(), aParent->getModifier(),
-			aParent->getFullyQualifiedNameID(), aParent->getNameID() ),
-	mTypeSpecifier( aParent->mTypeSpecifier ),
-	mOffset( aParent->mOffset ),
+			aParent.safeAstElement(), aParent.getModifier(),
+			aParent.getFullyQualifiedNameID(), aParent.getNameID() ),
+	mTypeSpecifier( aParent.mTypeSpecifier ),
+	mOffset( aParent.mOffset ),
 
 	mCreatorContainerRID( ),
 	mRuntimeContainerRID( ),
 	mRelativeMachinePath(
-			( aParent->hasMachinePath() ) ?
+			( aParent.hasMachinePath() ) ?
 					new ArrayOfInstanceOfMachine(
-							*(aParent->getMachinePath())) : NULL ),
+							*(aParent.getMachinePath())) : nullptr ),
 
-	mAliasTarget( NULL ),
-	mInstanciationCount( aParent->mInstanciationCount )
+	mAliasTarget( nullptr ),
+	mInstanciationCount( aParent.mInstanciationCount )
+	{
+		//!! NOTHING
+	}
+
+	BaseInstanceForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
+			const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier,
+			const BaseInstanceForm & aParent)
+	: BaseCompiledForm( aClassKind,
+			aContainer, astElement, aParent.getModifier(),
+			aParent.getFullyQualifiedNameID(), aParent.getNameID() ),
+	mTypeSpecifier( aTypeSpecifier ),
+	mOffset( aParent.mOffset ),
+
+	mCreatorContainerRID( ),
+	mRuntimeContainerRID( ),
+	mRelativeMachinePath(
+			( aParent.hasMachinePath() ) ?
+					new ArrayOfInstanceOfMachine(
+							*(aParent.getMachinePath())) : nullptr ),
+
+	mAliasTarget( nullptr ),
+	mInstanciationCount( aParent.mInstanciationCount )
 	{
 		//!! NOTHING
 	}
 
 
 	BaseInstanceForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			const ObjectElement * astElement, BaseInstanceForm * aModel)
+			const ObjectElement & astElement, const BaseInstanceForm & aModel)
 	: BaseCompiledForm( aClassKind, aContainer, astElement),
-	mTypeSpecifier( aModel->mTypeSpecifier ),
-	mOffset( aModel->mOffset ),
+	mTypeSpecifier( aModel.mTypeSpecifier ),
+	mOffset( aModel.mOffset ),
 
 	mCreatorContainerRID( ),
 	mRuntimeContainerRID( ),
-	mRelativeMachinePath( ( aModel->hasMachinePath() ) ?
-		new ArrayOfInstanceOfMachine( *(aModel->getMachinePath()) ) : NULL ),
+	mRelativeMachinePath( ( aModel.hasMachinePath() ) ?
+		new ArrayOfInstanceOfMachine( *(aModel.getMachinePath()) ) : nullptr ),
 
-	mAliasTarget( NULL ),
-	mInstanciationCount( aModel->mInstanciationCount )
+	mAliasTarget( nullptr ),
+	mInstanciationCount( aModel.mInstanciationCount )
 	{
 		updateFullyQualifiedNameID();
 	}
@@ -253,44 +285,43 @@ public:
 	 * for Alias
 	 */
 	BaseInstanceForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			BaseInstanceForm * anAliasTarget,
+			const BaseInstanceForm & anAliasTarget,
 			ArrayOfInstanceOfMachine * aRelativeMachinePath)
 	: BaseCompiledForm( aClassKind , aContainer,
-			anAliasTarget->getAstElement(), anAliasTarget->getModifier(),
-			anAliasTarget->getFullyQualifiedNameID(),
-			anAliasTarget->getNameID() ),
-	mTypeSpecifier( anAliasTarget->mTypeSpecifier ),
-	mOffset( anAliasTarget->mOffset ),
+			anAliasTarget.safeAstElement(), anAliasTarget.getModifier(),
+			anAliasTarget.getFullyQualifiedNameID(),
+			anAliasTarget.getNameID() ),
+	mTypeSpecifier( anAliasTarget.mTypeSpecifier ),
+	mOffset( anAliasTarget.mOffset ),
 
 	mCreatorContainerRID( ),
 	mRuntimeContainerRID( ),
 	mRelativeMachinePath( aRelativeMachinePath ),
 
-	mAliasTarget( anAliasTarget ),
-	mInstanciationCount( anAliasTarget->mInstanciationCount )
+	mAliasTarget( & anAliasTarget ),
+	mInstanciationCount( anAliasTarget.mInstanciationCount )
 	{
 		//!! NOTHING
 	}
 
 
 	BaseInstanceForm(class_kind_t aClassKind, BaseAvmProgram * aContainer,
-			BaseInstanceForm * anAliasTarget,
-			VectorOfInstanceOfMachine & aRelativeMachinePath)
+			const BaseInstanceForm & anAliasTarget,
+			const VectorOfInstanceOfMachine & aRelativeMachinePath)
 	: BaseCompiledForm( aClassKind , aContainer ,
-			anAliasTarget->getAstElement(), anAliasTarget->getModifier(),
-			anAliasTarget->getFullyQualifiedNameID(),
-			anAliasTarget->getNameID() ),
-	mTypeSpecifier( anAliasTarget->mTypeSpecifier ),
-	mOffset( anAliasTarget->mOffset ),
+			anAliasTarget.safeAstElement(), anAliasTarget.getModifier(),
+			anAliasTarget.getFullyQualifiedNameID(),
+			anAliasTarget.getNameID() ),
+	mTypeSpecifier( anAliasTarget.mTypeSpecifier ),
+	mOffset( anAliasTarget.mOffset ),
 
 	mCreatorContainerRID( ),
 	mRuntimeContainerRID( ),
-	mRelativeMachinePath(
-			( aRelativeMachinePath.nonempty() ) ?
-					new ArrayOfInstanceOfMachine(aRelativeMachinePath) : NULL ),
+	mRelativeMachinePath( ( aRelativeMachinePath.nonempty() ) ?
+			new ArrayOfInstanceOfMachine(aRelativeMachinePath) : nullptr ),
 
-	mAliasTarget( anAliasTarget ),
-	mInstanciationCount( anAliasTarget->mInstanciationCount )
+	mAliasTarget( & anAliasTarget ),
+	mInstanciationCount( anAliasTarget.mInstanciationCount )
 	{
 		//!! NOTHING
 	}
@@ -316,55 +347,49 @@ public:
 	 * SETTER
 	 * mFullyQualifiedNameID
 	 */
-	virtual void updateFullyQualifiedNameID();
+	virtual void updateFullyQualifiedNameID() override;
 
 
 	/**
 	 * GETTER - SETTER - TESTER
 	 * mTypeSpecifier
 	 */
-	inline virtual const BaseTypeSpecifier * thisTypeSpecifier() const
+
+	inline const BaseTypeSpecifier & getTypeSpecifier() const
 	{
 		return( mTypeSpecifier );
 	}
 
-
-	inline BaseTypeSpecifier * getTypeSpecifier() const
+	inline const BaseTypeSpecifier * ptrTypeSpecifier() const
 	{
-		return( mTypeSpecifier );
+		return( & mTypeSpecifier );
 	}
 
-	inline BaseTypeSpecifier * referedTypeSpecifier() const
+	inline const BaseTypeSpecifier & referedTypeSpecifier() const
 	{
-		return( (mTypeSpecifier != NULL) ?
-				mTypeSpecifier->referedTypeSpecifier() : mTypeSpecifier );
+		return( mTypeSpecifier.isnotNullref() ?
+				mTypeSpecifier.referedTypeSpecifier() : mTypeSpecifier );
 	}
-
-
-	virtual avm_type_specifier_kind_t getTypeSpecifierKind() const
-	{
-		return( (mTypeSpecifier != NULL) ?
-				mTypeSpecifier->getTypeSpecifierKind() : TYPE_NULL_SPECIFIER );
-	}
-
 
 	inline bool hasTypeSpecifier() const
 	{
-		return( mTypeSpecifier != NULL );
+		return( mTypeSpecifier.isnotNullref() );
 	}
 
 
-	inline void setTypeSpecifier(BaseTypeSpecifier * aTypeSpecifier)
+	/**
+	 * Type Specifier API
+	 */
+	inline virtual const BaseTypeSpecifier & thisTypeSpecifier() const override
 	{
-		mTypeSpecifier = aTypeSpecifier;
+		return( mTypeSpecifier );
 	}
 
-
-	inline bool isTypeFamily(avm_type_specifier_kind_t typeFamily)
+	virtual avm_type_specifier_kind_t getTypeSpecifierKind() const override
 	{
-		return( (mTypeSpecifier == NULL) ||
-				mTypeSpecifier->isTypeFamily( typeFamily ) );
+		return( mTypeSpecifier.getTypeSpecifierKind() );
 	}
+
 
 
 	/**
@@ -428,7 +453,7 @@ public:
 	 */
 	inline void appendMachinePath(ArrayOfInstanceOfMachine & aliasPath)
 	{
-		if( mRelativeMachinePath == NULL )
+		if( mRelativeMachinePath == nullptr )
 		{
 			mRelativeMachinePath = new ArrayOfInstanceOfMachine(aliasPath);
 		}
@@ -445,14 +470,14 @@ public:
 
 	inline bool hasMachinePath() const
 	{
-		return( (mRelativeMachinePath != NULL) &&
+		return( (mRelativeMachinePath != nullptr) &&
 				mRelativeMachinePath->nonempty() );
 	}
 
 
 	inline bool isAlias() const
 	{
-		return( (mRelativeMachinePath != NULL) &&
+		return( (mRelativeMachinePath != nullptr) &&
 				mRelativeMachinePath->nonempty() );
 	}
 
@@ -461,41 +486,41 @@ public:
 	 * GETTER - SETTER
 	 * mAliasTarget
 	 */
-	inline BaseInstanceForm * getAliasTarget() const
+	inline const BaseInstanceForm * getAliasTarget() const
 	{
 		return( mAliasTarget );
 	}
 
 	inline bool hasAliasTarget() const
 	{
-		return( mAliasTarget != NULL );
+		return( mAliasTarget != nullptr );
 	}
 
-	inline void setAliasTarget(BaseInstanceForm * anAliasTarget)
+	inline void setAliasTarget(const BaseInstanceForm & anAliasTarget)
 	{
-		mAliasTarget = anAliasTarget;
+		mAliasTarget = (& anAliasTarget);
 	}
 
 	/**
 	 * GETTER - SETTER
 	 * mInstanciationCount
 	 */
-	inline void incrInstanciationCount(avm_uint32_t offset = 1)
+	inline void incrInstanciationCount(std::uint32_t offset = 1)
 	{
 		mInstanciationCount += offset;
 	}
 
-	inline avm_uint32_t instanciationCountIncr()
+	inline std::uint32_t instanciationCountIncr()
 	{
 		return( mInstanciationCount++ );
 	}
 
-	inline avm_uint32_t getInstanciationCount() const
+	inline std::uint32_t getInstanciationCount() const
 	{
 		return( mInstanciationCount );
 	}
 
-	inline void setInstanciationCount(avm_uint32_t anIndex)
+	inline void setInstanciationCount(std::uint32_t anIndex)
 	{
 		mInstanciationCount = anIndex;
 	}
@@ -504,13 +529,13 @@ public:
 	/**
 	 * is equals
 	 */
-	inline virtual bool equals(BaseInstanceForm * anInstance) const
+	inline virtual bool equals(const BaseInstanceForm * anInstance) const
 	{
 		if( this == anInstance )
 		{
 			return( true );
 		}
-		else if( anInstance != NULL )
+		else if( anInstance != nullptr )
 		{
 			return( (this->getAliasTarget() == anInstance)
 					|| (this == anInstance->getAliasTarget())
@@ -520,11 +545,27 @@ public:
 		return( false );
 	}
 
+	inline virtual bool equals(const BaseInstanceForm & anInstance) const
+	{
+		if( this == (& anInstance) )
+		{
+			return( true );
+		}
+		else
+		{
+			return( (this->getAliasTarget() == (& anInstance) )
+					|| (this == anInstance.getAliasTarget())
+					|| (this->fqnEquals(
+							anInstance.getFullyQualifiedNameID() )) );
+		}
+		return( false );
+	}
+
 
 	/**
 	 * Serialization
 	 */
-//	virtual void toStream(OutStream & os) const;
+//	virtual void toStream(OutStream & os) const override;
 
 	inline virtual void toFscn(OutStream & os) const
 	{
@@ -532,10 +573,7 @@ public:
 	}
 
 
-	inline virtual std::string str() const
-	{
-		return( getFullyQualifiedNameID() );
-	}
+	virtual std::string str() const override;
 
 };
 

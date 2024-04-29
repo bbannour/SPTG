@@ -154,7 +154,7 @@ public:
 	/*
 	 * Initial Execution Context creation
 	 */
-	APExecutionData createInitialExecutionData();
+	ExecutionData createInitialExecutionData();
 
 
 	/**
@@ -162,7 +162,7 @@ public:
 	 * Replace UFI of var by this associated BaseInstanceForm
 	 */
 
-	inline BF compileExpression(ExecutableForm * anExecutable, const BF & aCode)
+	inline BF compileExpression(ExecutableForm & anExecutable, const BF & aCode)
 	{
 		CompilationEnvironment compilENV(anExecutable);
 
@@ -176,20 +176,27 @@ public:
 			mAvmcodeCompiler.optimizeExpression(compilENV.mCTX, bf.bfCode()) );
 	}
 
-	inline BF compileExpression(const BF & aCode);
+	inline BF compileExpression(const BF & aCode)
+	{
+		return( compileExpression( mConfiguration.
+				getExecutableSystem().defaultExecutableForm(), aCode) );
+	}
 
 
 	inline BFCode compileStatement(
-			ExecutableForm * anExecutable, const BFCode & aCode)
+			ExecutableForm & anExecutable, const BFCode & aCode)
 	{
 		BFCode compiledCode =
 				mAvmcodeCompiler.compileStatement(anExecutable, aCode);
 
-		return( mAvmcodeCompiler.optimizeStatement(
-				anExecutable, compiledCode) );
+		return( mAvmcodeCompiler.optimizeStatement(anExecutable, compiledCode) );
 	}
 
-	inline BFCode compileStatement(const BFCode & aCode);
+	inline BFCode compileStatement(const BFCode & aCode)
+	{
+		return( compileStatement( mConfiguration.
+				getExecutableSystem().defaultExecutableForm(), aCode) );
+	}
 
 
 
@@ -198,11 +205,6 @@ public:
 
 
 	BF build(const ExecutionData & anED, const BF & aCode);
-
-	inline BF build(const APExecutionData & apED, const BF & aCode)
-	{
-		return( build((* apED), aCode) );
-	}
 
 
 	BF build(TableOfSymbol & aliasTable, const ExecutionData & anED,
@@ -216,7 +218,7 @@ public:
 			const ExecutionData & anED, UniFormIdentifier * anUFI);
 
 	const BF & searchSymbolInstance(TableOfSymbol & aliasTable,
-			const ExecutionData & anED, const ObjectElement * objElement);
+			const ExecutionData & anED, const ObjectElement & astElement);
 
 	const BF & searchSymbolInstance(TableOfSymbol & aliasTable,
 			const ExecutionData & anED, const BF & aBaseInstance);

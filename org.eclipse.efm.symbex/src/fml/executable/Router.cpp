@@ -34,62 +34,76 @@ Router Router::_NULL_;
  * SETTER
  * mInputRoutingTable
  */
-void Router::appendInputRouting(InstanceOfPort * aPortInstance,
+void Router::appendInputRouting(const InstanceOfPort & aPortInstance,
 		const RoutingData & aRoutingData)
 {
 	RoutingData & oldRoutingData =
-			getInputRouting( aPortInstance->getRouteOffset() );
+			getInputRouting( aPortInstance.getRouteOffset() );
 	if( oldRoutingData.valid() )
 	{
-		if( oldRoutingData.getMID() == aRoutingData.getMID() )
+		if( (oldRoutingData.getMID() == aRoutingData.getMID())
+			&& aRoutingData.hasBufferInstance() )
 		{
 			oldRoutingData.getBufferInstance().append(
 					aRoutingData.getBufferInstance() );
 
 			oldRoutingData.getBufferInstance().makeUnique();
 		}
+		else if( oldRoutingData.isMultiRoutingProtocol() )
+		{
+			oldRoutingData.appendManyCastRoutingData( aRoutingData );
+
+//			AVM_OS_WARNING_ALERT
+//					<< "appendInputRouting: Found a port < "
+//					<< aPortInstance.getFullyQualifiedNameID()
+//					<< " > with " << ComProtocol::to_string(
+//							oldRoutingData.getProtocol() )
+//					<< " routing<input> data in << "
+//					<< getMachine().getFullyQualifiedNameID() << " >> !!!"
+//					<< SEND_ALERT;
+		}
 		else
 		{
 			AVM_OS_WARNING_ALERT
-					<< "Unexpected a port < "
-					<< aPortInstance->getFullyQualifiedNameID()
+					<< "appendInputRouting: Unexpected a port < "
+					<< aPortInstance.getFullyQualifiedNameID()
 					<< " > with another routing<input> data in << "
-					<< getMachine()->getFullyQualifiedNameID() << " >> !!!"
+					<< getMachine().getFullyQualifiedNameID() << " >> !!!"
 					<< SEND_ALERT;
 
 			AVM_OS_LOG << "Input Routing Data of port : "
-					<< aPortInstance->getFullyQualifiedNameID() << std::endl;
+					<< aPortInstance.getFullyQualifiedNameID() << std::endl;
 			oldRoutingData.toStream(AVM_OS_LOG << AVM_TAB_INDENT);
 			AVM_OS_LOG << END_INDENT << std::endl;
 		}
 	}
 	else
 	{
-		setInputRouting(aPortInstance->getRouteOffset(), aRoutingData);
+		setInputRouting(aPortInstance.getRouteOffset(), aRoutingData);
 	}
 }
 
-void Router::setInputRouting(InstanceOfPort * aPortInstance,
+void Router::setInputRouting(const InstanceOfPort & aPortInstance,
 		const RoutingData & aRoutingData) const
 {
-	if( getInputRoutingTable().get(aPortInstance->getRouteOffset()).valid() )
+	if( getInputRoutingTable().get(aPortInstance.getRouteOffset()).valid() )
 	{
 		AVM_OS_WARNING_ALERT
-				<< "Unexpected a port < "
-				<< aPortInstance->getFullyQualifiedNameID()
+				<< "setInputRouting: Unexpected a port < "
+				<< aPortInstance.getFullyQualifiedNameID()
 				<< " > with another routing<input> data in << "
-				<< getMachine()->getFullyQualifiedNameID() + " >> !!!"
+				<< getMachine().getFullyQualifiedNameID() + " >> !!!"
 				<< SEND_ALERT;
 
 		AVM_OS_LOG << "Input Routing Data of port : "
-				<< aPortInstance->getFullyQualifiedNameID() << std::endl;
+				<< aPortInstance.getFullyQualifiedNameID() << std::endl;
 
-		getInputRoutingTable().get(aPortInstance->getRouteOffset()).
+		getInputRoutingTable().get(aPortInstance.getRouteOffset()).
 				toStream(AVM_OS_LOG << AVM_TAB_INDENT);
 		AVM_OS_LOG << END_INDENT << std::endl;
 	}
 
-	setInputRouting(aPortInstance->getRouteOffset(), aRoutingData);
+	setInputRouting(aPortInstance.getRouteOffset(), aRoutingData);
 }
 
 
@@ -97,14 +111,15 @@ void Router::setInputRouting(InstanceOfPort * aPortInstance,
  * GETTER - SETTER
  * mOutputRoutingTable
  */
-void Router::appendOutputRouting(InstanceOfPort * aPortInstance,
+void Router::appendOutputRouting(const InstanceOfPort & aPortInstance,
 		const RoutingData & aRoutingData)
 {
 	RoutingData & oldRoutingData =
-			getOutputRouting( aPortInstance->getRouteOffset() );
+			getOutputRouting( aPortInstance.getRouteOffset() );
 	if( oldRoutingData.valid() )
 	{
-		if( oldRoutingData.getMID() == aRoutingData.getMID() )
+		if( (oldRoutingData.getMID() == aRoutingData.getMID())
+			&& aRoutingData.hasBufferInstance() )
 		{
 			oldRoutingData.getBufferInstance().append(
 					aRoutingData.getBufferInstance() );
@@ -113,15 +128,15 @@ void Router::appendOutputRouting(InstanceOfPort * aPortInstance,
 		}
 		else
 		{
-			AVM_OS_WARNING_ALERT
+			AVM_OS_ERROR_ALERT
 					<< "Unexpected a port < "
-					<< aPortInstance->getFullyQualifiedNameID()
+					<< aPortInstance.getFullyQualifiedNameID()
 					<< " > with another routing<output> data in << "
-					<< getMachine()->getFullyQualifiedNameID() << " >> !!!"
-					<< SEND_ALERT;
+					<< getMachine().getFullyQualifiedNameID() << " >> !!!"
+					<< SEND_EXIT;
 
 			AVM_OS_LOG << "Output Routing Data of port : "
-					<< aPortInstance->getFullyQualifiedNameID() << std::endl;
+					<< aPortInstance.getFullyQualifiedNameID() << std::endl;
 			oldRoutingData.toStream(AVM_OS_LOG << AVM_TAB_INDENT);
 
 			AVM_OS_LOG << END_INDENT << std::endl;
@@ -129,50 +144,52 @@ void Router::appendOutputRouting(InstanceOfPort * aPortInstance,
 	}
 	else
 	{
-		setOutputRouting(aPortInstance->getRouteOffset(), aRoutingData);
+		setOutputRouting(aPortInstance.getRouteOffset(), aRoutingData);
 	}
 }
 
-void Router::setOutputRouting(InstanceOfPort * aPortInstance,
+void Router::setOutputRouting(const InstanceOfPort & aPortInstance,
 		const RoutingData & aRoutingData) const
 {
-	if( getOutputRoutingTable().get(aPortInstance->getRouteOffset()).valid() )
+	if( getOutputRoutingTable().get(aPortInstance.getRouteOffset()).valid() )
 	{
-		AVM_OS_WARNING_ALERT
+		AVM_OS_ERROR_ALERT
 				<< "Unexpected a port < "
-				<< aPortInstance->getFullyQualifiedNameID()
+				<< aPortInstance.getFullyQualifiedNameID()
 				<< " > with another routing<output> data in << "
-				<< getMachine()->getFullyQualifiedNameID() << " >> !!!"
-				<< SEND_ALERT;
+				<< getMachine().getFullyQualifiedNameID() << " >> !!!"
+				<< SEND_EXIT;
 
 		AVM_OS_LOG << "Output Routing Data of port : "
-				<< aPortInstance->getFullyQualifiedNameID() << std::endl;
+				<< aPortInstance.getFullyQualifiedNameID() << std::endl;
 
-		getOutputRoutingTable().get(aPortInstance->getRouteOffset()).
+		getOutputRoutingTable().get(aPortInstance.getRouteOffset()).
 				toStream(AVM_OS_LOG << AVM_TAB_INDENT);
 
 		AVM_OS_LOG << END_INDENT << std::endl;
 	}
 
-	setOutputRouting(aPortInstance->getRouteOffset(), aRoutingData);
+	setOutputRouting(aPortInstance.getRouteOffset(), aRoutingData);
 }
 
 
 /**
  * TESTER
  */
-bool Router::hasInputRouting(InstanceOfPort * aPort) const
+bool Router::hasInputRouting(const InstanceOfPort & aPort) const
 {
-	return( aPort->getModifier().hasDirectionInput()
-		&& (aPort->getRouteOffset() < getInputRoutingTable().size())
-		&& (getInputRouting(aPort->getRouteOffset()).getPort() == aPort) );
+	return( aPort.getModifier().hasDirectionInput()
+		&& (aPort.getRouteOffset() < getInputRoutingTable().size())
+		&& getInputRouting(aPort.getRouteOffset()).valid()
+		&& getInputRouting(aPort.getRouteOffset()).getPort().isTEQ(aPort) );
 }
 
-bool Router::hasOutputRouting(InstanceOfPort * aPort) const
+bool Router::hasOutputRouting(const InstanceOfPort & aPort) const
 {
-	return( aPort->getModifier().hasDirectionOutput()
-		&& (aPort->getRouteOffset() < getOutputRoutingTable().size())
-		&& (getOutputRouting(aPort->getRouteOffset()).getPort() == aPort) );
+	return( aPort.getModifier().hasDirectionOutput()
+		&& (aPort.getRouteOffset() < getOutputRoutingTable().size())
+		&& getOutputRouting(aPort.getRouteOffset()).valid()
+		&& getOutputRouting(aPort.getRouteOffset()).getPort().isTEQ(aPort) );
 }
 
 
@@ -181,10 +198,10 @@ bool Router::hasOutputRouting(InstanceOfPort * aPort) const
  */
 void RouterElement::toStream(OutStream & os) const
 {
-	os << TAB << "router " << mMachine->getFullyQualifiedNameID();
-	if( mMachine->isThis() )
+	os << TAB << "router " << mMachine.getFullyQualifiedNameID();
+	if( mMachine.isThis() )
 	{
-		os << "< " << mMachine->getExecutable()->getFullyQualifiedNameID()
+		os << "< " << mMachine.refExecutable().getFullyQualifiedNameID()
 			<< " >";
 	}
 	AVM_DEBUG_REF_COUNTER(os);
@@ -195,13 +212,11 @@ void RouterElement::toStream(OutStream & os) const
 	{
 		os << TAB << "input:" << EOL_INCR_INDENT;
 
-		TableOfRoutingData::const_iterator it = mInputRoutingTable.begin();
-		TableOfRoutingData::const_iterator endIt = mInputRoutingTable.end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itInputRouting : mInputRoutingTable )
 		{
-			if( (*it).valid() )
+			if( itInputRouting.valid() )
 			{
-				(*it).toStream(os);
+				itInputRouting.toStream(os);
 			}
 			else
 			{
@@ -215,13 +230,11 @@ void RouterElement::toStream(OutStream & os) const
 	{
 		os << TAB << "output:" << EOL_INCR_INDENT;
 
-		TableOfRoutingData::const_iterator it = mOutputRoutingTable.begin();
-		TableOfRoutingData::const_iterator endIt = mOutputRoutingTable.end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itOutputRouting : mOutputRoutingTable )
 		{
-			if( (*it).valid() )
+			if( itOutputRouting.valid() )
 			{
-				(*it).toStream(os);
+				itOutputRouting.toStream(os);
 			}
 			else
 			{

@@ -15,8 +15,6 @@
 
 #include "AvmcodeActivityCompiler.h"
 
-#include <collection/Typedef.h>
-
 #include <builder/primitive/AvmcodeSequenceCompiler.h>
 #include <builder/primitive/AvmcodeUfiCastExpressionCompiler.h>
 
@@ -46,7 +44,7 @@ namespace sep
 BFCode AvmcodeActivityStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 		return( aCode );
@@ -65,7 +63,7 @@ BFCode AvmcodeActivityStatementCompiler::optimizeStatement(
 		return( aCode );
 	}
 
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
@@ -75,16 +73,17 @@ BFCode AvmcodeActivityStatementCompiler::optimizeStatement(
 	argsInstruction->at(0).dtype = TypeManager::MACHINE;
 	setArgcodeRValue(aCTX, argsInstruction->at(0), aCode->first());
 
-	if( aCode->populated() )
+	if( aCode->hasManyOperands() )
 	{
-		AvmCode::iterator itParam = aCode->begin();
-		AvmCode::iterator itEndParam = aCode->end();
+		AvmCode::iterator itOperand = aCode->begin();
+		AvmCode::iterator endOperand = aCode->end();
 		avm_offset_t offset = 1;
-		for( ++itParam ; itParam != itEndParam ; ++itParam , ++offset )
+		for( ++itOperand ; itOperand != endOperand ; ++itOperand , ++offset )
 		{
 			optimizeArgExpression(aCTX, aCode, offset);
 
-			setArgcodeParamValue(aCTX, argsInstruction->at(offset), (*itParam), false);
+			setArgcodeParamValue(aCTX,
+					argsInstruction->at(offset), (*itOperand), false);
 		}
 	}
 
@@ -104,39 +103,44 @@ BFCode AvmcodeActivityStatementCompiler::compileStatementParams(
 {
 	BFCode newCode( aCode->getOperator() );
 
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		return( newCode );
 	}
 
-	AvmCode::iterator itArg = aCode->begin();
+	AvmCode::const_iterator itOperand = aCode->begin();
 
-	newCode->append( compileArgRvalue(aCTX, TypeManager::MACHINE, (*itArg)) );
+	newCode->append( compileArgRvalue(aCTX,
+			TypeManager::MACHINE, (*itOperand)) );
 
-	AvmCode::iterator itEndArg = aCode->end();
-	for( ++itArg ; itArg != itEndArg ; ++itArg )
+	AvmCode::const_iterator endOperand = aCode->end();
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
-		switch( (*itArg).classKind() )
+		switch( (*itOperand).classKind() )
 		{
 			case FORM_AVMCODE_KIND:
 			{
-				const BFCode & argCode = (*itArg).bfCode();
-				if( aCode->populated() &&
+				const BFCode & argCode = (*itOperand).bfCode();
+				if( aCode->hasManyOperands() &&
 						StatementTypeChecker::isAssign( argCode ) &&
 						newCode->first().is< InstanceOfMachine >() )
 				{
 					ExecutableForm * execInstance = newCode->first().
-							to_ptr< InstanceOfMachine >()->getExecutable();
+							to< InstanceOfMachine >().getExecutable();
 
-					if( argCode->populated() )
+					if( argCode->hasManyOperands() )
 					{
 						newCode->append( StatementConstructor::newCode(
 							argCode->getOperator(),
-							compileArgLvalue( aCTX->newCTX(execInstance,
-									Modifier::PROPERTY_PUBLIC_VOLATILE_MODIFIER),
+							compileArgLvalue(
+								aCTX->newCTX(execInstance,
+									Modifier::
+									PROPERTY_PUBLIC_VOLATILE_MODIFIER),
 								argCode->first()),
-							compileArgRvalue( aCTX->newCTX(
-									Modifier::PROPERTY_PUBLIC_VOLATILE_MODIFIER),
+							compileArgRvalue(
+								aCTX->newCTX(
+									Modifier::
+									PROPERTY_PUBLIC_VOLATILE_MODIFIER),
 								argCode->second())) );
 					}
 					else
@@ -144,14 +148,15 @@ BFCode AvmcodeActivityStatementCompiler::compileStatementParams(
 						newCode->append( StatementConstructor::newCode(
 							argCode->getOperator(),	compileArgLvalue(
 								aCTX->newCTX(execInstance,
-										Modifier::PROPERTY_PUBLIC_VOLATILE_MODIFIER),
+									Modifier::
+									PROPERTY_PUBLIC_VOLATILE_MODIFIER),
 								argCode->first())) );
 					}
 				}
 				else
 				{
 					newCode->append(
-							AVMCODE_COMPILER.compileExpression(aCTX, argCode) );
+						AVMCODE_COMPILER.compileExpression(aCTX, argCode) );
 				}
 
 				break;
@@ -159,7 +164,7 @@ BFCode AvmcodeActivityStatementCompiler::compileStatementParams(
 
 			default:
 			{
-				newCode->append( compileArgRvalue(aCTX, (*itArg)) );
+				newCode->append( compileArgRvalue(aCTX, (*itOperand)) );
 
 				break;
 			}
@@ -169,6 +174,53 @@ BFCode AvmcodeActivityStatementCompiler::compileStatementParams(
 	return( newCode );
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// AVMCODE SELF STATEMENT COMPILATION
+////////////////////////////////////////////////////////////////////////////////
+
+BF AvmcodeSelfSuperStatementCompiler::compileExpression(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	if( aCode->size() == 1 )
+	{
+		BF machine = compileArgRvalue(aCTX,
+				TypeManager::MACHINE, aCode->first());
+
+		BFCode newCode( aCode->getOperator(), machine);
+
+		return( newCode );
+	}
+	else
+	{
+		AVM_OS_FATAL_ERROR_EXIT
+				<< "Unexpected SELF STATEMENT with more "
+					"than one running machine as parameter !!!"
+				<< SEND_EXIT;
+
+		return( aCode );
+	}
+}
+
+
+BF AvmcodeSelfSuperStatementCompiler::optimizeExpression(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	AvmInstruction * argsInstruction = aCode->genInstruction();
+
+	argsInstruction->at(0).dtype = TypeManager::MACHINE;
+	setArgcodeRValue(aCTX, argsInstruction->at(0), aCode->first());
+	argsInstruction->at(0).operation = AVM_ARG_NOP_RVALUE;
+
+	argsInstruction->setMainBytecode(
+			/*context  */ AVM_ARG_RETURN_CTX,
+			/*processor*/ AVM_ARG_MEMORY_MACHINE_CPU,
+			/*operation*/ AVM_ARG_SEVAL_RVALUE,
+			/*operand  */ AVM_ARG_EXPRESSION_KIND,
+			/*dtype    */ TypeManager::MACHINE.rawType());
+
+	return( aCode );
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,13 +238,14 @@ BFCode AvmcodeContextSwitcherStatementCompiler::compileStatement(
 				<< SEND_EXIT;
 	}
 
-	BF ctxMachine = compileArgRvalue(aCTX, TypeManager::MACHINE, aCode->first() );
+	BF ctxMachine = compileArgRvalue(aCTX,
+			TypeManager::MACHINE, aCode->first() );
 
 	if( ctxMachine.is< InstanceOfMachine >() )
 	{
 		aCTX = aCTX->newCTX(
-				//ctxMachine.to_ptr< InstanceOfMachine >()->getExecutable(),
-				ctxMachine.to_ptr< InstanceOfMachine >()->getExecutable() );
+				//ctxMachine.to< InstanceOfMachine >().getExecutable(),
+				ctxMachine.to< InstanceOfMachine >().getExecutable() );
 	}
 
 	return( StatementConstructor::newCode( aCode->getOperator(), ctxMachine,
@@ -211,7 +264,7 @@ BFCode AvmcodeContextSwitcherStatementCompiler::optimizeStatement(
 	if( aCode->first().is< InstanceOfMachine >() )
 	{
 		aCTX = aCTX->newCTX(aCode->first().
-				to_ptr< InstanceOfMachine >()->getExecutable() );
+				to< InstanceOfMachine >().getExecutable() );
 	}
 
 	optimizeArgStatement(aCTX, aCode, 1);
@@ -228,6 +281,55 @@ BFCode AvmcodeContextSwitcherStatementCompiler::optimizeStatement(
 	return( aCode );
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// AVMCODE PROCESS STATE SET STATEMENT COMPILATION
+////////////////////////////////////////////////////////////////////////////////
+
+BFCode AvmcodeProcessStateSetCompiler::compileStatement(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	if( aCode->size() == 2 )
+	{
+		return( StatementConstructor::newCode(aCode->getOperator(),
+				compileArgRvalue(aCTX, TypeManager::MACHINE, aCode->first()),
+				compileArgRvalue(aCTX, TypeManager::OPERATOR, aCode->second())) );
+	}
+	else
+	{
+		AVM_OS_FATAL_ERROR_EXIT
+				<< "Unexpected PROCESS#STATE#SET STATEMENT: syntax is "
+					"{ process#state#set <machine> <operator> } !!!"
+				<< SEND_EXIT;
+	}
+
+	return( aCode );
+}
+
+
+BFCode AvmcodeProcessStateSetCompiler::optimizeStatement(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	AvmInstruction * argsInstruction = aCode->genInstruction();
+
+	argsInstruction->at(0).dtype = TypeManager::MACHINE;
+	setArgcodeRValue(aCTX, argsInstruction->at(0), aCode->first());
+
+	optimizeArgStatement(aCTX, aCode, 1);
+	argsInstruction->at(1).dtype = TypeManager::OPERATOR;
+	setArgcodeRValue(aCTX, argsInstruction->at(1), aCode->second(), false);
+
+	argsInstruction->computeMainBytecode(
+			/*context  */ AVM_ARG_STANDARD_CTX,
+			/*processor*/ AVM_ARG_STATEMENT_CPU,
+			/*operation*/ AVM_ARG_SEVAL_RVALUE,
+			/*operand  */ AVM_ARG_STATEMENT_KIND,
+			/*dtype     */ argsInstruction->at(0).dtype);
+
+	return( aCode );
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // AVMCODE IENABLE STATEMENT COMPILATION
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,11 +337,11 @@ BFCode AvmcodeContextSwitcherStatementCompiler::optimizeStatement(
 BFCode AvmcodeIEnableStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
-	else if( aCode->singleton() )
+	else if( aCode->hasOneOperand() )
 	{
 		return( StatementConstructor::newCode(aCode->getOperator(),
 				compileArgRvalue(aCTX, TypeManager::MACHINE, aCode->first())) );
@@ -259,33 +361,33 @@ BFCode AvmcodeIEnableStatementCompiler::compileStatement(
 BFCode AvmcodeIEnableStatementCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
 
 	ExecutableForm * anExecutable = getExecutableMachine(aCTX, aCode->first());
 
-	if( anExecutable != NULL )
+	if( anExecutable != nullptr )
 	{
 		if( anExecutable->hasOnIEnable() )
 		{
 			if( aCTX->isInlineEnable(anExecutable) )
 			{
 				BFCode optiCode = AVMCODE_COMPILER.optimizeStatement(
-						aCTX->newCTX(anExecutable), anExecutable->getOnIEnable() );
+					aCTX->newCTX(anExecutable), anExecutable->getOnIEnable() );
 
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 				return( StatementConstructor::newCodeFlat(
 						OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 
-						StatementConstructor::newComment(
-								"<ienable> " + anExecutable->getFullyQualifiedNameID()),
+						StatementConstructor::newComment("<ienable> "
+								+ anExecutable->getFullyQualifiedNameID()),
 
 						optiCode,
 
-						StatementConstructor::newComment(
-								"end<ienable> " + anExecutable->getFullyQualifiedNameID()) ));
+						StatementConstructor::newComment("end<ienable> "
+								+ anExecutable->getFullyQualifiedNameID()) ));
 
 AVM_ELSE
 
@@ -318,11 +420,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 BFCode AvmcodeEnableStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
-	else if( aCode->singleton() )
+	else if( aCode->hasOneOperand() )
 	{
 		return( StatementConstructor::newCode(aCode->getOperator(),
 				compileArgRvalue(aCTX, TypeManager::MACHINE, aCode->first())) );
@@ -342,33 +444,33 @@ BFCode AvmcodeEnableStatementCompiler::compileStatement(
 BFCode AvmcodeEnableStatementCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
 
 	ExecutableForm * anExecutable = getExecutableMachine(aCTX, aCode->first());
 
-	if( anExecutable != NULL )
+	if( anExecutable != nullptr )
 	{
 		if( anExecutable->hasOnEnable() )
 		{
 			if( aCTX->isInlineEnable(anExecutable) )
 			{
 				BFCode optiCode = AVMCODE_COMPILER.optimizeStatement(
-						aCTX->newCTX(anExecutable), anExecutable->getOnEnable() );
+					aCTX->newCTX(anExecutable), anExecutable->getOnEnable() );
 
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 				return( StatementConstructor::newCodeFlatMiddle(
 						OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 
-						StatementConstructor::newComment(
-								"begin<enable> " + anExecutable->getFullyQualifiedNameID() ),
+						StatementConstructor::newComment("begin<enable> "
+								+ anExecutable->getFullyQualifiedNameID() ),
 
 						optiCode,
 
-						StatementConstructor::newComment(
-								"end<enable> " + anExecutable->getFullyQualifiedNameID()) ));
+						StatementConstructor::newComment("end<enable> "
+								+ anExecutable->getFullyQualifiedNameID()) ));
 
 AVM_ELSE
 
@@ -401,11 +503,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 BFCode AvmcodeIDisableStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
-	else if( aCode->singleton() )
+	else if( aCode->hasOneOperand() )
 	{
 		return( StatementConstructor::newCode( aCode->getOperator(),
 				compileArgRvalue(aCTX, TypeManager::MACHINE, aCode->first())) );
@@ -425,14 +527,14 @@ BFCode AvmcodeIDisableStatementCompiler::compileStatement(
 BFCode AvmcodeIDisableStatementCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
 
 	ExecutableForm * anExecutable = getExecutableMachine(aCTX, aCode->first());
 
-	if( anExecutable != NULL )
+	if( anExecutable != nullptr )
 	{
 		if( anExecutable->hasOnIDisable() )
 		{
@@ -443,13 +545,13 @@ BFCode AvmcodeIDisableStatementCompiler::optimizeStatement(
 //			return( StatementConstructor::newCodeFlatMiddle(
 //					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 //
-//					StatementConstructor::newComment(
-//							"begin<idisable> " + anExecutable->getFullyQualifiedNameID()),
+//					StatementConstructor::newComment("begin<idisable> "
+//							+ anExecutable->getFullyQualifiedNameID()),
 //
 //					optiCode,
 //
-//					StatementConstructor::newComment(
-//							"end<idisable> " + anExecutable->getFullyQualifiedNameID()) ));
+//					StatementConstructor::newComment("end<idisable> "
+//							+ anExecutable->getFullyQualifiedNameID()) ));
 //_AVM_ELSE_
 //
 //			return( optiCode );
@@ -458,8 +560,8 @@ BFCode AvmcodeIDisableStatementCompiler::optimizeStatement(
 		}
 		else
 		{
-			return( StatementConstructor::newComment(
-					"nop<idisable> " + anExecutable->getFullyQualifiedNameID()) );
+			return( StatementConstructor::newComment("nop<idisable> "
+					+ anExecutable->getFullyQualifiedNameID()) );
 		}
 	}
 
@@ -475,11 +577,11 @@ BFCode AvmcodeIDisableStatementCompiler::optimizeStatement(
 BFCode AvmcodeDisableStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
-	else if( aCode->singleton() )
+	else if( aCode->hasOneOperand() )
 	{
 		if( ExpressionTypeChecker::isInteger(aCode->first()) )
 		{
@@ -508,14 +610,14 @@ BFCode AvmcodeDisableStatementCompiler::compileStatement(
 BFCode AvmcodeDisableStatementCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
 
 	ExecutableForm * anExecutable = getExecutableMachine(aCTX, aCode->first());
 
-	if( anExecutable != NULL )
+	if( anExecutable != nullptr )
 	{
 		if( anExecutable->hasOnDisable() )
 		{
@@ -526,13 +628,13 @@ BFCode AvmcodeDisableStatementCompiler::optimizeStatement(
 //			return( StatementConstructor::newCodeFlatMiddle(
 //					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 //
-//					StatementConstructor::newComment(
-//							"begin<disable> " + anExecutable->getFullyQualifiedNameID()),
+//					StatementConstructor::newComment("begin<disable> "
+//							+ anExecutable->getFullyQualifiedNameID()),
 //
 //					optiCode,
 //
-//					StatementConstructor::newComment(
-//							"end<disable> " + anExecutable->getFullyQualifiedNameID()) ));
+//					StatementConstructor::newComment("end<disable> "
+//							+ anExecutable->getFullyQualifiedNameID()) ));
 //_AVM_ELSE_
 //
 //			return( optiCode );
@@ -569,7 +671,7 @@ BFCode AvmcodeDisableStatementCompiler::optimizeStatement(
 BFCode AvmcodeDisableSelvesStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->singleton() )
+	if( aCode->hasOneOperand() )
 	{
 		if( ExpressionTypeChecker::isInteger(aCode->first()) )
 		{
@@ -614,7 +716,7 @@ BFCode AvmcodeDisableSelvesStatementCompiler::optimizeStatement(
 
 		avm_integer_t disableLevel = aCode->first().toInteger();
 		for( avm_integer_t level = disableLevel ;
-				(level > 0) && (anExecutable != NULL) ; --level )
+				(level > 0) && (anExecutable != nullptr) ; --level )
 		{
 			if( anExecutable->hasOnIDisable() )
 			{
@@ -697,11 +799,11 @@ BFCode AvmcodeDisableSelvesStatementCompiler::optimizeStatement(
 BFCode AvmcodeIAbortStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
-	else if( aCode->singleton() )
+	else if( aCode->hasOneOperand() )
 	{
 		return( StatementConstructor::newCode(aCode->getOperator(),
 				compileArgRvalue(aCTX, TypeManager::MACHINE, aCode->first())) );
@@ -721,14 +823,14 @@ BFCode AvmcodeIAbortStatementCompiler::compileStatement(
 BFCode AvmcodeIAbortStatementCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
 
 	ExecutableForm * anExecutable = getExecutableMachine(aCTX, aCode->first());
 
-	if( anExecutable != NULL )
+	if( anExecutable != nullptr )
 	{
 		if( anExecutable->hasOnIAbort() )
 		{
@@ -739,13 +841,13 @@ BFCode AvmcodeIAbortStatementCompiler::optimizeStatement(
 //			return(StatementConstructor::newCodeFlatMiddle(
 //					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 //
-//					StatementConstructor::newComment(
-//							"begin<iabort> " + anExecutable->getFullyQualifiedNameID()),
+//					StatementConstructor::newComment("begin<iabort> "
+//							+ anExecutable->getFullyQualifiedNameID()),
 //
 //					optiCode,
 //
-//					StatementConstructor::newComment(
-//							"end<iabort> " + anExecutable->getFullyQualifiedNameID()) ));
+//					StatementConstructor::newComment("end<iabort> "
+//							+ anExecutable->getFullyQualifiedNameID()) ));
 //_AVM_ELSE_
 //
 //			return( optiCode );
@@ -771,16 +873,16 @@ BFCode AvmcodeIAbortStatementCompiler::optimizeStatement(
 BFCode AvmcodeAbortStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
-	else if( aCode->singleton() )
+	else if( aCode->hasOneOperand() )
 	{
 		return( StatementConstructor::newCode(aCode->getOperator(),
 				compileArgRvalue(aCTX, TypeManager::MACHINE, aCode->first())) );
 	}
-	else if( aCode->nonempty() )
+	else if( aCode->hasOperand() )
 	{
 		AVM_OS_FATAL_ERROR_EXIT
 				<< "Unexpected ABORT STATEMENT with more "
@@ -795,14 +897,14 @@ BFCode AvmcodeAbortStatementCompiler::compileStatement(
 BFCode AvmcodeAbortStatementCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
 
 	ExecutableForm * anExecutable = getExecutableMachine(aCTX, aCode->first());
 
-	if( anExecutable != NULL )
+	if( anExecutable != nullptr )
 	{
 		if( anExecutable->hasOnAbort() )
 		{
@@ -813,13 +915,13 @@ BFCode AvmcodeAbortStatementCompiler::optimizeStatement(
 //			return( StatementConstructor::newCodeFlatMiddle(
 //					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 //
-//					StatementConstructor::newComment(
-//							"begin<abort> " + anExecutable->getFullyQualifiedNameID() ),
+//					StatementConstructor::newComment("begin<abort> "
+//							+ anExecutable->getFullyQualifiedNameID() ),
 //
 //					optiCode,
 //
-//					StatementConstructor::newComment(
-//							"end<abort> " + anExecutable->getFullyQualifiedNameID()) ));
+//					StatementConstructor::newComment("end<abort> "
+//							+ anExecutable->getFullyQualifiedNameID()) ));
 //_AVM_ELSE_
 //
 //			return( optiCode );
@@ -853,7 +955,7 @@ BFCode AvmcodeAbortStatementCompiler::optimizeStatement(
 BFCode AvmcodeAbortSelvesStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->singleton() )
+	if( aCode->hasOneOperand() )
 	{
 		if( ExpressionTypeChecker::isInteger(aCode->first()) )
 		{
@@ -897,7 +999,7 @@ BFCode AvmcodeAbortSelvesStatementCompiler::optimizeStatement(
 
 		avm_integer_t abortLevel = aCode->first().toInteger();
 		for( avm_integer_t level = abortLevel ;
-				(level > 0) && (anExecutable != NULL) ; --level )
+				(level > 0) && (anExecutable != nullptr) ; --level )
 		{
 			if( anExecutable->hasOnIAbort() )
 			{
@@ -1003,7 +1105,7 @@ BFCode AvmcodeForkStatementCompiler::compileStatement(
 BFCode AvmcodeJoinStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		AVM_OS_FATAL_ERROR_EXIT
 				<< "Unexpected JOIN STATEMENT without "
@@ -1012,7 +1114,7 @@ BFCode AvmcodeJoinStatementCompiler::compileStatement(
 
 		return( aCode );
 	}
-	else if( aCode->singleton() )
+	else if( aCode->hasOneOperand() )
 	{
 		return( StatementConstructor::newCode( aCode->getOperator(),
 				compileArgRvalue(aCTX, aCode->first()) ) );
@@ -1032,7 +1134,7 @@ BFCode AvmcodeJoinStatementCompiler::compileStatement(
 BFCode AvmcodeGotoStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		AVM_OS_FATAL_ERROR_EXIT
 				<< "Unexpected GOTO STATEMENT without "
@@ -1051,10 +1153,10 @@ BFCode AvmcodeGotoStatementCompiler::compileStatement(
 				<< SEND_EXIT;
 
 		BFCode flowStatement;
-		if( aCode->populated() && gotoTarget.is< InstanceOfMachine >() )
+		if( aCode->hasManyOperands() && gotoTarget.is< InstanceOfMachine >() )
 		{
 			flowStatement = AVMCODE_COMPILER.decode_compileStatement(
-					gotoTarget.to_ptr< InstanceOfMachine >()->getExecutable(),
+					gotoTarget.to< InstanceOfMachine >().refExecutable(),
 					aCode->second());
 
 			AVM_OS_ASSERT_FATAL_ERROR_EXIT( flowStatement.valid() )
@@ -1063,76 +1165,95 @@ BFCode AvmcodeGotoStatementCompiler::compileStatement(
 		}
 
 
-		const Machine * source =
-				aCTX->mCompileCtx->getExecutable()->getAstMachine();
-		const Machine * target =
-				gotoTarget.to_ptr< InstanceOfMachine >()->getAstMachine();
+		const Machine & source =
+				aCTX->mCompileCtx->refExecutable().getAstMachine();
+		const Machine & target =
+				gotoTarget.to< InstanceOfMachine >().getAstMachine();
 
-		const Machine * lcaMachine = source->LCRA(target);
+		const Machine * lcaMachine = source.LCRA(& target);
 		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( lcaMachine )
 				<< "Unexpected a <null> LCA( "
-				<< source->getFullyQualifiedNameID() << " , "
-				<< target->getFullyQualifiedNameID() << " )"
+				<< source.getFullyQualifiedNameID() << " , "
+				<< target.getFullyQualifiedNameID() << " )"
 				<< SEND_EXIT;
 
-		BFCode disableCode( OperatorManager::OPERATOR_DISABLE_INVOKE );
-		BFCode enableCode ( OperatorManager::OPERATOR_ENABLE_INVOKE  );
-		BFList listOfEnableTarget;
+		BFCode disableSource( OperatorManager::OPERATOR_SEQUENCE );
+		BFCode enableTarget( OperatorManager::OPERATOR_SEQUENCE );
 
-		if( (source != lcaMachine)
-			&& (source->getContainerMachine() != lcaMachine) )
+		if( (& source) != lcaMachine )
 		{
-			avm_uinteger_t disableLevel = 1;
-
-			const Machine * containerOfSource = source->getContainerMachine();
-			for( ; containerOfSource != lcaMachine ; ++disableLevel )
+			if( source.getContainerMachine() != lcaMachine )
 			{
-				containerOfSource = containerOfSource->getContainerMachine();
-			}
+				avm_uinteger_t disableLevel = 1;
 
-			disableCode = StatementConstructor::newOptiNopCode(
-					OperatorManager::OPERATOR_DISABLE_SELVES,
-					ExpressionConstructor::newUInteger(disableLevel),
-					AVM_ARG_BUILTIN_KIND);
+				const Machine * containerOfSource = source.getContainerMachine();
+				for( ; containerOfSource != lcaMachine ; ++disableLevel )
+				{
+					containerOfSource = containerOfSource->getContainerMachine();
+				}
+
+				disableSource.append( StatementConstructor::newOptiNopCode(
+						OperatorManager::OPERATOR_DISABLE_SELVES,
+						ExpressionConstructor::newUInteger(disableLevel),
+						AVM_ARG_BUILTIN_KIND) );
+			}
+			else
+			{
+				disableSource.append( StatementConstructor::newCode(
+						OperatorManager::OPERATOR_DISABLE_INVOKE,
+						ExecutableLib::MACHINE_SELF) );
+//				disableSource.append( StatementConstructor::newCode(
+//						OperatorManager::OPERATOR_DISABLE_SELF) );
+			}
 		}
-		if( target != lcaMachine )
+
+		if( (& target) != lcaMachine )
 		{
-			const Machine * containerOfMachine = target;
+			BFCodeList enableSequence;
+
+			const Machine * containerOfMachine = target.getContainerMachine();
 			for( ; containerOfMachine != lcaMachine ;
 				containerOfMachine = containerOfMachine->getContainerMachine() )
 			{
-				listOfEnableTarget.push_front(
-					getSymbolTable().searchInstanceStatic(containerOfMachine) );
+				const auto & containerSymbol =
+						getSymbolTable().searchInstanceStatic(* containerOfMachine);
+
+				enableSequence.push_front( StatementConstructor::newCode(
+						OperatorManager::OPERATOR_ENABLE_INVOKE, containerSymbol) );
+				enableSequence.push_front( StatementConstructor::newCode(
+						OperatorManager::OPERATOR_ENABLE_SET, containerSymbol) );
 			}
-			enableCode.append( listOfEnableTarget );
+			enableTarget.append( enableSequence );
+
+			enableTarget.append( StatementConstructor::newCode(
+					OperatorManager::OPERATOR_ENABLE_SET, gotoTarget) );
+			enableTarget.append( StatementConstructor::newCode(
+					OperatorManager::OPERATOR_ENABLE_INVOKE, gotoTarget) );
 
 			if( flowStatement.valid() )
 			{
-				enableCode = AvmcodeStrongSequenceCompiler::atomizeSequence(
-						StatementConstructor::newCodeFlat(
-								OperatorManager::OPERATOR_SEQUENCE,
-								enableCode, flowStatement) );
+				enableTarget.appendFlat( flowStatement );
 			}
 		}
 
 
-		if( source != lcaMachine ) // for disable self
+		if( (& source) != lcaMachine ) // for disable self
 		{
-			if( enableCode->nonempty() )
+			if( enableTarget->hasOperand() )
 			{
 				return( AvmcodeStrongSequenceCompiler::atomizeSequence(
 						StatementConstructor::newCodeFlat(
 								OperatorManager::OPERATOR_SEQUENCE,
-								disableCode, enableCode) ));
+								disableSource, enableTarget) ));
 			}
 			else
 			{
-				return( disableCode );
+				return( disableSource );
 			}
 		}
 		else
 		{
-			return( enableCode );
+			return( enableTarget );
 		}
 
 //		return( compileStatementParams(aCTX, aCode) );
@@ -1148,15 +1269,65 @@ BFCode AvmcodeGotoStatementCompiler::compileStatement(
 BFCode AvmcodeRtcStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
+
+		ExecutableForm * anExecutable = aCTX->mRuntimeCtx;
+
+		if( (anExecutable != nullptr)
+			&& (not anExecutable->hasOnRtc()) )
+		{
+			anExecutable->setOnRtc(
+					StatementConstructor::newCode(
+						OperatorManager::OPERATOR_SCHEDULE_INVOKE) );
+		}
+
 		return( aCode );
 	}
 	else
 	{
-		return( AvmcodeActivityStatementCompiler::
-				compileStatement(aCTX, aCode) );
+		BFCode compiledCode =
+			AvmcodeActivityStatementCompiler::compileStatement(aCTX, aCode);
+
+		if( compiledCode->first().is< InstanceOfMachine >() )
+		{
+			InstanceOfMachine & anInstance =
+					compiledCode->first().to< InstanceOfMachine >();
+
+			if( anInstance.hasnotNullExecutable() )
+			{
+				ExecutableForm & anExecutable = anInstance.refExecutable();
+
+				if( not anExecutable.hasOnRtc() )
+				{
+					anExecutable.setOnRtc(
+						StatementConstructor::newCode(
+								OperatorManager::OPERATOR_SCHEDULE_INVOKE) );
+				}
+			}
+		}
+		if( compiledCode->first().is< InstanceOfData >() )
+		{
+			const InstanceOfData & anInstance =
+					compiledCode->first().to< InstanceOfData >();
+
+			if( anInstance.getModifier().hasModifierPublicFinalStatic() )
+			{
+				ExecutableForm * anExecutable =
+						aCTX->getRuntimeExecutableCxt( anInstance );
+
+				if( (anExecutable != nullptr)
+					&& (not anExecutable->hasOnRtc()) )
+				{
+					anExecutable->setOnRtc(
+							StatementConstructor::newCode(
+								OperatorManager::OPERATOR_SCHEDULE_INVOKE) );
+				}
+			}
+		}
+
+		return( compiledCode );
 	}
 }
 
@@ -1168,7 +1339,7 @@ BFCode AvmcodeRtcStatementCompiler::compileStatement(
 BFCode AvmcodeScheduleStatementCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 		return( aCode );
@@ -1184,15 +1355,15 @@ BFCode AvmcodeScheduleStatementCompiler::compileStatement(
 BFCode AvmcodeScheduleStatementCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	if( aCode->empty() )
+	if( aCode->noOperand() )
 	{
 		aCode->append( ExecutableLib::MACHINE_SELF );
 	}
 
 //	ExecutableForm * anExecutable = getExecutableMachine(aCTX, aCode->first());
 //
-//	if( (anExecutable != NULL) && anExecutable->hasOnSchedule() &&
-//			anExecutable->isInlinableSchedule() )
+//	if( (anExecutable != nullptr) && anExecutable->hasOnSchedule()
+//		&& anExecutable->isInlinableSchedule() )
 //	{
 //		BFCode optiCode = AVMCODE_COMPILER.optimizeStatement(
 //				aCTX->newCTX(anExecutable), anExecutable->getOnSchedule() );
@@ -1201,13 +1372,13 @@ BFCode AvmcodeScheduleStatementCompiler::optimizeStatement(
 //		return( StatementConstructor::newCodeFlatMiddle(
 //				OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 //
-//				StatementConstructor::newComment(
-//						"begin<schedule> " + anExecutable->getFullyQualifiedNameID() ),
+//				StatementConstructor::newComment("begin<schedule> "
+//						+ anExecutable->getFullyQualifiedNameID() ),
 //
 //				optiCode,
 //
-//				StatementConstructor::newComment(
-//						"end<schedule> " + anExecutable->getFullyQualifiedNameID()) ));
+//				StatementConstructor::newComment("end<schedule> "
+//						+ anExecutable->getFullyQualifiedNameID()) ));
 //
 //AVM_ELSE
 //
@@ -1231,14 +1402,16 @@ BF AvmcodeScheduleInStatementCompiler::compileExpression(
 {
 	if( aCode->size() == 2 )
 	{
-		BF machine = compileArgRvalue(aCTX, TypeManager::MACHINE, aCode->second());
+		BF machine = compileArgRvalue(aCTX,
+				TypeManager::MACHINE, aCode->second());
 
 		if( machine.is< InstanceOfMachine >() )
 		{
 			aCTX = aCTX->newCTX(
-					machine.to_ptr< InstanceOfMachine >()->getExecutable() );
+					machine.to< InstanceOfMachine >().getExecutable() );
 		}
-		BF submachine = compileArgRvalue(aCTX, TypeManager::MACHINE, aCode->first());
+		BF submachine = compileArgRvalue(aCTX,
+				TypeManager::MACHINE, aCode->first());
 
 		BFCode newCode( aCode->getOperator(), submachine, machine);
 

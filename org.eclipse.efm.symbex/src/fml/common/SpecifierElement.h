@@ -16,6 +16,9 @@
 #ifndef FML_COMMON_SPECIFIERELEMENT_H_
 #define FML_COMMON_SPECIFIERELEMENT_H_
 
+
+#include <string>
+
 #include <util/avm_numeric.h>
 #include <util/avm_string.h>
 
@@ -29,6 +32,19 @@ class Specifier
 {
 
 public:
+	/**
+	 * NULL_FLAG
+	 * 1 bits
+	 */
+	enum NULL_FLAG
+	{
+		NULL_FALSE_FLAG  = 0x00, // IS NOT NULL
+
+		NULL_TRUE_FLAG   = 0x01, // IS NULL
+
+	};
+
+
 	/**
 	 * SCOPE_KIND
 	 * 3 bits
@@ -56,38 +72,44 @@ public:
 
 	/**
 	 * COMPONENT_KIND
-	 * 7 bits
+	 * 8 bits
 	 */
 	enum COMPONENT_KIND {
 
-		COMPONENT_UNDEFINED_KIND         = 0x000,
+		COMPONENT_UNDEFINED_KIND           = 0x000,
 
-		COMPONENT_SYSTEM_KIND            = 0x001,
+		COMPONENT_SYSTEM_KIND              = 0x001,
 
-		COMPONENT_EXECUTABLE_KIND        = 0x002,
-
-
-		COMPONENT_PROCEDURE_KIND         = 0x004,
-
-		COMPONENT_ROUTINE_KIND           = 0x008,
+		COMPONENT_EXECUTABLE_KIND          = 0x002,
 
 
-		COMPONENT_STATEMACHINE_KIND      = 0x010,
+		COMPONENT_PROCEDURE_KIND           = 0x004,
 
-		COMPONENT_STATE_KIND             = 0x020,//| COMPONENT_STATEMACHINE_KIND,
-
-		COMPONENT_PSEUDOSTATE_KIND       = 0x040,//| COMPONENT_STATE_KIND,
+		COMPONENT_ROUTINE_KIND             = 0x008,
 
 
-		FAMILY_COMPONENT_STATE_KIND      = COMPONENT_STATE_KIND
-										 | COMPONENT_PSEUDOSTATE_KIND,
+		COMPONENT_INTERACTION_KIND         = 0x010,
+
+
+		COMPONENT_STATEMACHINE_KIND        = 0x020,
+
+		COMPONENT_STATE_KIND               = 0x040,
+//		                                   | COMPONENT_STATEMACHINE_KIND,
+
+		COMPONENT_PSEUDOSTATE_KIND         = 0x080,
+//										   | COMPONENT_STATE_KIND,
+
+
+		FAMILY_COMPONENT_STATE_KIND        = COMPONENT_STATE_KIND
+		                                   | COMPONENT_PSEUDOSTATE_KIND,
 
 		FAMILY_COMPONENT_STATEMACHINE_KIND = COMPONENT_STATEMACHINE_KIND
-										 | FAMILY_COMPONENT_STATE_KIND,
+		                                   | FAMILY_COMPONENT_STATE_KIND,
 
-		FAMILY_COMPONENT_COMPOSITE_KIND  = COMPONENT_SYSTEM_KIND
-										 | COMPONENT_STATEMACHINE_KIND
-										 | COMPONENT_EXECUTABLE_KIND,
+		FAMILY_COMPONENT_COMPOSITE_KIND    = COMPONENT_SYSTEM_KIND
+		                                   | COMPONENT_INTERACTION_KIND
+		                                   | COMPONENT_STATEMACHINE_KIND
+		                                   | COMPONENT_EXECUTABLE_KIND,
 
 
 	};
@@ -96,7 +118,7 @@ public:
 	/**
 	 * Model Of Computation
 	 * MOC_KIND
-	 * 6 bits
+	 * 7 bits
 	 */
 	enum MOC_KIND {
 
@@ -104,17 +126,26 @@ public:
 
 		MOC_COMPOSITE_MASK_KIND             = 0x001,
 
-		MOC_COMPOSITE_STRUCTURE_KIND        = 0x002 | MOC_COMPOSITE_MASK_KIND,
+		MOC_COMPOSITE_STRUCTURE_KIND        = 0x002
+		                                    | MOC_COMPOSITE_MASK_KIND,
 
 
-		MOC_STATE_TRANSITION_STRUCTURE_KIND = 0x004 | MOC_COMPOSITE_MASK_KIND,
-
-		MOC_STATE_TRANSITION_SYSTEM_KIND    = 0x008 | MOC_STATE_TRANSITION_STRUCTURE_KIND,
-
-		MOC_STATE_TRANSITION_FLOW_KIND      = 0x010 | MOC_STATE_TRANSITION_STRUCTURE_KIND,
+		MOC_COMPOSITE_INTERACTION__KIND     = 0x004
+		                                    | MOC_COMPOSITE_MASK_KIND,
 
 
-		MOC_DATA_FLOW_KIND                  = 0x020 | MOC_COMPOSITE_MASK_KIND,
+		MOC_STATE_TRANSITION_STRUCTURE_KIND = 0x008
+		                                    | MOC_COMPOSITE_MASK_KIND,
+
+		MOC_STATE_TRANSITION_SYSTEM_KIND    = 0x010
+											| MOC_STATE_TRANSITION_STRUCTURE_KIND,
+
+		MOC_STATE_TRANSITION_FLOW_KIND      = 0x020
+		                                    | MOC_STATE_TRANSITION_STRUCTURE_KIND,
+
+
+		MOC_DATA_FLOW_KIND                  = 0x040
+		                                    | MOC_COMPOSITE_MASK_KIND,
 
 	};
 
@@ -135,6 +166,41 @@ public:
 		GROUP_EXCEPT_KIND                = 0x004 | GROUP_MASK_KIND,
 
 		GROUP_EVERY_KIND                 = 0x006 | GROUP_MASK_KIND
+
+	};
+
+
+	/**
+	 * INTERACTION MOC
+	 * 4 bits
+	 */
+	enum INTERACTION_MOC
+	{
+		INTERACTION_UNDEFINED_MOC,
+
+		INTERACTION_ALTERNATIVE_MOC,
+
+		INTERACTION_OPTION_MOC,
+
+		INTERACTION_LOOP_MOC,
+
+		INTERACTION_BREAK_MOC,
+
+		INTERACTION_PARALLEL_MOC,
+
+		INTERACTION_STRICT_SEQUENCE_MOC,
+
+		INTERACTION_WEAK_SEQUENCE_MOC,
+
+		INTERACTION_CRITICAL_MOC,
+
+		INTERACTION_IGNORE_MOC,
+
+		INTERACTION_CONSIDER_MOC,
+
+		INTERACTION_ASSERT_MOC,
+
+		INTERACTION_NEGATIVE_MOC
 
 	};
 
@@ -166,32 +232,32 @@ public:
 	enum PSEUDOSTATE_MOC
 	{
 
-		PSEUDOSTATE_UNDEFINED_MOC        = 0x000,
+		PSEUDOSTATE_UNDEFINED_MOC         = 0x000,
 
-		PSEUDOSTATE_INITIAL_MOC          = 0x001,
+		PSEUDOSTATE_INITIAL_MOC           = 0x001,
 
-		PSEUDOSTATE_TERMINAL_MOC         = 0x002,
-		PSEUDOSTATE_RETURN_MOC           = 0x004,
+		PSEUDOSTATE_TERMINAL_MOC          = 0x002,
+		PSEUDOSTATE_RETURN_MOC            = 0x004,
 
-		FAMILY_PSEUDO_ENDING_MOC         = PSEUDOSTATE_TERMINAL_MOC
-		                                 | PSEUDOSTATE_RETURN_MOC,
+		FAMILY_PSEUDO_ENDING_MOC          = PSEUDOSTATE_TERMINAL_MOC
+		                                  | PSEUDOSTATE_RETURN_MOC,
 
-		PSEUDOSTATE_JUNCTION_MOC         = 0x008,
-		PSEUDOSTATE_CHOICE_MOC           = 0x010,
+		PSEUDOSTATE_JUNCTION_MOC          = 0x008,
+		PSEUDOSTATE_CHOICE_MOC            = 0x010,
 
-		PSEUDOSTATE_ENTRY_POINT_MOC      = 0x020,
-		PSEUDOSTATE_EXIT_POINT_MOC       = 0x040,
+		PSEUDOSTATE_ENTRY_POINT_MOC       = 0x020,
+		PSEUDOSTATE_EXIT_POINT_MOC        = 0x040,
 
-		FAMILY_PSEUDO_CONNECTION_POINT_MOC = PSEUDOSTATE_ENTRY_POINT_MOC
-		                                 | PSEUDOSTATE_EXIT_POINT_MOC,
+		FAMILY_PSEUDO_CONNECTOR_POINT_MOC = PSEUDOSTATE_ENTRY_POINT_MOC
+		                                  | PSEUDOSTATE_EXIT_POINT_MOC,
 
-		PSEUDOSTATE_FORK_MOC             = 0x080,
-		PSEUDOSTATE_JOIN_MOC             = 0x100,
+		PSEUDOSTATE_FORK_MOC              = 0x080,
+		PSEUDOSTATE_JOIN_MOC              = 0x100,
 
-		PSEUDOSTATE_DEEP_HISTORY_MOC     = 0x200,
-		PSEUDOSTATE_SHALLOW_HISTORY_MOC  = 0x400,
+		PSEUDOSTATE_DEEP_HISTORY_MOC      = 0x200,
+		PSEUDOSTATE_SHALLOW_HISTORY_MOC   = 0x400,
 
-		FAMILY_PSEUDO_HISTORY_MOC        = PSEUDOSTATE_DEEP_HISTORY_MOC
+		FAMILY_PSEUDO_HISTORY_MOC         = PSEUDOSTATE_DEEP_HISTORY_MOC
 		                                 | PSEUDOSTATE_SHALLOW_HISTORY_MOC,
 
 	};
@@ -199,17 +265,28 @@ public:
 
 	/**
 	 * FEATURE_KIND
-	 * 3 bits
+	 * 6 bits
 	 */
 	enum FEATURE_KIND
 	{
 		FEATURE_UNDEFINED_KIND           = 0x000, // DEFAULT
 
-		FEATURE_TIMED_KIND               = 0x001,
+		FEATURE_DENSE_TIMED_KIND         = 0x001,
 
-		FEATURE_INPUT_ENABLED_KIND       = 0x002,
+		FEATURE_CONTINUOUS_TIMED_KIND    = 0x002
+                                         | FEATURE_DENSE_TIMED_KIND,
 
-		FEATURE_LIFELINE_KIND            = 0x004
+		FEATURE_DISCRETE_TIMED_KIND      = 0x004,
+
+		FEATURE_TIMED_KIND               = FEATURE_DENSE_TIMED_KIND
+		                                 | FEATURE_CONTINUOUS_TIMED_KIND
+		                                 | FEATURE_DISCRETE_TIMED_KIND,
+
+		FEATURE_INPUT_ENABLED_KIND       = 0x008,
+
+		FEATURE_LIFELINE_KIND            = 0x010,
+
+		FEATURE_USER_DEFINED_SCHEDULE_KIND = 0x020
 
 	};
 
@@ -256,24 +333,33 @@ public:
 	/**
 	 * TYPEDEF
 	 */
-	typedef unsigned short  bit_field_t;
+	typedef std::uint16_t  bit_field_t;
 
 	/**
 	 * BIT FIELDS
 	 */
-	bit_field_t component      : 7;
 
-	bit_field_t computation    : 6;
+	// group 1 : 16 bits
+	bit_field_t is_null_flag   : 1;
+
+	bit_field_t component      : 8;
+
+	bit_field_t computation    : 7;
+
+	// group 2 : 16 bits
+	bit_field_t design         : 5;
 
 	bit_field_t group          : 3;
 
+	bit_field_t interaction	   : 4;
+
 	bit_field_t state	       : 4;
 
+	// group 3 : 11 bits
 	bit_field_t pseudostate    : 11;
 
-	bit_field_t feature        : 3;
-
-	bit_field_t design         : 5;
+	// group 4 : 6 bits
+	bit_field_t feature        : 6;
 
 
 	/**
@@ -284,22 +370,32 @@ public:
 		FIELD_COMPONENT_POSITION         = 0x001,
 		FIELD_COMPUTATION_POSITION       = 0x002,
 		FIELD_GROUP_POSITION             = 0x004,
-		FIELD_STATE_POSITION             = 0x008,
-		FIELD_PSEUDOSTATE_POSITION       = 0x010,
-		FIELD_FEATURE_POSITION           = 0x020,
-		FIELD_DESIGN_POSITION            = 0x040,
+		FIELD_INTERACTION_POSITION       = 0x008,
+		FIELD_STATE_POSITION             = 0x010,
+		FIELD_PSEUDOSTATE_POSITION       = 0x020,
+		FIELD_FEATURE_POSITION           = 0x040,
+		FIELD_DESIGN_POSITION            = 0x080,
 
 		ENABLE_ALL_FIELDS                = 0xFFF,
+
 
 		ENABLE_COMPONENT_DESIGN_FIELD    = FIELD_COMPONENT_POSITION
 		                                 | FIELD_DESIGN_POSITION,
 
 		DISABLE_COMPONENT_DESIGN_FIELD   = (~ ENABLE_COMPONENT_DESIGN_FIELD),
 
+
 		ENABLE_FEATURE_DESIGN_FIELD      = FIELD_FEATURE_POSITION
 		                                 | FIELD_DESIGN_POSITION,
 
-		DISABLE_FEATURE_DESIGN_FIELD     = (~ ENABLE_FEATURE_DESIGN_FIELD)
+		DISABLE_FEATURE_DESIGN_FIELD     = (~ ENABLE_FEATURE_DESIGN_FIELD),
+
+
+		ENABLE_COMPONENT_FEATURE_DESIGN_FIELD = FIELD_COMPONENT_POSITION
+		                                 | FIELD_FEATURE_POSITION
+		                                 | FIELD_DESIGN_POSITION,
+
+		DISABLE_FCOMPONENT_EATURE_DESIGN_FIELD = (~ ENABLE_COMPONENT_FEATURE_DESIGN_FIELD)
 
 	};
 
@@ -307,6 +403,8 @@ public:
 	/**
 	 * STATIC EXECUTABLE SPECIFIER
 	 */
+	static Specifier OBJECT_NULL_SPECIFIER;
+
 	static Specifier EXECUTABLE_UNDEFINED_SPECIFIER;
 
 	static Specifier COMPONENT_PACKAGE_SPECIFIER;
@@ -315,6 +413,7 @@ public:
 
 	static Specifier COMPONENT_EXECUTABLE_SPECIFIER;
 
+
 	static Specifier COMPONENT_PROCEDURE_SPECIFIER;
 
 	static Specifier EXECUTABLE_PROCEDURE_COMPOSITE_SPECIFIER;
@@ -322,6 +421,35 @@ public:
 	static Specifier EXECUTABLE_PROCEDURE_MODEL_SPECIFIER;
 
 	static Specifier EXECUTABLE_PROCEDURE_INSTANCE_STATIC_SPECIFIER;
+
+
+	/**
+	 * PROTOTYPE MACHINE FACADE SPECIFIER
+	 */
+	static Specifier EXECUTABLE_STATEMACHINE_SPECIFIER;
+
+
+	static Specifier EXECUTABLE_STATE_AND_SPECIFIER;
+
+	static Specifier EXECUTABLE_STATE_OR_SPECIFIER;
+
+
+	static Specifier EXECUTABLE_STATE_SPECIFIER;
+
+	static Specifier EXECUTABLE_STATE_START_SPECIFIER;
+
+	static Specifier EXECUTABLE_STATE_FINAL_SPECIFIER;
+
+
+	static Specifier EXECUTABLE_PSEUDOSTATE_INITIAL_SPECIFIER;
+
+	static Specifier EXECUTABLE_PSEUDOSTATE_JUNCTION_SPECIFIER;
+
+	static Specifier EXECUTABLE_PSEUDOSTATE_CHOICE_SPECIFIER;
+
+	static Specifier EXECUTABLE_PSEUDOSTATE_TERMINAL_SPECIFIER;
+
+
 
 	/**
 	 * EXECUTABLE DESIGN
@@ -339,159 +467,224 @@ public:
 	/**
 	 * CONSTRUCTORS
 	 */
-	Specifier()
-	: component( COMPONENT_UNDEFINED_KIND ),
+	Specifier(NULL_FLAG is_null = NULL_FALSE_FLAG )
+	: is_null_flag( is_null           ),
+	component( COMPONENT_UNDEFINED_KIND ),
 	computation( MOC_UNDEFINED_KIND ),
+	design ( DESIGN_UNDEFINED_KIND  ),
 
 	group( GROUP_UNDEFINED_KIND  ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
 	state( STATE_UNDEFINED_MOC   ),
 	pseudostate( PSEUDOSTATE_UNDEFINED_MOC ),
 
-	feature( FEATURE_UNDEFINED_KIND ),
-	design( DESIGN_UNDEFINED_KIND )
+	feature( FEATURE_UNDEFINED_KIND )
 	{
 		//!! NOTHING
 	}
 
-	Specifier(bit_field_t componentKind,
-			bit_field_t modelOfComputationKind, bit_field_t groupKind,
+	Specifier(bit_field_t componentKind, bit_field_t modelOfComputationKind,
+			bit_field_t groupKind, bit_field_t interactionOp,
 			bit_field_t stateMoc, bit_field_t pseudostateMoc,
 			bit_field_t featureKind, bit_field_t designKind)
-	: component( componentKind ),
+	: is_null_flag( NULL_FALSE_FLAG ),
+	component( componentKind ),
 	computation( modelOfComputationKind ),
+	design ( designKind  ),
 
 	group( groupKind ),
-	state( stateMoc  ),
+	interaction( interactionOp ),
+	state( stateMoc ),
 	pseudostate( pseudostateMoc ),
 
-	feature( featureKind ),
-	design( designKind )
+	feature( featureKind )
 	{
 		//!! NOTHING
 	}
 
-	Specifier(COMPONENT_KIND componentKind, MOC_KIND modelOfComputationKind)
-	: component( componentKind ),
+	Specifier(COMPONENT_KIND componentKind,
+			MOC_KIND modelOfComputationKind,
+			DESIGN_KIND designKind = DESIGN_PROTOTYPE_STATIC_KIND)
+	: is_null_flag( NULL_FALSE_FLAG     ),
+	component( componentKind            ),
 	computation( modelOfComputationKind ),
+	design ( designKind                 ),
 
 	group( GROUP_UNDEFINED_KIND ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
 	state( STATE_UNDEFINED_MOC  ),
 	pseudostate( PSEUDOSTATE_UNDEFINED_MOC ),
 
-	feature( FEATURE_UNDEFINED_KIND ),
-	design( DESIGN_UNDEFINED_KIND )
+	feature( FEATURE_UNDEFINED_KIND )
 	{
 		//!! NOTHING
 	}
 
-	Specifier(COMPONENT_KIND componentKind, DESIGN_KIND designKind)
-	: component( componentKind ),
+
+	Specifier(COMPONENT_KIND componentKind, STATE_MOC stateMoc,
+			DESIGN_KIND designKind = DESIGN_INSTANCE_STATIC_KIND)
+	: is_null_flag( NULL_FALSE_FLAG ),
+	component( componentKind        ),
 	computation( MOC_UNDEFINED_KIND ),
+	design ( designKind             ),
 
 	group( GROUP_UNDEFINED_KIND ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
+	state( stateMoc  ),
+	pseudostate( PSEUDOSTATE_UNDEFINED_MOC ),
+
+	feature( FEATURE_UNDEFINED_KIND )
+	{
+		//!! NOTHING
+	}
+
+	Specifier(COMPONENT_KIND componentKind, PSEUDOSTATE_MOC pseudostateMoc,
+			DESIGN_KIND designKind = DESIGN_INSTANCE_STATIC_KIND)
+	: is_null_flag( NULL_FALSE_FLAG ),
+	component( componentKind        ),
+	computation( MOC_UNDEFINED_KIND ),
+	design ( designKind             ),
+
+	group( GROUP_UNDEFINED_KIND ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
+	state( STATE_UNDEFINED_MOC  ),
+	pseudostate( pseudostateMoc ),
+
+	feature( FEATURE_UNDEFINED_KIND )
+	{
+		//!! NOTHING
+	}
+
+
+	Specifier(COMPONENT_KIND componentKind,
+			DESIGN_KIND designKind = DESIGN_UNDEFINED_KIND)
+	: is_null_flag( NULL_FALSE_FLAG ),
+	component( componentKind        ),
+	computation( MOC_UNDEFINED_KIND ),
+	design ( designKind             ),
+
+	group( GROUP_UNDEFINED_KIND ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
 	state( STATE_UNDEFINED_MOC  ),
 	pseudostate( PSEUDOSTATE_UNDEFINED_MOC ),
 
-	feature( FEATURE_UNDEFINED_KIND ),
-	design( designKind )
+	feature( FEATURE_UNDEFINED_KIND )
 	{
 		//!! NOTHING
 	}
 
-	Specifier(COMPONENT_KIND componentKind)
-	: component( componentKind ),
-	computation( MOC_UNDEFINED_KIND ),
-
-	group( GROUP_UNDEFINED_KIND ),
-	state( STATE_UNDEFINED_MOC  ),
-	pseudostate ( PSEUDOSTATE_UNDEFINED_MOC ),
-
-	feature( FEATURE_UNDEFINED_KIND ),
-	design( DESIGN_UNDEFINED_KIND )
-	{
-		//!! NOTHING
-	}
 
 	Specifier(MOC_KIND modelOfComputationKind)
-	: component( COMPONENT_UNDEFINED_KIND  ),
+	: is_null_flag( NULL_FALSE_FLAG     ),
+	component( COMPONENT_UNDEFINED_KIND ),
 	computation( modelOfComputationKind ),
+	design ( DESIGN_UNDEFINED_KIND      ),
 
 	group( GROUP_UNDEFINED_KIND ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
 	state( STATE_UNDEFINED_MOC  ),
 	pseudostate ( PSEUDOSTATE_UNDEFINED_MOC ),
 
-	feature( FEATURE_UNDEFINED_KIND ),
-	design( DESIGN_UNDEFINED_KIND )
+	feature( FEATURE_UNDEFINED_KIND )
 	{
 		//!! NOTHING
 	}
 
 	Specifier(GROUP_KIND groupKind)
-	: component( COMPONENT_UNDEFINED_KIND ),
-	computation( MOC_UNDEFINED_KIND ),
+	: is_null_flag( NULL_FALSE_FLAG     ),
+	component( COMPONENT_UNDEFINED_KIND ),
+	computation( MOC_UNDEFINED_KIND     ),
+	design ( DESIGN_UNDEFINED_KIND      ),
 
 	group( groupKind ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
 	state( STATE_UNDEFINED_MOC ),
 	pseudostate ( PSEUDOSTATE_UNDEFINED_MOC ),
 
-	feature( FEATURE_UNDEFINED_KIND ),
-	design( DESIGN_UNDEFINED_KIND )
+	feature( FEATURE_UNDEFINED_KIND )
+
+	{
+		//!! NOTHING
+	}
+
+	Specifier(INTERACTION_MOC interactionOp)
+	: is_null_flag( NULL_FALSE_FLAG     ),
+	component( COMPONENT_UNDEFINED_KIND ),
+	computation( MOC_UNDEFINED_KIND     ),
+	design ( DESIGN_UNDEFINED_KIND      ),
+
+	group( GROUP_UNDEFINED_KIND ),
+	interaction( interactionOp  ),
+	state( STATE_UNDEFINED_MOC  ),
+	pseudostate ( PSEUDOSTATE_UNDEFINED_MOC ),
+
+	feature( FEATURE_UNDEFINED_KIND )
+
+
 	{
 		//!! NOTHING
 	}
 
 	Specifier(STATE_MOC stateMoc)
-	: component( COMPONENT_UNDEFINED_KIND  ),
-	computation( MOC_UNDEFINED_KIND ),
+	: is_null_flag( NULL_FALSE_FLAG     ),
+	component( COMPONENT_UNDEFINED_KIND ),
+	computation( MOC_UNDEFINED_KIND     ),
+	design ( DESIGN_UNDEFINED_KIND      ),
 
 	group( GROUP_UNDEFINED_KIND ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
 	state( stateMoc ),
 	pseudostate ( PSEUDOSTATE_UNDEFINED_MOC ),
 
-	feature( FEATURE_UNDEFINED_KIND ),
-	design( DESIGN_UNDEFINED_KIND     )
+	feature( FEATURE_UNDEFINED_KIND )
 	{
 		//!! NOTHING
 	}
 
 	Specifier(PSEUDOSTATE_MOC pseudostateMoc)
-	: component( COMPONENT_UNDEFINED_KIND  ),
-	computation( MOC_UNDEFINED_KIND ),
+	: is_null_flag( NULL_FALSE_FLAG     ),
+	component( COMPONENT_UNDEFINED_KIND ),
+	computation( MOC_UNDEFINED_KIND     ),
+	design ( DESIGN_UNDEFINED_KIND      ),
 
 	group( GROUP_UNDEFINED_KIND ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
 	state( STATE_UNDEFINED_MOC  ),
-	pseudostate ( pseudostateMoc ),
+	pseudostate( pseudostateMoc ),
 
-	feature( FEATURE_UNDEFINED_KIND ),
-	design( DESIGN_UNDEFINED_KIND )
+	feature( FEATURE_UNDEFINED_KIND )
 	{
 		//!! NOTHING
 	}
 
 	Specifier(FEATURE_KIND featureKind)
-	: component( COMPONENT_UNDEFINED_KIND  ),
-	computation( MOC_UNDEFINED_KIND ),
+	: is_null_flag( NULL_FALSE_FLAG     ),
+	component( COMPONENT_UNDEFINED_KIND ),
+	computation( MOC_UNDEFINED_KIND     ),
+	design ( DESIGN_UNDEFINED_KIND      ),
 
 	group( GROUP_UNDEFINED_KIND ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
 	state( STATE_UNDEFINED_MOC  ),
 	pseudostate ( PSEUDOSTATE_UNDEFINED_MOC ),
 
-	feature( featureKind ),
-	design( DESIGN_UNDEFINED_KIND )
+	feature( featureKind )
 	{
 		//!! NOTHING
 	}
 
 	Specifier(DESIGN_KIND designKind)
-	: component( COMPONENT_UNDEFINED_KIND  ),
-	computation( MOC_UNDEFINED_KIND ),
+	: is_null_flag( NULL_FALSE_FLAG     ),
+	component( COMPONENT_UNDEFINED_KIND ),
+	computation( MOC_UNDEFINED_KIND     ),
+	design ( designKind                 ),
 
 	group( GROUP_UNDEFINED_KIND ),
+	interaction( INTERACTION_UNDEFINED_MOC ),
 	state( STATE_UNDEFINED_MOC  ),
 	pseudostate ( PSEUDOSTATE_UNDEFINED_MOC ),
 
-	feature( FEATURE_UNDEFINED_KIND ),
-	design( designKind )
+	feature( FEATURE_UNDEFINED_KIND )
 	{
 		//!! NOTHING
 	}
@@ -506,17 +699,33 @@ public:
 
 
 	/**
+	 * VALIDITY TEST
+	 * _NULL_
+	 */
+	inline bool isNullref() const
+	{
+		return( is_null_flag == NULL_TRUE_FLAG );
+	}
+
+	inline bool isnotNullref() const
+	{
+		return( is_null_flag != NULL_TRUE_FLAG );
+	}
+
+
+	/**
 	 * TESTER
 	 */
 	inline bool isDefined() const
 	{
-		return(    (component   != COMPONENT_UNDEFINED_KIND )
-				|| (computation != MOC_UNDEFINED_KIND       )
-				|| (group       != GROUP_UNDEFINED_KIND     )
-				|| (state       != STATE_UNDEFINED_MOC      )
-				|| (pseudostate != PSEUDOSTATE_UNDEFINED_MOC)
-				|| (feature     != FEATURE_UNDEFINED_KIND   )
-				|| (design      != DESIGN_UNDEFINED_KIND    ) );
+		return(    (component   != COMPONENT_UNDEFINED_KIND  )
+				|| (computation != MOC_UNDEFINED_KIND        )
+				|| (design      != DESIGN_UNDEFINED_KIND     )
+				|| (group       != GROUP_UNDEFINED_KIND      )
+				|| (interaction != INTERACTION_UNDEFINED_MOC )
+				|| (state       != STATE_UNDEFINED_MOC       )
+				|| (pseudostate != PSEUDOSTATE_UNDEFINED_MOC )
+				|| (feature     != FEATURE_UNDEFINED_KIND    ) );
 	}
 
 
@@ -528,8 +737,14 @@ public:
 				|| (((enabledFields  & FIELD_COMPUTATION_POSITION) != 0)
 					&& (computation != MOC_UNDEFINED_KIND        ))
 
+				|| (((enabledFields  & FIELD_DESIGN_POSITION     ) != 0)
+					&& (design      != DESIGN_UNDEFINED_KIND     ))
+
 				|| (((enabledFields  & FIELD_GROUP_POSITION      ) != 0)
 					&& (group       != GROUP_UNDEFINED_KIND      ))
+
+				|| (((enabledFields  & FIELD_INTERACTION_POSITION) != 0)
+					&& (interaction != INTERACTION_UNDEFINED_MOC ))
 
 				|| (((enabledFields  & FIELD_STATE_POSITION      ) != 0)
 					&& (state       != STATE_UNDEFINED_MOC       ))
@@ -538,10 +753,7 @@ public:
 					&& (pseudostate != PSEUDOSTATE_UNDEFINED_MOC ))
 
 				|| (((enabledFields  & FIELD_FEATURE_POSITION    ) != 0)
-					&& (feature     != FEATURE_UNDEFINED_KIND    ))
-
-				|| (((enabledFields  & FIELD_DESIGN_POSITION     ) != 0)
-					&& (design      != DESIGN_UNDEFINED_KIND     )) );
+					&& (feature     != FEATURE_UNDEFINED_KIND    )) );
 	}
 
 
@@ -553,13 +765,14 @@ public:
 
 	inline bool isUndefined() const
 	{
-		return(    (component   == COMPONENT_UNDEFINED_KIND )
-				&& (computation == MOC_UNDEFINED_KIND       )
-				&& (group       == GROUP_UNDEFINED_KIND     )
-				&& (state       == STATE_UNDEFINED_MOC      )
-				&& (pseudostate == PSEUDOSTATE_UNDEFINED_MOC)
-				&& (feature     == FEATURE_UNDEFINED_KIND   )
-				&& (design      == DESIGN_UNDEFINED_KIND    ) );
+		return(    (component   == COMPONENT_UNDEFINED_KIND  )
+				&& (computation == MOC_UNDEFINED_KIND        )
+				&& (design      == DESIGN_UNDEFINED_KIND     )
+				&& (group       == GROUP_UNDEFINED_KIND      )
+				&& (interaction == INTERACTION_UNDEFINED_MOC )
+				&& (state       == STATE_UNDEFINED_MOC       )
+				&& (pseudostate == PSEUDOSTATE_UNDEFINED_MOC )
+				&& (feature     == FEATURE_UNDEFINED_KIND    ) );
 	}
 
 
@@ -587,11 +800,20 @@ public:
 			computation = other.computation;
 		}
 
+		if( other.design != DESIGN_UNDEFINED_KIND )
+		{
+			design = other.design;
+		}
+
 		if( other.group != GROUP_UNDEFINED_KIND )
 		{
 			group = other.group;
 		}
 
+		if( other.interaction != INTERACTION_UNDEFINED_MOC )
+		{
+			interaction = other.interaction;
+		}
 		if( other.state != STATE_UNDEFINED_MOC )
 		{
 			state = other.state;
@@ -603,12 +825,7 @@ public:
 
 		if( other.feature != FEATURE_UNDEFINED_KIND )
 		{
-			feature = other.feature;
-		}
-
-		if( other.design != DESIGN_UNDEFINED_KIND )
-		{
-			design = other.design;
+			feature |= other.feature;
 		}
 
 		return( *this );
@@ -627,10 +844,20 @@ public:
 			computation = other.computation;
 		}
 
+		if( design == DESIGN_UNDEFINED_KIND )
+		{
+			design = other.design;
+		}
+
 		if( (group <= GROUP_MASK_KIND)
 			&& (other.group != GROUP_UNDEFINED_KIND) )
 		{
 			group = other.group;
+		}
+
+		if( interaction == INTERACTION_UNDEFINED_MOC )
+		{
+			interaction = other.interaction;
 		}
 
 		if( state == STATE_UNDEFINED_MOC )
@@ -644,12 +871,7 @@ public:
 
 		if( feature == FEATURE_UNDEFINED_KIND )
 		{
-			feature = other.feature;
-		}
-
-		if( design == DESIGN_UNDEFINED_KIND )
-		{
-			design = other.design;
+			feature |= other.feature;
 		}
 
 		return( *this );
@@ -664,12 +886,12 @@ public:
 	{
 		component   &= other.component;
 		computation &= other.computation;
+		design      &= other.design;
 		group       &= other.group;
+		interaction &= other.interaction;
 		state       &= other.state;
 		pseudostate &= other.pseudostate;
 		feature     &= other.feature;
-		design      &= other.design;
-
 		return( *this );
 	}
 
@@ -681,11 +903,12 @@ public:
 	{
 		component   |= other.component;
 		computation |= other.computation;
+		design      |= other.design;
 		group       |= other.group;
+		interaction |= other.interaction;
 		state       |= other.state;
 		pseudostate |= other.pseudostate;
 		feature     |= other.feature;
-		design      |= other.design;
 
 		return( *this );
 	}
@@ -697,24 +920,26 @@ public:
 
 	inline bool operator==(const Specifier & other) const
 	{
-		return(    (component   == other.component  )
-				&& (computation == other.computation  )
-				&& (group       == other.group      )
-				&& (state       == other.state      )
-				&& (pseudostate == other.pseudostate)
-				&& (feature     == other.feature    )
-				&& (design      == other.design     ) );
+		return(    (component   == other.component   )
+				&& (computation == other.computation )
+				&& (design      == other.design      )
+				&& (group       == other.group       )
+				&& (interaction == other.interaction )
+				&& (state       == other.state       )
+				&& (pseudostate == other.pseudostate )
+				&& (feature     == other.feature     ) );
 	}
 
 	inline bool operator!=(const Specifier & other) const
 	{
-		return(    (component   != other.component  )
-				|| (computation != other.computation  )
-				|| (group       != other.group      )
-				|| (state       != other.state      )
-				|| (pseudostate != other.pseudostate)
-				|| (feature     != other.feature    )
-				|| (design      != other.design     ) );
+		return(    (component   != other.component   )
+				|| (computation != other.computation )
+				|| (design      != other.design      )
+				|| (group       != other.group       )
+				|| (interaction != other.interaction )
+				|| (state       != other.state       )
+				|| (pseudostate != other.pseudostate )
+				|| (feature     != other.feature     ) );
 	}
 
 	////////////////////////////////////////////////////////////////////////////
@@ -726,11 +951,12 @@ public:
 		return( Specifier(
 				component   | other.component,
 				computation | other.computation,
+				design      | other.design,
 				group       | other.group,
+				interaction | other.interaction,
 				state       | other.state,
 				pseudostate | other.pseudostate,
-				feature     | other.feature,
-				design      | other.design ) );
+				feature     | other.feature ) );
 	}
 
 	////////////////////////////////////////////////////////////////////////////
@@ -742,11 +968,12 @@ public:
 		return( Specifier(
 				component   & other.component,
 				computation & other.computation,
+				design      & other.design,
 				group       & other.group,
+				interaction & other.interaction,
 				state       & other.state,
 				pseudostate & other.pseudostate,
-				feature     & other.feature,
-				design      & other.design ) );
+				feature     & other.feature ) );
 	}
 
 
@@ -759,11 +986,12 @@ public:
 		return( Specifier(
 				(~ component),
 				(~ computation),
+				(~ design),
 				(~ group),
+				(~ interaction),
 				(~ state),
 				(~ pseudostate),
-				(~ feature),
-				(~ design) ) );
+				(~ feature) ) );
 	}
 
 
@@ -833,6 +1061,11 @@ public:
 		return( component == COMPONENT_SYSTEM_KIND );
 	}
 
+	inline bool isnotComponentSystem() const
+	{
+		return( component != COMPONENT_SYSTEM_KIND );
+	}
+
 	inline Specifier & setComponentSystem()
 	{
 		component = COMPONENT_SYSTEM_KIND;
@@ -852,6 +1085,22 @@ public:
 	inline Specifier & setComponentExecutable()
 	{
 		component = COMPONENT_EXECUTABLE_KIND;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "interaction" component
+	 */
+	inline bool isComponentInteraction() const
+	{
+		return( component == COMPONENT_INTERACTION_KIND );
+	}
+
+	inline Specifier & setComponentInteraction()
+	{
+		component = COMPONENT_INTERACTION_KIND;
 
 		return( *this );
 	}
@@ -1016,6 +1265,23 @@ public:
 
 	/**
 	 * GETTER - SETTER
+	 * "AND" as composite structure MOC
+	 */
+	inline bool isMocCompositeInteraction() const
+	{
+		return( computation == MOC_COMPOSITE_INTERACTION__KIND );
+	}
+
+	inline Specifier & setMocCompositeInteraction()
+	{
+		computation = MOC_COMPOSITE_INTERACTION__KIND;
+
+		return( *this );
+	}
+
+
+	/**
+	 * GETTER - SETTER
 	 * "OR" as State Transition MOC
 	 */
 	inline bool isMocStateTransitionStructure() const
@@ -1071,6 +1337,266 @@ public:
 	inline Specifier & setCompositeMocDataFlow()
 	{
 		computation = MOC_DATA_FLOW_KIND;
+
+		return( *this );
+	}
+
+
+	////////////////////////////////////////////////////////////////////////////
+	// DESIGN KIND
+	////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * GETTER - SETTER
+	 * design
+	 */
+	inline DESIGN_KIND getDesignKind() const
+	{
+		return( static_cast< DESIGN_KIND >( design ) );
+	}
+
+	inline bool hasDesignKind() const
+	{
+		return( design != DESIGN_UNDEFINED_KIND );
+	}
+
+	inline bool noneDesignKind() const
+	{
+		return( design == DESIGN_UNDEFINED_KIND );
+	}
+
+	inline bool hasDesignKind(DESIGN_KIND designKind) const
+	{
+		return( (design & designKind) != 0 );
+	}
+
+	inline bool isDesignKind(DESIGN_KIND designKind) const
+	{
+		return( design == designKind );
+	}
+
+	inline Specifier & setDesignKind(DESIGN_KIND designKind)
+	{
+		design = designKind;
+
+		return( *this );
+	}
+
+	inline Specifier & addDesignKind(DESIGN_KIND designKind)
+	{
+		design |= designKind;
+
+		return( *this );
+	}
+
+	inline Specifier & remDesignKind(DESIGN_KIND designKind)
+	{
+		design &= (~ designKind);
+
+		return( *this );
+	}
+
+	inline Specifier & unsetDesignKind()
+	{
+		design = DESIGN_UNDEFINED_KIND;
+
+		return( *this );
+	}
+
+	static DESIGN_KIND toDesignKind(const std::string & strDesign);
+
+
+	/**
+	 * GETTER - SETTER
+	 * "#model" design
+	 */
+	inline bool isDesignModel() const
+	{
+		return(design == DESIGN_MODEL_KIND );
+	}
+
+	inline bool hasDesignModel() const
+	{
+		return( (design & DESIGN_MODEL_KIND) != 0 );
+	}
+
+	inline Specifier & setDesignModel()
+	{
+		design = DESIGN_MODEL_KIND;
+
+		return( *this );
+	}
+
+	inline Specifier & addDesignModel()
+	{
+		design |= DESIGN_MODEL_KIND;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "#instance" design
+	 */
+	inline bool isDesignInstance() const
+	{
+		return(design == DESIGN_INSTANCE_KIND );
+	}
+
+	inline bool hasDesignInstance() const
+	{
+		return( (design & DESIGN_INSTANCE_KIND) != 0 );
+	}
+
+	inline Specifier & setDesignInstance()
+	{
+		design = DESIGN_INSTANCE_KIND;
+
+		return( *this );
+	}
+
+	inline Specifier & addDesignInstance()
+	{
+		design |= DESIGN_INSTANCE_KIND;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "#static" design
+	 */
+	inline bool isDesignStatic() const
+	{
+		return(design == DESIGN_STATIC_KIND );
+	}
+
+	inline bool hasDesignStatic() const
+	{
+		return( (design & DESIGN_STATIC_KIND) != 0 );
+	}
+
+	inline Specifier & setDesignStatic()
+	{
+		design = DESIGN_STATIC_KIND;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "#static instance" design
+	 */
+	inline bool isDesignInstanceStatic() const
+	{
+		return(design == DESIGN_INSTANCE_STATIC_KIND );
+	}
+
+	inline bool hasDesignInstanceStatic() const
+	{
+		return( (design & DESIGN_INSTANCE_STATIC_KIND) ==
+				DESIGN_INSTANCE_STATIC_KIND );
+	}
+
+	inline Specifier & setDesignInstanceStatic()
+	{
+		design = DESIGN_INSTANCE_STATIC_KIND;
+
+		return( *this );
+	}
+
+	inline Specifier & addDesignInstanceStatic()
+	{
+		design |= DESIGN_INSTANCE_STATIC_KIND;
+
+		return( *this );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * "#static prototype" design
+	 */
+	inline bool isDesignPrototypeStatic() const
+	{
+		return(design == DESIGN_PROTOTYPE_STATIC_KIND );
+	}
+
+	inline Specifier & setDesignPrototypeStatic()
+	{
+		design = DESIGN_PROTOTYPE_STATIC_KIND;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "dynamic" design
+	 */
+	inline bool isDesignDynamic() const
+	{
+		return(design == DESIGN_DYNAMIC_KIND );
+	}
+
+	inline bool hasDesignDynamic() const
+	{
+		return( (design & DESIGN_DYNAMIC_KIND) != 0 );
+	}
+
+	inline Specifier & setDesignDynamic()
+	{
+		design = DESIGN_DYNAMIC_KIND;
+
+		return( *this );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * "#dynamic instance" design
+	 */
+	inline bool isDesignInstanceDynamic() const
+	{
+		return(design == DESIGN_INSTANCE_DYNAMIC_KIND );
+	}
+
+	inline bool hasDesignInstanceDynamic() const
+	{
+		return( (design & DESIGN_INSTANCE_DYNAMIC_KIND) ==
+					DESIGN_INSTANCE_DYNAMIC_KIND );
+	}
+
+	inline Specifier & setDesignInstanceDynamic()
+	{
+		design = DESIGN_INSTANCE_DYNAMIC_KIND;
+
+		return( *this );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * "instance [ dynamic ]" design
+	 */
+	inline bool hasDesignInstanceNotModel() const
+	{
+		return( ((design & DESIGN_INSTANCE_KIND) != 0)
+				&& ((design & DESIGN_MODEL_KIND) == 0) );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * "runtime" design
+	 */
+	inline bool isDesignRuntime() const
+	{
+		return(design == DESIGN_RUNTIME_KIND );
+	}
+
+	inline Specifier & setDesignRuntime()
+	{
+		design = DESIGN_RUNTIME_KIND;
 
 		return( *this );
 	}
@@ -1174,6 +1700,237 @@ public:
 	inline Specifier & setGroupEvery()
 	{
 		group = GROUP_EVERY_KIND;
+
+		return( *this );
+	}
+
+
+	////////////////////////////////////////////////////////////////////////////
+	// INTERACTION MOC
+	////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * GETTER - SETTER
+	 * interaction
+	 */
+	inline INTERACTION_MOC getInteractionMoc() const
+	{
+		return( static_cast< INTERACTION_MOC >( interaction ) );
+	}
+
+	inline bool hasInteractionMoc() const
+	{
+		return( interaction != INTERACTION_UNDEFINED_MOC );
+	}
+
+	inline bool isInteractionMoc(INTERACTION_MOC interactionMoc) const
+	{
+		return( interaction == interactionMoc );
+	}
+
+	inline Specifier & setInteractionMoc(INTERACTION_MOC interactionMoc)
+	{
+		interaction = interactionMoc;
+
+		return( *this );
+	}
+
+	inline Specifier & unsetInteractionMoc()
+	{
+		interaction = INTERACTION_UNDEFINED_MOC;
+
+		return( *this );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * "alternative" interaction
+	 */
+	inline bool isInteractionAlternative() const
+	{
+		return( interaction == INTERACTION_ALTERNATIVE_MOC );
+	}
+
+	inline Specifier & setInteractionAlternative()
+	{
+		interaction = INTERACTION_ALTERNATIVE_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "option" interaction
+	 */
+	inline bool isInteractionOption() const
+	{
+		return( interaction == INTERACTION_OPTION_MOC );
+	}
+
+	inline Specifier & setInteractionOption()
+	{
+		interaction = INTERACTION_OPTION_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "loop" interaction
+	 */
+	inline bool isInteractionLoop() const
+	{
+		return( interaction == INTERACTION_LOOP_MOC );
+	}
+
+	inline Specifier & setInteractionLoop()
+	{
+		interaction = INTERACTION_LOOP_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "break" interaction
+	 */
+	inline bool isInteractionBreak() const
+	{
+		return( interaction == INTERACTION_BREAK_MOC );
+	}
+
+	inline Specifier & setInteractionBreak()
+	{
+		interaction = INTERACTION_BREAK_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "parallel" interaction
+	 */
+	inline bool isInteractionParallel() const
+	{
+		return( interaction == INTERACTION_PARALLEL_MOC );
+	}
+
+	inline Specifier & setInteractionParallel()
+	{
+		interaction = INTERACTION_PARALLEL_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "strict sequence" interaction
+	 */
+	inline bool isInteractionStrictSequence() const
+	{
+		return( interaction == INTERACTION_STRICT_SEQUENCE_MOC );
+	}
+
+	inline Specifier & setInteractionStrictSequence()
+	{
+		interaction = INTERACTION_STRICT_SEQUENCE_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "weak sequence" interaction
+	 */
+	inline bool isInteractionWeakSequence() const
+	{
+		return( interaction == INTERACTION_WEAK_SEQUENCE_MOC );
+	}
+
+	inline Specifier & setInteractionWeakSequence()
+	{
+		interaction = INTERACTION_WEAK_SEQUENCE_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "critical" interaction
+	 */
+	inline bool isInteractionCritical() const
+	{
+		return( interaction == INTERACTION_CRITICAL_MOC );
+	}
+
+	inline Specifier & setInteractionCritical()
+	{
+		interaction = INTERACTION_CRITICAL_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "ignore" interaction
+	 */
+	inline bool isInteractionIgnore() const
+	{
+		return( interaction == INTERACTION_IGNORE_MOC );
+	}
+
+	inline Specifier & setInteractionIgnore()
+	{
+		interaction = INTERACTION_IGNORE_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "consider" interaction
+	 */
+	inline bool isInteractionConsider() const
+	{
+		return( interaction == INTERACTION_CONSIDER_MOC );
+	}
+
+	inline Specifier & setInteractionConsider()
+	{
+		interaction = INTERACTION_CONSIDER_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "assert" interaction
+	 */
+	inline bool isInteractionAssert() const
+	{
+		return( interaction == INTERACTION_ASSERT_MOC );
+	}
+
+	inline Specifier & setInteractionAssert()
+	{
+		interaction = INTERACTION_ASSERT_MOC;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "negative" interaction
+	 */
+	inline bool isInteractionNegative() const
+	{
+		return( interaction == INTERACTION_NEGATIVE_MOC );
+	}
+
+	inline Specifier & setInteractionNegative()
+	{
+		interaction = INTERACTION_NEGATIVE_MOC;
 
 		return( *this );
 	}
@@ -1742,9 +2499,9 @@ public:
 	 * GETTER - SETTER
 	 * "CONECTION POINT" pseudostate
 	 */
-	inline bool hasPseudostateMocConnectionPoint() const
+	inline bool hasPseudostateMocConnectorPoint() const
 	{
-		return( (pseudostate & FAMILY_PSEUDO_CONNECTION_POINT_MOC) != 0 );
+		return( (pseudostate & FAMILY_PSEUDO_CONNECTOR_POINT_MOC) != 0 );
 	}
 
 	/**
@@ -1976,11 +2733,115 @@ public:
 
 	/**
 	 * GETTER - SETTER
+	 * "timed#continuous" feature
+	 */
+	inline bool hasFeatureContinuousTimed() const
+	{
+		return( (feature & FEATURE_CONTINUOUS_TIMED_KIND) != 0 );
+	}
+
+	inline bool isFeatureContinuousTimed() const
+	{
+		return( (feature & FEATURE_TIMED_KIND) == FEATURE_CONTINUOUS_TIMED_KIND );
+	}
+
+	inline bool noFeatureContinuousTimed() const
+	{
+		return( (feature & FEATURE_CONTINUOUS_TIMED_KIND) == 0 );
+	}
+
+	inline Specifier & remFeatureContinuousTimed()
+	{
+		feature &= (~ FEATURE_CONTINUOUS_TIMED_KIND);
+
+		return( *this );
+	}
+
+	inline Specifier & setFeatureContinuousTimed()
+	{
+		feature |= FEATURE_CONTINUOUS_TIMED_KIND;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "timed#dense" feature
+	 */
+	inline bool hasFeatureDenseTimed() const
+	{
+		return( (feature & FEATURE_DENSE_TIMED_KIND) != 0 );
+	}
+
+	inline bool isFeatureDenseTimed() const
+	{
+		return( (feature & FEATURE_TIMED_KIND) == FEATURE_DENSE_TIMED_KIND );
+	}
+
+	inline bool noFeatureDenseTimed() const
+	{
+		return( (feature & FEATURE_DENSE_TIMED_KIND) == 0 );
+	}
+
+	inline Specifier & remFeatureDenseTimed()
+	{
+		feature &= (~ FEATURE_DENSE_TIMED_KIND);
+
+		return( *this );
+	}
+
+	inline Specifier & setFeatureDenseTimed()
+	{
+		feature |= FEATURE_DENSE_TIMED_KIND;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * "timed#discrete" feature
+	 */
+	inline bool hasFeatureDiscreteTimed() const
+	{
+		return( (feature & FEATURE_DISCRETE_TIMED_KIND) != 0 );
+	}
+
+	inline bool isFeatureDiscreteTimed() const
+	{
+		return( (feature & FEATURE_TIMED_KIND) == FEATURE_DISCRETE_TIMED_KIND );
+	}
+
+	inline bool noFeatureDiscreteTimed() const
+	{
+		return( (feature & FEATURE_DISCRETE_TIMED_KIND) == 0 );
+	}
+
+	inline Specifier & remFeatureDiscreteTimed()
+	{
+		feature &= (~ FEATURE_DISCRETE_TIMED_KIND);
+
+		return( *this );
+	}
+
+	inline Specifier & setFeatureDiscreteTimed()
+	{
+		feature |= FEATURE_DISCRETE_TIMED_KIND;
+
+		return( *this );
+	}
+
+	/**
+	 * GETTER - SETTER
 	 * "timed" feature
 	 */
 	inline bool hasFeatureTimed() const
 	{
 		return( (feature & FEATURE_TIMED_KIND) != 0 );
+	}
+
+	inline bool isFeatureTimed() const
+	{
+		return( (feature & FEATURE_TIMED_KIND) == FEATURE_TIMED_KIND );
 	}
 
 	inline bool noFeatureTimed() const
@@ -2034,7 +2895,7 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * "input_enabled" feature
+	 * "lifeline" feature
 	 */
 	inline bool hasFeatureLifeline() const
 	{
@@ -2061,261 +2922,30 @@ public:
 	}
 
 
-	////////////////////////////////////////////////////////////////////////////
-	// DESIGN KIND
-	////////////////////////////////////////////////////////////////////////////
-
 	/**
 	 * GETTER - SETTER
-	 * design
+	 * "user defined schedule" feature
 	 */
-	inline DESIGN_KIND getDesignKind() const
+	inline bool hasFeatureUserDefinedSchedule() const
 	{
-		return( static_cast< DESIGN_KIND >( design ) );
+		return( (feature & FEATURE_USER_DEFINED_SCHEDULE_KIND) != 0 );
 	}
 
-	inline bool hasDesignKind() const
+	inline bool noFeatureUserDefinedSchedule() const
 	{
-		return( design != DESIGN_UNDEFINED_KIND );
+		return( (feature & FEATURE_USER_DEFINED_SCHEDULE_KIND) == 0 );
 	}
 
-	inline bool noneDesignKind() const
+	inline Specifier & remFeatureUserDefinedSchedule()
 	{
-		return( design == DESIGN_UNDEFINED_KIND );
-	}
-
-	inline bool hasDesignKind(DESIGN_KIND designKind) const
-	{
-		return( (design & designKind) != 0 );
-	}
-
-	inline bool isDesignKind(DESIGN_KIND designKind) const
-	{
-		return( design == designKind );
-	}
-
-	inline Specifier & setDesignKind(DESIGN_KIND designKind)
-	{
-		design = designKind;
+		feature &= (~ FEATURE_USER_DEFINED_SCHEDULE_KIND);
 
 		return( *this );
 	}
 
-	inline Specifier & addDesignKind(DESIGN_KIND designKind)
+	inline Specifier & setFeatureUserDefinedSchedule()
 	{
-		design |= designKind;
-
-		return( *this );
-	}
-
-	inline Specifier & remDesignKind(DESIGN_KIND designKind)
-	{
-		design &= (~ designKind);
-
-		return( *this );
-	}
-
-	inline Specifier & unsetDesignKind()
-	{
-		design = DESIGN_UNDEFINED_KIND;
-
-		return( *this );
-	}
-
-	static DESIGN_KIND toDesignKind(const std::string & strDesign);
-
-
-	/**
-	 * GETTER - SETTER
-	 * "#model" design
-	 */
-	inline bool isDesignModel() const
-	{
-		return(design == DESIGN_MODEL_KIND );
-	}
-
-	inline bool hasDesignModel() const
-	{
-		return( (design & DESIGN_MODEL_KIND) != 0 );
-	}
-
-	inline Specifier & setDesignModel()
-	{
-		design = DESIGN_MODEL_KIND;
-
-		return( *this );
-	}
-
-	inline Specifier & addDesignModel()
-	{
-		design |= DESIGN_MODEL_KIND;
-
-		return( *this );
-	}
-
-	/**
-	 * GETTER - SETTER
-	 * "#instance" design
-	 */
-	inline bool isDesignInstance() const
-	{
-		return(design == DESIGN_INSTANCE_KIND );
-	}
-
-	inline bool hasDesignInstance() const
-	{
-		return( (design & DESIGN_INSTANCE_KIND) != 0 );
-	}
-
-	inline Specifier & setDesignInstance()
-	{
-		design = DESIGN_INSTANCE_KIND;
-
-		return( *this );
-	}
-
-	inline Specifier & addDesignInstance()
-	{
-		design |= DESIGN_INSTANCE_KIND;
-
-		return( *this );
-	}
-
-	/**
-	 * GETTER - SETTER
-	 * "#static" design
-	 */
-	inline bool isDesignStatic() const
-	{
-		return(design == DESIGN_STATIC_KIND );
-	}
-
-	inline bool hasDesignStatic() const
-	{
-		return( (design & DESIGN_STATIC_KIND) != 0 );
-	}
-
-	inline Specifier & setDesignStatic()
-	{
-		design = DESIGN_STATIC_KIND;
-
-		return( *this );
-	}
-
-	/**
-	 * GETTER - SETTER
-	 * "#static instance" design
-	 */
-	inline bool isDesignInstanceStatic() const
-	{
-		return(design == DESIGN_INSTANCE_STATIC_KIND );
-	}
-
-	inline bool hasDesignInstanceStatic() const
-	{
-		return( (design & DESIGN_INSTANCE_STATIC_KIND) ==
-				DESIGN_INSTANCE_STATIC_KIND );
-	}
-
-	inline Specifier & setDesignInstanceStatic()
-	{
-		design = DESIGN_INSTANCE_STATIC_KIND;
-
-		return( *this );
-	}
-
-	inline Specifier & addDesignInstanceStatic()
-	{
-		design |= DESIGN_INSTANCE_STATIC_KIND;
-
-		return( *this );
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * "#static prototype" design
-	 */
-	inline bool isDesignPrototypeStatic() const
-	{
-		return(design == DESIGN_PROTOTYPE_STATIC_KIND );
-	}
-
-	inline Specifier & setDesignPrototypeStatic()
-	{
-		design = DESIGN_PROTOTYPE_STATIC_KIND;
-
-		return( *this );
-	}
-
-	/**
-	 * GETTER - SETTER
-	 * "dynamic" design
-	 */
-	inline bool isDesignDynamic() const
-	{
-		return(design == DESIGN_DYNAMIC_KIND );
-	}
-
-	inline bool hasDesignDynamic() const
-	{
-		return( (design & DESIGN_DYNAMIC_KIND) != 0 );
-	}
-
-	inline Specifier & setDesignDynamic()
-	{
-		design = DESIGN_DYNAMIC_KIND;
-
-		return( *this );
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * "#dynamic instance" design
-	 */
-	inline bool isDesignInstanceDynamic() const
-	{
-		return(design == DESIGN_INSTANCE_DYNAMIC_KIND );
-	}
-
-	inline bool hasDesignInstanceDynamic() const
-	{
-		return( (design & DESIGN_INSTANCE_DYNAMIC_KIND) ==
-					DESIGN_INSTANCE_DYNAMIC_KIND );
-	}
-
-	inline Specifier & setDesignInstanceDynamic()
-	{
-		design = DESIGN_INSTANCE_DYNAMIC_KIND;
-
-		return( *this );
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * "instance [ dynamic ]" design
-	 */
-	inline bool hasDesignInstanceNotModel() const
-	{
-		return( ((design & DESIGN_INSTANCE_KIND) != 0)
-				&& ((design & DESIGN_MODEL_KIND) == 0) );
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * "runtime" design
-	 */
-	inline bool isDesignRuntime() const
-	{
-		return(design == DESIGN_RUNTIME_KIND );
-	}
-
-	inline Specifier & setDesignRuntime()
-	{
-		design = DESIGN_RUNTIME_KIND;
+		feature |= FEATURE_USER_DEFINED_SCHEDULE_KIND;
 
 		return( *this );
 	}
@@ -2325,10 +2955,20 @@ public:
 	// MIX-IN MODIFIER
 	////////////////////////////////////////////////////////////////////////////
 
+	// Composite strict by definition:
+	// Exclude COMPONENT_STATE_KIND like state< and > &  state< or >
+	inline bool isFamilyCompositeComponent() const
+	{
+		return( hasMocComposite()
+				&& ((component & FAMILY_COMPONENT_COMPOSITE_KIND) != 0) );
+	}
+
+	// Composite by constitution (or definition):
+	// Include COMPONENT_STATE_KIND like state< and > &  state< or >
 	inline bool isFamilyComponentComposite() const
 	{
 		return( hasMocComposite()
-				|| ( (component & FAMILY_COMPONENT_COMPOSITE_KIND) != 0) );
+				|| ((component & FAMILY_COMPONENT_COMPOSITE_KIND) != 0) );
 	}
 
 	inline bool isFamilyComponentState() const
@@ -2338,8 +2978,8 @@ public:
 
 	inline bool isFamilyComponentStatemachine() const
 	{
-		return( ( (component & FAMILY_COMPONENT_STATEMACHINE_KIND) != 0)
-				|| isMocStateTransitionStructure() );
+		return( ( (component & FAMILY_COMPONENT_STATEMACHINE_KIND) != 0) );
+//				|| isMocStateTransitionStructure() );
 	}
 
 
@@ -2414,6 +3054,20 @@ public:
 	}
 
 	static std::string strGroup(bit_field_t groupKind,
+			const std::string & separator = " ");
+
+	/**
+	 * INTERACTION MOC to STRING
+	 */
+	inline std::string strInteractionMoc(const std::string & separator = " ") const
+	{
+		return( Specifier::strInteractionMoc( interaction , separator ) );
+	}
+
+	static std::string strInteractionMoc(bit_field_t interactionMoc,
+			const std::string & separator = " ");
+
+	static std::string xstrInteractionMoc(bit_field_t interactionMoc,
 			const std::string & separator = " ");
 
 	/**
@@ -2605,7 +3259,7 @@ public:
 	}
 
 	SpecifierImpl(const SpecifierImpl * aCopy)
-	: mSpecifier( (aCopy != NULL) ?
+	: mSpecifier( (aCopy != nullptr) ?
 			aCopy->getSpecifier() : Specifier::EXECUTABLE_UNDEFINED_SPECIFIER )
 	{
 		//!! NOTHING

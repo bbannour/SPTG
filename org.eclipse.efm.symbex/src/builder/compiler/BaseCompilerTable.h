@@ -16,7 +16,6 @@
 #ifndef BUILDER_COMPILER_BASECOMPILERTABLE_H_
 #define BUILDER_COMPILER_BASECOMPILERTABLE_H_
 
-#include <common/AvmPointer.h>
 #include <common/AvmObject.h>
 
 #include <builder/compiler/SymbolTable.h>
@@ -29,17 +28,15 @@ namespace sep
 class BaseCompilerTable : public AvmObject
 {
 
-	AVM_DECLARE_CLONABLE_CLASS( BaseCompilerTable )
-
 protected:
 	/**
 	 * ATTRIBUTE
 	 */
 	SymbolTable mSymbolTable;
 
-	avm_size_t mErrorCount;
+	std::size_t mErrorCount;
 
-	avm_size_t mWarningCount;
+	std::size_t mWarningCount;
 
 	StringOutStream ERROR_OS;
 
@@ -102,7 +99,7 @@ public:
 	 * GETTER
 	 * mErrorCount
 	 */
-	inline avm_size_t getErrorCount()
+	inline std::size_t getErrorCount() const
 	{
 		return( mErrorCount );
 	}
@@ -117,7 +114,7 @@ public:
 		return( mErrorCount == 0 );
 	}
 
-	inline avm_size_t incrErrorCount()
+	inline std::size_t incrErrorCount()
 	{
 		return( ++mErrorCount );
 	}
@@ -132,7 +129,7 @@ public:
 	 * GETTER
 	 * mWarningCount
 	 */
-	inline avm_size_t getWarningCount()
+	inline std::size_t getWarningCount() const
 	{
 		return( mWarningCount );
 	}
@@ -147,7 +144,7 @@ public:
 		return( mWarningCount == 0 );
 	}
 
-	inline avm_size_t incrWarningCount()
+	inline std::size_t incrWarningCount()
 	{
 		return( ++mWarningCount );
 	}
@@ -162,7 +159,7 @@ public:
 	 * GETTER - SETTER
 	 * ERROR_OS
 	 */
-	inline std::string getErrorMessage()
+	inline std::string getErrorMessage() const
 	{
 		return( ERROR_OS.str() );
 	}
@@ -200,7 +197,7 @@ public:
 	 * GETTER - SETTER
 	 * WARNING_OS
 	 */
-	inline std::string getWarningMessage()
+	inline std::string getWarningMessage() const
 	{
 		return( WARNING_OS.str() );
 	}

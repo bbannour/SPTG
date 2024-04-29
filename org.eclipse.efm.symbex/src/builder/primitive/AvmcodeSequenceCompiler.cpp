@@ -42,15 +42,13 @@ BF AvmcodeAtomicSequenceCompiler::optimizeExpression(
 {
 	BFCode optCode( aCode->getOperator() );
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
 		optCode->append(
-				AVMCODE_COMPILER.decode_optimizeExpression(aCTX, *it) );
+				AVMCODE_COMPILER.decode_optimizeExpression(aCTX, itOperand) );
 	}
 
-	return( optCode->singleton() ? optCode->first().bfCode() : optCode );
+	return( optCode->hasOneOperand() ? optCode->first().bfCode() : optCode );
 }
 
 
@@ -60,7 +58,7 @@ BFCode AvmcodeAtomicSequenceCompiler::compileStatement(
 {
 	BFCode newCode = AbstractAvmcodeCompiler::compileStatement(aCTX, aCode);
 
-	if( newCode->singleton() && newCode->first().is< AvmCode >() )
+	if( newCode->hasOneOperand() && newCode->first().is< AvmCode >() )
 	{
 		return( newCode->first().bfCode() );
 	}
@@ -75,11 +73,10 @@ BFCode AvmcodeAtomicSequenceCompiler::optimizeStatement(
 
 	BF optimizedArg;
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		optimizedArg = AVMCODE_COMPILER.decode_optimizeStatement(aCTX, *it);
+		optimizedArg = AVMCODE_COMPILER.
+				decode_optimizeStatement(aCTX, itOperand);
 
 		if( StatementTypeChecker::isComment(optimizedArg) )
 		{
@@ -94,13 +91,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		}
 	}
 
-	if( optCode->empty() )
+	if( optCode->noOperand() )
 	{
 		return( StatementConstructor::nopCode() );
 	}
 	else
 	{
-		return( optCode->singleton() ? optCode->first().bfCode() : optCode );
+		return( optCode->hasOneOperand() ? optCode->first().bfCode() : optCode );
 	}
 }
 
@@ -129,7 +126,7 @@ BFCode AvmcodeStrongSequenceCompiler::compileStatement(
 {
 	BFCode newCode = AbstractAvmcodeCompiler::compileStatement(aCTX, aCode);
 
-	if( newCode->singleton() && newCode->first().is< AvmCode >() )
+	if( newCode->hasOneOperand() && newCode->first().is< AvmCode >() )
 	{
 		return( newCode->first().bfCode() );
 	}
@@ -146,11 +143,12 @@ BFCode AvmcodeStrongSequenceCompiler::optimizeStatement(
 
 	BF optimizedArg;
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
-	for( ; it != endIt ; ++it )
+	AvmCode::const_iterator itOperand = aCode->begin();
+	AvmCode::const_iterator endOperand = aCode->end();
+	for( ; itOperand != endOperand ; ++itOperand )
 	{
-		optimizedArg = AVMCODE_COMPILER.decode_optimizeStatement(aCTX, *it);
+		optimizedArg = AVMCODE_COMPILER.
+				decode_optimizeStatement(aCTX, *itOperand);
 
 		if( StatementTypeChecker::isComment(optimizedArg) )
 		{
@@ -166,22 +164,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		}
 		else if( StatementTypeChecker::isStrongAtomicSequence(optimizedArg) )
 		{
-			atomicCode->append( optimizedArg.to_ptr< AvmCode >()->getArgs() );
+			atomicCode->append( optimizedArg.to< AvmCode >().getOperands() );
 		}
-		else if( atomicCode->empty() )
+		else if( atomicCode->noOperand() )
 		{
 			optCode->appendFlat( optimizedArg );
 		}
 		else if( StatementTypeChecker::isAtomicSequence(optimizedArg) )
 		{
-			atomicCode->append( optimizedArg.to_ptr< AvmCode >()->getArgs() );
+			atomicCode->append( optimizedArg.to< AvmCode >().getOperands() );
 
 			optCode->append( atomicCode );
 
 			atomicCode = StatementConstructor::newCode(
 					OperatorManager::OPERATOR_ATOMIC_SEQUENCE );
 		}
-		else if( ((it + 1) != endIt ) )
+		else if( ((itOperand + 1) != endOperand ) )
 		{
 			atomicCode->append( optimizedArg );
 
@@ -192,11 +190,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		}
 		else // ==> end for(...)
 		{
-			if( atomicCode->singleton() )
+			if( atomicCode->hasOneOperand() )
 			{
-				optCode->appendFlat( atomicCode->pop_last() );
+				optCode->appendFlat( atomicCode->getOperands().pop_last() );
 			}
-			else if( atomicCode->populated() )
+			else if( atomicCode->hasManyOperands() )
 			{
 				optCode->append( atomicCode );
 			}
@@ -206,22 +204,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		}
 	}
 
-	if( optCode->nonempty() )
+	if( optCode->hasOperand() )
 	{
 		if( atomicCode.invalid() )
 		{
 			//!! NOTHING
 		}
-		else if( atomicCode->singleton() )
+		else if( atomicCode->hasOneOperand() )
 		{
-			optCode->appendFlat( atomicCode->pop_last() );
+			optCode->appendFlat( atomicCode->getOperands().pop_last() );
 		}
-		else if( atomicCode->populated() )
+		else if( atomicCode->hasManyOperands() )
 		{
 			optCode->append( atomicCode );
 		}
 
-		else if( optCode->singleton() )
+		else if( optCode->hasOneOperand() )
 		{
 			return( optCode->first().bfCode() );
 		}
@@ -229,13 +227,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		return( optCode );
 	}
 
-	else if( atomicCode->empty() )
+	else if( atomicCode->noOperand() )
 	{
 		return( StatementConstructor::nopCode() );
 	}
 	else
 	{
-		return( atomicCode->singleton() ?
+		return( atomicCode->hasOneOperand() ?
 				atomicCode->first().bfCode() : atomicCode );
 	}
 }
@@ -250,11 +248,11 @@ BFCode AvmcodeStrongSequenceCompiler::atomizeSequence(const BFCode & aCode)
 
 	BF optimizedArg;
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
-	for( ; it != endIt ; ++it )
+	AvmCode::const_iterator itOperand = aCode->begin();
+	AvmCode::const_iterator endOperand = aCode->end();
+	for( ; itOperand != endOperand ; ++itOperand )
 	{
-		optimizedArg = (*it);
+		optimizedArg = (*itOperand);
 
 		if( StatementTypeChecker::isComment(optimizedArg) )
 		{
@@ -270,22 +268,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		}
 		else if( StatementTypeChecker::isStrongAtomicSequence(optimizedArg) )
 		{
-			atomicCode->append( optimizedArg.to_ptr< AvmCode >()->getArgs() );
+			atomicCode->append( optimizedArg.to< AvmCode >().getOperands() );
 		}
-		else if( atomicCode->empty() )
+		else if( atomicCode->noOperand() )
 		{
 			optCode->appendFlat( optimizedArg );
 		}
 		else if( StatementTypeChecker::isAtomicSequence(optimizedArg) )
 		{
-			atomicCode->append( optimizedArg.to_ptr< AvmCode >()->getArgs() );
+			atomicCode->append( optimizedArg.to< AvmCode >().getOperands() );
 
 			optCode->append( atomicCode );
 
 			atomicCode = StatementConstructor::newCode(
 					OperatorManager::OPERATOR_ATOMIC_SEQUENCE );
 		}
-		else if( ((it + 1) != endIt ) )
+		else if( ((itOperand + 1) != endOperand ) )
 		{
 			atomicCode->append( optimizedArg );
 
@@ -297,11 +295,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		// ==> end for(...)
 		else
 		{
-			if( atomicCode->singleton() )
+			if( atomicCode->hasOneOperand() )
 			{
-				optCode->appendFlat( atomicCode->pop_last() );
+				optCode->appendFlat( atomicCode->getOperands().pop_last() );
 			}
-			else if( atomicCode->populated() )
+			else if( atomicCode->hasManyOperands() )
 			{
 				optCode->append( atomicCode );
 			}
@@ -312,29 +310,29 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	}
 
 
-	if( optCode->nonempty() )
+	if( optCode->hasOperand() )
 	{
 		if( atomicCode.invalid() )
 		{
 			//!! NOTHING
 		}
-		else if( atomicCode->singleton() )
+		else if( atomicCode->hasOneOperand() )
 		{
-			optCode->appendFlat( atomicCode->pop_last() );
+			optCode->appendFlat( atomicCode->getOperands().pop_last() );
 		}
-		else if( atomicCode->populated() )
+		else if( atomicCode->hasManyOperands() )
 		{
 			optCode->append( atomicCode );
 		}
 
-		else if( optCode->singleton() )
+		else if( optCode->hasOneOperand() )
 		{
 			return( optCode->first().bfCode() );
 		}
 
 		return( optCode );
 	}
-	else if( atomicCode->singleton() )
+	else if( atomicCode->hasOneOperand() )
 	{
 		return( atomicCode->first().bfCode() );
 	}
@@ -361,15 +359,13 @@ BF AvmcodeSequenceCompiler::optimizeExpression(
 {
 	BFCode optCode( aCode->getOperator() );
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
 		optCode->append(
-				AVMCODE_COMPILER.decode_optimizeExpression(aCTX, *it) );
+				AVMCODE_COMPILER.decode_optimizeExpression(aCTX, itOperand) );
 	}
 
-	return( optCode->singleton() ? optCode->first().bfCode() : optCode );
+	return( optCode->hasOneOperand() ? optCode->first().bfCode() : optCode );
 }
 
 
@@ -378,14 +374,14 @@ BFCode AvmcodeSequenceCompiler::compileStatement(
 {
 	BFCode newCode = AbstractAvmcodeCompiler::compileStatement(aCTX, aCode);
 
-	if( newCode->singleton() )
+	if( newCode->hasOneOperand() )
 	{
 		if( newCode->first().is< AvmCode >() )
 		{
 			return( newCode->first().bfCode() );
 		}
 	}
-	else if( newCode->empty() )
+	else if( newCode->noOperand() )
 	{
 		return( StatementConstructor::nopCode() );
 	}
@@ -401,11 +397,10 @@ BFCode AvmcodeSequenceCompiler::optimizeStatement(
 
 	BF optimizedArg;
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		optimizedArg = AVMCODE_COMPILER.decode_optimizeStatement(aCTX, *it);
+		optimizedArg = AVMCODE_COMPILER.
+				decode_optimizeStatement(aCTX, itOperand);
 
 		if( StatementTypeChecker::isComment(optimizedArg) )
 		{
@@ -420,13 +415,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		}
 	}
 
-	if( optCode->empty() )
+	if( optCode->noOperand() )
 	{
 		return( StatementConstructor::nopCode() );
 	}
 	else
 	{
-		return( optCode->singleton() ? optCode->first().bfCode() : optCode );
+		return( optCode->hasOneOperand() ? optCode->first().bfCode() : optCode );
 	}
 }
 

@@ -17,7 +17,8 @@
 #define OPERATORLIB_H_
 
 #include <util/avm_numeric.h>
-#include <util/avm_string.h>
+
+#include <string>
 
 
 namespace sep
@@ -111,10 +112,21 @@ enum AVM_OPCODE
 
 	/*
 	 ***************************************************************************
+	 * AVM MACHINE SELF
+	 ***************************************************************************
+	 */
+	AVM_OPCODE_SELF,
+	AVM_OPCODE_SUPER,
+
+	/*
+	 ***************************************************************************
 	 * AVM MACHINE MANAGING
 	 ***************************************************************************
 	 */
 	AVM_OPCODE_CONTEXT_SWITCHER,
+
+	AVM_OPCODE_PROCESS_STATE_GET,
+	AVM_OPCODE_PROCESS_STATE_SET,
 
 	AVM_OPCODE_INIT,
 	AVM_OPCODE_FINAL,
@@ -215,7 +227,7 @@ enum AVM_OPCODE
 	AVM_OPCODE_WEAK_SYNCHRONOUS,
 
 	AVM_OPCODE_INTERLEAVING,
-	AVM_OPCODE_PARTIAL_ORDER_REDUCTION,
+	AVM_OPCODE_PARTIAL_ORDER,
 
 
 	AVM_OPCODE_PARALLEL,
@@ -226,7 +238,7 @@ enum AVM_OPCODE
 	AVM_OPCODE_RDV_WEAK_SYNCHRONOUS,
 
 	AVM_OPCODE_RDV_INTERLEAVING,
-	AVM_OPCODE_RDV_PARTIAL_ORDER_REDUCTION,
+	AVM_OPCODE_RDV_PARTIAL_ORDER,
 
 	AVM_OPCODE_RDV_PARALLEL,
 
@@ -372,7 +384,7 @@ enum AVM_OPCODE
 	 * AVM QUANTIFIER EXPRESSION
 	 ***************************************************************************
 	 */
-	AVM_OPCODE_EXIST,
+	AVM_OPCODE_EXISTS,
 	AVM_OPCODE_FORALL,
 
 
@@ -397,6 +409,8 @@ enum AVM_OPCODE
 
 	AVM_OPCODE_XOR,
 	AVM_OPCODE_XNOR,
+
+	AVM_OPCODE_IMPLIES,
 
 
 	/*
@@ -625,7 +639,7 @@ class IStatementFamily
 
 public:
 
-	typedef avm_uint32_t        avm_opcode_family;
+	typedef std::uint32_t        avm_opcode_family;
 
 	enum
 	{
@@ -732,20 +746,25 @@ public:
 		return( theStatementFamily != AVM_STATEMENT_UNDEFINED_FAMILY );
 	}
 
+	inline void addStatementFamily(avm_opcode_family aCodeFamily)
+	{
+		theStatementFamily |= aCodeFamily;
+	}
+
 	inline void setStatementFamily(avm_opcode_family aCodeFamily)
 	{
 		theStatementFamily = aCodeFamily;
 	}
 
 
-	inline void updateStatementFamily(AvmCode * aCode)
+	inline void updateStatementFamily(const AvmCode & aCode)
 	{
 		theStatementFamily = computeStatementFamily( aCode );
 	}
 
 	static avm_opcode_family computeStatementFamily(AVM_OPCODE opcode);
 
-	static avm_opcode_family computeStatementFamily(AvmCode * aCode);
+	static avm_opcode_family computeStatementFamily(const AvmCode & aCode);
 
 	/**
 	 * TEST

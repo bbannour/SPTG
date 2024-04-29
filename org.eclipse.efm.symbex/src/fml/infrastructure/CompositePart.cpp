@@ -24,40 +24,39 @@ namespace sep
 
 
 /**
- * COPY TO
+ * GETTER
+ * EXECUTABLE MACHINE COUNT
  */
-void CompositePart::copyMachineTo(
-		Collection< Machine * > & rawContainer) const
+std::size_t CompositePart::getExecutableMachineCount() const
 {
-	const_machine_iterator it = machine_begin();
-	const_machine_iterator endIt = machine_end();
-	for( ; it != endIt ; ++it )
+	std::size_t theExecutableCount = 0;
+
+	const_machine_iterator itMachine = machine_begin();
+	const_machine_iterator endMachine = machine_end();
+	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		rawContainer.append( it );
-	}
-}
-
-
-/**
- * GETTER for PARSER / COMPILER
- * Machine
- */
-Machine * CompositePart::rawExecutableMachineByQualifiedNameID(
-		const std::string & aQualifiedNameID) const
-{
-	return( mMachines.rawByNameID(aQualifiedNameID) );
-
-	const_machine_iterator it = machine_begin();
-	const_machine_iterator endIt = machine_end();
-	for( ; it != endIt ; ++it )
-	{
-		if( (it)->getSpecifier().hasDesignModel()
-			&& (it)->fqnEndsWith(aQualifiedNameID) )
+		if( itMachine->getSpecifier().hasDesignModel() )
 		{
-			return( it );
+			theExecutableCount += itMachine->getExecutableMachineCount();
 		}
 	}
-	return( NULL );
+
+//	const_state_iterator itState = state_begin();
+//	const_state_iterator endState = state_end();
+//	for( ; itState != endState ; ++itState )
+//	{
+//		theExecutableCount += itState->getExecutableMachineCount();
+//	}
+
+	const_procedure_iterator itProcedure = procedure_begin();
+	const_procedure_iterator endProcedure = procedure_end();
+	for( ; itProcedure != endProcedure ; ++itProcedure )
+	{
+		theExecutableCount += itProcedure->getExecutableMachineCount();
+	}
+
+
+	return( theExecutableCount );
 }
 
 
@@ -65,37 +64,47 @@ Machine * CompositePart::rawExecutableMachineByQualifiedNameID(
  * DISPATCH
  * mOwnedElements
  */
-void CompositePart::dispatchOwnedElement(const BF & anElement)
+void CompositePart::dispatchOwnedElement(BF & anElement)
 {
 	AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( anElement )
 			<< "Executable Machine owned element !!!"
 			<< SEND_EXIT;
 
-	Machine * aMachine = anElement.to_ptr< Machine >();
+	Machine & aMachine = anElement.to< Machine >();
 
-	if( aMachine->getSpecifier().isDesignInstanceStatic() )
+	if( aMachine.getSpecifier().isDesignInstanceStatic() )
 	{
-		appendMachine( anElement );
+		mMachines.append( anElement );
 
-		appendInstanceStatic( anElement );
-	}
-	else if( aMachine->getSpecifier().isDesignInstanceDynamic() )
-	{
-		appendInstanceDynamic( anElement );
-	}
-	else if( aMachine->getSpecifier().isFamilyComponentState() )
-	{
-		appendMachine( anElement );
+		aMachine.setRuntimeOffset( mInstanceStatics.size() );
 
-		appendState( anElement );
+		mInstanceStatics.append( anElement );
 	}
-	else if( aMachine->getSpecifier().isComponentProcedure() )
+	else if( aMachine.getSpecifier().isDesignInstanceDynamic() )
 	{
-		appendProcedure( anElement );
+		aMachine.setRuntimeOffset( mInstanceStatics.size() );
+
+		mInstanceDynamics.append( anElement );
+	}
+	else if( aMachine.getSpecifier().isFamilyComponentState() )
+	{
+		mMachines.append( anElement );
+
+		aMachine.setRuntimeOffset( mStates.size() );
+
+		mStates.append( anElement );
+	}
+	else if( aMachine.getSpecifier().isComponentProcedure() )
+	{
+		aMachine.setRuntimeOffset( mProcedures.size() );
+
+		mProcedures.append( anElement );
 	}
 	else
 	{
-		appendMachine( anElement );
+		aMachine.setRuntimeOffset( mMachines.size() );
+
+		mMachines.append( anElement );
 	}
 }
 
@@ -104,19 +113,19 @@ void CompositePart::dispatchOwnedElement(const BF & anElement)
  * GETTER - SETTER
  * mOutgoingTransitions
  */
-void CompositePart::appendOutgoingTransitionToEveryState(Machine * aGroupState)
+void CompositePart::appendOutgoingTransitionToEveryState(Machine & aGroupState)
 {
-	if( aGroupState->hasOutgoingTransition() )
+	if( aGroupState.hasOutgoingTransition() )
 	{
-		BehavioralPart * aGroupStateBehavior = aGroupState->getBehavior();
-		BehavioralPart::const_transition_iterator endTransition =
+		BehavioralPart * aGroupStateBehavior = aGroupState.getBehavior();
+		BehavioralPart::transition_iterator endTransition =
 				aGroupStateBehavior->outgoing_transition_end();
-		BehavioralPart::const_transition_iterator itTransition;
+		BehavioralPart::transition_iterator itTransition;
 		Transition * newTransition;
 
-		CompositePart * aGroupCompositePart = aGroupState->getCompositePart();
-		const_state_iterator itMachine = aGroupCompositePart->state_begin();
-		const_state_iterator endMachine = aGroupCompositePart->state_end();
+		CompositePart * aGroupCompositePart = aGroupState.getCompositePart();
+		state_iterator itMachine = aGroupCompositePart->state_begin();
+		state_iterator endMachine = aGroupCompositePart->state_end();
 		for( ; itMachine != endMachine ; ++itMachine )
 		{
 			if( (itMachine)->getSpecifier().isStateSimple()
@@ -125,7 +134,7 @@ void CompositePart::appendOutgoingTransitionToEveryState(Machine * aGroupState)
 				itTransition = aGroupStateBehavior->outgoing_transition_begin();
 				for( ; itTransition != endTransition ; ++itTransition )
 				{
-					newTransition = new Transition((itMachine), (itTransition));
+					newTransition = new Transition(itMachine, itTransition);
 
 					(itMachine)->getUniqBehaviorPart()->
 							saveOutgoingTransition( newTransition );
@@ -136,21 +145,21 @@ void CompositePart::appendOutgoingTransitionToEveryState(Machine * aGroupState)
 }
 
 
-void CompositePart::appendOutgoingTransitionToSomeState(Machine * aGroupState)
+void CompositePart::appendOutgoingTransitionToSomeState(Machine & aGroupState)
 {
-	if( aGroupState->hasOutgoingTransition() )
+	if( aGroupState.hasOutgoingTransition() )
 	{
-		BehavioralPart * aGroupStateBehavior = aGroupState->getBehavior();
-		BehavioralPart::const_transition_iterator endTransition =
+		BehavioralPart * aGroupStateBehavior = aGroupState.getBehavior();
+		BehavioralPart::transition_iterator endTransition =
 				aGroupStateBehavior->outgoing_transition_end();
-		BehavioralPart::const_transition_iterator itTransition;
+		BehavioralPart::transition_iterator itTransition;
 		Transition * newTransition;
 
-		const ListOfString & listofId = aGroupState->getGroupId();
+		const ListOfString & listofId = aGroupState.getGroupId();
 
-		CompositePart * aGroupCompositePart = aGroupState->getCompositePart();
-		const_state_iterator itMachine = aGroupCompositePart->state_begin();
-		const_state_iterator endMachine = aGroupCompositePart->state_end();
+		CompositePart * aGroupCompositePart = aGroupState.getCompositePart();
+		state_iterator itMachine = aGroupCompositePart->state_begin();
+		state_iterator endMachine = aGroupCompositePart->state_end();
 		for( ; itMachine != endMachine ; ++itMachine )
 		{
 			if( (itMachine)->getSpecifier().isStateSimple()
@@ -160,7 +169,7 @@ void CompositePart::appendOutgoingTransitionToSomeState(Machine * aGroupState)
 				itTransition = aGroupStateBehavior->outgoing_transition_begin();
 				for( ; itTransition != endTransition ; ++itTransition )
 				{
-					newTransition = new Transition((itMachine), (itTransition));
+					newTransition = new Transition(itMachine, itTransition);
 
 					(itMachine)->getUniqBehaviorPart()->
 							saveOutgoingTransition( newTransition );
@@ -170,21 +179,21 @@ void CompositePart::appendOutgoingTransitionToSomeState(Machine * aGroupState)
 	}
 }
 
-void CompositePart::appendOutgoingTransitionToExceptState(Machine * aGroupState)
+void CompositePart::appendOutgoingTransitionToExceptState(Machine & aGroupState)
 {
-	if( aGroupState->hasOutgoingTransition() )
+	if( aGroupState.hasOutgoingTransition() )
 	{
-		BehavioralPart * aGroupStateBehavior = aGroupState->getBehavior();
-		BehavioralPart::const_transition_iterator endTransition =
+		BehavioralPart * aGroupStateBehavior = aGroupState.getBehavior();
+		BehavioralPart::transition_iterator endTransition =
 				aGroupStateBehavior->outgoing_transition_end();
-		BehavioralPart::const_transition_iterator itTransition;
+		BehavioralPart::transition_iterator itTransition;
 		Transition * newTransition;
 
-		const ListOfString & listofId = aGroupState->getGroupId();
+		const ListOfString & listofId = aGroupState.getGroupId();
 
-		CompositePart * aGroupCompositePart = aGroupState->getCompositePart();
-		const_state_iterator itMachine = aGroupCompositePart->state_begin();
-		const_state_iterator endMachine = aGroupCompositePart->state_end();
+		CompositePart * aGroupCompositePart = aGroupState.getCompositePart();
+		state_iterator itMachine = aGroupCompositePart->state_begin();
+		state_iterator endMachine = aGroupCompositePart->state_end();
 		for( ; itMachine != endMachine ; ++itMachine )
 		{
 			if( (itMachine)->getSpecifier().isStateSimple()
@@ -194,7 +203,7 @@ void CompositePart::appendOutgoingTransitionToExceptState(Machine * aGroupState)
 				itTransition = aGroupStateBehavior->outgoing_transition_begin();
 				for( ; itTransition != endTransition ; ++itTransition )
 				{
-					newTransition = new Transition((itMachine), (itTransition));
+					newTransition = new Transition(itMachine, itTransition);
 
 					(itMachine)->getUniqBehaviorPart()->
 							saveOutgoingTransition( newTransition );
@@ -207,23 +216,23 @@ void CompositePart::appendOutgoingTransitionToExceptState(Machine * aGroupState)
 
 void CompositePart::expandGroupStatemachine()
 {
-	const_state_iterator itMachine = state_begin();
-	const_state_iterator endMachine = state_end();
-	for( ; itMachine != endMachine ; ++itMachine )
+	state_iterator itState = state_begin();
+	state_iterator endState = state_end();
+	for( ; itState != endState ; ++itState )
 	{
-		if( (itMachine)->getSpecifier().hasGroupMask() )
+		if( (itState)->getSpecifier().hasGroupMask() )
 		{
-			if( (itMachine)->getSpecifier().isGroupEvery())
+			if( (itState)->getSpecifier().isGroupEvery())
 			{
-				appendOutgoingTransitionToEveryState( (itMachine) );
+				appendOutgoingTransitionToEveryState( itState );
 			}
-			else if( (itMachine)->getSpecifier().isGroupSome())
+			else if( (itState)->getSpecifier().isGroupSome())
 			{
-				appendOutgoingTransitionToSomeState( (itMachine) );
+				appendOutgoingTransitionToSomeState( itState );
 			}
-			else if( (itMachine)->getSpecifier().isGroupExcept() )
+			else if( (itState)->getSpecifier().isGroupExcept() )
 			{
-				appendOutgoingTransitionToExceptState( (itMachine) );
+				appendOutgoingTransitionToExceptState( itState );
 			}
 		}
 	}
@@ -233,19 +242,34 @@ void CompositePart::expandGroupStatemachine()
 /**
  * Serialization
  */
-void CompositePart::toStream(OutStream & os) const
+void CompositePart::toStream(OutStream & out) const
 {
+	////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////
+	//
+AVM_IF_DEBUG_FLAG2_AND( COMPILING , STATEMACHINE , mOwnedElements.nonempty() )
+	out << EOL << TAB << "/*owned< executable#count = "
+			<< getExecutableMachineCount() << " > [" << EOL_INCR_INDENT
+			<< str_header( mOwnedElements ) << DECR_INDENT_TAB
+			<< "] // end owned*/" << EOL_FLUSH;
+AVM_ENDIF_DEBUG_FLAG2_AND( COMPILING , STATEMACHINE )
+	//
+	////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////
+
 	if( hasProcedure() )
 	{
-		os << TAB << "procedure:" << EOL_INCR_INDENT;
-		const_procedure_iterator it = procedure_begin();
-		const_procedure_iterator endIt = procedure_end();
-		for( ; it != endIt ; ++it )
+		out << EOL_TAB << "@procedure:" << INCR_INDENT;
+		const_procedure_iterator itProcedure = procedure_begin();
+		const_procedure_iterator endProcedure = procedure_end();
+		for( ; itProcedure != endProcedure ; ++itProcedure )
 		{
-			(it)->toStream(os);
-			os << EOL;
+			out << EOL;
+			(itProcedure)->toStream(out);
 		}
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 	if( hasState() )
@@ -254,71 +278,82 @@ void CompositePart::toStream(OutStream & os) const
 				getSpecifier().isComponentStatemachine() ?
 						"region" : "statemachine" );
 
-		os << TAB << "/*" << sequenceName << ": [" << EOL_INCR_INDENT
-				<< str_header( mStates ) << DECR_INDENT_TAB
-				<< "] // end " << sequenceName << "*/" << EOL2_FLUSH;
+//AVM_IF_DEBUG_FLAG2( COMPILING , STATEMACHINE )
+//		out << EOL_TAB << "/*" << sequenceName << ": [" << EOL_INCR_INDENT
+//			<< str_header( mStates ) << DECR_INDENT_TAB
+//			<< "] // end " << sequenceName << "*/" << EOL2_FLUSH;
+//AVM_ENDIF_DEBUG_FLAG2( COMPILING , STATEMACHINE )
 
-//		os << TAB << sequenceName << ":" << EOL_INCR_INDENT;
-//
-//		const_state_iterator it = state_begin();
-//		const_state_iterator endIt = state_end();
-//		for( ; it != endIt ; ++it )
-//		{
-//			(it)->toStream(os);
-//			os << EOL;
-//		}
-//		os << DECR_INDENT;
+		out << EOL_TAB << "@" << sequenceName << ":" << INCR_INDENT;
+
+		const_state_iterator itState = state_begin();
+		const_state_iterator endState = state_end();
+		for( ; itState != endState ; ++itState )
+		{
+			out << EOL;
+			(itState)->toStream(out);
+		}
+		out << DECR_INDENT;
 	}
 
-	if( hasMachine() )
+	if( hasMachine() && (getMachines().size() >
+			(getStates().size() + getInstanceStatics().size())) )
 	{
-		os << TAB << getNameID() /*composite*/ << ":" << EOL_INCR_INDENT;
+		out << EOL_TAB << "@" << getNameID() << ":" << INCR_INDENT;
 
 		const_machine_iterator it = machine_begin();
 		const_machine_iterator endIt = machine_end();
 		for( ; it != endIt ; ++it )
 		{
-			(it)->toStream(os);
-			os << EOL;
+			if( (not (it)->getSpecifier().isFamilyComponentState())
+				&& (not (it)->getSpecifier().isDesignInstanceStatic()) )
+			{
+				out << EOL;
+				(it)->toStream(out);
+			}
 		}
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
 	if( hasInstanceStatic() )
 	{
-		os << TAB << "/*instance: [" << EOL_INCR_INDENT
-				<< str_header( mInstanceStatics ) << DECR_INDENT_TAB
-				<< "] // end instance*/" << EOL2_FLUSH;
+//AVM_IF_DEBUG_FLAG2( COMPILING , STATEMACHINE )
+//		out << EOL_TAB << "/*instance: [" << EOL_INCR_INDENT
+//			<< str_header( mInstanceStatics ) << DECR_INDENT_TAB
+//			<< "] // end instance*/" << EOL_FLUSH;
+//AVM_ENDIF_DEBUG_FLAG2( COMPILING , STATEMACHINE )
 
-//		os << TAB << "instance:" << EOL_INCR_INDENT;
-//
-//		const_instance_iterator it = instance_begin();
-//		const_instance_iterator endIt = instance_end();
-//		for( ; it != endIt ; ++it )
-//		{
-//			(it)->toStream(os);
-//		}
-//		os << DECR_INDENT;
+		out << EOL_TAB << "@instance:" << EOL_INCR_INDENT;
+
+		const_instance_iterator it = instance_static_begin();
+		const_instance_iterator endIt = instance_static_end();
+		for( ; it != endIt ; ++it )
+		{
+			(it)->toStream(out);
+		}
+		out << DECR_INDENT;
 	}
 
 	if( hasInstanceDynamic() )
 	{
-//		os << TAB << "/*#dynamic instance: [" << EOL_INCR_INDENT
-//				<< str_header( mInstanceDynamics ) << DECR_INDENT_TAB
-//				<< "] // end dynamic*/" << EOL2_FLUSH;
+//AVM_IF_DEBUG_FLAG2( COMPILING , STATEMACHINE )
+//	out << EOL_TAB << "/*#dynamic instance: [" << EOL_INCR_INDENT
+//			<< str_header( mInstanceDynamics ) << DECR_INDENT_TAB
+//			<< "] // end dynamic*/" << EOL2_FLUSH;
+//AVM_ENDIF_DEBUG_FLAG2( COMPILING , STATEMACHINE )
 
-		os << TAB << "instance#dynamic:" << EOL_INCR_INDENT;
+		out << EOL_TAB << "@instance#dynamic:" << INCR_INDENT;
 		const_machine_iterator it = instance_dynamic_begin();
 		const_machine_iterator endIt = instance_dynamic_end();
 		for( ; it != endIt ; ++it )
 		{
-			(it)->toStream(os);
-			os << EOL;
+			out << EOL;
+			(it)->toStream(out);
 		}
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
-	os << std::flush;
+	out << std::flush;
 }
 
 

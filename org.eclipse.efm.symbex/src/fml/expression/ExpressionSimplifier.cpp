@@ -268,20 +268,18 @@ BF ExpressionSimplifier::AND(Vector< BF > & args)
 	AvmCode::const_iterator itRes;
 	AvmCode::const_iterator endRes;
 
-	AvmCode::const_iterator itArg = args.begin();
-	AvmCode::const_iterator endArg = args.end();
-	for( ; itArg != endArg ; ++itArg )
+	for( const auto & itOperand : args )
 	{
-		if( (*itArg).isEqualFalse() )
+		if( itOperand.isEqualFalse() )
 		{
 			return( ExpressionConstant::BOOLEAN_FALSE );
 		}
-		else if( (*itArg).isNotEqualTrue() )
+		else if( itOperand.isNotEqualTrue() )
 		{
 			endRes = resEXPR->end();
 			for( itRes = resEXPR->begin() ; itRes != endRes ; ++itRes )
 			{
-				if( (*itArg).isEQ( *itRes )  )
+				if( itOperand.isEQ( *itRes )  )
 				{
 					break;
 				}
@@ -289,16 +287,16 @@ BF ExpressionSimplifier::AND(Vector< BF > & args)
 
 			if( itRes == endRes )
 			{
-				resEXPR->append( (*itArg) );
+				resEXPR->append( itOperand );
 			}
 		}
 	}
 
-	if( resEXPR->populated() )
+	if( resEXPR->hasManyOperands() )
 	{
 		return( resEXPR );
 	}
-	else if( resEXPR->nonempty() )
+	else if( resEXPR->hasOneOperand() )
 	{
 		return( resEXPR->first() );
 	}
@@ -322,20 +320,18 @@ BF ExpressionSimplifier::NAND(Vector< BF > & args)
 	AvmCode::const_iterator itRes;
 	AvmCode::const_iterator endRes;
 
-	AvmCode::const_iterator itArg = args.begin();
-	AvmCode::const_iterator endArg = args.end();
-	for( ; itArg != endArg ; ++itArg )
+	for( const auto & itOperand : args )
 	{
-		if( (*itArg).isEqualFalse() )
+		if( itOperand.isEqualFalse() )
 		{
 			return( ExpressionConstant::BOOLEAN_TRUE );
 		}
-		else if( (*itArg).isNotEqualTrue() )
+		else if( itOperand.isNotEqualTrue() )
 		{
 			endRes = resEXPR->end();
 			for( itRes = resEXPR->begin() ; itRes != endRes ; ++itRes )
 			{
-				if( (*itArg).isEQ( *itRes )  )
+				if( itOperand.isEQ( *itRes )  )
 				{
 					break;
 				}
@@ -343,16 +339,16 @@ BF ExpressionSimplifier::NAND(Vector< BF > & args)
 
 			if( itRes == endRes )
 			{
-				resEXPR->append( (*itArg) );
+				resEXPR->append( itOperand );
 			}
 		}
 	}
 
-	if( resEXPR->populated() )
+	if( resEXPR->hasManyOperands() )
 	{
 		return( resEXPR );
 	}
-	else if( resEXPR->nonempty() )
+	else if( resEXPR->hasOneOperand() )
 	{
 		return( resEXPR->first() );
 	}
@@ -406,20 +402,18 @@ BF ExpressionSimplifier::OR(Vector< BF > & args)
 	AvmCode::const_iterator itRes;
 	AvmCode::const_iterator endRes;
 
-	AvmCode::const_iterator itArg = args.begin();
-	AvmCode::const_iterator endArg = args.end();
-	for( ; itArg != endArg ; ++itArg )
+	for( const auto & itOperand : args )
 	{
-		if( (*itArg).isEqualTrue() )
+		if( itOperand.isEqualTrue() )
 		{
 			return( ExpressionConstant::BOOLEAN_TRUE );
 		}
-		else if( (*itArg).isNotEqualFalse() )
+		else if( itOperand.isNotEqualFalse() )
 		{
 			endRes = resEXPR->end();
 			for( itRes = resEXPR->begin() ; itRes != endRes ; ++itRes )
 			{
-				if( (*itArg).isEQ( *itRes )  )
+				if( itOperand.isEQ( *itRes )  )
 				{
 					break;
 				}
@@ -427,16 +421,16 @@ BF ExpressionSimplifier::OR(Vector< BF > & args)
 
 			if( itRes == endRes )
 			{
-				resEXPR->append( (*itArg) );
+				resEXPR->append( itOperand );
 			}
 		}
 	}
 
-	if( resEXPR->populated() )
+	if( resEXPR->hasManyOperands() )
 	{
 		return( resEXPR );
 	}
-	else if( resEXPR->nonempty() )
+	else if( resEXPR->hasOneOperand() )
 	{
 		return( resEXPR->first() );
 	}
@@ -460,20 +454,18 @@ BF ExpressionSimplifier::NOR(Vector< BF > & args)
 	AvmCode::const_iterator itRes;
 	AvmCode::const_iterator endRes;
 
-	AvmCode::const_iterator itArg = args.begin();
-	AvmCode::const_iterator endArg = args.end();
-	for( ; itArg != endArg ; ++itArg )
+	for( const auto & itOperand : args )
 	{
-		if( (*itArg).isEqualTrue() )
+		if( itOperand.isEqualTrue() )
 		{
 			return( ExpressionConstant::BOOLEAN_FALSE );
 		}
-		else if( (*itArg).isNotEqualFalse() )
+		else if( itOperand.isNotEqualFalse() )
 		{
 			endRes = resEXPR->end();
 			for( itRes = resEXPR->begin() ; itRes != endRes ; ++itRes )
 			{
-				if( (*itArg).isEQ( *itRes )  )
+				if( itOperand.isEQ( *itRes )  )
 				{
 					break;
 				}
@@ -481,16 +473,16 @@ BF ExpressionSimplifier::NOR(Vector< BF > & args)
 
 			if( itRes == endRes )
 			{
-				resEXPR->append( (*itArg) );
+				resEXPR->append( itOperand );
 			}
 		}
 	}
 
-	if( resEXPR->populated() )
+	if( resEXPR->hasManyOperands() )
 	{
 		return( resEXPR );
 	}
-	else if( resEXPR->nonempty() )
+	else if( resEXPR->hasOneOperand() )
 	{
 		return( resEXPR->first() );
 	}

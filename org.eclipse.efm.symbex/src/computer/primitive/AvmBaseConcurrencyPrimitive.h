@@ -26,14 +26,14 @@ namespace sep
 
 AVM_PRIMITIVE_CLASS_HEADER(AvmBaseConcurrencyPrimitive, BaseAvmPrimitive)
 
-	bool evalExclusive(APExecutionData & anInputED, APExecutionData & evalED,
-			APExecutionData & otherED, CollectionOfAPExecutionData & listOfOutputED);
+	bool evalExclusive(ExecutionData & anInputED, ExecutionData & evalED,
+			ExecutionData & otherED, CollectionOfExecutionData & listOfOutputED);
 
-	bool evalExclusive(APExecutionData & anInputED, APExecutionData & evalED,
-			ListOfAPExecutionData & listOfOtherED, CollectionOfAPExecutionData & listOfOutputED);
+	bool evalExclusive(ExecutionData & anInputED, ExecutionData & evalED,
+			ListOfExecutionData & listOfOtherED, CollectionOfExecutionData & listOfOutputED);
 
-	bool evalExclusive(APExecutionData & anInputED, ListOfAPExecutionData & oneListOfED,
-			APExecutionData & otherED, CollectionOfAPExecutionData & listOfOutputED);
+	bool evalExclusive(ExecutionData & anInputED, ListOfExecutionData & oneListOfED,
+			ExecutionData & otherED, CollectionOfExecutionData & listOfOutputED);
 
 };
 

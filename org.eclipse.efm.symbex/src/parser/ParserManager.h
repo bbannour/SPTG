@@ -13,12 +13,13 @@
 #ifndef PARSER_PARSERMANAGER_H_
 #define PARSER_PARSERMANAGER_H_
 
-#include <fstream>
+#include <iosfwd>
+#include <string>
+
 
 
 namespace sep
 {
-
 
 class System;
 
@@ -110,14 +111,18 @@ public:
 	 */
 	System * parseFML(WObjectManager & aWObjectManager);
 
+	System * parseFML_ANTLR3(WObjectManager & aWObjectManager,
+			std::istream & anInputStream);
+
 	System * parseFML(WObjectManager & aWObjectManager,
-			std::ifstream & anInputStream);
+			std::istream & anInputStream);
 
 	/**
 	 * Parse SEW, FAVM
 	 */
+
 	WObject * parseSEW(WObjectManager & aWObjectManager,
-			std::ifstream & anInputStream);
+			std::istream & anInputStream);
 
 };
 

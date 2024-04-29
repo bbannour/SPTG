@@ -81,7 +81,8 @@ struct VFS
 	static bool checkWritingFileFolder(const std::string & path);
 
 	static bool checkReadingFolder(const std::string & dir_path);
-	static bool checkWritingFolder(const std::string & dir_path);
+	static bool checkWritingFolder(
+			const std::string & dir_path, bool cleaningRequired = false);
 
 
 	/**
@@ -153,6 +154,13 @@ struct VFS
 			const std::string & refPath,
 			const std::string & aPath,
 			const std::string & newPrefix = "");
+
+	inline static std::string relativelaunchPath(
+			const std::string & aPath,
+			const std::string & newPrefix = "<launch>:")
+	{
+		return( relativePath(LaunchPath, aPath, newPrefix) );
+	}
 
 	inline static std::string relativeWorkspacePath(
 			const std::string & aPath,

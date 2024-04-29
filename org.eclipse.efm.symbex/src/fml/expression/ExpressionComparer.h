@@ -44,7 +44,7 @@ public:
 	static bool isEQ(const BF & frst, const BF & snd);
 
 
-	static inline bool isNEQ(const BF & frst, const BF & snd)
+	inline static bool isNEQ(const BF & frst, const BF & snd)
 	{
 		return( ! ExpressionComparer::isEQ(frst, snd) );
 	}
@@ -53,12 +53,12 @@ public:
 	/**
 	 * TRIVIAL EQUALITY
 	 */
-	static inline bool isTEQ(const BF & frst, const BF & snd)
+	inline static bool isTEQ(const BF & frst, const BF & snd)
 	{
 		return( frst.raw_pointer() == snd.raw_pointer() );
 	}
 
-	static inline bool isNTEQ(const BF & frst, const BF & snd)
+	inline static bool isNTEQ(const BF & frst, const BF & snd)
 	{
 		return( frst.raw_pointer() != snd.raw_pointer() );
 	}

@@ -26,7 +26,7 @@
 #include <fml/executable/AvmTransition.h>
 #include <fml/executable/BaseInstanceForm.h>
 #include <fml/executable/InstanceOfBuffer.h>
-#include <fml/executable/InstanceOfConnect.h>
+#include <fml/executable/InstanceOfConnector.h>
 #include <fml/executable/InstanceOfData.h>
 #include <fml/executable/InstanceOfMachine.h>
 #include <fml/executable/InstanceOfPort.h>
@@ -37,6 +37,7 @@
 
 #include <fml/infrastructure/InstanceSpecifierPart.h>
 #include <fml/infrastructure/Machine.h>
+#include <fml/infrastructure/Routine.h>
 #include <fml/infrastructure/System.h>
 
 
@@ -53,7 +54,7 @@ class Specifier;
 typedef  TableOfBF_T< ExecutableForm >  TableOfExecutableForm;
 
 typedef SmartTable< InstanceOfBuffer  , DestroyElementPolicy > TableOfBuffer;
-typedef SmartTable< InstanceOfConnect , DestroyElementPolicy > TableOfConnectT;
+typedef SmartTable< InstanceOfConnector , DestroyElementPolicy > TableOfConnectorT;
 typedef SmartTable< InstanceOfData    , DestroyElementPolicy > TableOfVariableT;
 typedef SmartTable< InstanceOfMachine , DestroyElementPolicy > TableOfMachineT;
 typedef SmartTable< InstanceOfPort    , DestroyElementPolicy > TableOfPortT;
@@ -62,11 +63,11 @@ typedef SmartTable< InstanceOfPort    , DestroyElementPolicy > TableOfPortT;
 class ExecutableForm :
 		public AvmProgram ,
 		public SpecifierImpl,
+		AVM_INJECT_STATIC_NULL_REFERENCE( ExecutableForm ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( ExecutableForm )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( ExecutableForm )
-
 
 protected:
 	/*
@@ -74,19 +75,19 @@ protected:
 	 */
 	ExecutableSystem & mExecutableSystem;
 
-	avm_size_t mInitialInstanceCount;
-	avm_size_t mMaximalInstanceCount;
+	std::size_t mInitialInstanceCount;
+	std::size_t mMaximalInstanceCount;
 
-	avm_size_t mPossibleStaticInstanciationCount;
-	avm_size_t mPossibleDynamicInstanciationCount;
+	std::size_t mPossibleStaticInstanciationCount;
+	std::size_t mPossibleDynamicInstanciationCount;
 
 	TableOfSymbol mTableOfChannel;
 
 	TableOfSymbol mTableOfPort;
-	avm_size_t mMessageSignalCount;
+	std::size_t mMessageSignalCount;
 
 	TableOfSymbol mTableOfBuffer;
-	TableOfSymbol mTableOfConnect;
+	TableOfSymbol mTableOfConnector;
 
 	TableOfSymbol mTableOfInstanceModel;
 
@@ -105,6 +106,12 @@ protected:
 
 	TableOfSymbol mTableOfAlias;
 
+	// Time & Delta Variable
+	const InstanceOfData * mTimeVariable;
+	const InstanceOfData * mDeltaTimeVariable;
+
+	BF mExprTimeVariable;
+	BF mExprDeltaTimeVariable;
 
 	// Predefined routines
 	AvmProgram onCreateRoutine;
@@ -177,16 +184,14 @@ protected:
 	// Default is << true >>
 	bool isReachableStateFlag;
 
-
 public:
-
 	/**
 	 * CONSTRUCTOR
 	 * Default
 	 */
 	ExecutableForm(ExecutableSystem & aExecutableSystem,
 			ExecutableForm * aContainer,
-			Machine * astMachine, avm_size_t aDataSize = 0)
+			const Machine & astMachine, std::size_t aDataSize = 0)
 	: AvmProgram(CLASS_KIND_T( ExecutableForm ),
 			Specifier::SCOPE_MACHINE_KIND, aContainer, astMachine, aDataSize),
 	SpecifierImpl( astMachine ),
@@ -194,11 +199,11 @@ public:
 	mExecutableSystem( aExecutableSystem ),
 
 	mInitialInstanceCount(
-		((astMachine != NULL) && astMachine->hasInstanceSpecifier()) ?
-			astMachine->getInstanceSpecifier()->getInitialInstanceCount() : 1 ),
+		(astMachine.isnotNullref() && astMachine.hasInstanceSpecifier()) ?
+			astMachine.getInstanceSpecifier()->getInitialInstanceCount() : 1 ),
 	mMaximalInstanceCount(
-		((astMachine != NULL) && astMachine->hasInstanceSpecifier()) ?
-			astMachine->getInstanceSpecifier()->getMaximalInstanceCount() : 1 ),
+		(astMachine.isnotNullref() && astMachine.hasInstanceSpecifier()) ?
+			astMachine.getInstanceSpecifier()->getMaximalInstanceCount() : 1 ),
 
 	mPossibleStaticInstanciationCount( 0 ),
 	mPossibleDynamicInstanciationCount( 0 ),
@@ -209,7 +214,7 @@ public:
 	mMessageSignalCount( 0 ),
 
 	mTableOfBuffer( ),
-	mTableOfConnect( ),
+	mTableOfConnector( ),
 
 	mTableOfInstanceModel( ),
 
@@ -226,36 +231,60 @@ public:
 
 	mTableOfAlias( ),
 
-	onCreateRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "create" , 0 ),
+	mTimeVariable( nullptr ),
+	mDeltaTimeVariable( nullptr ),
 
-	onInitRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "init"  , 0 ),
-	onFinalRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "final" , 0 ),
+	mExprTimeVariable( ),
+	mExprDeltaTimeVariable( ),
 
-	onReturnRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "return" , 0 ),
+	onCreateRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "create" , 0 ),
 
-	onStartRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "start" , 0 ),
-	onStopRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "stop"  , 0 ),
+	onInitRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "init"  , 0 ),
+	onFinalRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "final" , 0 ),
 
-	onIEnableRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "ienable" , 0 ),
-	onEnableRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "enable"  , 0 ),
+	onReturnRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "return" , 0 ),
 
-	onIDisableRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "idisable" , 0 ),
-	onDisableRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "disable"  , 0 ),
+	onStartRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "start" , 0 ),
+	onStopRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "stop"  , 0 ),
 
-	onIAbortRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "iabort" , 0 ),
-	onAbortRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "abort"  , 0 ),
+	onIEnableRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "ienable" , 0 ),
+	onEnableRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "enable"  , 0 ),
 
-	onIRunRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "irun" , 0 ),
-	onRunRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "run"  , 0 ),
-	onRtcRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "rtc"  , 0 ),
+	onIDisableRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "idisable" , 0 ),
+	onDisableRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "disable"  , 0 ),
 
-	onScheduleRoutine   ( Specifier::SCOPE_ROUTINE_KIND , this , "schedule"    , 0  ),
-	onConcurrencyRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "concurrency" , 0 ),
+	onIAbortRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "iabort" , 0 ),
+	onAbortRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "abort"  , 0 ),
 
-	onSynchronizeRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "synchronize" , 0 ),
+	onIRunRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "irun" , 0 ),
+	onRunRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "run"  , 0 ),
+	onRtcRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "rtc"  , 0 ),
 
-	mMainComponentFlag( ( (astMachine == NULL) ||
-			astMachine->getModifier().hasFeatureTransient() ) ? false : true ),
+	onScheduleRoutine   ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "schedule"    , 0  ),
+	onConcurrencyRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "concurrency" , 0 ),
+
+	onSynchronizeRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "synchronize" , 0 ),
+
+	mMainComponentFlag( ( astMachine.isNullref() ||
+			astMachine.getModifier().hasFeatureTransient() ) ? false : true ),
 
 	mMutableScheduleFlag( false ),
 
@@ -281,9 +310,9 @@ public:
 		updateFullyQualifiedNameID();
 	}
 
-	ExecutableForm(ExecutableSystem & aExecutableSystem, avm_size_t aDataSize)
-	: AvmProgram(CLASS_KIND_T( ExecutableForm ),
-			Specifier::SCOPE_MACHINE_KIND, NULL, NULL, aDataSize),
+	ExecutableForm(ExecutableSystem & aExecutableSystem, std::size_t aDataSize)
+	: AvmProgram(CLASS_KIND_T( ExecutableForm ), Specifier::SCOPE_MACHINE_KIND,
+			nullptr, Machine::nullref(), aDataSize),
 	SpecifierImpl( Specifier::COMPONENT_EXECUTABLE_SPECIFIER ),
 
 	mExecutableSystem( aExecutableSystem ),
@@ -300,7 +329,7 @@ public:
 	mMessageSignalCount( 0 ),
 
 	mTableOfBuffer( ),
-	mTableOfConnect( ),
+	mTableOfConnector( ),
 
 	mTableOfInstanceModel( ),
 
@@ -317,33 +346,57 @@ public:
 
 	mTableOfAlias( ),
 
-	onCreateRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "create" , 0 ),
+	mTimeVariable( nullptr ),
+	mDeltaTimeVariable( nullptr ),
 
-	onInitRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "init"  , 0 ),
-	onFinalRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "final" , 0 ),
+	mExprTimeVariable( ),
+	mExprDeltaTimeVariable( ),
 
-	onReturnRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "return" , 0 ),
+	onCreateRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "create" , 0 ),
 
-	onStartRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "start" , 0 ),
-	onStopRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "stop"  , 0 ),
+	onInitRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "init"  , 0 ),
+	onFinalRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "final" , 0 ),
 
-	onIEnableRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "ienable" , 0 ),
-	onEnableRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "enable"  , 0 ),
+	onReturnRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "return" , 0 ),
 
-	onIDisableRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "idisable" , 0 ),
-	onDisableRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "disable"  , 0 ),
+	onStartRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "start" , 0 ),
+	onStopRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "stop"  , 0 ),
 
-	onIAbortRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "iabort" , 0 ),
-	onAbortRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "abort"  , 0 ),
+	onIEnableRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "ienable" , 0 ),
+	onEnableRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "enable"  , 0 ),
 
-	onIRunRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "irun" , 0 ),
-	onRunRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "run"  , 0 ),
-	onRtcRoutine ( Specifier::SCOPE_ROUTINE_KIND , this , "rtc"  , 0 ),
+	onIDisableRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "idisable" , 0 ),
+	onDisableRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "disable"  , 0 ),
 
-	onScheduleRoutine   ( Specifier::SCOPE_ROUTINE_KIND , this , "schedule"    , 0  ),
-	onConcurrencyRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "concurrency" , 0 ),
+	onIAbortRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "iabort" , 0 ),
+	onAbortRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "abort"  , 0 ),
 
-	onSynchronizeRoutine( Specifier::SCOPE_ROUTINE_KIND , this , "synchronize" , 0 ),
+	onIRunRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "irun" , 0 ),
+	onRunRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "run"  , 0 ),
+	onRtcRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "rtc"  , 0 ),
+
+	onScheduleRoutine   ( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "schedule"    , 0  ),
+	onConcurrencyRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "concurrency" , 0 ),
+
+	onSynchronizeRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+			(* this) , Routine::nullref() , "synchronize" , 0 ),
 
 	mMainComponentFlag( false ),
 
@@ -383,12 +436,19 @@ public:
 
 
 	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	static ExecutableForm & nullref();
+
+
+	/**
 	 * GETTER - SETTER
 	 * is in SCOPE
 	 */
 	inline bool isAncestorOf(const ExecutableForm * anExecutable)
 	{
-		while( (anExecutable != NULL) && (anExecutable != this) )
+		while( (anExecutable != nullptr) && (anExecutable != this) )
 		{
 			anExecutable = anExecutable->getExecutableContainer();
 		}
@@ -403,11 +463,14 @@ public:
 	virtual void updateFullyQualifiedNameID(
 			const std::string & aFullyQualifiedNameID);
 
-	inline virtual void updateFullyQualifiedNameID()
+	inline virtual void updateFullyQualifiedNameID() override
 	{
 		if( hasAstElement() )
 		{
 			updateFullyQualifiedNameID( getAstFullyQualifiedNameID() );
+
+			setUnrestrictedName( getAstElement().hasUnrestrictedName() ?
+					getAstElement().getUnrestrictedName() : getNameID() );
 		}
 		else
 		{
@@ -433,26 +496,22 @@ public:
 	 * GETTER
 	 * Compiled ObjectElement as Compiled Machine
 	 */
-	inline const Machine * getAstMachine() const
+	inline const Machine & getAstMachine() const
 	{
-		return( getAstElement()->as< Machine >() );
+		return( safeAstElement().as< Machine >() );
 	}
 
-	inline bool isAstMachine() const
+	inline const System & getAstSystem() const
 	{
-		return( hasAstElement() && getAstElement()->is< Machine >() );
+		return( safeAstElement().as< System >() );
 	}
 
-
-	inline const System * getAstSystem() const
-	{
-		return( getAstElement()->as< System >() );
-	}
-
-	inline bool isCompiledSystem() const
-	{
-		return( hasAstElement() && getAstElement()->is< System >() );
-	}
+//!@?UNUSED
+//	inline bool isCompiledSystem() const
+//	{
+//		return( getSpecifier().isComponentSystem()
+//				&& hasAstElement() && getAstElement().is< System >() );
+//	}
 
 
 
@@ -461,14 +520,14 @@ public:
 	 */
 	bool isInlinableEnable() const
 	{
-		return( hasAstElement() && getAstElement()->is< Machine >() &&
-				getAstMachine()->isInlinableEnable() );
+		return( hasAstElement() && getAstElement().is< Machine >() &&
+				getAstMachine().isInlinableEnable() );
 	}
 
 	bool isInlinableProcedure() const
 	{
-		return( hasAstElement() && getAstElement()->is< Machine >() &&
-				getAstMachine()->isInlinableProcedure() );
+		return( hasAstElement() && getAstElement().is< Machine >() &&
+				getAstMachine().isInlinableProcedure() );
 	}
 
 
@@ -476,7 +535,7 @@ public:
 	 * GETTER - SETTER
 	 * mInitialInstanceCount
 	 */
-	inline avm_size_t getInitialInstanceCount() const
+	inline std::size_t getInitialInstanceCount() const
 	{
 		return( mInitialInstanceCount );
 	}
@@ -486,7 +545,7 @@ public:
 		return( mInitialInstanceCount > 0 );
 	}
 
-	inline void setInitialInstanceCount(avm_size_t anInitialInstanceCount)
+	inline void setInitialInstanceCount(std::size_t anInitialInstanceCount)
 	{
 		mInitialInstanceCount = anInitialInstanceCount;
 	}
@@ -496,7 +555,7 @@ public:
 	 * GETTER - SETTER
 	 * mMaximalInstanceCount
 	 */
-	inline avm_size_t getMaximalInstanceCount() const
+	inline std::size_t getMaximalInstanceCount() const
 	{
 		return( mMaximalInstanceCount );
 	}
@@ -512,7 +571,7 @@ public:
 				(mMaximalInstanceCount != AVM_NUMERIC_MAX_SIZE_T) );
 	}
 
-	inline void setMaximalInstanceCount(avm_size_t aMaximalInstanceCount)
+	inline void setMaximalInstanceCount(std::size_t aMaximalInstanceCount)
 	{
 		mMaximalInstanceCount = aMaximalInstanceCount;
 	}
@@ -523,15 +582,15 @@ public:
 	 * mInitialInstanceCount
 	 * mMaximalInstanceCount
 	 */
-	inline void setInstanceCount(avm_size_t anInitialInstanceCount,
-			avm_size_t aMaximalInstanceCount)
+	inline void setInstanceCount(std::size_t anInitialInstanceCount,
+			std::size_t aMaximalInstanceCount)
 	{
 		mInitialInstanceCount = anInitialInstanceCount;
 
 		mMaximalInstanceCount = aMaximalInstanceCount;
 	}
 
-	inline avm_size_t getCreatedInstanceCount() const
+	inline std::size_t getCreatedInstanceCount() const
 	{
 		return( mInitialInstanceCount );
 
@@ -548,7 +607,7 @@ public:
 	 * Instanciation Information
 	 * for Data Access optimisation
 	 */
-	inline avm_size_t getPossibleStaticInstanciationCount() const
+	inline std::size_t getPossibleStaticInstanciationCount() const
 	{
 		return( mPossibleStaticInstanciationCount );
 	}
@@ -561,7 +620,7 @@ public:
 	void incrPossibleStaticInstanciationCount(avm_offset_t offset = 1);
 
 
-	inline avm_size_t getPossibleDynamicInstanciationCount() const
+	inline std::size_t getPossibleDynamicInstanciationCount() const
 	{
 		return( mPossibleDynamicInstanciationCount );
 	}
@@ -571,10 +630,10 @@ public:
 		return( mPossibleDynamicInstanciationCount > 0 );
 	}
 
-	void incrPossibleDynamicInstanciationCount(avm_size_t offset = 1);
+	void incrPossibleDynamicInstanciationCount(std::size_t offset = 1);
 
 
-	bool hasSingleRuntimeInstance();
+	bool hasSingleRuntimeInstance() const;
 
 
 	/**
@@ -643,7 +702,7 @@ public:
 	 * GETTER - SETTER
 	 * mMessageSignalCount
 	 */
-	inline avm_size_t getMessageSignalCount() const
+	inline std::size_t getMessageSignalCount() const
 	{
 		return( mMessageSignalCount );
 	}
@@ -653,7 +712,7 @@ public:
 		return( mMessageSignalCount > 0 );
 	}
 
-	inline void setMessageSignalCount(avm_size_t count)
+	inline void setMessageSignalCount(std::size_t count)
 	{
 		mMessageSignalCount = count;
 	}
@@ -694,10 +753,10 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * mTableOfConnect
+	 * mTableOfConnector
 	 */
 
-	inline const Symbol & saveConnect(InstanceOfConnect * anInstance)
+	inline const Symbol & saveConnector(InstanceOfConnector * anInstance)
 	{
 		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( anInstance )
 				<< "BaseInstanceForm !!!"
@@ -705,23 +764,23 @@ public:
 
 		anInstance->setContainer(this);
 
-		return( mTableOfConnect.save(anInstance) );
+		return( mTableOfConnector.save(anInstance) );
 	}
 
-	inline TableOfSymbol & getConnect()
+	inline TableOfSymbol & getConnector()
 	{
-		return( mTableOfConnect );
+		return( mTableOfConnector );
 	}
 
-	inline const TableOfSymbol & getConnect() const
+	inline const TableOfSymbol & getConnector() const
 	{
-		return( mTableOfConnect );
+		return( mTableOfConnector );
 	}
 
 
-	inline bool hasConnect() const
+	inline bool hasConnector() const
 	{
-		return( mTableOfConnect.nonempty() );
+		return( mTableOfConnector.nonempty() );
 	}
 
 
@@ -729,20 +788,58 @@ public:
 	 * GETTER
 	 * Communicated or Lifeline
 	 */
-	inline bool isCommunicator() const
+	inline ExecutableForm * getExcutableCommunicator() const
 	{
-		return( hasPort() || hasRouter4This() || hasConnect() );
+		ExecutableForm * anExecutable = getExecutableContainer();
+		while( anExecutable != nullptr )
+		{
+			if( anExecutable->isCommunicator() )
+			{
+				return( anExecutable );
+			}
+			anExecutable = getExecutableContainer();
+		}
+
+		return( nullptr );
 	}
 
-	inline bool isCommunicatorWith(InstanceOfPort * aPort) const
+	inline ExecutableForm * getExcutableSystem() const
 	{
-		return( mTableOfPort.contains(aPort)
+		ExecutableForm * anExecutable = getExecutableContainer();
+		while( anExecutable != nullptr )
+		{
+			if( anExecutable->getSpecifier().isComponentSystem() )
+			{
+				return( anExecutable );
+			}
+			anExecutable = getExecutableContainer();
+		}
+
+		return( nullptr );
+	}
+
+
+	inline bool isCommunicator() const
+	{
+		return( hasPort() || hasRouter4This() || hasConnector() );
+	}
+
+	inline bool isCommunicatorWith(const InstanceOfPort & aPort) const
+	{
+		return( mTableOfPort.contains(& aPort)
 			|| (hasRouter4This() && getRouter4This().hasRouting(aPort)) );
 	}
 
 	inline bool isLifeline() const
 	{
 		return( getSpecifier().hasFeatureLifeline() );
+	}
+
+	inline bool isWeakLifeline() const
+	{
+		return( isLifeline() || isCommunicator()
+				|| (hasStatementComFamily()
+					&& getSpecifier().isFamilyCompositeComponent()) );
 	}
 
 
@@ -784,7 +881,7 @@ public:
 	}
 
 	inline const Symbol & getByAstInstanceModel(
-			const ObjectElement * astElement) const
+			const ObjectElement & astElement) const
 	{
 		const Symbol & aModel =
 				mTableOfInstanceModel.getByAstElement(astElement);
@@ -819,7 +916,7 @@ public:
 				&& (mTableOfInstanceModel.size() == 2) );
 	}
 
-	inline avm_size_t sizeInstanceModel() const
+	inline std::size_t sizeInstanceModel() const
 	{
 		// don't forget the instance THIS at offset 0 !!!
 		return( mTableOfInstanceModel.size()
@@ -874,7 +971,7 @@ public:
 
 
 	inline const Symbol & getByAstInstanceStatic(
-			const ObjectElement * astElement) const
+			const ObjectElement & astElement) const
 	{
 		const Symbol & anInstance =
 				mTableOfInstanceStatic.getByAstElement(astElement);
@@ -915,7 +1012,7 @@ public:
 				&& (mTableOfInstanceStatic.size() == 2) );
 	}
 
-	inline avm_size_t sizeInstanceStatic() const
+	inline std::size_t sizeInstanceStatic() const
 	{
 		// don't forget the instance THIS at offset 0 !!!
 		return( mTableOfInstanceStatic.size()
@@ -947,7 +1044,7 @@ public:
 	 * GETTER - SETTER
 	 * Machine Count
 	 */
-	avm_size_t getrecMachineCount() const;
+	std::size_t getrecMachineCount() const;
 
 
 	/**
@@ -961,7 +1058,7 @@ public:
 
 	inline bool hasPrototypeInstance() const
 	{
-		return( mPrototypeInstance != NULL );
+		return( mPrototypeInstance != nullptr );
 	}
 
 	inline void setPrototypeInstance(InstanceOfMachine * anInstance)
@@ -976,7 +1073,8 @@ public:
 	 * mTableOfInstanceModel
 	 * mTableOfInstanceDynamic
 	 */
-	inline TableOfSymbol & getInstanceByDesign(Specifier::DESIGN_KIND aDesign)
+	inline const TableOfSymbol & getInstanceByDesign(
+			Specifier::DESIGN_KIND aDesign) const
 	{
 		switch( aDesign )
 		{
@@ -1040,7 +1138,7 @@ public:
 	}
 
 	inline const Symbol & getByAstInstanceDynamic(
-			const ObjectElement * astElement) const
+			const ObjectElement & astElement) const
 	{
 		return( mTableOfInstanceDynamic.getByAstElement(astElement) );
 	}
@@ -1100,10 +1198,16 @@ public:
 	}
 
 
-	inline const BF & getTransition(
-			const std::string & aFullyQualifiedNameID) const
+	inline const BF & getTransition(const std::string & aFullyQualifiedNameID,
+			bool enabledOnlyLocationComparisonElse = false) const
 	{
-		return( mTableOfTransition.getByFQNameID( aFullyQualifiedNameID ) );
+		return( mTableOfTransition.getByFQNameID(
+				aFullyQualifiedNameID, enabledOnlyLocationComparisonElse ) );
+	}
+
+	inline const BF & getTransitionByID(const std::string & anID) const
+	{
+		return( mTableOfTransition.getByID( anID ) );
 	}
 
 	inline const BF & getTransitionByNameID(const std::string & aNameID) const
@@ -1119,7 +1223,7 @@ public:
 
 
 	inline const BF & getTransitionByAstElement(
-			const ObjectElement * astElement) const
+			const ObjectElement & astElement) const
 	{
 		return( mTableOfTransition.getByAstElement(astElement) );
 	}
@@ -1200,7 +1304,7 @@ public:
 
 
 	inline const BF & getProgramByAstElement(
-			const ObjectElement * astElement) const
+			const ObjectElement & astElement) const
 	{
 		return( mTableOfProgram.getByAstElement(astElement) );
 	}
@@ -1258,10 +1362,10 @@ public:
 	/*
 	 * contains DATA
 	 */
-	inline bool containsData(InstanceOfData * anInstance) const
+	inline bool containsVariable(InstanceOfData * anInstance) const
 	{
-		return( AvmProgram::containsData(anInstance) /*||
-				mTableOfAlias.contains(anInstance)*/ );
+		return( AvmProgram::containsVariable(anInstance) );
+//				|| mTableOfAlias.contains(anInstance) );
 	}
 
 
@@ -1305,36 +1409,106 @@ public:
 
 
 	/**
+	 * GETTER - SETTER
+	 * mTimeVariable
+	 * mExprTimeVariable
+	 */
+	const InstanceOfData * getTimeVariable() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTimeVariable )
+				<< "Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mTimeVariable );
+	}
+
+	const BF & exprTimeVariable() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mTimeVariable )
+				<< "Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mExprTimeVariable );
+	}
+
+	bool hasTimeVariable() const
+	{
+		return( mTimeVariable != nullptr );
+	}
+
+	void setTimeVariable(const BF & timeVariable)
+	{
+		mTimeVariable = timeVariable.to_ptr< InstanceOfData >();
+
+		mExprTimeVariable = timeVariable;
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * mDeltaTimeVariable
+	 * mExprDeltaTimeVariable
+	 */
+	const InstanceOfData * getDeltaTimeVariable() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mDeltaTimeVariable )
+				<< "Delta Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mDeltaTimeVariable );
+	}
+
+	const BF & exprDeltaTimeVariable() const
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( mDeltaTimeVariable )
+				<< "Delta Time Variable in " << str_header( *this ) << " !!!"
+				<< SEND_EXIT;
+
+		return( mExprDeltaTimeVariable );
+	}
+
+	bool hasDeltaTimeVariable() const
+	{
+		return( mDeltaTimeVariable != nullptr );
+	}
+
+	void setDeltaTimeVariable(const BF & deltaTimeVariable)
+	{
+		mDeltaTimeVariable = deltaTimeVariable.to_ptr< InstanceOfData >();
+
+		mExprDeltaTimeVariable = deltaTimeVariable;
+	}
+
+
+	void setDeltaTimeVariable();
+
+
+	/**
 	 * GETTER
 	 * any SYMBOL filtering by an optional type specifier family
 	 */
 	virtual const BF & getSymbol(
 			const std::string & aFullyQualifiedNameID,
-			avm_type_specifier_kind_t typeFamily) const;
+			avm_type_specifier_kind_t typeFamily) const override;
 
 	virtual const BF & getSymbolByQualifiedNameID(
 			const std::string & aQualifiedNameID,
-			avm_type_specifier_kind_t typeFamily) const;
+			avm_type_specifier_kind_t typeFamily) const override;
 
 	virtual const BF & getSymbolByNameID(const std::string & aNameID,
-			avm_type_specifier_kind_t typeFamily) const;
+			avm_type_specifier_kind_t typeFamily) const override;
 
-	virtual const BF & getSymbolByAstElement(const ObjectElement * astElement,
-			avm_type_specifier_kind_t typeFamily) const;
+	virtual const BF & getSymbolByAstElement(const ObjectElement & astElement,
+			avm_type_specifier_kind_t typeFamily) const override;
 
 
 	/**
 	 * GETTER - SETTER
 	 * onCreateRoutine
 	 */
-	inline AvmProgram & getOnCreateRoutine()
+	inline const AvmProgram & getOnCreateRoutine() const
 	{
 		return( onCreateRoutine );
-	}
-
-	inline BFCode & getOnCreate()
-	{
-		return( onCreateRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnCreate() const
@@ -1357,14 +1531,9 @@ public:
 	 * GETTER - SETTER
 	 * onInitRoutine
 	 */
-	inline AvmProgram & getOnInitRoutine()
+	inline const AvmProgram & getOnInitRoutine() const
 	{
 		return( onInitRoutine );
-	}
-
-	inline BFCode & getOnInit()
-	{
-		return( onInitRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnInit() const
@@ -1377,6 +1546,13 @@ public:
 		return( onInitRoutine.hasCode() );
 	}
 
+	bool hasOnInitMachine() const
+	{
+		return( hasOnInit() && getOnInit()->isOpCode(AVM_OPCODE_INIT)
+				&& getOnInit()->getOperands().singleton()
+				&& getOnInit()->first().is< InstanceOfMachine >() );
+	}
+
 	inline void setOnInit(const BFCode & aProgram)
 	{
 		onInitRoutine.setCode( aProgram );
@@ -1387,14 +1563,9 @@ public:
 	 * GETTER - SETTER
 	 * onFinalRoutine
 	 */
-	inline AvmProgram & getOnFinalRoutine()
+	inline const AvmProgram & getOnFinalRoutine() const
 	{
 		return( onFinalRoutine );
-	}
-
-	inline BFCode & getOnFinal()
-	{
-		return( onFinalRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnFinal() const
@@ -1417,14 +1588,9 @@ public:
 	 * GETTER - SETTER
 	 * onReturnRoutine
 	 */
-	inline AvmProgram & getOnReturnRoutine()
+	inline const AvmProgram & getOnReturnRoutine() const
 	{
 		return( onReturnRoutine );
-	}
-
-	inline BFCode & getOnReturn()
-	{
-		return( onReturnRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnReturn() const
@@ -1447,14 +1613,9 @@ public:
 	 * GETTER - SETTER
 	 * onStartRoutine
 	 */
-	inline AvmProgram & getOnStartRoutine()
+	inline const AvmProgram & getOnStartRoutine() const
 	{
 		return( onStartRoutine );
-	}
-
-	inline BFCode & getOnStart()
-	{
-		return( onStartRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnStart() const
@@ -1477,14 +1638,9 @@ public:
 	 * GETTER - SETTER
 	 * onStopRoutine
 	 */
-	inline AvmProgram & getOnStopRoutine()
+	inline const AvmProgram & getOnStopRoutine() const
 	{
 		return( onStopRoutine );
-	}
-
-	inline BFCode & getOnStop()
-	{
-		return( onStopRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnStop() const
@@ -1507,14 +1663,9 @@ public:
 	 * GETTER - SETTER
 	 * onIEnableRoutine
 	 */
-	inline AvmProgram & getOnIEnableRoutine()
+	inline const AvmProgram & getOnIEnableRoutine() const
 	{
 		return( onIEnableRoutine );
-	}
-
-	inline BFCode & getOnIEnable()
-	{
-		return( onIEnableRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnIEnable() const
@@ -1537,14 +1688,9 @@ public:
 	 * GETTER - SETTER
 	 * onEnableRoutine
 	 */
-	inline AvmProgram & getOnEnableRoutine()
+	inline const AvmProgram & getOnEnableRoutine() const
 	{
 		return( onEnableRoutine );
-	}
-
-	inline BFCode & getOnEnable()
-	{
-		return( onEnableRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnEnable() const
@@ -1566,14 +1712,9 @@ public:
 	 * GETTER - SETTER
 	 * onIDisableRoutine
 	 */
-	inline AvmProgram & getOnIDisableRoutine()
+	inline const AvmProgram & getOnIDisableRoutine() const
 	{
 		return( onIDisableRoutine );
-	}
-
-	inline BFCode & getOnIDisable()
-	{
-		return( onIDisableRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnIDisable() const
@@ -1596,14 +1737,9 @@ public:
 	 * GETTER - SETTER
 	 * onDisableRoutine
 	 */
-	inline AvmProgram & getOnDisableRoutine()
+	inline const AvmProgram & getOnDisableRoutine() const
 	{
 		return( onDisableRoutine );
-	}
-
-	inline BFCode & getOnDisable()
-	{
-		return( onDisableRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnDisable() const
@@ -1626,14 +1762,9 @@ public:
 	 * GETTER - SETTER
 	 * onIAbortRoutine
 	 */
-	inline AvmProgram & getOnIAbortRoutine()
+	inline const AvmProgram & getOnIAbortRoutine() const
 	{
 		return( onIAbortRoutine );
-	}
-
-	inline BFCode & getOnIAbort()
-	{
-		return( onIAbortRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnIAbort() const
@@ -1656,14 +1787,9 @@ public:
 	 * GETTER - SETTER
 	 * onAbortRoutine
 	 */
-	inline AvmProgram & getOnAbortRoutine()
+	inline const AvmProgram & getOnAbortRoutine() const
 	{
 		return( onAbortRoutine );
-	}
-
-	inline BFCode & getOnAbort()
-	{
-		return( onAbortRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnAbort() const
@@ -1686,15 +1812,11 @@ public:
 	 * GETTER - SETTER
 	 * onIRunRoutine
 	 */
-	inline AvmProgram & getOnIRunRoutine()
+	inline const AvmProgram & getOnIRunRoutine() const
 	{
 		return( onIRunRoutine );
 	}
 
-	inline BFCode & getOnIRun()
-	{
-		return( onIRunRoutine.getCode() );
-	}
 
 	inline const BFCode & getOnIRun() const
 	{
@@ -1716,14 +1838,9 @@ public:
 	 * GETTER - SETTER
 	 * onRunRoutine
 	 */
-	inline AvmProgram & getOnRunRoutine()
+	inline const AvmProgram & getOnRunRoutine() const
 	{
 		return( onRunRoutine );
-	}
-
-	inline BFCode & getOnRun()
-	{
-		return( onRunRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnRun() const
@@ -1745,14 +1862,9 @@ public:
 	 * GETTER - SETTER
 	 * onRtcRoutine
 	 */
-	inline AvmProgram & getOnRtcRoutine()
+	inline const AvmProgram & getOnRtcRoutine() const
 	{
 		return( onRtcRoutine );
-	}
-
-	inline BFCode & getOnRtc()
-	{
-		return( onRtcRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnRtc() const
@@ -1775,17 +1887,17 @@ public:
 	 * GETTER - SETTER
 	 * mSchedule
 	 */
-	inline AvmProgram & getOnScheduleRoutine()
+	inline const AvmProgram & getOnScheduleRoutine() const
 	{
 		return( onScheduleRoutine );
 	}
 
-	inline BFCode & getOnSchedule()
+	inline const BFCode & getOnSchedule() const
 	{
 		return( onScheduleRoutine.getCode() );
 	}
 
-	inline const BFCode & getOnSchedule() const
+	inline BFCode & getOnSchedule()
 	{
 		return( onScheduleRoutine.getCode() );
 	}
@@ -1827,7 +1939,7 @@ public:
 	 * GETTER
 	 * on activity by opcode
 	 */
-	AvmProgram & getOnActivityRoutine(AVM_OPCODE opCode);
+	const AvmProgram & getOnActivityRoutine(AVM_OPCODE opCode) const;
 
 	const BFCode & getOnActivity(AVM_OPCODE opCode) const;
 
@@ -1849,7 +1961,7 @@ public:
 
 	bool isCompositeComponent() const
 	{
-		return( hasOnConcurrency() );
+		return( hasOnConcurrency() || getSpecifier().isComponentSystem() );
 	}
 
 
@@ -1869,6 +1981,9 @@ public:
 		mMutableScheduleFlag = isMutableSchedule;
 	}
 
+	/**
+	 * TESTER
+	 */
 	bool isInlinableSchedule() const;
 
 
@@ -1876,14 +1991,9 @@ public:
 	 * GETTER - SETTER
 	 * mConcurrency
 	 */
-	inline AvmProgram & getOnConcurrencyRoutine()
+	inline const AvmProgram & getOnConcurrencyRoutine() const
 	{
 		return( onConcurrencyRoutine );
-	}
-
-	inline BFCode & getOnConcurrency()
-	{
-		return( onConcurrencyRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnConcurrency() const
@@ -1901,7 +2011,7 @@ public:
 		onConcurrencyRoutine.setCode( aProgram );
 	}
 
-	inline Operator * getOnConcurrencyOperator() const
+	inline const Operator * getOnConcurrencyOperator() const
 	{
 		AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT(
 				onConcurrencyRoutine.getCode() )
@@ -1917,14 +2027,9 @@ public:
 	 * GETTER - SETTER
 	 * mSynchronize
 	 */
-	inline AvmProgram & getOnSynchronizeRoutine()
+	inline const AvmProgram & getOnSynchronizeRoutine() const
 	{
 		return( onSynchronizeRoutine );
-	}
-
-	inline BFCode & getOnSynchronize()
-	{
-		return( onSynchronizeRoutine.getCode() );
 	}
 
 	inline const BFCode & getOnSynchronize() const
@@ -1951,6 +2056,13 @@ public:
 	{
 		return( hasOnInit() && hasOnRun() );
 	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * IOpcodeFamily
+	 */
+	virtual void updateOpcodeFamily() override;
 
 
 	/**
@@ -1984,7 +2096,7 @@ public:
 	}
 
 
-	inline Router & getRouter4Instance(avm_size_t offset)
+	inline Router & getRouter4Instance(std::size_t offset)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(
 				offset , mTableOfRouter4Instance.size() )
@@ -1994,7 +2106,7 @@ public:
 		return( mTableOfRouter4Instance.get(offset) );
 	}
 
-	inline const Router & getRouter4Instance(avm_size_t offset) const
+	inline const Router & getRouter4Instance(std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(
 				offset , mTableOfRouter4Instance.size() )
@@ -2045,21 +2157,19 @@ public:
 	 * GETTER - SETTER
 	 * mRouterTable4Prototype
 	 */
-	inline const Router & getRouter4Prototype(ExecutableForm * aModel) const
+	inline const Router & getRouter4Prototype(
+			const ExecutableForm * aModel) const
 	{
 		if( mTableOfRouter4Instance.nonempty() )
 		{
-			TableOfRouter::const_iterator it = mTableOfRouter4Instance.begin();
-			TableOfRouter::const_iterator endIt = mTableOfRouter4Instance.end();
-
-			for( ; it != endIt ; ++it )
+			for( const auto & itRouter : mTableOfRouter4Instance )
 			{
-				if( (*it).valid()
-					&& ((*it).getMachine()->getExecutable() == aModel)
-					&& (*it).getMachine()->
+				if( itRouter.valid()
+					&& (itRouter.getMachine().getExecutable() == aModel)
+					&& itRouter.getMachine().
 							getSpecifier().isDesignPrototypeStatic() )
 				{
-					return( *it );
+					return( itRouter );
 				}
 			}
 		}
@@ -2067,9 +2177,10 @@ public:
 		return( Router::_NULL_ );
 	}
 
-	inline const Router & getRouter4Prototype(InstanceOfMachine * aMachine) const
+	inline const Router & getRouter4Prototype(
+			const InstanceOfMachine & aMachine) const
 	{
-		return( getRouter4Prototype(aMachine->getExecutable()) );
+		return( getRouter4Prototype(aMachine.getExecutable()) );
 	}
 
 
@@ -2104,7 +2215,7 @@ public:
 	}
 
 
-	inline Router & getRouter4Model(avm_size_t offset)
+	inline Router & getRouter4Model(std::size_t offset)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(
 				offset , mTableOfRouter4Model.size() )
@@ -2113,7 +2224,7 @@ public:
 		return( mTableOfRouter4Model.get(offset) );
 	}
 
-	inline const Router & getRouter4Model(avm_size_t offset) const
+	inline const Router & getRouter4Model(std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(
 				offset , mTableOfRouter4Model.size() )
@@ -2127,26 +2238,24 @@ public:
 	{
 		if( mTableOfRouter4Model.nonempty() )
 		{
-			TableOfRouter::const_iterator it = mTableOfRouter4Model.begin();
-			TableOfRouter::const_iterator endIt = mTableOfRouter4Model.end();
-
-			for( ; it != endIt ; ++it )
+			for( const auto & itRouter : mTableOfRouter4Model )
 			{
-				if( (*it).valid()
-					&& ((*it).getMachine()->getExecutable() == aModel) )
+				if( itRouter.valid()
+					&& (itRouter.getMachine().getExecutable() == aModel) )
 				{
-					return( *it );
+					return( itRouter );
 				}
 			}
+
 		}
 
 		return( Router::_NULL_ );
 	}
 
 	inline const Router & getRouter4Model(
-			const InstanceOfMachine * aMachine) const
+			const InstanceOfMachine & aMachine) const
 	{
-		return( getRouter4Model(aMachine->getExecutable()) );
+		return( getRouter4Model(aMachine.getExecutable()) );
 	}
 
 
@@ -2192,11 +2301,6 @@ public:
 	 * GETTER - SETTER
 	 * mRequiredData
 	 */
-	inline TableOfInstanceOfData & getRequiredData()
-	{
-		return( mRequiredData );
-	}
-
 	inline const TableOfInstanceOfData & getRequiredData() const
 	{
 		return( mRequiredData );
@@ -2207,11 +2311,6 @@ public:
 	 * GETTER - SETTER
 	 * mUselessData
 	 */
-	inline TableOfInstanceOfData & getUselessData()
-	{
-		return( mUselessData );
-	}
-
 	inline const TableOfInstanceOfData & getUselessData() const
 	{
 		return( mUselessData );
@@ -2222,19 +2321,21 @@ public:
 	 * Control flow analysis
 	 * source & targets Executable< [state]machine > for Transition
 	 */
-	inline void getOutgoingMachine(ListOfInstanceOfMachine & listOfMachine)
+	inline void getOutgoingMachine(
+			ListOfInstanceOfMachine & listOfMachine) const
 	{
-		for( avm_size_t offset = 0 ; offset < getTransition().size() ; ++offset )
+		for( std::size_t offset = 0 ; offset < getTransition().size() ; ++offset )
 		{
 			getTransition().rawAt(offset)->getTransitionTarget( listOfMachine );
 		}
 	}
 
-	inline void getOutgoingTransition(ListOfAvmTransition & listOfTransition)
+	inline void getOutgoingTransition(
+			ListOfAvmTransition & listOfTransition) const
 	{
 		AvmTransition * aTransition;
 
-		for( avm_size_t offset = 0 ; offset < getTransition().size() ; ++offset )
+		for( std::size_t offset = 0 ; offset < getTransition().size() ; ++offset )
 		{
 			aTransition = getTransition().rawAt(offset);
 
@@ -2249,13 +2350,13 @@ public:
 	 */
 	inline void addBackwardReachableMachine(InstanceOfMachine * aMachine)
 	{
-		mBackwardReachableMachine.add_union( aMachine );
+		mBackwardReachableMachine.add_unique( aMachine );
 	}
 
 	inline void addBackwardReachableMachine(
 			ListOfInstanceOfMachine & reachableMachines)
 	{
-		mBackwardReachableMachine.add_union( reachableMachines );
+		mBackwardReachableMachine.add_unique( reachableMachines );
 	}
 
 
@@ -2296,13 +2397,13 @@ public:
 	 */
 	inline void addBackwardReachableTransition(AvmTransition * aTransition)
 	{
-		mBackwardReachableTransition.add_union( aTransition );
+		mBackwardReachableTransition.add_unique( aTransition );
 	}
 
 	inline void addBackwardReachableTransition(
 			ListOfAvmTransition & reachableTransitions)
 	{
-		mBackwardReachableTransition.add_union( reachableTransitions );
+		mBackwardReachableTransition.add_unique( reachableTransitions );
 	}
 
 
@@ -2343,13 +2444,13 @@ public:
 	 */
 	inline void addForwardReachableMachine(InstanceOfMachine * aMachine)
 	{
-		mForwardReachableMachine.add_union( aMachine );
+		mForwardReachableMachine.add_unique( aMachine );
 	}
 
 	inline void addForwardReachableMachine(
 			ListOfInstanceOfMachine & reachableMachines)
 	{
-		mForwardReachableMachine.add_union( reachableMachines );
+		mForwardReachableMachine.add_unique( reachableMachines );
 	}
 
 
@@ -2388,15 +2489,15 @@ public:
 	 * GETTER - SETTER
 	 * mListOfForwardReachableMachine
 	 */
-	inline void addForwardReachableTransition(AvmTransition * aTransition)
+	inline void addForwardReachableTransition(const AvmTransition * aTransition)
 	{
-		mForwardReachableTransition.add_union( aTransition );
+		mForwardReachableTransition.add_unique( aTransition );
 	}
 
 	inline void addForwardReachableTransition(
 			ListOfAvmTransition & reachableTransitions)
 	{
-		mForwardReachableTransition.add_union( reachableTransitions );
+		mForwardReachableTransition.add_unique( reachableTransitions );
 	}
 
 
@@ -2411,7 +2512,8 @@ public:
 	}
 
 
-	bool containsForwardReachableTransition(AvmTransition * aTransition) const
+	bool containsForwardReachableTransition(
+			const AvmTransition * aTransition) const
 	{
 		return( mForwardReachableTransition.contains(aTransition) );
 	}
@@ -2422,7 +2524,8 @@ public:
 	}
 
 
-	inline void removeForwardReachableTransition(AvmTransition * aTransition)
+	inline void removeForwardReachableTransition(
+			const AvmTransition * aTransition)
 	{
 		if( mForwardReachableTransition.nonempty() )
 		{
@@ -2435,7 +2538,7 @@ public:
 	 * GETTER - SETTER
 	 * isReachableStateFlag
 	 */
-	bool isReachableState()
+	bool isReachableState() const
 	{
 		return( isReachableStateFlag );
 	}
@@ -2449,14 +2552,14 @@ public:
 	/**
 	 * Serialization
 	 */
-	void header(OutStream & os) const;
+	void header(OutStream & out) const;
 
-	void strHeader(OutStream & os) const;
+	void strHeader(OutStream & out) const override;
 
-	static void toStream(OutStream & os, const TableOfRouter & aTableOfRouter,
+	static void toStream(OutStream & out, const TableOfRouter & aTableOfRouter,
 			const std::string & sectionName = "router:");
 
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & out) const override;
 
 };
 

@@ -69,7 +69,7 @@ public:
 	 * GETTER - SETTER
 	 * mCapacity
 	 */
-	virtual avm_size_t capacity() const = 0;
+	virtual std::size_t capacity() const = 0;
 
 	inline long realCapacity() const
 	{
@@ -109,9 +109,9 @@ public:
 	}
 
 
-	virtual avm_size_t size() const = 0;
+	virtual std::size_t size() const override = 0;
 
-	virtual void resize(avm_size_t newSize) = 0;
+	virtual void resize(std::size_t newSize) = 0;
 
 
 	/**
@@ -131,7 +131,7 @@ protected:
 	/**
 	 * ATTRIBUTES
 	 */
-	avm_size_t mCapacity;
+	std::size_t mCapacity;
 
 
 public:
@@ -146,7 +146,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinContainer(class_kind_t aClassKind, avm_size_t aCapacity)
+	BuiltinContainer(class_kind_t aClassKind, std::size_t aCapacity)
 	: BuiltinCollection( aClassKind ),
 	mCapacity( aCapacity )
 	{
@@ -176,19 +176,19 @@ public:
 	/**
 	 * CREATION
 	 */
-	static BuiltinContainer * create(ContainerTypeSpecifier * containerT);
+	static BuiltinContainer * create(const ContainerTypeSpecifier & containerT);
 
 
 	/**
 	 * GETTER - SETTER
 	 * mCapacity
 	 */
-	inline avm_size_t capacity() const
+	inline virtual std::size_t capacity() const override
 	{
 		return( mCapacity );
 	}
 
-	inline void setCapacity(long aCapacity)
+	inline virtual void setCapacity(long aCapacity) override
 	{
 		mCapacity = (aCapacity < 0) ? AVM_NUMERIC_MAX_SIZE_T : aCapacity;
 	}
@@ -197,28 +197,57 @@ public:
 	/**
 	 * INTERFACE
 	 */
-	virtual       BF & at(avm_size_t idx) = 0;
-	virtual const BF & at(avm_size_t idx) const = 0;
+	/**
+	 * front / first
+	 * back  / last
+	 */
+	virtual BF & front() = 0;
+	virtual BF & first() = 0;
+
+	virtual const BF & front() const = 0;
+	virtual const BF & first() const = 0;
+
+	virtual BF & back() = 0;
+	virtual BF & last() = 0;
+
+	virtual const BF & back() const = 0;
+	virtual const BF & last() const = 0;
 
 
-	inline virtual BF & operator[](avm_size_t offset)
+	/**
+	 * POP
+	 * front / first
+	 * back  / last
+	 */
+	virtual BF pop_front() = 0;
+	virtual BF pop_first() = 0;
+
+	virtual BF pop_back() = 0;
+	virtual BF pop_last() = 0;
+
+
+	virtual       BF & at(std::size_t idx) override = 0;
+	virtual const BF & at(std::size_t idx) const override = 0;
+
+
+	inline virtual BF & operator[](std::size_t offset) override
 	{
 		return( at(offset) );
 	}
 
-	inline virtual const BF & operator[](avm_size_t offset) const
+	inline virtual const BF & operator[](std::size_t offset) const override
 	{
 		return( at(offset) );
 	}
 
-	virtual       BF & get(avm_size_t idx) = 0;
-	virtual const BF & get(avm_size_t idx) const = 0;
+	virtual       BF & get(std::size_t idx) = 0;
+	virtual const BF & get(std::size_t idx) const = 0;
 
-	virtual BF & getWritable(avm_size_t offset) = 0;
+	virtual BF & getWritable(std::size_t offset) override = 0;
 
-	virtual void makeWritable(avm_size_t offset) = 0;
+	virtual void makeWritable(std::size_t offset)  override = 0;
 
-	virtual void set(avm_size_t idx, const BF & arg) = 0;
+	virtual void set(std::size_t idx, const BF & arg)  override = 0;
 
 
 	/**
@@ -231,14 +260,49 @@ public:
 		return( add( arg ) );
 	}
 
+	inline virtual BF pop()
+	{
+		return( pop_first() );
+	}
 
-	virtual void erase(avm_size_t idx) = 0;
+
+	virtual void erase(std::size_t idx) = 0;
 
 	virtual void remove(const BF & arg) = 0;
 
 	virtual void clear() = 0;
 
-	void copy(BuiltinArray * intputArray, avm_size_t count);
+	void copy(const BuiltinArray & intputArray, std::size_t count);
+
+
+	/**
+	 * USUAL EQUAL
+	 */
+	int compare(const BuiltinContainer & other) const;
+
+	bool isEQ(const BuiltinContainer & other) const;
+
+	using BuiltinCollection::isEQ;
+
+
+	inline bool isNEQ(const BuiltinContainer & other) const
+	{
+		return( not isEQ( other ) );
+	}
+
+	using BuiltinCollection::isNEQ;
+
+
+	/**
+	 * SYNTAXIC EQUAL
+	 */
+	bool isSEQ(const BuiltinContainer & other) const;
+
+	inline bool isNSEQ(const BuiltinContainer & other) const
+	{
+		return( not BuiltinContainer::isSEQ( other ) );
+	}
+
 
 };
 
@@ -284,7 +348,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinList(avm_size_t aCapacity)
+	BuiltinList(std::size_t aCapacity)
 	: BuiltinContainer(CLASS_KIND_T( BuiltinList ), aCapacity ),
 	mData( )
 	{
@@ -303,7 +367,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinList(class_kind_t aClassKind, avm_size_t aCapacity)
+	BuiltinList(class_kind_t aClassKind, std::size_t aCapacity)
 	: BuiltinContainer( aClassKind , aCapacity ),
 	mData( )
 	{
@@ -355,39 +419,111 @@ public:
 	}
 
 
+	/**
+	 * front / first
+	 * back  / last
+	 */
+	inline virtual BF & front() override
+	{
+		return( mData.front() );
+	}
+
+	inline virtual BF & first() override
+	{
+		return( mData.first() );
+	}
+
+	inline virtual const BF & front() const override
+	{
+		return( mData.front() );
+	}
+
+	inline virtual const BF & first() const override
+	{
+		return( mData.first() );
+	}
+
+
+	inline virtual BF & back() override
+	{
+		return( mData.back() );
+	}
+
+	inline virtual BF & last() override
+	{
+		return( mData.last() );
+	}
+
+	inline virtual const BF & back() const override
+	{
+		return( mData.back() );
+	}
+
+	inline virtual const BF & last() const override
+	{
+		return( mData.last() );
+	}
+
+
+	/**
+	 * POP
+	 * front / first
+	 * back  / last
+	 */
+	virtual BF pop_front() override
+	{
+		return( mData.pop_first() );
+	}
+
+	virtual BF pop_first() override
+	{
+		return( mData.pop_first() );
+	}
+
+	virtual BF pop_back() override
+	{
+		return( mData.pop_last() );
+	}
+
+	virtual BF pop_last() override
+	{
+		return( mData.pop_last() );
+	}
+
+
 	/*
 	 ***************************************************************************
 	 * GETTER
 	 * emptiness
 	 ***************************************************************************
 	 */
-	inline virtual bool empty() const
+	inline virtual bool empty() const override
 	{
 		return( mData.empty() );
 	}
 
-	inline virtual bool nonempty() const
+	inline virtual bool nonempty() const override
 	{
 		return( mData.nonempty() );
 	}
 
-	inline virtual bool singleton() const
+	inline virtual bool singleton() const override
 	{
 		return( mData.singleton() );
 	}
 
-	inline virtual bool populated() const
+	inline virtual bool populated() const override
 	{
 		return( mData.populated() );
 	}
 
 
-	inline virtual avm_size_t size() const
+	inline virtual std::size_t size() const override
 	{
 		return( mData.size() );
 	}
 
-	inline virtual void resize(avm_size_t newSize)
+	inline virtual void resize(std::size_t newSize) override
 	{
 		mData.resize(newSize);
 	}
@@ -396,28 +532,28 @@ public:
 	/**
 	 * INTERFACE
 	 */
-	virtual BF & at(avm_size_t idx)
+	virtual BF & at(std::size_t idx) override
 	{
 		return( mData.at(idx) );
 	}
 
-	virtual const BF & at(avm_size_t idx) const
+	virtual const BF & at(std::size_t idx) const override
 	{
 		return( mData.at(idx) );
 	}
 
 
-	virtual BF & get(avm_size_t idx)
+	virtual BF & get(std::size_t idx) override
 	{
 		return( mData.get(idx) );
 	}
 
-	virtual const BF & get(avm_size_t idx) const
+	virtual const BF & get(std::size_t idx) const override
 	{
 		return( mData.get(idx) );
 	}
 
-	inline virtual BF & getWritable(avm_size_t idx)
+	inline virtual BF & getWritable(std::size_t idx) override
 	{
 		iterator it = mData.begin();
 		iterator endIt = mData.end();
@@ -440,7 +576,7 @@ public:
 		}
 	}
 
-	inline virtual void makeWritable(avm_size_t idx)
+	inline virtual void makeWritable(std::size_t idx) override
 	{
 		iterator it = mData.begin();
 		iterator endIt = mData.end();
@@ -459,7 +595,7 @@ public:
 		}
 	}
 
-	inline virtual void set(avm_size_t idx, const BF & arg)
+	inline virtual void set(std::size_t idx, const BF & arg) override
 	{
 		iterator it = mData.begin();
 		iterator endIt = mData.end();
@@ -479,7 +615,7 @@ public:
 	}
 
 
-	inline virtual bool add(const BF & arg)
+	inline virtual bool add(const BF & arg) override
 	{
 		if( size() < mCapacity)
 		{
@@ -490,20 +626,20 @@ public:
 	}
 
 
-	inline virtual bool contains(const BF & arg) const
+	inline virtual bool contains(const BF & arg) const override
 	{
 		return( mData.contains(arg) );
 	}
 
 
-	inline virtual bool intersect(const BuiltinList & aBuiltin) const
+	inline bool intersect(const BuiltinList & aBuiltin) const
 	{
 		return( mData.intersect(aBuiltin.mData) );
 	}
 
 
 
-	inline virtual void erase(avm_size_t idx)
+	inline virtual void erase(std::size_t idx) override
 	{
 		if( mData.nonempty() )
 		{
@@ -522,12 +658,12 @@ public:
 	}
 
 
-	inline virtual void remove(const BF & arg)
+	inline virtual void remove(const BF & arg) override
 	{
 		mData.remove(arg);
 	}
 
-	inline virtual void clear()
+	inline virtual void clear() override
 	{
 		mData.clear();
 	}
@@ -538,7 +674,7 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	virtual void toStream(OutStream & os) const
+	virtual void toStream(OutStream & os) const override
 	{
 		os << TAB;
 
@@ -601,7 +737,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinVector(avm_size_t aCapacity)
+	BuiltinVector(std::size_t aCapacity)
 	: BuiltinContainer( CLASS_KIND_T( BuiltinVector ), aCapacity),
 	mData( )
 	{
@@ -630,7 +766,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinVector(class_kind_t aClassKind, avm_size_t aCapacity)
+	BuiltinVector(class_kind_t aClassKind, std::size_t aCapacity)
 	: BuiltinContainer( aClassKind , aCapacity ),
 	mData( )
 	{
@@ -671,39 +807,111 @@ public:
 	}
 
 
+	/**
+	 * front / first
+	 * back  / last
+	 */
+	inline virtual BF & front() override
+	{
+		return( mData.front() );
+	}
+
+	inline virtual BF & first() override
+	{
+		return( mData.first() );
+	}
+
+	inline virtual const BF & front() const override
+	{
+		return( mData.front() );
+	}
+
+	inline virtual const BF & first() const override
+	{
+		return( mData.first() );
+	}
+
+
+	inline virtual BF & back() override
+	{
+		return( mData.back() );
+	}
+
+	inline virtual BF & last() override
+	{
+		return( mData.last() );
+	}
+
+	inline virtual const BF & back() const override
+	{
+		return( mData.back() );
+	}
+
+	inline virtual const BF & last() const override
+	{
+		return( mData.last() );
+	}
+
+
+	/**
+	 * POP
+	 * front / first
+	 * back  / last
+	 */
+	virtual BF pop_front() override
+	{
+		return( mData.pop_first() );
+	}
+
+	virtual BF pop_first() override
+	{
+		return( mData.pop_first() );
+	}
+
+	virtual BF pop_back() override
+	{
+		return( mData.pop_last() );
+	}
+
+	virtual BF pop_last() override
+	{
+		return( mData.pop_last() );
+	}
+
+
 	/*
 	 ***************************************************************************
 	 * GETTER
 	 * emptiness
 	 ***************************************************************************
 	 */
-	inline virtual bool empty() const
+	inline virtual bool empty() const override
 	{
 		return( mData.empty() );
 	}
 
-	inline virtual bool nonempty() const
+	inline virtual bool nonempty() const override
 	{
 		return( mData.nonempty() );
 	}
 
-	inline virtual bool singleton() const
+	inline virtual bool singleton() const override
 	{
 		return( mData.singleton() );
 	}
 
-	inline virtual bool populated() const
+	inline virtual bool populated() const override
 	{
 		return( mData.populated() );
 	}
 
 
-	inline virtual avm_size_t size() const
+	inline virtual std::size_t size() const override
 	{
 		return( mData.size() );
 	}
 
-	inline virtual void resize(avm_size_t newSize)
+	inline virtual void resize(std::size_t newSize) override
 	{
 		mData.resize(newSize);
 	}
@@ -714,59 +922,59 @@ public:
 	/**
 	 * INTERFACE
 	 */
-	virtual BF & at(avm_size_t idx)
+	inline virtual BF & at(std::size_t idx) override
 	{
 		return( mData.at(idx) );
 	}
 
-	virtual const BF & at(avm_size_t idx) const
+	inline virtual const BF & at(std::size_t idx) const override
 	{
 		return( mData.at(idx) );
 	}
 
 
-	inline virtual BF & operator[](avm_size_t offset)
+	inline virtual BF & operator[](std::size_t offset) override
 	{
 		return( mData.operator[](offset) );
 	}
 
-	inline virtual const BF & operator[](avm_size_t offset) const
+	inline virtual const BF & operator[](std::size_t offset) const override
 	{
 		return( mData.operator[](offset) );
 	}
 
 
-	virtual BF & get(avm_size_t idx)
+	inline virtual BF & get(std::size_t idx) override
 	{
 		return( mData.get(idx) );
 	}
 
-	virtual const BF & get(avm_size_t idx) const
+	inline virtual const BF & get(std::size_t idx) const override
 	{
 		return( mData.get(idx) );
 	}
 
 
-	inline BF & getWritable(avm_size_t offset)
+	inline virtual BF & getWritable(std::size_t offset) override
 	{
 		mData[offset].makeWritable();
 
 		return( mData[offset] );
 	}
 
-	inline void makeWritable(avm_size_t offset)
+	inline virtual void makeWritable(std::size_t offset) override
 	{
 		mData[offset].makeWritable();
 	}
 
 
-	inline virtual void set(avm_size_t idx, const BF & arg)
+	inline virtual void set(std::size_t idx, const BF & arg) override
 	{
 		mData.set(idx, arg);
 	}
 
 
-	inline virtual bool add(const BF & arg)
+	inline virtual bool add(const BF & arg) override
 	{
 		if( size() < mCapacity)
 		{
@@ -777,24 +985,24 @@ public:
 	}
 
 
-	inline virtual bool contains(const BF & arg) const
+	inline virtual bool contains(const BF & arg) const override
 	{
 		return( mData.contains(arg) );
 	}
 
 
-	inline virtual void erase(avm_size_t idx)
+	inline virtual void erase(std::size_t idx) override
 	{
 		mData.erase( mData.begin() + idx );
 	}
 
 
-	inline virtual void remove(const BF & arg)
+	inline virtual void remove(const BF & arg) override
 	{
 		mData.remove(arg);
 	}
 
-	inline virtual void clear()
+	inline virtual void clear() override
 	{
 		mData.clear();
 	}
@@ -805,7 +1013,7 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
 		os << TAB;
 
@@ -852,7 +1060,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinReverseVector(avm_size_t aCapacity)
+	BuiltinReverseVector(std::size_t aCapacity)
 	: BuiltinVector(CLASS_KIND_T( BuiltinReverseVector ), aCapacity)
 	{
 		//!! NOTHING
@@ -880,54 +1088,79 @@ public:
 	/**
 	 * INTERFACE
 	 */
-	virtual BF & at(avm_size_t idx)
+	inline virtual BF & at(std::size_t idx) override
 	{
 		return( mData.reverse_at(idx) );
 	}
 
-	virtual const BF & at(avm_size_t idx) const
+	inline virtual const BF & at(std::size_t idx) const override
 	{
 		return( mData.reverse_at(idx) );
 	}
 
 
-	inline virtual BF & operator[](avm_size_t offset)
+	inline virtual BF & operator[](std::size_t offset) override
 	{
 		return( mData.reverse_at(offset) );
 	}
 
-	inline virtual const BF & operator[](avm_size_t offset) const
+	inline virtual const BF & operator[](std::size_t offset) const override
 	{
 		return( mData.reverse_at(offset) );
 	}
 
 
-	virtual BF & get(avm_size_t idx)
+	inline virtual BF & get(std::size_t idx) override
 	{
 		return( mData.reverse_get(idx) );
 	}
 
-	virtual const BF & get(avm_size_t idx) const
+	inline virtual const BF & get(std::size_t idx) const override
 	{
 		return( mData.reverse_get(idx) );
 	}
 
-	inline BF & getWritable(avm_size_t offset)
+	inline virtual BF & getWritable(std::size_t offset) override
 	{
 		mData.reverse_get(offset).makeWritable();
 
 		return( mData.reverse_get(offset) );
 	}
 
-	inline void makeWritable(avm_size_t offset)
+	inline virtual void makeWritable(std::size_t offset) override
 	{
 		mData.reverse_get(offset).makeWritable();
 	}
 
 
-	inline virtual void set(avm_size_t idx, const BF & arg)
+	inline virtual void set(std::size_t idx, const BF & arg) override
 	{
 		mData.reverse_set(idx, arg);
+	}
+
+	/**
+	 * POP
+	 * front / first
+	 * back  / last
+	 */
+	virtual BF pop_front() override
+	{
+		return( mData.pop_last() );
+	}
+
+	virtual BF pop_first() override
+	{
+		return( mData.pop_last() );
+	}
+
+	virtual BF pop_back() override
+	{
+		return( mData.pop_first() );
+	}
+
+	virtual BF pop_last() override
+	{
+		return( mData.pop_first() );
 	}
 
 };
@@ -953,7 +1186,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinSet(avm_size_t aCapacity)
+	BuiltinSet(std::size_t aCapacity)
 	: BuiltinList( CLASS_KIND_T( BuiltinSet ) , aCapacity )
 	{
 		//!! NOTHING
@@ -980,10 +1213,20 @@ public:
 	/**
 	 * INTERFACE
 	 */
-	inline virtual bool add(const BF & arg)
+	inline virtual bool add(const BF & arg) override
 	{
 		if( size() < mCapacity )
 		{
+//			for( const auto & it : (*this) )
+//			{
+//				if( arg.strEQ( it ) )
+//				{
+//					return( true );
+//				}
+//			}
+//			mData.push_back( arg );
+
+
 			if( not contains(arg) )
 			{
 				mData.push_back( arg );
@@ -993,7 +1236,7 @@ public:
 		return( false );
 	}
 
-	inline virtual void set(avm_size_t idx, const BF & arg)
+	inline virtual void set(std::size_t idx, const BF & arg) override
 	{
 		BuiltinList::remove(arg);
 		BuiltinList::set(idx, arg);
@@ -1022,7 +1265,7 @@ public:
 		//!! NOTHING
 	}
 
-	BuiltinBag(avm_size_t aCapacity)
+	BuiltinBag(std::size_t aCapacity)
 	: BuiltinList( CLASS_KIND_T( BuiltinBag ) , aCapacity )
 	{
 		//!! NOTHING
@@ -1050,7 +1293,7 @@ public:
 	/**
 	 * INTERFACE
 	 */
-	inline virtual void set(avm_size_t idx, const BF & arg)
+	inline virtual void set(std::size_t idx, const BF & arg) override
 	{
 		BuiltinList::set(idx, arg);
 	}

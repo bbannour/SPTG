@@ -25,7 +25,7 @@ std::string ExecutionConfiguration::str() const
 	if( is< Operator >() )
 	{
 		return( OSS() << getRuntimeID().str()
-				<< FQN_ID_ROOT_SEPARATOR << getOperator()->strOp() );
+				<< FQN_ID_ROOT_SEPARATOR << getOperator().strOp() );
 	}
 	else
 	{
@@ -37,29 +37,34 @@ std::string ExecutionConfiguration::str() const
 	}
 }
 
-void ExecutionConfiguration::toStream(OutStream & os) const
+void ExecutionConfiguration::toStream(OutStream & out) const
 {
 	std::string str4Program;
 
-	os << TAB << "(:pid#" << getRuntimeID().getRid() << " ,"; // << " |= ";
+	out << TAB << "(:" << getRuntimeID().strUniqId() << " ,"; // << " |= ";
 
 	if( isWeakProgram() )
 	{
-		os << " " << toProgram()->getNameID();
+		out << " " << toProgram().getNameID();
 	}
 	else if( isAvmCode() )
 	{
-		toAvmCode()->toStreamPrefix( os << AVM_STR_INDENT );
-		os << END_INDENT;
+		toAvmCode().toStreamPrefix( out << AVM_STR_INDENT );
+		out << END_INDENT;
 	}
 	else
 	{
-		os << str_indent( getCode() );
+		out << str_indent( getCode() );
 	}
 
-	AVM_DEBUG_REF_COUNTER(os);
+	AVM_DEBUG_REF_COUNTER(out);
 
-	os << ")" << EOL_FLUSH;
+	if( hasTimestamp() )
+	{
+		out << " @ " << getTimestamp().str();
+	}
+
+	out << ")" << EOL_FLUSH;
 }
 
 

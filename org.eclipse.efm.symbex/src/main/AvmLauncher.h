@@ -17,6 +17,7 @@
 #include <util/avm_util.h>
 
 #include <sew/Workflow.h>
+#include <sew/WorkflowParameter.h>
 
 
 namespace sep
@@ -30,8 +31,10 @@ protected :
 	/**
 	 * ATTRIBUTES
 	 */
-	avm_size_t mArgNumber;
+	std::size_t mArgNumber;
 	char * *   mArgument;
+
+	WorkflowParameter mWorkflowParameter;
 
 	Workflow mWorkflow;
 
@@ -41,10 +44,11 @@ public :
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	AvmLauncher( avm_size_t argc , char * argv[] )
+	AvmLauncher( std::size_t argc , char * argv[] )
 	: mArgNumber( argc ),
 	mArgument( argv ),
-	mWorkflow( SYMBEX_BUILD_ID )
+	mWorkflowParameter( SYMBEX_BUILD_ID ),
+	mWorkflow( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -67,6 +71,7 @@ public :
 
 	/*METHODS*/
 	static void copyright();
+	static void help();
 	static void usage();
 
 	void start();
@@ -85,12 +90,12 @@ public :
 	 * GETTER - SETTER
 	 * mArgument
 	 */
-	inline avm_size_t getArgNumber()
+	inline std::size_t getArgNumber()
 	{
 		return( mArgNumber );
 	}
 
-	inline char * getArgument(avm_size_t index)
+	inline char * getArgument(std::size_t index)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( index , mArgNumber ) << SEND_EXIT;
 

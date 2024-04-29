@@ -18,6 +18,7 @@
 #include <fml/infrastructure/BehavioralPart.h>
 #include <fml/infrastructure/CompositePart.h>
 #include <fml/infrastructure/PropertyPart.h>
+#include <fml/infrastructure/System.h>
 
 
 namespace sep
@@ -26,19 +27,19 @@ namespace sep
 
 /**
  * GETTER for PARSER / COMPILER
- * any Object Element
+ * any Property Element
  */
 const BF & MachineQuery::getPropertyByNameID(const std::string & aNameID) const
 {
-	return( getPropertyPart().getPropertyByNameID(aNameID) );
+	return( getPropertyPart().getObjectByNameID(aNameID) );
 }
 
-const BF & MachineQuery::getrecFormByNameID(const std::string & aNameID) const
+const BF & MachineQuery::getrecPropertyByNameID(const std::string & aNameID) const
 {
-	const BF & form = getPropertyByNameID(aNameID);
-	if( form.valid() )
+	const BF & property = getPropertyByNameID(aNameID);
+	if( property.valid() )
 	{
-		return( form );
+		return( property );
 	}
 
 	CompositePart::const_machine_iterator itMachine =
@@ -47,35 +48,34 @@ const BF & MachineQuery::getrecFormByNameID(const std::string & aNameID) const
 			getCompositePart()->machine_end();
 	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		const BF & form = (itMachine)->getPropertyByNameID(aNameID);
-		if( form.valid() )
+		const BF & property = (itMachine)->getPropertyByNameID(aNameID);
+		if( property.valid() )
 		{
-			return( form );
+			return( property );
 		}
 	}
 
 	return( BF::REF_NULL );
 }
 
-const BF & MachineQuery::getsemFormByNameID(const std::string & aNameID) const
+const BF & MachineQuery::getsemPropertyByNameID(const std::string & aNameID) const
 {
 	const Machine * machine = thisMachine();
 
-	const BF & form = machine->getPropertyByNameID(aNameID);
-	if( form.valid() )
+	const BF & property = machine->getPropertyByNameID(aNameID);
+	if( property.valid() )
 	{
-		return( form );
+		return( property );
 	}
 
-	while( machine->hasContainer() &&
-			machine->getContainer()->is< Machine >() )
+	while( machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
-		const BF & form = machine->getPropertyByNameID(aNameID);
-		if( form.valid() )
+		const BF & property = machine->getPropertyByNameID(aNameID);
+		if( property.valid() )
 		{
-			return( form );
+			return( property );
 		}
 	}
 
@@ -87,16 +87,16 @@ const BF & MachineQuery::getPropertyByQualifiedNameID(
 		const std::string & aQualifiedNameID) const
 {
 	return( getPropertyPart().
-			getPropertyByQualifiedNameID(aQualifiedNameID) );
+			getObjectByQualifiedNameID(aQualifiedNameID) );
 }
 
-const BF & MachineQuery::getrecFormByQualifiedNameID(
+const BF & MachineQuery::getrecPropertyByQualifiedNameID(
 		const std::string & aQualifiedNameID) const
 {
-	const BF & form = getPropertyByQualifiedNameID(aQualifiedNameID);
-	if( form.valid() )
+	const BF & property = getPropertyByQualifiedNameID(aQualifiedNameID);
+	if( property.valid() )
 	{
-		return( form );
+		return( property );
 	}
 
 	CompositePart::const_machine_iterator itMachine =
@@ -105,40 +105,37 @@ const BF & MachineQuery::getrecFormByQualifiedNameID(
 			getCompositePart()->machine_end();
 	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		const BF & form =
+		const BF & property =
 				(itMachine)->getPropertyByQualifiedNameID(aQualifiedNameID);
-		if( form.valid() )
+		if( property.valid() )
 		{
-			return( form );
+			return( property );
 		}
 	}
 
 	return( BF::REF_NULL );
-
-	return( BF::REF_NULL );
 }
 
-const BF & MachineQuery::getsemFormByQualifiedNameID(
+const BF & MachineQuery::getsemPropertyByQualifiedNameID(
 		const std::string & aQualifiedNameID) const
 {
 	const Machine * machine = thisMachine();
 
-	const BF & form = machine->getPropertyByQualifiedNameID(aQualifiedNameID);
-	if( form.valid() )
+	const BF & property = machine->getPropertyByQualifiedNameID(aQualifiedNameID);
+	if( property.valid() )
 	{
-		return( form );
+		return( property );
 	}
 
-	while( machine->hasContainer()
-			&& machine->getContainer()->is< Machine >() )
+	while( machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
-		const BF & form =
+		const BF & property =
 				machine->getPropertyByQualifiedNameID(aQualifiedNameID);
-		if( form.valid() )
+		if( property.valid() )
 		{
-			return( form );
+			return( property );
 		}
 	}
 
@@ -191,10 +188,9 @@ const BF & MachineQuery::getsemVariable(
 		return( var );
 	}
 
-	while( machine->hasContainer()
-			&& machine->getContainer()->is< Machine >() )
+	while( machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		const BF & var = machine->getVariable(aQualifiedNameID);
 		if( var.valid() )
@@ -204,6 +200,12 @@ const BF & MachineQuery::getsemVariable(
 	}
 
 	return( BF::REF_NULL );
+}
+
+
+std::vector< std::string> MachineQuery::getVariableNames() const
+{
+	return( getPropertyPart().getVariables().getVectorOfAllNameID() );
 }
 
 
@@ -253,10 +255,9 @@ const BF & MachineQuery::getsemDataType(
 		return( var );
 	}
 
-	while( machine->hasContainer()
-			&& machine->getContainer()->is< Machine >() )
+	while( machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		const BF & var = machine->getDataType(aQualifiedNameID);
 		if( var.valid() )
@@ -313,10 +314,9 @@ const BF & MachineQuery::getsemBuffer(
 		return( var );
 	}
 
-	while( machine->hasContainer()
-			&& machine->getContainer()->is< Machine >() )
+	while( machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		const BF & var = machine->getBuffer(aQualifiedNameID);
 		if( var.valid() )
@@ -326,6 +326,12 @@ const BF & MachineQuery::getsemBuffer(
 	}
 
 	return( BF::REF_NULL );
+}
+
+
+std::vector< std::string> MachineQuery::getBufferNames() const
+{
+	return( getPropertyPart().getBuffers().getVectorOfAllNameID() );
 }
 
 
@@ -374,10 +380,9 @@ const BF & MachineQuery::getsemChannel(
 		return( var );
 	}
 
-	while( machine->hasContainer()
-			&& machine->getContainer()->is< Machine >() )
+	while( machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		const BF & var = machine->getChannel(aQualifiedNameID);
 		if( var.valid() )
@@ -387,6 +392,12 @@ const BF & MachineQuery::getsemChannel(
 	}
 
 	return( BF::REF_NULL );
+}
+
+
+std::vector< std::string> MachineQuery::getChannelNames() const
+{
+	return( getPropertyPart().getChannels().getVectorOfAllNameID() );
 }
 
 
@@ -433,10 +444,9 @@ const BF & MachineQuery::getsemPort(const std::string & aQualifiedNameID) const
 		return( var );
 	}
 
-	while( machine->hasContainer()
-			&& machine->getContainer()->is< Machine >() )
+	while( machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		const BF & var = machine->getPort(aQualifiedNameID);
 		if( var.valid() )
@@ -446,6 +456,12 @@ const BF & MachineQuery::getsemPort(const std::string & aQualifiedNameID) const
 	}
 
 	return( BF::REF_NULL );
+}
+
+
+std::vector< std::string> MachineQuery::getPortNames() const
+{
+	return( getPropertyPart().getPorts().getVectorOfAllNameID() );
 }
 
 
@@ -493,10 +509,9 @@ const BF & MachineQuery::getsemSignal(
 	{
 		return( var );
 	}
-	while( machine->hasContainer()
-			&& machine->getContainer()->is< Machine >() )
+	while( machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		const BF & var = machine->getSignal(aQualifiedNameID);
 		if( var.valid() )
@@ -506,6 +521,12 @@ const BF & MachineQuery::getsemSignal(
 	}
 
 	return( BF::REF_NULL );
+}
+
+
+std::vector< std::string> MachineQuery::getSignalNames() const
+{
+	return( getPropertyPart().getSignals().getVectorOfAllNameID() );
 }
 
 
@@ -558,10 +579,9 @@ const BF & MachineQuery::getsemPortSignal(
 			return( var );
 		}
 	}
-	while( machine->hasContainer()
-			&& machine->getContainer()->is< Machine >() )
+	while( machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		const BF & var = machine->getPortSignal(aQualifiedNameID);
 		if( var.valid() )
@@ -576,11 +596,155 @@ const BF & MachineQuery::getsemPortSignal(
 
 /**
  * GETTER for PARSER / COMPILER
+ * any Behavior Element
+ */
+const BF & MachineQuery::getBehaviorByNameID(const std::string & aNameID) const
+{
+	if( hasBehaviorPart() )
+	{
+		return( getBehaviorPart()->getObjectByNameID(aNameID) );
+	}
+
+	return( BF::REF_NULL );
+}
+
+const BF & MachineQuery::getrecBehaviorByNameID(const std::string & aNameID) const
+{
+	const BF & behavior = getBehaviorByNameID(aNameID);
+	if( behavior.valid() )
+	{
+		return( behavior );
+	}
+
+	CompositePart::const_machine_iterator itMachine =
+			getCompositePart()->machine_begin();
+	CompositePart::const_machine_iterator endMachine =
+			getCompositePart()->machine_end();
+	for( ; itMachine != endMachine ; ++itMachine )
+	{
+		const BF & behavior = (itMachine)->getBehaviorByNameID(aNameID);
+		if( behavior.valid() )
+		{
+			return( behavior );
+		}
+	}
+
+	return( BF::REF_NULL );
+}
+
+const BF & MachineQuery::getsemBehaviorByNameID(const std::string & aNameID) const
+{
+	const Machine * machine = thisMachine();
+
+	const BF & behavior = machine->getBehaviorByNameID(aNameID);
+	if( behavior.valid() )
+	{
+		return( behavior );
+	}
+
+	while( machine->isContainerMachine() )
+	{
+		machine = machine->getContainer()->to_ptr< Machine >();
+
+		const BF & behavior = machine->getBehaviorByNameID(aNameID);
+		if( behavior.valid() )
+		{
+			return( behavior );
+		}
+	}
+
+	return( BF::REF_NULL );
+}
+
+
+const BF & MachineQuery::getBehaviorByQualifiedNameID(
+		const std::string & aQualifiedNameID) const
+{
+	if( hasBehaviorPart() )
+	{
+		return( getBehaviorPart()->getObjectByQualifiedNameID(aQualifiedNameID) );
+	}
+
+	return( BF::REF_NULL );
+}
+
+const BF & MachineQuery::getrecBehaviorByQualifiedNameID(
+		const std::string & aQualifiedNameID) const
+{
+	const BF & behavior = getBehaviorByQualifiedNameID(aQualifiedNameID);
+	if( behavior.valid() )
+	{
+		return( behavior );
+	}
+
+	CompositePart::const_machine_iterator itMachine =
+			getCompositePart()->machine_begin();
+	CompositePart::const_machine_iterator endMachine =
+			getCompositePart()->machine_end();
+	for( ; itMachine != endMachine ; ++itMachine )
+	{
+		const BF & behavior =
+				(itMachine)->getBehaviorByQualifiedNameID(aQualifiedNameID);
+		if( behavior.valid() )
+		{
+			return( behavior );
+		}
+	}
+
+	return( BF::REF_NULL );
+}
+
+const BF & MachineQuery::getsemBehaviorByQualifiedNameID(
+		const std::string & aQualifiedNameID) const
+{
+	const Machine * machine = thisMachine();
+
+	const BF & behavior = machine->getBehaviorByQualifiedNameID(aQualifiedNameID);
+	if( behavior.valid() )
+	{
+		return( behavior );
+	}
+
+	while( machine->isContainerMachine() )
+	{
+		machine = machine->getContainer()->to_ptr< Machine >();
+
+		const BF & behavior =
+				machine->getBehaviorByQualifiedNameID(aQualifiedNameID);
+		if( behavior.valid() )
+		{
+			return( behavior );
+		}
+	}
+
+	return( BF::REF_NULL );
+}
+
+
+/**
+ * GETTER for PARSER / COMPILER
+ * Transition
+ */
+std::vector< std::string> MachineQuery::getTransitionNames() const
+{
+	if( hasBehaviorPart() )
+	{
+		return( getBehaviorPart()->getOutgoingTransitions().getVectorOfAllNameID() );
+	}
+	else
+	{
+		return( std::vector< std::string>() );
+	}
+}
+
+
+/**
+ * GETTER for PARSER / COMPILER
  * Routine
  */
 Routine * MachineQuery::rawRoutineByNameID(const std::string & aNameID) const
 {
-	return( (not hasBehaviorPart()) ? NULL :
+	return( (not hasBehaviorPart()) ? nullptr :
 			getBehaviorPart()->rawRoutineByNameID(aNameID) );
 }
 
@@ -590,15 +754,27 @@ Routine * MachineQuery::rawsemRoutineByNameID(const std::string & aNameID) const
 
 	Routine * routine = machine->rawRoutineByNameID(aNameID);
 
-	while( (routine == NULL) && machine->hasContainer() &&
-			machine->getContainer()->is< Machine >() )
+	while( (routine == nullptr) && machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		routine = machine->rawRoutineByNameID(aNameID);
 	}
 
 	return( routine );
+}
+
+
+std::vector< std::string> MachineQuery::getRoutineNames() const
+{
+	if( hasBehaviorPart() )
+	{
+		return( getBehaviorPart()->getRoutines().getVectorOfAllNameID() );
+	}
+	else
+	{
+		return( std::vector< std::string>() );
+	}
 }
 
 
@@ -608,7 +784,7 @@ Routine * MachineQuery::rawsemRoutineByNameID(const std::string & aNameID) const
  */
 Machine * MachineQuery::rawProcedureByNameID(const std::string & aNameID) const
 {
-	return( (getCompositePart() == NULL) ? NULL :
+	return( (getCompositePart() == nullptr) ? nullptr :
 			getCompositePart()->rawProcedureByNameID(aNameID) );
 }
 
@@ -619,15 +795,27 @@ Machine * MachineQuery::rawsemProcedureByNameID(
 
 	Machine * procedure = machine->rawProcedureByNameID(aNameID);
 
-	while( (procedure == NULL) && machine->hasContainer() &&
-			machine->getContainer()->is< Machine >() )
+	while( (procedure == nullptr) && machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		procedure = machine->rawProcedureByNameID(aNameID);
 	}
 
 	return( procedure );
+}
+
+
+std::vector< std::string> MachineQuery::getProcedureNames() const
+{
+	if( hasCompositePart() )
+	{
+		return( getCompositePart()->getProcedures().getVectorOfAllNameID() );
+	}
+	else
+	{
+		return( std::vector< std::string>() );
+	}
 }
 
 
@@ -642,7 +830,7 @@ Machine * MachineQuery::getMachineByNameID(const std::string & aNameID) const
 		return( const_cast< Machine * >( thisMachine() ) );
 	}
 
-	return( (getCompositePart() == NULL) ? NULL :
+	return( (getCompositePart() == nullptr) ? nullptr :
 			getCompositePart()->rawMachineByNameID(aNameID) );
 }
 
@@ -652,10 +840,9 @@ Machine * MachineQuery::getsemMachineByNameID(const std::string & aNameID) const
 	Machine * machine = const_cast< Machine * >( thisMachine() );
 	Machine * sm = machine->getMachineByNameID(aNameID);
 
-	while( (sm == NULL) &&  machine->hasContainer() &&
-			machine->getContainer()->is< Machine >() )
+	while( (sm == nullptr) &&  machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		sm = machine->getMachineByNameID(aNameID);
 	}
@@ -669,7 +856,7 @@ Machine * MachineQuery::getMachine(
 {
 	Machine * machine = getCompositePart()->
 			getMachines().rawByQualifiedNameID(aQualifiedNameID);
-	if( machine != NULL )
+	if( machine != nullptr )
 	{
 		return( machine );
 	}
@@ -685,9 +872,8 @@ Machine * MachineQuery::getMachine(
 Machine * MachineQuery::getrecMachine(const std::string & aQualifiedNameID,
 		Machine * ignoreChildMachine) const
 {
-	Machine * machine = NULL;
-
-	if( (machine = getMachine(aQualifiedNameID)) != NULL )
+	Machine * machine = getMachine(aQualifiedNameID);
+	if( machine != nullptr )
 	{
 		return( machine );
 	}
@@ -698,10 +884,13 @@ Machine * MachineQuery::getrecMachine(const std::string & aQualifiedNameID,
 			getCompositePart()->machine_end();
 	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		if( ((itMachine) != ignoreChildMachine) &&
-			((machine = (itMachine)->getrecMachine(aQualifiedNameID)) != NULL) )
+		if( itMachine->isNTEQ( ignoreChildMachine ) )
 		{
-			return( machine );
+			machine = (itMachine)->getrecMachine(aQualifiedNameID);
+			if( machine != nullptr )
+			{
+				return( machine );
+			}
 		}
 	}
 
@@ -715,10 +904,9 @@ Machine * MachineQuery::getsemMachine(
 
 	Machine * sm = machine->getMachine(aQualifiedNameID);
 
-	while( (sm == NULL) && machine->hasContainer() &&
-			machine->getContainer()->is< Machine >() )
+	while( (sm == nullptr) && machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		sm = machine->getMachine(aQualifiedNameID);
 	}
@@ -736,7 +924,7 @@ Machine * MachineQuery::getsemMachine(
 
 	Machine * sm = thisMachine()->getsemMachineByNameID(*it);
 
-	for( ++it; (sm != NULL) && (it != endIt) ; ++it)
+	for( ++it; (sm != nullptr) && (it != endIt) ; ++it)
 	{
 		sm = sm->getMachineByNameID(*it);
 	}
@@ -751,7 +939,7 @@ Machine * MachineQuery::getExecutableMachine(
 {
 	Machine * machine = getCompositePart()->
 			rawExecutableMachineByQualifiedNameID(aQualifiedNameID);
-	if( machine != NULL )
+	if( machine != nullptr )
 	{
 		return( machine );
 	}
@@ -762,9 +950,8 @@ Machine * MachineQuery::getExecutableMachine(
 Machine * MachineQuery::getrecExecutableMachine(
 		const std::string & aQualifiedNameID) const
 {
-	Machine * machine = NULL;
-
-	if( (machine = getExecutableMachine(aQualifiedNameID)) != NULL )
+	Machine * machine = getExecutableMachine(aQualifiedNameID);
+	if( machine != nullptr )
 	{
 		return( machine );
 	}
@@ -775,7 +962,8 @@ Machine * MachineQuery::getrecExecutableMachine(
 			getCompositePart()->machine_end();
 	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		if( (machine = (itMachine)->getrecExecutableMachine(aQualifiedNameID)) != NULL )
+		machine = (itMachine)->getrecExecutableMachine(aQualifiedNameID);
+		if( machine != nullptr )
 		{
 			return( machine );
 		}
@@ -791,10 +979,9 @@ Machine * MachineQuery::getsemExecutableMachine(
 
 	Machine * sm = machine->getExecutableMachine(aQualifiedNameID);
 
-	while( (sm == NULL) && machine->hasContainer() &&
-			machine->getContainer()->is< Machine >() )
+	while( (sm == nullptr) && machine->isContainerMachine() )
 	{
-		machine = machine->getContainer()->to< Machine >();
+		machine = machine->getContainer()->to_ptr< Machine >();
 
 		sm = machine->getExecutableMachine(aQualifiedNameID);
 	}
@@ -802,6 +989,211 @@ Machine * MachineQuery::getsemExecutableMachine(
 	return( sm );
 }
 
+
+Machine * MachineQuery::getSelfExecutableMachine(
+		const std::string & aQualifiedNameID) const
+{
+	Machine * machine = const_cast< Machine * >( thisMachine() );
+	while( machine != nullptr )
+	{
+		if( machine->fqnEndsWith(aQualifiedNameID) )
+		{
+			return( machine );
+		}
+
+		machine = machine->getContainer()->to_ptr< Machine >();
+	}
+
+	return( machine );
+}
+
+System * MachineQuery::getContainerSystem() const
+{
+	Machine * machine = const_cast< Machine * >( thisMachine() );
+	while( (machine != nullptr) && machine->isnot< System >() )
+	{
+		machine = machine->getContainer()->to_ptr< Machine >();
+	}
+
+	return( (machine != nullptr) ? machine->to_ptr< System >() : nullptr );
+}
+
+
+std::vector< std::string> MachineQuery::getMachineNames() const
+{
+	if( hasCompositePart() )
+	{
+		return( getCompositePart()->getMachines().getVectorOfAllNameID() );
+	}
+	else
+	{
+		return( std::vector< std::string>() );
+	}
+}
+
+std::vector< std::string> MachineQuery::getInstanceNames() const
+{
+	if( hasCompositePart() )
+	{
+		return( getCompositePart()->getInstanceStatics().getVectorOfAllNameID() );
+	}
+	else
+	{
+		return( std::vector< std::string>() );
+	}
+}
+
+std::vector< std::string> MachineQuery::getStateNames() const
+{
+	if( hasCompositePart() )
+	{
+		return( getCompositePart()->getStates().getVectorOfAllNameID() );
+	}
+	else
+	{
+		return( std::vector< std::string>() );
+	}
+}
+
+
+/**
+ * GETTER for PARSER / COMPILER
+ * any Object Element
+ */
+const BF & MachineQuery::getObjectByNameID(const std::string & aNameID) const
+{
+	const BF & property = getPropertyByNameID(aNameID);
+	if( property.valid() )
+	{
+		return( property );
+	}
+
+	const BF & behavior = getBehaviorByNameID(aNameID);
+	if( behavior.valid() )
+	{
+		return( behavior );
+	}
+
+	return( BF::REF_NULL );
+}
+
+const BF & MachineQuery::getrecObjectByNameID(const std::string & aNameID) const
+{
+	const BF & property = getObjectByNameID(aNameID);
+	if( property.valid() )
+	{
+		return( property );
+	}
+
+	CompositePart::const_machine_iterator itMachine =
+			getCompositePart()->machine_begin();
+	CompositePart::const_machine_iterator endMachine =
+			getCompositePart()->machine_end();
+	for( ; itMachine != endMachine ; ++itMachine )
+	{
+		const BF & property = (itMachine)->getObjectByNameID(aNameID);
+		if( property.valid() )
+		{
+			return( property );
+		}
+	}
+
+	return( BF::REF_NULL );
+}
+
+const BF & MachineQuery::getsemObjectByNameID(const std::string & aNameID) const
+{
+	const Machine * machine = thisMachine();
+
+	const BF & property = machine->getObjectByNameID(aNameID);
+	if( property.valid() )
+	{
+		return( property );
+	}
+
+	while( machine->isContainerMachine() )
+	{
+		machine = machine->getContainer()->to_ptr< Machine >();
+
+		const BF & property = machine->getObjectByNameID(aNameID);
+		if( property.valid() )
+		{
+			return( property );
+		}
+	}
+
+	return( BF::REF_NULL );
+}
+
+const BF & MachineQuery::getObjectByQualifiedNameID(
+		const std::string & aQualifiedNameID) const
+{
+	const BF & property = getPropertyByQualifiedNameID(aQualifiedNameID);
+	if( property.valid() )
+	{
+		return( property );
+	}
+
+	const BF & behavior = getBehaviorByQualifiedNameID(aQualifiedNameID);
+	if( behavior.valid() )
+	{
+		return( behavior );
+	}
+
+	return( BF::REF_NULL );
+}
+
+const BF & MachineQuery::getrecObjectByQualifiedNameID(
+		const std::string & aQualifiedNameID) const
+{
+	const BF & property = getObjectByQualifiedNameID(aQualifiedNameID);
+	if( property.valid() )
+	{
+		return( property );
+	}
+
+	CompositePart::const_machine_iterator itMachine =
+			getCompositePart()->machine_begin();
+	CompositePart::const_machine_iterator endMachine =
+			getCompositePart()->machine_end();
+	for( ; itMachine != endMachine ; ++itMachine )
+	{
+		const BF & property =
+				(itMachine)->getObjectByQualifiedNameID(aQualifiedNameID);
+		if( property.valid() )
+		{
+			return( property );
+		}
+	}
+
+	return( BF::REF_NULL );
+}
+
+const BF & MachineQuery::getsemObjectByQualifiedNameID(
+		const std::string & aQualifiedNameID) const
+{
+	const Machine * machine = thisMachine();
+
+	const BF & property = machine->getObjectByQualifiedNameID(aQualifiedNameID);
+	if( property.valid() )
+	{
+		return( property );
+	}
+
+	while( machine->isContainerMachine() )
+	{
+		machine = machine->getContainer()->to_ptr< Machine >();
+
+		const BF & property =
+				machine->getObjectByQualifiedNameID(aQualifiedNameID);
+		if( property.valid() )
+		{
+			return( property );
+		}
+	}
+
+	return( BF::REF_NULL );
+}
 
 
 } /* namespace sep */

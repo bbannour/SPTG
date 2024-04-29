@@ -18,7 +18,8 @@
 #include <builder/primitive/AvmcodeCompiler.h>
 #include <builder/compiler/Compiler.h>
 
-#include <fml/executable/AvmLambda.h>
+#include <computer/PathConditionProcessor.h>
+
 #include <fml/executable/AvmProgram.h>
 #include <fml/executable/ExecutableForm.h>
 #include <fml/executable/InstanceOfData.h>
@@ -29,8 +30,9 @@
 
 #include <fml/common/SpecifierElement.h>
 
-#include <fml/numeric/Integer.h>
-#include <fml/numeric/Number.h>
+#include <fml/infrastructure/BehavioralPart.h>
+#include <fml/infrastructure/Routine.h>
+#include <fml/infrastructure/Variable.h>
 
 #include <fml/expression/BuiltinArray.h>
 #include <fml/expression/ExpressionFactory.h>
@@ -39,13 +41,15 @@
 #include <fml/expression/StatementConstructor.h>
 #include <fml/expression/StatementTypeChecker.h>
 
+#include <fml/numeric/Integer.h>
+#include <fml/numeric/Number.h>
+
 #include <fml/operator/OperatorManager.h>
 
 #include <fml/symbol/TableOfSymbol.h>
 
-#include <fml/infrastructure/BehavioralPart.h>
-#include <fml/infrastructure/Routine.h>
-#include <fml/infrastructure/Variable.h>
+#include <fml/type/BaseSymbolTypeSpecifier.h>
+#include <fml/type/TypeAliasSpecifier.h>
 
 
 namespace sep
@@ -69,34 +73,28 @@ CompilerOfVariable::CompilerOfVariable(Compiler & aCompiler)
  *******************************************************************************
  */
 
-void CompilerOfVariable::addPrecompileData(
-		AvmProgram * aContainer, Symbol & aVariable,
+void CompilerOfVariable::addPrecompileVariable(
+		AvmProgram & aContainer, Symbol & aVariable,
 		TableOfInstanceOfData & tableOfVariable, bool collectVarEnabled)
 {
 	getSymbolTable().addDataInstance(aVariable);
 
 	AVM_OS_ASSERT_FATAL_ERROR_EXIT( aVariable.hasTypeSpecifier() )
-			<< "addPrecompileData:> Unexpected a "
+			<< "addPrecompileVariable:> Unexpected a "
 				"variable without type-specifier !!!"
 			<< SEND_EXIT;
 
-	BaseTypeSpecifier * aTypeSpecifier = aVariable.getTypeSpecifier();
-
-	if( aTypeSpecifier->is< TypeAliasSpecifier >() )
-	{
-		aTypeSpecifier = aTypeSpecifier->
-				to< TypeAliasSpecifier >()->targetTypeSpecifier();
-	}
+	const BaseTypeSpecifier & aTypeSpecifier = aVariable.referedTypeSpecifier();
 
 	ArrayBF * arrayValue = ( aVariable.hasArrayValue() ) ?
-			aVariable.getArrayValue() : NULL;
+			aVariable.getArrayValue() : nullptr;
 
 //	if( arrayValue->getTypeSpecifier() != aTypeSpecifier )
 //	{
-//		aTypeSpecifier = NULL;
+//		aTypeSpecifier = nullptr;
 //	}
 
-	switch( aTypeSpecifier->getTypeSpecifierKind() )
+	switch( aTypeSpecifier.getTypeSpecifierKind() )
 	{
 		case TYPE_BOOLEAN_SPECIFIER:
 		case TYPE_CHARACTER_SPECIFIER:
@@ -123,35 +121,37 @@ void CompilerOfVariable::addPrecompileData(
 
 		case TYPE_CLASS_SPECIFIER:
 		{
-			ClassTypeSpecifier * classType =
-					aTypeSpecifier->to< ClassTypeSpecifier >();
+			const ClassTypeSpecifier & classType =
+					aTypeSpecifier.to< ClassTypeSpecifier >();
 
-			aVariable.setAttribute( new TableOfSymbol(classType->size()) );
+			aVariable.setAttribute( new TableOfSymbol(classType.size()) );
 
 			InstanceOfData * newInstance;
 			Symbol newSymbol;
 
-			TableOfSymbol::iterator it = classType->getSymbolData().begin();
-			TableOfSymbol::iterator endIt = classType->getSymbolData().end();
+			TableOfSymbol::const_iterator it = classType.getSymbolData().begin();
+			TableOfSymbol::const_iterator endIt = classType.getSymbolData().end();
 			for( avm_offset_t offset = 0 ; it != endIt ; ++it, ++offset )
 			{
 				newSymbol = newInstance = new InstanceOfData(
-						IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE,
-						aVariable.getContainer(), (*it).getAstElement(),
-						(*it).getTypeSpecifier(), aVariable.getFullyQualifiedNameID() + "." +
-						(*it).getAstNameID(), offset, aVariable.rawData() );
+						IPointerVariableNature::
+								POINTER_FIELD_CLASS_ATTRIBUTE_NATURE,
+						aVariable.getContainer(), (*it).safeAstElement(),
+						(*it).getTypeSpecifier(),
+						aVariable.getFullyQualifiedNameID() + "." +
+						(*it).getAstNameID(), offset, aVariable.variable() );
 
 				newInstance->getwModifier().setNatureKind(
-						(*it).getAstElement()->getModifier().getNatureKind() );
+						(*it).getAstElement().getModifier().getNatureKind() );
 
 				newInstance->getwModifier().setFeatureVolatile(
-						(*it).getAstElement()->getModifier().hasFeatureVolatile() );
+					(*it).getAstElement().getModifier().hasFeatureVolatile() );
 				newInstance->getwModifier().setFeatureTransient(
-						(*it).getAstElement()->getModifier().hasFeatureTransient() );
+					(*it).getAstElement().getModifier().hasFeatureTransient() );
 
 				aVariable.setAttribute(offset, newSymbol);
 
-				if( (arrayValue != NULL) && (arrayValue->size() > offset) )
+				if( (arrayValue != nullptr) && (arrayValue->size() > offset) )
 				{
 					newInstance->setValue( arrayValue->at(offset) );
 				}
@@ -160,19 +160,20 @@ void CompilerOfVariable::addPrecompileData(
 					newInstance->setValue( (*it).getValue() );
 				}
 
-				newInstance->setParent( aVariable.rawData() );
+				newInstance->setParent( aVariable.rawVariable() );
 				newInstance->updateNameID();
 
-				precompileData_initialValue(aContainer, newInstance);
+				precompileVariable_initialValue(aContainer, (* newInstance));
 
 				if( newInstance->getModifier().hasFeatureUnsafe()
-					|| aContainer->getModifier().hasFeatureUnsafe() )
+					|| aContainer.getModifier().hasFeatureUnsafe()
+					|| PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED )
 				{
-					compileTypeConstraint(aContainer, newInstance);
+					compileTypeConstraint(aContainer, (* newInstance));
 				}
 
 				// ADD DATA
-				addPrecompileData(aContainer, newSymbol,
+				addPrecompileVariable(aContainer, newSymbol,
 						tableOfVariable, collectVarEnabled);
 			}
 
@@ -181,35 +182,37 @@ void CompilerOfVariable::addPrecompileData(
 
 		case TYPE_CHOICE_SPECIFIER:
 		{
-			ClassTypeSpecifier * classType =
-					aTypeSpecifier->to< ClassTypeSpecifier >();
+			const ClassTypeSpecifier & classType =
+					aTypeSpecifier.to< ClassTypeSpecifier >();
 
-			aVariable.setAttribute( new TableOfSymbol(classType->size()) );
+			aVariable.setAttribute( new TableOfSymbol(classType.size()) );
 
 			InstanceOfData * newInstance;
 			Symbol newSymbol;
 
-			TableOfSymbol::iterator it = classType->getSymbolData().begin();
-			TableOfSymbol::iterator endIt = classType->getSymbolData().end();
+			TableOfSymbol::const_iterator it = classType.getSymbolData().begin();
+			TableOfSymbol::const_iterator endIt = classType.getSymbolData().end();
 			for( avm_offset_t offset = 0 ; it != endIt ; ++it, ++offset )
 			{
 				newSymbol = newInstance = new InstanceOfData(
-						IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE,
-						aVariable.getContainer(), (*it).getAstElement(),
-						(*it).getTypeSpecifier(), aVariable.getFullyQualifiedNameID() + "." +
-						(*it).getAstNameID(), offset, aVariable.rawData() );
+						IPointerVariableNature::
+								POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE,
+						aVariable.getContainer(), (*it).safeAstElement(),
+						(*it).getTypeSpecifier(),
+						aVariable.getFullyQualifiedNameID() + "." +
+						(*it).getAstNameID(), offset, aVariable.variable() );
 
 				newInstance->getwModifier().setNatureKind(
-						(*it).getAstElement()->getModifier().getNatureKind() );
+						(*it).getAstElement().getModifier().getNatureKind() );
 
 				newInstance->getwModifier().setFeatureVolatile(
-						(*it).getAstElement()->getModifier().hasFeatureVolatile() );
+						(*it).getAstElement().getModifier().hasFeatureVolatile() );
 				newInstance->getwModifier().setFeatureTransient(
-						(*it).getAstElement()->getModifier().hasFeatureTransient() );
+						(*it).getAstElement().getModifier().hasFeatureTransient() );
 
 				aVariable.setAttribute(offset, newSymbol);
 
-				if( (arrayValue != NULL) && (arrayValue->size() > offset) )
+				if( (arrayValue != nullptr) && (arrayValue->size() > offset) )
 				{
 					newInstance->setValue( arrayValue->at(offset) );
 				}
@@ -218,19 +221,20 @@ void CompilerOfVariable::addPrecompileData(
 					newInstance->setValue( (*it).getValue() );
 				}
 
-				newInstance->setParent( aVariable.rawData() );
+				newInstance->setParent( aVariable.rawVariable() );
 				newInstance->updateNameID();
 
-				precompileData_initialValue(aContainer, newInstance);
+				precompileVariable_initialValue(aContainer, (* newInstance));
 
 				if( newInstance->getModifier().hasFeatureUnsafe()
-					|| aContainer->getModifier().hasFeatureUnsafe() )
+					|| aContainer.getModifier().hasFeatureUnsafe()
+					|| PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED )
 				{
-					compileTypeConstraint(aContainer, newInstance);
+					compileTypeConstraint(aContainer, (* newInstance));
 				}
 
 				// ADD DATA
-				addPrecompileData(aContainer, newSymbol,
+				addPrecompileVariable(aContainer, newSymbol,
 						tableOfVariable, collectVarEnabled);
 			}
 
@@ -239,48 +243,49 @@ void CompilerOfVariable::addPrecompileData(
 
 		case TYPE_UNION_SPECIFIER:
 		{
-			UnionTypeSpecifier * unionType =
-					aTypeSpecifier->to< UnionTypeSpecifier >();
-			aVariable.setAttribute( new TableOfSymbol(unionType->size()) );
+			const UnionTypeSpecifier & unionType =
+					aTypeSpecifier.to< UnionTypeSpecifier >();
+			aVariable.setAttribute( new TableOfSymbol(unionType.size()) );
 
 			InstanceOfData * newInstance;
 			Symbol newSymbol;
 
-			TableOfSymbol::iterator it = unionType->getSymbolData().begin();
-			TableOfSymbol::iterator endIt = unionType->getSymbolData().end();
+			TableOfSymbol::const_iterator it = unionType.getSymbolData().begin();
+			TableOfSymbol::const_iterator endIt = unionType.getSymbolData().end();
 			for( avm_offset_t offset = 0 ; it != endIt ; ++it, ++offset )
 			{
 				if( (*it).hasTypeArrayOrStructure() )
 				{
 					incrErrorCount();
-					AVM_OS_WARN << aVariable.getAstElement()
-							->errorLocation(aContainer->getAstElement())
-							<< "CompilerOfVariable::addPrecompileData : "
+					AVM_OS_WARN << aVariable.safeAstElement().
+							errorLocation( aContainer.safeAstElement() )
+							<< "CompilerOfVariable::addPrecompileVariable : "
 							<< "Unsupported \"composite type\" "
 								"in a \"union type\" << "
 							<< str_header( *it ) << " >>!" << std::endl;
 				}
 
 				newSymbol = newInstance = new InstanceOfData(
-						IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE,
-						aVariable.getContainer(), (*it).getAstElement(),
+						IPointerVariableNature::
+								POINTER_FIELD_UNION_ATTRIBUTE_NATURE,
+						aVariable.getContainer(), (*it).safeAstElement(),
 						(*it).getTypeSpecifier(),
 						aVariable.getFullyQualifiedNameID() + "." +
 								(*it).getAstNameID(),
 						aVariable.getOffset(),
-						aVariable.rawData() );
+						aVariable.variable() );
 
 				newInstance->getwModifier().setNatureKind(
-						(*it).getAstElement()->getModifier().getNatureKind() );
+					(*it).getAstElement().getModifier().getNatureKind() );
 
 				newInstance->getwModifier().setFeatureVolatile(
-						(*it).getAstElement()->getModifier().hasFeatureVolatile() );
+					(*it).getAstElement().getModifier().hasFeatureVolatile() );
 				newInstance->getwModifier().setFeatureTransient(
-						(*it).getAstElement()->getModifier().hasFeatureTransient() );
+					(*it).getAstElement().getModifier().hasFeatureTransient() );
 
 				aVariable.setAttribute(offset, newSymbol);
 
-				if( (arrayValue != NULL) && (arrayValue->size() > offset) )
+				if( (arrayValue != nullptr) && (arrayValue->size() > offset) )
 				{
 					newInstance->setValue( arrayValue->at(offset) );
 				}
@@ -289,19 +294,20 @@ void CompilerOfVariable::addPrecompileData(
 					newInstance->setValue( (*it).getValue() );
 				}
 
-				newInstance->setParent( aVariable.rawData() );
+				newInstance->setParent( aVariable.rawVariable() );
 				newInstance->updateNameID();
 
-				precompileData_initialValue(aContainer, newInstance);
+				precompileVariable_initialValue(aContainer, (* newInstance));
 
 				if( newInstance->getModifier().hasFeatureUnsafe()
-					|| aContainer->getModifier().hasFeatureUnsafe() )
+					|| aContainer.getModifier().hasFeatureUnsafe()
+					|| PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED )
 				{
-					compileTypeConstraint(aContainer, newInstance);
+					compileTypeConstraint(aContainer, (* newInstance));
 				}
 
 				// ADD DATA
-				addPrecompileData(aContainer, newSymbol,
+				addPrecompileVariable(aContainer, newSymbol,
 						tableOfVariable, collectVarEnabled);
 			}
 
@@ -311,10 +317,10 @@ void CompilerOfVariable::addPrecompileData(
 
 		case TYPE_ARRAY_SPECIFIER:
 		{
-			ContainerTypeSpecifier * collectionT =
-					aTypeSpecifier->to< ContainerTypeSpecifier >();
+			const ContainerTypeSpecifier & collectionT =
+					aTypeSpecifier.to< ContainerTypeSpecifier >();
 
-			aVariable.setAttribute( new TableOfSymbol(collectionT->size()) );
+			aVariable.setAttribute( new TableOfSymbol(collectionT.size()) );
 
 			std::ostringstream ossID;
 
@@ -322,36 +328,37 @@ void CompilerOfVariable::addPrecompileData(
 			Symbol newSymbol;
 
 			avm_offset_t offset = 0;
-			for( ; offset < collectionT->size() ; ++offset )
+			for( ; offset < collectionT.size() ; ++offset )
 			{
 				ossID.str("");
 				ossID << "[" << offset << "]";
 
 				newSymbol = newInstance = new InstanceOfData(
-						IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE,
+						IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE,
 						aVariable.getContainer(), aVariable.getAstElement(),
-						collectionT->getContentsTypeSpecifier(),
+						collectionT.getContentsTypeSpecifier(),
 						aVariable.getFullyQualifiedNameID() + ossID.str(),
 						offset, aVariable.getModifier() );
 
-				newInstance->setParent( aVariable.rawData() );
+				newInstance->setParent( aVariable.rawVariable() );
 				newInstance->updateNameID();
 
 				aVariable.setAttribute(offset, newSymbol);
 
 				if( newInstance->getModifier().hasFeatureUnsafe()
-					|| aContainer->getModifier().hasFeatureUnsafe() )
+					|| aContainer.getModifier().hasFeatureUnsafe()
+					|| PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED )
 				{
-					compileTypeConstraint(aContainer, newInstance);
+					compileTypeConstraint(aContainer, (* newInstance));
 				}
 
-				if( (arrayValue != NULL) && (arrayValue->size() > offset) )
+				if( (arrayValue != nullptr) && (arrayValue->size() > offset) )
 				{
 					newInstance->setValue( arrayValue->at(offset) );
 				}
 
 				// ADD DATA
-				addPrecompileData(aContainer, newSymbol,
+				addPrecompileVariable(aContainer, newSymbol,
 						tableOfVariable, collectVarEnabled);
 			}
 
@@ -399,7 +406,7 @@ void CompilerOfVariable::addPrecompileData(
 }
 
 
-avm_size_t CompilerOfVariable::nextOffset(
+std::size_t CompilerOfVariable::nextOffset(
 		TableOfInstanceOfData & tableOfVariable)
 {
 	return( tableOfVariable.size() );
@@ -415,7 +422,7 @@ avm_size_t CompilerOfVariable::nextOffset(
 //		}
 //		else
 //		{
-//			offset = lastVar->getTypeSpecifier()->getDataSize();
+//			offset = lastVar->getTypeSpecifier().getDataSize();
 //		}
 //
 //		return( offset + lastVar->getOffset() );
@@ -427,66 +434,65 @@ avm_size_t CompilerOfVariable::nextOffset(
 }
 
 
-void CompilerOfVariable::precompileData(AvmProgram * aContainer,
-		Variable * aVariable, TableOfInstanceOfData & tableOfVariable)
+void CompilerOfVariable::precompileVariable( AvmProgram & aContainer,
+		const Variable & aVariable, TableOfInstanceOfData & tableOfVariable)
 {
-	TypeSpecifier aTypeSpecifier;
 	InstanceOfData * newInstance;
 	Symbol newSymbol;
 
-	aTypeSpecifier = compileTypeSpecifier(aContainer, aVariable->getType());
+	TypeSpecifier aTypeSpecifier =
+			compileTypeSpecifier(aContainer, aVariable.getType());
 
 	newSymbol = newInstance = new InstanceOfData(
-			IPointerDataNature::POINTER_STANDARD_NATURE,
-			aContainer, aVariable, aTypeSpecifier,
-			nextOffset(tableOfVariable), aVariable->getModifier() );
-	newInstance->setNameID( aVariable->getNameID() );
+			IPointerVariableNature::POINTER_STANDARD_NATURE,
+			(& aContainer), aVariable, aTypeSpecifier,
+			nextOffset(tableOfVariable), aVariable.getModifier() );
+	newInstance->setNameID( aVariable.getNameID() );
 //	newInstance->fullyUpdateAllNameID( aNewInstance->getFullyQualifiedNameID() );
 
-	precompileData_initialValue(aContainer, newInstance);
+	precompileVariable_initialValue(aContainer, (* newInstance));
 
-	if( aVariable->getModifier().hasNatureReference() )
+	if( aVariable.getModifier().hasNatureReference() )
 	{
 		tableOfVariable.append(newSymbol);
 	}
-	else if( aVariable->getModifier().hasFeatureFinal() )
+	else if( aVariable.getModifier().hasFeatureFinal() )
 	{
-		aContainer->appendConstData(newSymbol);
+		aContainer.appendConstVariable(newSymbol);
 
 		TableOfInstanceOfData tableOfConstant;
 
-		addPrecompileData(aContainer, newSymbol, tableOfConstant, true);
+		addPrecompileVariable(aContainer, newSymbol, tableOfConstant, true);
 
 		if( tableOfConstant.populated() )
 		{
-			TableOfInstanceOfData::const_iterator it = tableOfConstant.begin();
-			TableOfInstanceOfData::const_iterator endIt = tableOfConstant.end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itConstant : tableOfConstant )
 			{
-				if( (*it).isNTEQ(newInstance) )
+				if( itConstant.isNTEQ(newInstance) )
 				{
-					aContainer->appendConstData( *it );
+					aContainer.appendConstVariable( itConstant );
 				}
 			}
 		}
 		else if( tableOfConstant.singleton() &&
 				tableOfConstant.front().isNTEQ(newInstance) )
 		{
-			aContainer->appendConstData( tableOfConstant.front() );
+			aContainer.appendConstVariable( tableOfConstant.front() );
 		}
 	}
 	else
 	{
 		if( newInstance->getModifier().hasFeatureUnsafe()
-			|| aContainer->getModifier().hasFeatureUnsafe() )
+			|| aContainer.getModifier().hasFeatureUnsafe()
+			|| PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED )
 		{
-			compileTypeConstraint(aContainer, newInstance);
+			compileTypeConstraint(aContainer, (* newInstance));
 		}
 
 		// ADD DATA
 		tableOfVariable.append(newSymbol);
 
-		addPrecompileData(aContainer, newSymbol, tableOfVariable);
+		addPrecompileVariable(aContainer, newSymbol, tableOfVariable);
 	}
 
 }
@@ -498,196 +504,184 @@ void CompilerOfVariable::precompileData(AvmProgram * aContainer,
  *******************************************************************************
  */
 
-void CompilerOfVariable::compileData(ExecutableForm * anExecutable)
+void CompilerOfVariable::compileVariable(ExecutableForm & anExecutable)
 {
-	TableOfInstanceOfData::const_raw_iterator itData =
-			anExecutable->getConstData().begin();
-	TableOfInstanceOfData::const_raw_iterator endData =
-			anExecutable->getConstData().end();
-	for( ; itData != endData ; ++itData )
+	TableOfInstanceOfData::ref_iterator itVar =
+			anExecutable.getConstVariable().begin();
+	TableOfInstanceOfData::ref_iterator endVar =
+			anExecutable.getConstVariable().end();
+	for( ; itVar != endVar ; ++itVar )
 	{
-		if( (itData)->hasAstVariable() )
+		if( (itVar)->hasAstVariable() )
 		{
-			compileConstData(anExecutable, (itData));
+			compileConstVariable(anExecutable, (itVar));
 		}
 	}
 
 
 	BFCode onInitialize( OperatorManager::OPERATOR_SEQUENCE );
 
-	itData = anExecutable->getAllData().begin();
-	endData = anExecutable->getAllData().end();
-	for( ; itData != endData ; ++itData )
+	itVar = anExecutable.getAllVariables().begin();
+	endVar = anExecutable.getAllVariables().end();
+	for( ; itVar != endVar ; ++itVar )
 	{
-		if( (itData)->hasAstVariable() )
+		if( (itVar)->hasAstVariable() )
 		{
-			compileDataOnCreate(anExecutable, itData, onInitialize);
+			compileVariableOnCreate(anExecutable, itVar, onInitialize);
 
-			compileData(anExecutable, (itData));
+			compileVariable(anExecutable, (itVar));
 		}
 	}
 
-	if( onInitialize->nonempty() )
+	if( onInitialize->hasOperand() )
 	{
-//!![TRACE]: to delete
-//AVM_OS_DEBUG << std::endl << "compileData() => onCreate:> "
-//		<< onInitialize << std::endl;
-
-		BehavioralPart * theBehavioralPart = const_cast< Machine * >(
-				anExecutable->getAstMachine() )->getUniqBehaviorPart();
+		BehavioralPart * theBehavioralPart = const_cast< Machine & >(
+				anExecutable.getAstMachine() ).getUniqBehaviorPart();
 
 		onInitialize = StatementConstructor::xnewCodeFlat(
 						OperatorManager::OPERATOR_SEQUENCE,
 						onInitialize, theBehavioralPart->getOnCreate() );
 
-		theBehavioralPart->setOnCreate( onInitialize->populated() ?
+		theBehavioralPart->setOnCreate( onInitialize->hasManyOperands() ?
 				onInitialize : onInitialize->first().bfCode() );
 	}
 }
 
 
-void CompilerOfVariable::compileDataOnCreate(
-		ExecutableForm * anExecutable,
-		TableOfInstanceOfData::const_raw_iterator itData,
-		BFCode & onInitialize)
+void CompilerOfVariable::compileVariableOnCreate(ExecutableForm & anExecutable,
+		TableOfInstanceOfData::ref_iterator itVar, BFCode & onInitialize)
 {
-	const Variable * aVariable = (itData)->getAstVariable();
+	const Variable & aVariable = (itVar)->getAstVariable();
 
-	const BF & aValue = ( (itData)->hasAliasTarget() &&
-			(itData)->getAliasTarget()->as< InstanceOfData >()->hasValue() )?
-				(itData)->getAliasTarget()->as< InstanceOfData >()->getValue() :
-					( (itData)->hasValue() ?
-							(itData)->getValue() : aVariable->getValue() );
-//!![TRACE]: to delete
-//!![MIGRATION]:TRACE
-//	AVM_OS_DEBUG << std::endl
-//			<< "compileData() => onCreate:>\n"
-//			<< to_stream( *itData ) << to_stream( aVariable ) << std::endl;
+	const BF & aValue = ( (itVar)->hasAliasTarget() &&
+			(itVar)->getAliasTarget()->as< InstanceOfData >().hasValue() )?
+				(itVar)->getAliasTarget()->as< InstanceOfData >().getValue() :
+					( (itVar)->hasValue() ?
+							(itVar)->getValue() : aVariable.getValue() );
 
 	if( aValue.valid() )
 	{
-		/*if( (itData)->hasTypeArrayOrStructure()
-			&& (not aValue.is< BuiltinCollection >()) )
+		if( not ( (itVar)->hasParent()
+				&& (itVar)->getParent()->hasValue() ) )
 		{
-			AVM_OS_DEBUG << std::endl
-					<< "compileData() => onCreate:> unexpected\n"
-					<< "type:> " << aValue.classKindInfo() << std::endl
-					<< to_stream( *itData ) << std::endl;
-		}
-		else*/ if( not ( (itData)->hasParent()
-				&& (itData)->getParent()->hasValue() ) )
-//				&& (itData)->getParent()->hasTypeArrayOrStructure()
-//				&& (itData)->getParent()->getValue().is< BuiltinCollection >() ) )
-		{
-//AVM_OS_DEBUG << std::endl << "compileData() => onCreate:>\n"
-//		<< to_stream( *itData ) << std::endl;
-////	<< str_header( *itData ) << std::endl;
-
 			onInitialize->append( StatementConstructor::newCode(
-					aVariable->getAssignOperator(), (*itData), aValue ) );
+					aVariable.getAssignOperator(), (*itVar), aValue ) );
 		}
 	}
 }
 
-void CompilerOfVariable::compileData(AvmProgram * aProgram)
+void CompilerOfVariable::compileVariable(AvmProgram & aProgram)
 {
-	TableOfInstanceOfData::const_raw_iterator itData =
-			aProgram->getConstData().begin();
-	TableOfInstanceOfData::const_raw_iterator endData =
-			aProgram->getConstData().end();
-	for( ; itData != endData ; ++itData )
+	TableOfInstanceOfData::ref_iterator itVar =
+			aProgram.getConstVariable().begin();
+	TableOfInstanceOfData::ref_iterator endVar =
+			aProgram.getConstVariable().end();
+	for( ; itVar != endVar ; ++itVar )
 	{
-		if( (itData)->hasAstVariable() )
+		if( (itVar)->hasAstVariable() )
 		{
-			compileConstData(aProgram, (itData));
+			compileConstVariable(aProgram, (itVar));
 		}
 	}
 
 
-	itData = aProgram->getAllData().begin();
-	endData = aProgram->getAllData().end();
-	for( ; itData != endData ; ++itData )
+	itVar = aProgram.getAllVariables().begin();
+	endVar = aProgram.getAllVariables().end();
+	for( ; itVar != endVar ; ++itVar )
 	{
-		if( (itData)->hasAstVariable() )
+		if( (itVar)->hasAstVariable() )
 		{
-			compileData(aProgram, (itData));
+			compileVariable(aProgram, (itVar));
 		}
 	}
 }
 
 
-void CompilerOfVariable::compileConstData(
-		AvmProgram * aContainer, InstanceOfData * aVarInstance)
+void CompilerOfVariable::compileConstVariable(
+		AvmProgram & aContainer, InstanceOfData & aVarInstance)
 {
-	if( aVarInstance->hasAstVariable() )
+	if( aVarInstance.hasAstVariable() )
 	{
-		const Variable * aCompiledVar = aVarInstance->getAstVariable();
-		if( aCompiledVar->hasOnWrite() )
+		const Variable & astVariable = aVarInstance.getAstVariable();
+		if( astVariable.hasOnWrite() )
 		{
 			//!!! ERROR
 		}
 
-		compileData_initialValue(aContainer, aVarInstance);
+		compileVariable_initialValue(aContainer, aVarInstance);
 	}
 }
 
 
-void CompilerOfVariable::compileData(
-		AvmProgram * aContainer, InstanceOfData * aVarInstance)
+void CompilerOfVariable::compileVariable(
+		AvmProgram & aContainer, InstanceOfData & aVarInstance)
 {
-	const Variable * aCompiledVar = aVarInstance->getAstVariable();
+	const Variable & astVariable = aVarInstance.getAstVariable();
 
-	if( aCompiledVar->hasOnWrite() &&
-		aCompiledVar->getOnWriteRoutine()->doSomething() )
+	if( astVariable.hasOnWrite() &&
+			astVariable.getOnWriteRoutine().doSomething() )
 	{
-		AvmProgram * onWriteProg = mAvmcodeCompiler.compileRoutine(this,
-				aContainer, aVarInstance, aCompiledVar->getOnWriteRoutine());
+		AvmProgram * onWriteProg = mAvmcodeCompiler.compileRoutine(*this,
+				aContainer, (& aVarInstance), astVariable.getOnWriteRoutine());
 
-		if( aVarInstance->isConcreteStructAttribute() )
+		if( aVarInstance.isConcreteStructAttribute() )
 		{
 			onWriteProg->setFullyQualifiedNameContainer( aVarInstance );
 		}
 
-		aVarInstance->setOnWriteRoutine( onWriteProg );
+		aVarInstance.setOnWriteRoutine( onWriteProg );
 
-		aContainer->getExecutable()->saveAnonymousInnerRoutine( onWriteProg );
+		aContainer.refExecutable().saveAnonymousInnerRoutine( onWriteProg );
 	}
 
-	else if( aVarInstance->hasTypeSpecifier() &&
-			aVarInstance->getTypeSpecifier()->hasConstraint() )
+	else if( aVarInstance.hasTypeSpecifier() &&
+			aVarInstance.getTypeSpecifier().hasConstraint() )
 	{
-		aVarInstance->setOnWriteRoutine( aVarInstance->getTypeSpecifier()->
+		aVarInstance.setOnWriteRoutine( aVarInstance.getTypeSpecifier().
 				getConstraint().as_ptr< AvmProgram >() );
 	}
-//	else if( aCompiledVar->hasDataType() &&
-//			aCompiledVar->getDataType()->getConstraintRoutine().doSomething() )
+	else if( aVarInstance.hasTypeSpecifier() &&
+			aVarInstance.getTypeSpecifier().referedTypeSpecifier().hasConstraint() )
+	{
+		aVarInstance.setOnWriteRoutine(
+				aVarInstance.getTypeSpecifier().referedTypeSpecifier().
+							getConstraint().as_ptr< AvmProgram >() );
+	}
+//	else if( astVariable.hasDataType() &&
+//			astVariable.getDataType()->getConstraintRoutine().doSomething() )
 //	{
-//		aVarInstance->setOnWriteRoutine( compileData_monitor(
+//		aVarInstance.setOnWriteRoutine( compileVariable_monitor(
 //				aContainer, aVarInstance,
-//				aCompiledVar->getDataType()->getConstraintRoutine()) );
+//				astVariable.getDataType()->getConstraintRoutine()) );
 //	}
 
-	compileData_initialValue(aContainer, aVarInstance);
+	compileVariable_initialValue(aContainer, aVarInstance);
 }
 
 
-BF CompilerOfVariable::precompileData_initialValue(AvmProgram * aContainer,
-		BaseTypeSpecifier * aTypeSpecifier, const BF & aValue)
+BF CompilerOfVariable::precompileVariable_initialValue(AvmProgram & aContainer,
+		const BaseTypeSpecifier & aTypeSpecifier, const BF & aValue)
 {
 	if( aValue.invalid() )
 	{
 		return( BF::REF_NULL );
 	}
 
+	else if( aValue.is< Number >()   || aValue.is< Boolean >() ||
+			aValue.is< Character >() || aValue.is< String >() )
+	{
+		return( aValue );
+	}
+
 	else if( aValue.is< InstanceOfData >() )
 	{
-		if( aValue.to_ptr< InstanceOfData >()->hasValue() &&
+		if( aValue.to< InstanceOfData >().hasValue() &&
 			ExpressionTypeChecker::isFinalSymbolicBasicSymbol(
-					aValue.to_ptr< InstanceOfData >()->getValue()) )
+					aValue.to< InstanceOfData >().getValue()) )
 		{
-			return( aValue.to_ptr< InstanceOfData >()->getValue() );
+			return( aValue.to< InstanceOfData >().getValue() );
 		}
-		else if( aValue.to_ptr< InstanceOfData >()->getModifier().
+		else if( aValue.to< InstanceOfData >().getModifier().
 					hasModifierPublicFinalStaticParameter() )
 		{
 			return( aValue );
@@ -696,37 +690,37 @@ BF CompilerOfVariable::precompileData_initialValue(AvmProgram * aContainer,
 
 	else if( aValue.is_strictly< BuiltinArray >() )
 	{
-		BuiltinArray * aBuiltinArrayValue = aValue.to_ptr< BuiltinArray >();
+		const BuiltinArray & aBuiltinArrayValue = aValue.to< BuiltinArray >();
 
-		if( aBuiltinArrayValue->is< ArrayIdentifier >()
-			|| aBuiltinArrayValue->is< ArrayQualifiedIdentifier >() )
+		if( aBuiltinArrayValue.is< ArrayIdentifier >()
+			|| aBuiltinArrayValue.is< ArrayQualifiedIdentifier >() )
 		{
 			return( BF::REF_NULL );
 		}
-		else if( aTypeSpecifier->hasTypeListCollection() )
+		else if( aTypeSpecifier.hasTypeListCollection() )
 		{
 			BuiltinContainer * containerValue = BuiltinContainer::create(
-					aTypeSpecifier->as< ContainerTypeSpecifier >() );
+					aTypeSpecifier.as< ContainerTypeSpecifier >() );
 
 			containerValue->copy(aBuiltinArrayValue, std::min(
-					containerValue->capacity(), aBuiltinArrayValue->size()) );
+					containerValue->capacity(), aBuiltinArrayValue.size()) );
 
 			return( BF(containerValue) );
 		}
 
 		else
 		{
-			ArrayBF * bfArray = aBuiltinArrayValue->getArrayBF();
+			ArrayBF * bfArray = aBuiltinArrayValue.getArrayBF();
 
-			if( (bfArray->getTypeSpecifier() != aTypeSpecifier)
+			if( bfArray->getTypeSpecifier().isNTEQ( aTypeSpecifier )
 				&& ExpressionTypeChecker::isTyped(aTypeSpecifier, aValue) )
 			{
 				bfArray->setTypeSpecifier( aTypeSpecifier );
 			}
 
-			if( bfArray->getTypeSpecifier()->is< ContainerTypeSpecifier >()
-				&& bfArray->getTypeSpecifier()->to<
-						ContainerTypeSpecifier >()->weaklyTypedIdentifier() )
+			if( bfArray->getTypeSpecifier().is< ContainerTypeSpecifier >()
+				&& bfArray->getTypeSpecifier().to<
+						ContainerTypeSpecifier >().weaklyTypedIdentifier() )
 			{
 				delete bfArray;
 			}
@@ -738,7 +732,7 @@ BF CompilerOfVariable::precompileData_initialValue(AvmProgram * aContainer,
 	}
 
 	else if( aValue.is< ArrayBF >()
-			/*&& aVarInstance->getModifier().hasFeatureFinal
+			/*&& aVarInstance.getModifier().hasFeatureFinal
 			&& ExpressionTypeChecker::isFinalSymbolicCompositeSymbol(
 					aValue.to_ptr< ArrayBF >())*/ )
 	{
@@ -747,59 +741,84 @@ BF CompilerOfVariable::precompileData_initialValue(AvmProgram * aContainer,
 		CompilationEnvironment compilENV(aContainer);
 
 		ArrayBF * bfArray = aValue.to_ptr< ArrayBF >();
-		for( avm_size_t idx = 0 ; idx < bfArray->size() ; ++idx )
+		for( std::size_t idx = 0 ; idx < bfArray->size() ; ++idx )
 		{
 			const BF & arg = bfArray->at(idx);
 			if( arg.is< Variable >() )
 			{
-				if( arg.to_ptr< Variable >()->hasValue()
+				if( arg.to< Variable >().hasValue()
 					&& ExpressionTypeChecker::isFinalSymbolicSymbol(
-							arg.to_ptr< Variable >()->getValue()) )
+							arg.to< Variable >().getValue()) )
 				{
 					const BF & compiledVar =
 							mAvmcodeCompiler.getSymbolTable().searchSemSymbol(
-									compilENV.mCTX, arg.to_ptr< Variable >() );
+									compilENV.mCTX, arg.to< Variable >() );
 
 					if( compiledVar.valid()
 						&& compiledVar.is< InstanceOfData >()
-						&& compiledVar.to_ptr< InstanceOfData >()->hasValue() )
+						&& compiledVar.to< InstanceOfData >().hasValue() )
 					{
 						bfArray->set(idx,
-							compiledVar.to_ptr< InstanceOfData >()->getValue() );
+							compiledVar.to< InstanceOfData >().getValue() );
 					}
-					else if( aTypeSpecifier->hasTypeContainer() )
+					else if( aTypeSpecifier.hasTypeContainer() )
 					{
-						bfArray->set(idx, precompileData_initialValue(aContainer,
-								aTypeSpecifier->as< ContainerTypeSpecifier >()
-										->getContentsTypeSpecifier(),
-								arg.to_ptr< Variable >()->getValue()) );
+						BF constVal = precompileVariable_initialValue(
+								aContainer,
+								aTypeSpecifier.as< ContainerTypeSpecifier >()
+										.getContentsTypeSpecifier(),
+								arg.to< Variable >().getValue());
+
+						if( constVal.valid() )
+						{
+							bfArray->set(idx, constVal);
+						}
+						else
+						{
+							isFinalSymbol = false;
+							break;
+						}
 					}
-					else if( aTypeSpecifier->isTypedClass() )
+					else if( aTypeSpecifier.isTypedClass() )
 					{
-						bfArray->set(idx, precompileData_initialValue(aContainer,
-								aTypeSpecifier->as< ClassTypeSpecifier >()
-										->getSymbolData(idx).getTypeSpecifier(),
-								arg.to_ptr< Variable >()->getValue()) );
+						BF constVal = precompileVariable_initialValue(
+								aContainer,
+								aTypeSpecifier.as< ClassTypeSpecifier >()
+										.getSymbolData(idx).getTypeSpecifier(),
+								arg.to< Variable >().getValue());
+
+						if( constVal.valid() )
+						{
+							bfArray->set(idx, constVal);
+						}
+						else
+						{
+							isFinalSymbol = false;
+							break;
+						}
 					}
 					else
 					{
-						bfArray->set(idx, arg.to_ptr< Variable >()->getValue() );
+						bfArray->set(idx, arg.to< Variable >().getValue() );
 					}
 				}
 				else
 				{
 					isFinalSymbol = false;
+					break;
 				}
 			}
 			else if( not ExpressionTypeChecker::isFinalSymbolicSymbol( arg ) )
 			{
 				isFinalSymbol = false;
+				break;
 			}
 		}
 
 		if( isFinalSymbol )
 		{
-			if( (aValue.to_ptr< ArrayBF >()->getTypeSpecifier() != aTypeSpecifier)
+			if( aValue.to< ArrayBF >().getTypeSpecifier().isNTEQ(
+					aTypeSpecifier )
 				&& ExpressionTypeChecker::isTyped(aTypeSpecifier, aValue) )
 			{
 				aValue.to_ptr< ArrayBF >()->setTypeSpecifier( aTypeSpecifier );
@@ -809,57 +828,52 @@ BF CompilerOfVariable::precompileData_initialValue(AvmProgram * aContainer,
 		}
 	}
 
-	else if( aTypeSpecifier->isTypedArray() )
+	else if( aTypeSpecifier.isTypedArray() )
 	{
 		if( ExpressionTypeChecker::isFinalSymbolicBasicSymbol(aValue) )
 		{
 			return( BF( new ArrayBF(aTypeSpecifier,
-					aTypeSpecifier->size(), aValue) ) );
+					aTypeSpecifier.size(), aValue) ) );
 		}
 	}
 
-	else if( aTypeSpecifier->isTypedEnum() )
+	else if( aTypeSpecifier.isTypedEnum() )
 	{
 		if( aValue.is< Variable >() )
 		{
-			return( aTypeSpecifier->as< EnumTypeSpecifier >()->getSymbolData().
-					getByAstElement( aValue.to_ptr< Variable >() ) );
+			return( aTypeSpecifier.as< EnumTypeSpecifier >().getSymbolData().
+					getByAstElement( aValue.to< Variable >() ) );
 		}
 		else if( aValue.is< Identifier >() )
 		{
-			return( aTypeSpecifier->as< EnumTypeSpecifier >()->getSymbolData().
-					getByNameID( aValue.to_ptr< Identifier >()->getValue() ) );
+			return( aTypeSpecifier.as< EnumTypeSpecifier >().getSymbolData().
+					getByNameID( aValue.to< Identifier >().getValue() ) );
 		}
 		else
 		{
-			return( aTypeSpecifier->as< EnumTypeSpecifier >()->
-					getSymbolData().getByQualifiedNameID( aValue.str() ) );
+			return( aTypeSpecifier.as< EnumTypeSpecifier >()
+					.getSymbolData().getByQualifiedNameID( aValue.str() ) );
 		}
-	}
-
-	else if( aValue.is< Number >()   || aValue.is< Boolean >() ||
-			aValue.is< Character >() || aValue.is< String >() )
-	{
-		return( aValue );
 	}
 
 	return( BF::REF_NULL );
 }
 
-void CompilerOfVariable::precompileData_initialValue(
-		AvmProgram * aContainer, InstanceOfData * aVarInstance)
+void CompilerOfVariable::precompileVariable_initialValue(
+		AvmProgram & aContainer, InstanceOfData & aVarInstance)
 {
-	const Variable * aVar = aVarInstance->getAstVariable();
+	const Variable & astVariable = aVarInstance.getAstVariable();
 
-	BF aValue = aVar->getValue();
+	BF aValue = astVariable.getValue();
 	if( aValue.valid() )
 	{
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
-	AVM_OS_TRACE << "variable:precompile#value> " << str_header( aVar ) << std::endl;
+	AVM_OS_TRACE << "variable:precompile#value> " << str_header( astVariable )
+			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
-		aVarInstance->setValue( precompileData_initialValue(aContainer,
-				aVarInstance->getTypeSpecifier(), aValue) );
+		aVarInstance.setValue( precompileVariable_initialValue(aContainer,
+				aVarInstance.getTypeSpecifier(), aValue) );
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << "instance:> " << str_header( aVarInstance ) << std::endl;
@@ -869,39 +883,40 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 
 
-void CompilerOfVariable::compileData_initialValue(
-		AvmProgram * aContainer, InstanceOfData * aVarInstance)
+void CompilerOfVariable::compileVariable_initialValue(
+		AvmProgram & aContainer, InstanceOfData & aVarInstance)
 {
-	const Variable * aVar = aVarInstance->getAstVariable();
+	const Variable & astVariable = aVarInstance.getAstVariable();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
-	AVM_OS_TRACE << "variable:compile#value> " << str_header( aVar ) << std::endl;
+	AVM_OS_TRACE << "variable:compile#value> " << str_header( astVariable )
+			<< std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
-	if( not aVarInstance->hasValue() )
+	if( not aVarInstance.hasValue() )
 	{
-		const BF & aValue = aVar->getValue();
+		const BF & aValue = astVariable.getValue();
 		if( aValue.valid() )
 		{
 			CompilationEnvironment compilENV(aContainer);
-			compilENV.mCTX->mType = aVarInstance->getTypeSpecifier();
+			compilENV.mCTX->mType = aVarInstance.ptrTypeSpecifier();
 
-			aVarInstance->setValue(	mAvmcodeCompiler.
+			aVarInstance.setValue(	mAvmcodeCompiler.
 					decode_compileExpression(compilENV.mCTX, aValue) );
 
-			if( aVarInstance->getValue().is< ArrayBF >() )
+			if( aVarInstance.getValue().is< ArrayBF >() )
 			{
-				ArrayBF * bfArray = aVarInstance->getValue().to_ptr< ArrayBF >();
-				for( avm_size_t idx = 0 ; idx < bfArray->size() ; ++idx )
+				ArrayBF * bfArray = aVarInstance.getValue().to_ptr< ArrayBF >();
+				for( std::size_t idx = 0 ; idx < bfArray->size() ; ++idx )
 				{
 					const BF & arg = bfArray->at(idx);
 					if( arg.is< InstanceOfData >() &&
-							arg.to_ptr< InstanceOfData >()->hasValue() &&
+							arg.to< InstanceOfData >().hasValue() &&
 							ExpressionTypeChecker::isFinalSymbolicSymbol(
-								arg.to_ptr< InstanceOfData >()->getValue()) )
+								arg.to< InstanceOfData >().getValue()) )
 					{
 						bfArray->set(idx,
-							arg.to_ptr< InstanceOfData >()->getValue() );
+							arg.to< InstanceOfData >().getValue() );
 					}
 				}
 			}
@@ -916,36 +931,39 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 // TODO Verifier la généralisation, hors des types énumérés!!!
 void CompilerOfVariable::compileTypeConstraint(
-		AvmProgram * aContainer, InstanceOfData * aVarInstance)
+		AvmProgram & aContainer, InstanceOfData & aVarInstance)
 {
-	AVM_OS_ASSERT_WARNING_ALERT( aVarInstance->getModifier().hasFeatureUnsafe()
-			|| aContainer->getModifier().hasFeatureUnsafe() )
+	AVM_OS_ASSERT_WARNING_ALERT( aVarInstance.getModifier().hasFeatureUnsafe()
+			|| aContainer.getModifier().hasFeatureUnsafe()
+			|| PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED )
 			<< "Unexpected a << non-unsafe >> InstanceOfData !!!"
 			<< SEND_ALERT;
 
-	BaseTypeSpecifier * aTypeSpecifier = aVarInstance->getTypeSpecifier();
-	if( aTypeSpecifier->couldGenerateConstraint() )
+	const BaseTypeSpecifier & aTypeSpecifier = aVarInstance.getTypeSpecifier();
+	if( aTypeSpecifier.couldGenerateConstraint() )
 	{
 		AvmProgram * onWriteProg = new AvmProgram(
 				Specifier::SCOPE_ROUTINE_KIND,
-				aContainer, aVarInstance->getAstElement(), 1);
+				(& aContainer), aVarInstance.getAstElement(), 1);
 		onWriteProg->updateUfid( "#onWriteTypeConstraint" );
 		onWriteProg->setParamOffsetCount(0, 1);
 
 		BF newValue( new InstanceOfData(
-				IPointerDataNature::POINTER_STANDARD_NATURE, onWriteProg,
-				aVarInstance->getAstElement(), aTypeSpecifier, "newValue",  0) );
-		onWriteProg->setData(0, newValue);
-		onWriteProg->updateDataTable();
+				IPointerVariableNature::POINTER_STANDARD_NATURE, onWriteProg,
+				aVarInstance.getAstElement(), aTypeSpecifier, "newValue",  0) );
+		onWriteProg->setVariable(0, newValue);
+		onWriteProg->updateVariableTable();
 
-		BFCode code(OperatorManager::OPERATOR_GUARD,
-				aTypeSpecifier->genConstraint(newValue) );
+		BFCode code( aVarInstance.hasTypedClockTime()
+					? OperatorManager::OPERATOR_TIMED_GUARD
+					: OperatorManager::OPERATOR_GUARD,
+				aTypeSpecifier.genConstraint(newValue) );
 
 		onWriteProg->setCode(code);
 
-		aVarInstance->setOnWriteRoutine( onWriteProg );
+		aVarInstance.setOnWriteRoutine( onWriteProg );
 
-		aContainer->getExecutable()->saveAnonymousInnerRoutine( onWriteProg );
+		aContainer.refExecutable().saveAnonymousInnerRoutine( onWriteProg );
 	}
 }
 

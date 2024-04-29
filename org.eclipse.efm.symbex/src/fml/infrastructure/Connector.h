@@ -19,12 +19,9 @@
 #include <fml/common/ObjectElement.h>
 #include <fml/infrastructure/ComProtocol.h>
 
-#include <common/AvmPointer.h>
-
-#include <collection/Typedef.h>
-
-
 #include <fml/infrastructure/ComRoute.h>
+
+#include <list>
 
 
 namespace sep
@@ -32,34 +29,42 @@ namespace sep
 
 
 class InteractionPart;
-
+class Port;
 
 class Connector :
 		public ObjectElement,
 		public ComProtocol,
+		AVM_INJECT_STATIC_NULL_REFERENCE( Connector ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( Connector )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( Connector )
 
-protected:
-	/**
-	 * TYPEDEF
-	 */
-	typedef APList < ComRoute * > APListOfComRoute;
-
 public:
 	/**
 	 * TYPEDEF
 	 */
-	typedef APListOfComRoute::const_iterator  route_iterator;
-
+	typedef std::list< ComRoute > CollectionOfComRoute_t;
 
 protected:
 	/**
 	 * ATTRIBUTES
 	 */
-	APListOfComRoute mComRoutes;
+	CollectionOfComRoute_t  mComRoutes;
+
+
+protected:
+	/**
+	 * CONSTRUCTOR
+	 * for null reference
+	 */
+	Connector()
+	: ObjectElement( CLASS_KIND_T( Connector ), nullptr),
+	ComProtocol( PROTOCOL_UNDEFINED_KIND ),
+	mComRoutes( )
+	{
+		//!! NOTHING
+	}
 
 
 public:
@@ -68,7 +73,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	Connector(const InteractionPart & anInteractionPart);
+	Connector(const InteractionPart * anInteractionPart);
 
 	/**
 	 * DESTRUCTOR
@@ -80,40 +85,48 @@ public:
 
 
 	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	static Connector & nullref()
+	{
+		static Connector _NULL_;
+		_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+		_NULL_.setAllNameID( "$null<connector>" , "$null<connector>" );
+
+		return( _NULL_ );
+	}
+
+
+	/**
 	 * GETTER - SETTER
 	 * mComRoutes
 	 */
-	inline route_iterator begin() const
+	ComRoute & appendComRoute(const Modifier & aModifier)
 	{
-		return( mComRoutes.begin() );
+		return mComRoutes.emplace_back(const_cast< Connector * >(this), aModifier);
 	}
 
-	inline route_iterator end() const
+	ComRoute & appendComRoute(Port * aPort, const Modifier & aModifier)
 	{
-		return( mComRoutes.end() );
+		ComRoute &  newRoute =
+				mComRoutes.emplace_back(const_cast< Connector * >(this), aModifier);
+
+		newRoute.appendComPoint(aPort);
+
+		return( newRoute );
 	}
 
-
-	inline APListOfComRoute & getComRoutes()
+	inline const CollectionOfComRoute_t & getComRoutes() const
 	{
 		return( mComRoutes );
-	}
-
-	inline const APListOfComRoute & getComRoutes() const
-	{
-		return( mComRoutes );
-	}
-
-	inline void appendComRoute(ComRoute * aComRoute)
-	{
-		mComRoutes.append( aComRoute );
 	}
 
 
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & out) const;
+	void toStream(OutStream & out) const override;
 
 
 public:

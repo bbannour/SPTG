@@ -16,5 +16,3 @@ target_include_directories (solver PUBLIC ${GMP_INCLUDE_DIR} ${GMPXX_INCLUDE_DIR
 target_include_directories (solver PUBLIC ${Boost_INCLUDE_DIRS})
 target_include_directories (solver PUBLIC ${CVC4_INCLUDE_DIR} ${CVC4_INCLUDE_DIR}/cvc4) # FIXME (confusion between include/cvc4 or include/cvc4/cvc4)
 
-
-add_dependencies(solver rescan_cvc4)

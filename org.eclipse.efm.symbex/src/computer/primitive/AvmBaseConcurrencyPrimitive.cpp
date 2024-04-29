@@ -41,11 +41,11 @@ namespace sep
 
 
 // Compute EVAL where NOT OTHER
-bool AvmBaseConcurrencyPrimitive::evalExclusive(APExecutionData & anInputED,
-		APExecutionData & evalED, APExecutionData & otherED,
-		CollectionOfAPExecutionData & listOfOutputED)
+bool AvmBaseConcurrencyPrimitive::evalExclusive(ExecutionData & anInputED,
+		ExecutionData & evalED, ExecutionData & otherED,
+		CollectionOfExecutionData & listOfOutputED)
 {
-	BF theNodeCondition = otherED->getNodeCondition();
+	BF theNodeCondition = otherED.getNodeCondition();
 
 	if( theNodeCondition.isEqualTrue() )
 	{
@@ -68,9 +68,9 @@ bool AvmBaseConcurrencyPrimitive::evalExclusive(APExecutionData & anInputED,
 
 
 // Compute EVAL where NOT OTHERS
-bool AvmBaseConcurrencyPrimitive::evalExclusive(APExecutionData & anInputED,
-		APExecutionData & evalED, ListOfAPExecutionData & listOfOtherED,
-		CollectionOfAPExecutionData & listOfOutputED)
+bool AvmBaseConcurrencyPrimitive::evalExclusive(ExecutionData & anInputED,
+		ExecutionData & evalED, ListOfExecutionData & listOfOtherED,
+		CollectionOfExecutionData & listOfOutputED)
 {
 	if( listOfOtherED.empty() )
 	{
@@ -89,11 +89,9 @@ bool AvmBaseConcurrencyPrimitive::evalExclusive(APExecutionData & anInputED,
 	{
 		BFCode theNodeConditions(OperatorManager::OPERATOR_OR);
 
-		ListOfAPExecutionData::iterator it = listOfOtherED.begin();
-		ListOfAPExecutionData::iterator itEnd = listOfOtherED.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itED : listOfOtherED )
 		{
-			theNodeConditions->append( (*it)->getNodeCondition() );
+			theNodeConditions->append( itED.getNodeCondition() );
 		}
 
 		BF theNodeCondition =
@@ -122,17 +120,14 @@ bool AvmBaseConcurrencyPrimitive::evalExclusive(APExecutionData & anInputED,
 }
 
 
-bool AvmBaseConcurrencyPrimitive::evalExclusive(APExecutionData & anInputED,
-		ListOfAPExecutionData & oneListOfED, APExecutionData & otherED,
-		CollectionOfAPExecutionData & listOfOutputED)
+bool AvmBaseConcurrencyPrimitive::evalExclusive(ExecutionData & anInputED,
+		ListOfExecutionData & oneListOfED, ExecutionData & otherED,
+		CollectionOfExecutionData & listOfOutputED)
 {
-	ListOfAPExecutionData::iterator itOne;
-	ListOfAPExecutionData::iterator endOne = oneListOfED.end();
-
 	// Compute OTHER where NOT ONE
-	for( itOne = oneListOfED.begin() ; itOne != endOne ; ++itOne )
+	for( auto & oneED : oneListOfED )
 	{
-		if( not evalExclusive(anInputED, *itOne, otherED, listOfOutputED) )
+		if( not evalExclusive(anInputED, oneED, otherED, listOfOutputED) )
 		{
 			return( false );
 		}

@@ -73,10 +73,10 @@ public:
 	}
 
 	static bool isInt32(const BF & value);
-	static avm_int32_t toInt32(const BF & value);
+	static std::int32_t toInt32(const BF & value);
 
 	static bool isInt64(const BF & value);
-	static avm_int64_t toInt64(const BF & value);
+	static std::int64_t toInt64(const BF & value);
 
 	static bool isInteger(const BF & value);
 	static avm_integer_t toInteger(const BF & value);

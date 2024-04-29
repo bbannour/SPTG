@@ -55,53 +55,53 @@ int ExpressionComparer::compare(const BF & frst, const BF & snd)
 				case FORM_AVMPROGRAM_KIND:
 				case FORM_AVMLAMBDA_KIND:
 				{
-					return( frst.to_ref< ObjectElement >().compareFQN(
-							snd.to_ref< ObjectElement >() ) );
+					return( frst.to< ObjectElement >().compareFQN(
+							snd.to< ObjectElement >() ) );
 				}
 
 
 				case FORM_BUILTIN_BOOLEAN_KIND:
 				{
-					return( frst.to_ref< Boolean >().compare(
-							snd.to_ref< Boolean >() ) );
+					return( frst.to< Boolean >().compare(
+							snd.to< Boolean >() ) );
 				}
 				case FORM_BUILTIN_CHARACTER_KIND:
 				{
-					return( frst.to_ref< Character >().compare(
-							snd.to_ref< Character >() ) );
+					return( frst.to< Character >().compare(
+							snd.to< Character >() ) );
 				}
 				case FORM_BUILTIN_INTEGER_KIND:
 				{
-					return( frst.to_ref< Integer >().compare(
-							snd.to_ref< Integer >() ) );
+					return( frst.to< Integer >().compare(
+							snd.to< Integer >() ) );
 				}
 
 				case FORM_BUILTIN_RATIONAL_KIND:
 				{
-					return( frst.to_ref< Rational >().compare(
-							snd.to_ref< Rational >() ) );
+					return( frst.to< Rational >().compare(
+							snd.to< Rational >() ) );
 				}
 
 				case FORM_BUILTIN_FLOAT_KIND:
 				{
-					return( frst.to_ref< Float >().compare(
-							snd.to_ref< Float >() ) );
+					return( frst.to< Float >().compare(
+							snd.to< Float >() ) );
 				}
 
 				case FORM_BUILTIN_STRING_KIND:
 				{
-					return( frst.to_ref< String >().compare(
-							snd.to_ref< String >() ) );
+					return( frst.to< String >().compare(
+							snd.to< String >() ) );
 				}
 				case FORM_BUILTIN_IDENTIFIER_KIND:
 				{
-					return( frst.to_ref< Identifier >().compare(
-							snd.to_ref< Identifier >() ) );
+					return( frst.to< Identifier >().compare(
+							snd.to< Identifier >() ) );
 				}
 				case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
 				{
-					return( frst.to_ref< QualifiedIdentifier >().compare(
-							snd.to_ref< QualifiedIdentifier >() ) );
+					return( frst.to< QualifiedIdentifier >().compare(
+							snd.to< QualifiedIdentifier >() ) );
 				}
 
 				case FORM_RUNTIME_ID_KIND:
@@ -111,27 +111,27 @@ int ExpressionComparer::compare(const BF & frst, const BF & snd)
 
 				case FORM_EXECUTION_CONFIGURATION_KIND:
 				{
-					return( frst.to_ptr< ExecutionConfiguration >()->compare(
-							snd.to_ref< ExecutionConfiguration >() ) );
+					return( frst.to< ExecutionConfiguration >().compare(
+							snd.to< ExecutionConfiguration >() ) );
 				}
 
 				case FORM_UFI_KIND:
 				{
-					return( frst.to_ref< UniFormIdentifier >().compare(
-							snd.to_ref< UniFormIdentifier >() ) );
+					return( frst.to< UniFormIdentifier >().compare(
+							snd.to< UniFormIdentifier >() ) );
 				}
 
 
 				case FORM_AVMCODE_KIND:
 				{
-					return( frst.to_ref< AvmCode >().compare(
-							snd.to_ref< AvmCode >() ) );
+					return( frst.to< AvmCode >().compare(
+							snd.to< AvmCode >() ) );
 				}
 
 				case FORM_ARRAY_BF_KIND:
 				{
-					return( frst.to_ref< ArrayBF >().compare(
-							snd.to_ref< ArrayBF >() ) );
+					return( frst.to< ArrayBF >().compare(
+							snd.to< ArrayBF >() ) );
 				}
 
 				default:
@@ -142,7 +142,11 @@ int ExpressionComparer::compare(const BF & frst, const BF & snd)
 				}
 			}
 		}
-
+		else if( frst.is< Number >() && snd.is< Number >() )
+		{
+			return( Numeric::acquire( frst.to_ptr< Number >() ).compare(
+					Numeric::acquire( snd.to_ptr< Number >() ) ) );
+		}
 		else
 		{
 			return( ( frst.classKind() < snd.classKind() ) ? -1 : 1 );
@@ -187,46 +191,46 @@ bool ExpressionComparer::isEQ(const BF & frst, const BF & snd)
 
 				case FORM_BUILTIN_BOOLEAN_KIND:
 				{
-					return( frst.to_ref< Boolean >().operator==(
-							snd.to_ref< Boolean >() ) );
+					return( frst.to< Boolean >().operator==(
+							snd.to< Boolean >() ) );
 				}
 				case FORM_BUILTIN_CHARACTER_KIND:
 				{
-					return( frst.to_ref< Character >().operator==(
-							snd.to_ref< Character >() ) );
+					return( frst.to< Character >().operator==(
+							snd.to< Character >() ) );
 				}
 				case FORM_BUILTIN_INTEGER_KIND:
 				{
-					return( frst.to_ref< Integer >().operator==(
-							snd.to_ref< Integer >() ) );
+					return( frst.to< Integer >().operator==(
+							snd.to< Integer >() ) );
 				}
 
 				case FORM_BUILTIN_RATIONAL_KIND:
 				{
-					return( frst.to_ref< Rational >().operator==(
-							snd.to_ref< Rational >() ) );
+					return( frst.to< Rational >().operator==(
+							snd.to< Rational >() ) );
 				}
 
 				case FORM_BUILTIN_FLOAT_KIND:
 				{
-					return( frst.to_ref< Float >().operator==(
-							snd.to_ref< Float >() ) );
+					return( frst.to< Float >().operator==(
+							snd.to< Float >() ) );
 				}
 
 				case FORM_BUILTIN_STRING_KIND:
 				{
-					return( frst.to_ref< String >().operator==(
-							snd.to_ref< String >() ) );
+					return( frst.to< String >().operator==(
+							snd.to< String >() ) );
 				}
 				case FORM_BUILTIN_IDENTIFIER_KIND:
 				{
-					return( frst.to_ref< Identifier >().operator==(
-							snd.to_ref< Identifier >() ) );
+					return( frst.to< Identifier >().operator==(
+							snd.to< Identifier >() ) );
 				}
 				case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
 				{
-					return( frst.to_ref< QualifiedIdentifier >().operator==(
-							snd.to_ref< QualifiedIdentifier >() ) );
+					return( frst.to< QualifiedIdentifier >().operator==(
+							snd.to< QualifiedIdentifier >() ) );
 				}
 
 				case FORM_RUNTIME_ID_KIND:
@@ -236,30 +240,30 @@ bool ExpressionComparer::isEQ(const BF & frst, const BF & snd)
 
 				case FORM_EXECUTION_CONFIGURATION_KIND:
 				{
-					return( frst.to_ptr< ExecutionConfiguration >()->
-								getRuntimeID().isTEQ( snd.to_ptr<
-									ExecutionConfiguration >()->getRuntimeID()) &&
-							frst.to_ptr< ExecutionConfiguration >()->getCode().isEQ(
-								snd.to_ptr< ExecutionConfiguration >()->getCode()) );
+					return( frst.to< ExecutionConfiguration >().
+								getRuntimeID().isTEQ( snd.to<
+									ExecutionConfiguration >().getRuntimeID()) &&
+							frst.to< ExecutionConfiguration >().getCode().isEQ(
+								snd.to< ExecutionConfiguration >().getCode()) );
 				}
 
 				case FORM_UFI_KIND:
 				{
-					return( frst.to_ref< UniFormIdentifier >().isEQ(
-							snd.to_ref< UniFormIdentifier >() ) );
+					return( frst.to< UniFormIdentifier >().isEQ(
+							snd.to< UniFormIdentifier >() ) );
 				}
 
 
 				case FORM_AVMCODE_KIND:
 				{
-					return( frst.to_ref< AvmCode >().isEQ(
-							snd.to_ref< AvmCode >() ) );
+					return( frst.to< AvmCode >().isEQ(
+							snd.to< AvmCode >() ) );
 				}
 
 				case FORM_ARRAY_BF_KIND:
 				{
-					return( frst.to_ref< ArrayBF >().isEQ(
-							snd.to_ref< ArrayBF >() ) );
+					return( frst.to< ArrayBF >().isEQ(
+							snd.to< ArrayBF >() ) );
 				}
 
 				default:
@@ -268,7 +272,11 @@ bool ExpressionComparer::isEQ(const BF & frst, const BF & snd)
 				}
 			}
 		}
-
+		else if( frst.is< Number >() && snd.is< Number >() )
+		{
+			return( Numeric::acquire( frst.to_ptr< Number >() ).eq(
+					Numeric::acquire( snd.to_ptr< Number >() ) ) );
+		}
 		else
 		{
 			return( false );

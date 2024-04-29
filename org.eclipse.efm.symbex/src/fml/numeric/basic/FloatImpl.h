@@ -81,7 +81,7 @@ public:
 		//!! NOTHING
 	}
 
-	// avm_integer_t  i.e.  avm_int64_t
+	// avm_integer_t  i.e.  std::int64_t
 	Float(avm_integer_t aValue)
 	: Number( CLASS_KIND_T( Float ) ),
 	ThisNumberClass( RawValueType(aValue) )
@@ -89,7 +89,7 @@ public:
 		//!! NOTHING
 	}
 
-	// avm_uinteger_t  i.e.  avm_uint64_t
+	// avm_uinteger_t  i.e.  std::uint64_t
 	Float(avm_uinteger_t aValue)
 	: Number( CLASS_KIND_T( Float ) ),
 	ThisNumberClass( RawValueType(aValue) )
@@ -214,27 +214,27 @@ public:
 	inline virtual bool isInt32() const
 	{
 		return( (ThisNumberClass::mValue ==
-					static_cast< avm_int32_t >( ThisNumberClass::mValue )) &&
-				(AVM_NUMERIC_MIN_INT <= ThisNumberClass::mValue) &&
-				(ThisNumberClass::mValue <= AVM_NUMERIC_MAX_INT) );
+					static_cast< std::int32_t >( ThisNumberClass::mValue )) &&
+				(INT32_MIN <= ThisNumberClass::mValue) &&
+				(ThisNumberClass::mValue <= INT32_MAX) );
 	}
 
-	inline virtual avm_int32_t toInt32() const
+	inline virtual std::int32_t toInt32() const
 	{
-		return( static_cast< avm_int32_t >( ThisNumberClass::mValue ) );
+		return( static_cast< std::int32_t >( ThisNumberClass::mValue ) );
 	}
 
 	inline virtual bool isInt64() const
 	{
 		return( (ThisNumberClass::mValue ==
-					static_cast< avm_int64_t >( ThisNumberClass::mValue )) &&
-				(AVM_NUMERIC_MIN_LONG <= ThisNumberClass::mValue) &&
-				(ThisNumberClass::mValue <= AVM_NUMERIC_MIN_LONG) );
+					static_cast< std::int64_t >( ThisNumberClass::mValue )) &&
+				(INT64_MIN <= ThisNumberClass::mValue) &&
+				(ThisNumberClass::mValue <= INT64_MAX) );
 	}
 
-	inline virtual avm_int64_t toInt64() const
+	inline virtual std::int64_t toInt64() const
 	{
-		return( static_cast< avm_int64_t >( ThisNumberClass::mValue ) );
+		return( static_cast< std::int64_t >( ThisNumberClass::mValue ) );
 	}
 
 
@@ -324,20 +324,20 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const
+	virtual void toStream(OutStream & os) const override
 	{
 		os << TAB << OS_FLOAT_PRECISION << mValue;
 		AVM_DEBUG_REF_COUNTER(os);
 		os << EOL_FLUSH;
 	}
 
-	virtual std::string str() const
+	virtual std::string str() const override
 	{
 		return( OSS() << OS_REAL_PRECISION << mValue );
 	}
 
 	inline virtual std::string strNum(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const
 	{
 		return( OSS() << std::fixed
 				<< std::setprecision( precision ) << mValue );

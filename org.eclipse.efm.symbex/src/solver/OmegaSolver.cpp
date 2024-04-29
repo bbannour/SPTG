@@ -58,7 +58,7 @@ std::string OmegaSolver::ID = "OMEGA";
 std::string OmegaSolver::DESCRIPTION = "OMEGA 'Solver of quantifier-free "
 		"problems in Presburger Arithmetic at CS.UMD.EDU, version 2.1'";
 
-avm_uint64_t OmegaSolver::SOLVER_SESSION_ID = 0;
+std::uint64_t OmegaSolver::SOLVER_SESSION_ID = 1;
 
 
 
@@ -66,22 +66,20 @@ avm_uint64_t OmegaSolver::SOLVER_SESSION_ID = 0;
  * CONFIGURE
  */
 bool OmegaSolver::configure(
-		Configuration & aConfiguration, WObject * wfFilterObject,
+		Configuration & aConfiguration, const WObject * wfFilterObject,
 		ListOfPairMachineData & listOfSelectedVariable)
 {
-	isConfigureFlag = true;
-
 	if( not SatSolver::configure(
 		aConfiguration, wfFilterObject, listOfSelectedVariable) )
 	{
-		return( false );
+		return( mConfigFlag = false );
 	}
 
 	setSelectedVariable(
 			aConfiguration.getMainExecutionData(),
 			listOfSelectedVariable );
 
-	return( true );
+	return( mConfigFlag = true );
 }
 
 
@@ -94,7 +92,7 @@ void OmegaSolver::resetVariableTable()
 
 	// Attention Omega compte de 1 à n
 	mTableOfVariableInstance.clear();
-	mTableOfVariableInstance.append( NULL );
+	mTableOfVariableInstance.append( nullptr );
 
 	mTableOfVar4ParamInstance.clear();
 }
@@ -105,11 +103,9 @@ void OmegaSolver::resetParameterTable()
 	// Initialisation du tableau des parametres
 	mTableOfVariableID.clear();
 
-	VectorOfInstanceOfData::iterator it = mTableOfParameterInstance.begin();
-	VectorOfInstanceOfData::iterator itEnd = mTableOfParameterInstance.end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itParamInstance : mTableOfParameterInstance )
 	{
-		(*it)->setMark(0);
+		itParamInstance->setMark(0);
 	}
 	mTableOfParameterInstance.clear();
 
@@ -127,8 +123,8 @@ void OmegaSolver::setSelectedVariable(const ExecutionData & anED)
 {
 	resetVariableTable();
 
-	TableOfInstanceOfData::const_raw_iterator itData;
-	TableOfInstanceOfData::const_raw_iterator endData;
+	TableOfInstanceOfData::const_raw_iterator itVar;
+	TableOfInstanceOfData::const_raw_iterator endVar;
 
 	TableOfRuntimeT::const_iterator itRF = anED.getTableOfRuntime().begin();
 	TableOfRuntimeT::const_iterator endRF = anED.getTableOfRuntime().end();
@@ -136,22 +132,22 @@ void OmegaSolver::setSelectedVariable(const ExecutionData & anED)
 	{
 		itRID = (*itRF)->getRID();
 
-		if( itRID.getExecutable()->hasData() ||
-			itRID.getExecutable()->hasBuffer() )
+		if( itRID.refExecutable().hasVariable() ||
+			itRID.refExecutable().hasBuffer() )
 		{
 			PairMachineData tmpListOfOffset( itRID );
 
-			itData = itRID.getExecutable()->getBasicData().begin();
-			endData = itRID.getExecutable()->getBasicData().end();
-			for( ; itData != endData ; ++itData )
+			itVar = itRID.refExecutable().getBasicVariables().begin();
+			endVar = itRID.refExecutable().getBasicVariables().end();
+			for( ; itVar != endVar ; ++itVar )
 			{
-				tmpListOfOffset.second().append( (itData) );
+				tmpListOfOffset.second().append( (itVar) );
 
-				mTableOfVariableInstance.append( (itData) );
+				mTableOfVariableInstance.append( (itVar) );
 
 //AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 //	AVM_OS_TRACE << TAB << "Omega Relation variable : "
-//			<< str_header( *itData ) << std::endl;
+//			<< str_header( *itVar ) << std::endl;
 //AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 			}
 
@@ -171,22 +167,18 @@ void OmegaSolver::setSelectedVariable(const ExecutionData & anED,
 
 	SatSolver::setSelectedVariable(listOfSelectedVariable);
 
-	ListOfPairMachineData::iterator itPairMachineData = listOfSelectedVariable.begin();
-	ListOfPairMachineData::iterator endPairMachineData = listOfSelectedVariable.end();
-	for( ; itPairMachineData != endPairMachineData ; ++itPairMachineData )
+	for( const auto & itPairMachineData : listOfSelectedVariable )
 	{
-		if( (*itPairMachineData).second().nonempty() )
+		if( itPairMachineData.second().nonempty() )
 		{
-			ListOfInstanceOfData::iterator itVar = (*itPairMachineData).second().begin();
-			ListOfInstanceOfData::iterator endVar = (*itPairMachineData).second().end();
 
-			for( ; itVar != endVar ; ++itVar )
+			for( const auto & itVar : itPairMachineData.second() )
 			{
-				mTableOfVariableInstance.append( *itVar );
+				mTableOfVariableInstance.append( itVar );
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 	AVM_OS_TRACE << TAB << "Omega Relation variable : "
-			<< str_header( *itVar ) << std::endl;
+			<< str_header( itVar ) << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 			}
 		}
@@ -216,7 +208,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	// Creation de la relation Omega
 	// Attention: Omega compte de 1 à n
 	omega::Relation oldRelation( mTableOfVariableInstance.size() - 1 );
-	toRelation(oldEC.refExecutionData(), oldRelation);
+	toRelation(oldEC.getExecutionData(), oldRelation);
 
 
 	if( ((& newEC) != mCacheForNewEC) || isCurrentPathScope() )
@@ -229,7 +221,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 		// Creation de la relation Omega
 		// Attention: Omega compte de 1 à n
 		omega::Relation newRelation( mTableOfVariableInstance.size() - 1 );
-		toRelation(newEC.refExecutionData(), newRelation);
+		toRelation(newEC.getExecutionData(), newRelation);
 
 		mCacheForNewRelation = newRelation;
 
@@ -259,7 +251,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	// Creation de la relation Omega
 	// Attention: Omega compte de 1 à n
 	omega::Relation oldRelation( mTableOfVariableInstance.size() - 1 );
-	toRelation(oldEC.refExecutionData(), oldRelation);
+	toRelation(oldEC.getExecutionData(), oldRelation);
 
 
 	if( (& newEC) != mCacheForNewEC )
@@ -272,7 +264,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 		// Creation de la relation Omega
 		// Attention: Omega compte de 1 à n
 		omega::Relation newRelation( mTableOfVariableInstance.size() - 1 );
-		toRelation(newEC.refExecutionData(), newRelation);
+		toRelation(newEC.getExecutionData(), newRelation);
 
 		mCacheForNewRelation = newRelation;
 
@@ -304,7 +296,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 	omega::Relation oldRelation( mTableOfVariableInstance.size() - 1 +
 			mTableOfVar4ParamInstance.size() );
 	setParameterUple(oldRelation);
-	toRelation(oldEC.refExecutionData(), oldRelation);
+	toRelation(oldEC.getExecutionData(), oldRelation);
 
 
 	if( (& newEC) != mCacheForNewEC )
@@ -319,7 +311,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 		omega::Relation newRelation( mTableOfVariableInstance.size() - 1 +
 				mTableOfVar4ParamInstance.size() );
 		setParameterUple(newRelation);
-		toRelation(newEC.refExecutionData(), newRelation);
+		toRelation(newEC.getExecutionData(), newRelation);
 
 		mCacheForNewRelation = newRelation;
 
@@ -434,8 +426,8 @@ bool OmegaSolver::setParameterUple(omega::Relation & aRelation)
 {
 	std::ostringstream oss;
 
-	VectorOfInstanceOfData::iterator it = mTableOfVar4ParamInstance.begin();
-	VectorOfInstanceOfData::iterator itEnd = mTableOfVar4ParamInstance.end();
+	VectorOfInstanceOfData::const_iterator it = mTableOfVar4ParamInstance.begin();
+	VectorOfInstanceOfData::const_iterator itEnd = mTableOfVar4ParamInstance.end();
 	avm_offset_t paramOffset = 1;
 	for( ; it != itEnd ; ++it , ++paramOffset )
 	{
@@ -474,15 +466,15 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SMT_SOLVING )
 
 	std::ostringstream oss;
 
-	ListOfPairMachineData::iterator itPairMachineData = getSelectedVariable().begin();
-	ListOfPairMachineData::iterator endPairMachineData = getSelectedVariable().end();
+	ListOfPairMachineData::const_iterator itPairMachineData = getSelectedVariable().begin();
+	ListOfPairMachineData::const_iterator endPairMachineData = getSelectedVariable().end();
 	avm_offset_t varOffset = mTableOfVar4ParamInstance.size() + 1;
 	for( ; itPairMachineData != endPairMachineData ; ++itPairMachineData )
 	{
 		if( (*itPairMachineData).second().nonempty() )
 		{
-			ListOfInstanceOfData::iterator itVar = (*itPairMachineData).second().begin();
-			ListOfInstanceOfData::iterator endVar = (*itPairMachineData).second().end();
+			ListOfInstanceOfData::const_iterator itVar = (*itPairMachineData).second().begin();
+			ListOfInstanceOfData::const_iterator endVar = (*itPairMachineData).second().end();
 
 			const RuntimeForm & aRF = anED.getRuntime( (*itPairMachineData).first() );
 
@@ -625,31 +617,31 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode * aCode = exprForm.to_ptr< AvmCode >();
+			const AvmCode & aCode = exprForm.to< AvmCode >();
 
-			switch( aCode->getAvmOpCode() )
+			switch( aCode.getAvmOpCode() )
 			{
 				case AVM_OPCODE_EQ: // - first + second == 0
 				{
 					BFCode exprCond;
 					avm_integer_t exprInt;
 
-					if( aCode->first().is< AvmCode >() )
+					if( aCode.first().is< AvmCode >() )
 					{
-						exprCond = aCode->first().bfCode();
+						exprCond = aCode.first().bfCode();
 
-						if( aCode->second().isInteger() )
+						if( aCode.second().isInteger() )
 						{
-							exprInt = aCode->second().toInteger();
+							exprInt = aCode.second().toInteger();
 						}
 					}
-					else if( aCode->first().isInteger() )
+					else if( aCode.first().isInteger() )
 					{
-						exprInt = aCode->first().toInteger();
+						exprInt = aCode.first().toInteger();
 
-						if( aCode->second().is< AvmCode >() )
+						if( aCode.second().is< AvmCode >() )
 						{
-							exprCond = aCode->second().bfCode();
+							exprCond = aCode.second().bfCode();
 						}
 					}
 
@@ -693,8 +685,8 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 					else
 					{
 						omega::EQ_Handle eqNode = andNode->add_EQ();
-						toConstraint(eqNode, -1, aCode->first());
-						toConstraint(eqNode,  1, aCode->second());
+						toConstraint(eqNode, -1, aCode.first());
+						toConstraint(eqNode,  1, aCode.second());
 					}
 
 					break;
@@ -706,22 +698,22 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 					BFCode exprCond;
 					avm_integer_t exprInt;
 
-					if( aCode->first().is< AvmCode >() )
+					if( aCode.first().is< AvmCode >() )
 					{
-						exprCond = aCode->first().bfCode();
+						exprCond = aCode.first().bfCode();
 
-						if( aCode->second().isInteger() )
+						if( aCode.second().isInteger() )
 						{
-							exprInt = aCode->second().toInteger();
+							exprInt = aCode.second().toInteger();
 						}
 					}
-					else if( aCode->first().isInteger() )
+					else if( aCode.first().isInteger() )
 					{
-						exprInt = aCode->first().toInteger();
+						exprInt = aCode.first().toInteger();
 
-						if( aCode->second().is< AvmCode >() )
+						if( aCode.second().is< AvmCode >() )
 						{
-							exprCond = aCode->second().bfCode();
+							exprCond = aCode.second().bfCode();
 						}
 					}
 
@@ -767,8 +759,8 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 						omega::EQ_Handle eqNode =
 								andNode->add_not()->add_and()->add_EQ();
 
-						toConstraint(eqNode, -1, aCode->first());
-						toConstraint(eqNode,  1, aCode->second());
+						toConstraint(eqNode, -1, aCode.first());
+						toConstraint(eqNode,  1, aCode.second());
 					}
 
 					break;
@@ -779,8 +771,8 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 				case AVM_OPCODE_LT: // - first + second - 1 >= 0
 				{
 					omega::GEQ_Handle geqNode = andNode->add_GEQ();
-					toConstraint(geqNode, -1, aCode->first());
-					toConstraint(geqNode,  1, aCode->second());
+					toConstraint(geqNode, -1, aCode.first());
+					toConstraint(geqNode,  1, aCode.second());
 					geqNode.update_const(-1);
 
 					break;
@@ -789,8 +781,8 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 				case AVM_OPCODE_LTE: // - first + second >= 0
 				{
 					omega::GEQ_Handle geqNode = andNode->add_GEQ();
-					toConstraint(geqNode, -1, aCode->first());
-					toConstraint(geqNode,  1, aCode->second());
+					toConstraint(geqNode, -1, aCode.first());
+					toConstraint(geqNode,  1, aCode.second());
 
 					break;
 				}
@@ -798,8 +790,8 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 				case AVM_OPCODE_GT: // first - second - 1 >= 0
 				{
 					omega::GEQ_Handle geqNode = andNode->add_GEQ();
-					toConstraint(geqNode,  1, aCode->first());
-					toConstraint(geqNode, -1, aCode->second());
+					toConstraint(geqNode,  1, aCode.first());
+					toConstraint(geqNode, -1, aCode.second());
 					geqNode.update_const(-1);
 
 					break;
@@ -810,22 +802,22 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 					BFCode exprCond;
 					avm_integer_t exprInt;
 
-					if( aCode->first().is< AvmCode >() )
+					if( aCode.first().is< AvmCode >() )
 					{
-						exprCond = aCode->first().bfCode();
+						exprCond = aCode.first().bfCode();
 
-						if( aCode->second().isInteger() )
+						if( aCode.second().isInteger() )
 						{
-							exprInt = aCode->second().toInteger();
+							exprInt = aCode.second().toInteger();
 						}
 					}
-					else if( aCode->first().isInteger() )
+					else if( aCode.first().isInteger() )
 					{
-						exprInt = aCode->first().toInteger();
+						exprInt = aCode.first().toInteger();
 
-						if( aCode->second().is< AvmCode >() )
+						if( aCode.second().is< AvmCode >() )
 						{
-							exprCond = aCode->second().bfCode();
+							exprCond = aCode.second().bfCode();
 						}
 					}
 
@@ -869,8 +861,8 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 					else
 					{
 						omega::GEQ_Handle geqNode = andNode->add_GEQ();
-						toConstraint(geqNode,  1, aCode->first());
-						toConstraint(geqNode, -1, aCode->second());
+						toConstraint(geqNode,  1, aCode.first());
+						toConstraint(geqNode, -1, aCode.second());
 					}
 
 					break;
@@ -880,13 +872,13 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 				case AVM_OPCODE_CONTAINS:
 				{
 					BuiltinCollection * aCollection =
-							aCode->first().to_ptr< BuiltinCollection >();
+							aCode.first().to_ptr< BuiltinCollection >();
 
 					if( aCollection->singleton() )
 					{
 						omega::EQ_Handle eqNode = andNode->add_EQ();
 						toConstraint(eqNode, -1, aCollection->at(0));
-						toConstraint(eqNode,  1, aCode->second());
+						toConstraint(eqNode,  1, aCode.second());
 					}
 					else if( aCollection->populated() )
 					{
@@ -897,13 +889,13 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 						{
 							omega::EQ_Handle eqNode = orNode->add_and()->add_EQ();
 							toConstraint(eqNode, -1, aCollection->at(offset));
-							toConstraint(eqNode,  1, aCode->second());
+							toConstraint(eqNode,  1, aCode.second());
 						}
 					}
 					else
 					{
 						andNode->add_EQ().update_const(
-							exprForm.to_ptr< Boolean >()->getValue() ? 0 : 1 );
+							exprForm.to< Boolean >().getValue() ? 0 : 1 );
 					}
 					break;
 				}
@@ -911,14 +903,14 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 
 				case AVM_OPCODE_NOT:
 				{
-					if( aCode->first().is< InstanceOfData >() ) // arg0 == 0
+					if( aCode.first().is< InstanceOfData >() ) // arg0 == 0
 					{
 						andNode->add_EQ().update_coef(getParameterID(
-								aCode->first().to_ptr< InstanceOfData >()), 1);
+								aCode.first().to_ptr< InstanceOfData >()), 1);
 					}
 					else  // NOT( arg0 )
 					{
-						toConjonction(andNode->add_not()->add_and(), aCode->first());
+						toConjonction(andNode->add_not()->add_and(), aCode.first());
 					}
 
 					break;
@@ -926,11 +918,9 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 
 				case AVM_OPCODE_AND: // AND args
 				{
-					AvmCode::iterator it = aCode->begin();
-					AvmCode::iterator itEnd = aCode->end();
-					for( ; it != itEnd ; ++it )
+					for( const auto & itOperand : aCode.getOperands() )
 					{
-						toConjonction(andNode, *it);
+						toConjonction(andNode, itOperand);
 					}
 
 					break;
@@ -939,8 +929,8 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 				case AVM_OPCODE_NAND: // NAND first second
 				{
 					omega::F_And * nandNode = andNode->add_not()->add_and();
-					toConjonction(nandNode, aCode->first());
-					toConjonction(nandNode, aCode->second());
+					toConjonction(nandNode, aCode.first());
+					toConjonction(nandNode, aCode.second());
 
 					break;
 				}
@@ -959,11 +949,9 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 				case AVM_OPCODE_OR: // OR args
 				{
 					omega::F_Or * orNode = andNode->add_or();
-					AvmCode::iterator it = aCode->begin();
-					AvmCode::iterator itEnd = aCode->end();
-					for( ; it != itEnd ; ++it )
+					for( const auto & itOperand : aCode.getOperands() )
 					{
-						toConjonction(orNode->add_and(), *it);
+						toConjonction(orNode->add_and(), itOperand);
 					}
 
 					break;
@@ -972,8 +960,8 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 				case AVM_OPCODE_NOR: // NOR first second
 				{
 					omega::F_And * norNode = andNode->add_not()->add_or()->add_and();
-					toConjonction(norNode, aCode->first());
-					toConjonction(norNode, aCode->second());
+					toConjonction(norNode, aCode.first());
+					toConjonction(norNode, aCode.second());
 
 					break;
 				}
@@ -1010,7 +998,7 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected BASEFORM KIND for execution !!!\n"
-							<< aCode->toString( AVM_TAB1_INDENT )
+							<< aCode.toString( AVM_TAB1_INDENT )
 							<< SEND_EXIT;
 					break;
 				}
@@ -1035,7 +1023,7 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 		case FORM_BUILTIN_BOOLEAN_KIND: // true <=> (0 == 0) ; false <=> (1 == 0)
 		{
 			andNode->add_EQ().update_const(
-					exprForm.to_ptr< Boolean >()->getValue() ? 0 : 1 );
+					exprForm.to< Boolean >().getValue() ? 0 : 1 );
 
 			break;
 		}
@@ -1043,7 +1031,7 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
 			andNode->add_EQ().update_const(
-					exprForm.to_ptr< Integer >()->isZero() ? 0 : 1 );
+					exprForm.to< Integer >().isZero() ? 0 : 1 );
 
 			break;
 		}
@@ -1051,7 +1039,7 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 		case FORM_BUILTIN_RATIONAL_KIND:
 		{
 			andNode->add_EQ().update_const(
-					exprForm.to_ptr< Rational >()->isZero() ? 0 : 1 );
+					exprForm.to< Rational >().isZero() ? 0 : 1 );
 
 			break;
 		}
@@ -1059,7 +1047,7 @@ void OmegaSolver::toConjonction(omega::F_And * andNode, const BF & exprForm)
 		case FORM_BUILTIN_FLOAT_KIND:
 		{
 			andNode->add_EQ().update_const(
-				exprForm.to_ptr< Float >()->isZero() ? 0 : 1  );
+				exprForm.to< Float >().isZero() ? 0 : 1  );
 
 			break;
 		}
@@ -1123,17 +1111,15 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode * aCode = exprForm.to_ptr< AvmCode >();
+			const AvmCode & aCode = exprForm.to< AvmCode >();
 
-			switch( aCode->getAvmOpCode() )
+			switch( aCode.getAvmOpCode() )
 			{
 				case AVM_OPCODE_PLUS:
 				{
-					AvmCode::iterator it = aCode->begin();
-					AvmCode::iterator itEnd = aCode->end();
-					for( ; it != itEnd ; ++it )
+					for( const auto & itOperand : aCode.getOperands() )
 					{
-						toConstraint(constraintNode, coefficient, *it);
+						toConstraint(constraintNode, coefficient, itOperand);
 					}
 
 					break;
@@ -1141,32 +1127,32 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 
 				case AVM_OPCODE_UMINUS:
 				{
-					toConstraint(constraintNode, - coefficient, aCode->first());
+					toConstraint(constraintNode, - coefficient, aCode.first());
 
 					break;
 				}
 
 				case AVM_OPCODE_MINUS:
 				{
-					toConstraint(constraintNode,   coefficient, aCode->first());
-					toConstraint(constraintNode, - coefficient, aCode->second());
+					toConstraint(constraintNode,   coefficient, aCode.first());
+					toConstraint(constraintNode, - coefficient, aCode.second());
 
 					break;
 				}
 
 				case AVM_OPCODE_MULT:
 				{
-					if( aCode->size() == 2 )
+					if( aCode.size() == 2 )
 					{
-						if( aCode->first().isInteger() )
+						if( aCode.first().isInteger() )
 						{
-							coefficient = coefficient * aCode->first().toInteger();
-							toConstraint(constraintNode, coefficient, aCode->second());
+							coefficient = coefficient * aCode.first().toInteger();
+							toConstraint(constraintNode, coefficient, aCode.second());
 						}
-						else if( aCode->second().isInteger() )
+						else if( aCode.second().isInteger() )
 						{
-							coefficient = coefficient * aCode->second().toInteger();
-							toConstraint(constraintNode, coefficient, aCode->first());
+							coefficient = coefficient * aCode.second().toInteger();
+							toConstraint(constraintNode, coefficient, aCode.first());
 						}
 						else
 						{
@@ -1214,7 +1200,7 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected boolean expression Operator << "
-							<< aCode->str() << " >> !!!"
+							<< aCode.str() << " >> !!!"
 							<< SEND_EXIT;
 
 					break;
@@ -1223,7 +1209,7 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected BASEFORM KIND for execution\n"
-							<< aCode->toString( AVM_TAB1_INDENT )
+							<< aCode.toString( AVM_TAB1_INDENT )
 							<< SEND_EXIT;
 					break;
 				}
@@ -1235,7 +1221,7 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 		case FORM_INSTANCE_DATA_KIND:
 		{
 			constraintNode.update_coef(
-					getParameterID(exprForm.to_ptr< InstanceOfData >()) ,
+					getParameterID(exprForm.to_ptr< InstanceOfData >()),
 					coefficient );
 
 			break;
@@ -1245,7 +1231,7 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 		case FORM_BUILTIN_BOOLEAN_KIND:  // true <=> 1 ; false <=> 0
 		{
 			constraintNode.update_const(
-					( exprForm.to_ptr< Boolean >()->getValue() ) ? 1 : 0 );
+					( exprForm.to< Boolean >().getValue() ) ? 1 : 0 );
 
 			break;
 		}
@@ -1253,7 +1239,7 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 		case FORM_BUILTIN_INTEGER_KIND:
 		{
 			constraintNode.update_const(
-					coefficient * exprForm.to_ptr< Integer >()->toInteger() );
+					coefficient * exprForm.to< Integer >().toInteger() );
 
 			break;
 		}
@@ -1263,10 +1249,10 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 			AVM_OS_WARNING_ALERT << "Unsupported builtin Rational !!!"
 					<< SEND_ALERT;
 
-			if( exprForm.to_ptr< Rational >()->isInteger() )
+			if( exprForm.to< Rational >().isInteger() )
 			{
 				constraintNode.update_const(
-						coefficient * exprForm.to_ptr< Rational >()->toInteger() );
+					coefficient * exprForm.to< Rational >().toInteger() );
 			}
 			else
 			{
@@ -1283,10 +1269,10 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 			AVM_OS_WARNING_ALERT << "Unsupported built-in Float !!!"
 					<< SEND_ALERT;
 
-			if( exprForm.to_ptr< Float >()->isInteger() )
+			if( exprForm.to< Float >().isInteger() )
 			{
 				constraintNode.update_const(
-						coefficient * exprForm.to_ptr< Float >()->toInteger() );
+						coefficient * exprForm.to< Float >().toInteger() );
 			}
 			else
 			{
@@ -1301,7 +1287,8 @@ void OmegaSolver::toConstraint(omega::Constraint_Handle & constraintNode,
 
 		case FORM_RUNTIME_ID_KIND:
 		{
-			constraintNode.update_const( coefficient * exprForm.bfRID().getRid() );
+			constraintNode.update_const(
+					coefficient * exprForm.bfRID().getRid() );
 
 			break;
 		}

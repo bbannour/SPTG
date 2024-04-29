@@ -15,16 +15,21 @@
 
 #include "Configuration.h"
 
-#include <fam/serializer/GraphVizExecutionGraphSerializer.h>
-#include <fam/serializer/GraphVizStatemachineSerializer.h>
+#include <computer/PathConditionProcessor.h>
+
+#include  <famcore/serializer/GraphVizExecutionGraphSerializer.h>
+#include  <famcore/serializer/GraphVizStatemachineSerializer.h>
 
 #include <fml/executable/ExecutableSystem.h>
 
 #include <fml/workflow/Query.h>
 
 #include <sew/SymbexEngine.h>
-#include <sew/Workflow.h>
+#include <sew/WorkflowParameter.h>
 
+#include <solver/api/SolverFactory.h>
+
+#include <util/avm_util.h>
 #include <util/avm_vfs.h>
 
 #include <boost/format.hpp>
@@ -48,15 +53,17 @@ const std::string Configuration::SYMBEX_SCENARII_FILE_EXTENSION = ".fscn";
 
 const std::string Configuration::GRAPHVIZ_FILE_EXTENSION        = ".gv";
 
+// CURRENT ACTIVE CONFIGURATION
+const Configuration * Configuration::CURRENT = nullptr;
+
 
 /**
  * CONSTRUCTOR
  * Default
  */
-Configuration::Configuration(SymbexEngine & aSymbexEngine, Workflow & aWorkflow)
+Configuration::Configuration(SymbexEngine & aSymbexEngine)
 : NamedElement( CLASS_KIND_T( Configuration ) , aSymbexEngine ),
 mSymbexEngine( aSymbexEngine ),
-mWorkflow( aWorkflow ),
 
 mWObjectManager( WObject::FML_FQN_ROOT ),
 mProjectSourceLocation( ),
@@ -70,6 +77,9 @@ mDebugFilenamePattern ( "debug_%1%"  ),
 mOutputExecutableEnabledGenerationFlag( false ),
 mOutputExecutableFileLocation( ),
 
+mOutputInitializationEnabledGenerationFlag( false ),
+mOutputInitializationFileLocation( ),
+
 mOutputSymbexGraphEnabledGenerationFlag( false ),
 mOutputSymbexGraphFileLocation( ),
 
@@ -77,27 +87,65 @@ mOutputSymbexScenariiEnabledGenerationFlag( false ),
 mOutputSymbexScenariiFileLocation( ),
 
 mDebugStageEnabledFlag( false ),
-mDebugParsingStageEnabledFlag( false ),
-mDebugCompilingStageEnabledFlag( false ),
-mDebugLoadingStageEnabledFlag( false ),
-mDebugComputingEnabledFlag( false ),
+mDebugParsingStageEnabledGenerationFlag  ( false ),
+mDebugCompilingStageEnabledGenerationFlag( false ),
+mDebugLoadingStageEnabledGenerationFlag  ( false ),
+
+mDebugComputingStageEnabledGenerationFlag( false ),
+mDebugOutputSymbexGraphTextFileLocation( ),
+
+// Symbex config
+mNameIdSeparator( "#" ),
+mNewfreshParameterExperimentalHeightBasedUID( false ),
+mNewfreshParameterNameBasedPID   ( true ),
+mExpressionPrettyPrinterBasedFQN ( true  ),
+mExpressionPrettyPrinterBasedNAME( false ),
+
+// Symbex $time options
+mTimeVariableNameID( PropertyPart::VAR_ID_TIME ),
+mTimeInitialVariableNameID( PropertyPart::VAR_ID_TIME_INITIAL ),
+mTimeInitialVariableValue( PropertyPart::VAR_TIME_INITIAL_VALUE ),
+
+mTimeDeltaVariableNameID( PropertyPart::VAR_ID_DELTA_TIME ),
+mTimeDeltaInitialVariableNameID( PropertyPart::VAR_ID_DELTA_TIME_INITIAL ),
+mTimeDeltaInitialVariableValue( PropertyPart::VAR_DELTA_TIME_INITIAL_VALUE ),
+
+// Symbex Predicate / Solver options
+mCheckSatisfiabilityWithSatSolverEnabled( false ),
+mStronglyCheckSatisfiabilityWithSatSolverEnabled( false ),
+mNodeConditionComputationEnabled( false ),
+mPathConditionDisjonctionSeparationEnabled( false ),
 
 // Symbex Threading config
 mMultitaskingFlag( false ),
 mThreadCount( 1 ),
 
+// Console config
+mConsoleVerbosity( "MEDIUM" ),
+mConsoleVerbosityContextChildCount( 42 ),
 // Shell config
-mInconditionalStopMarkerLocation( ),
+mInconditionalStopMarkerLocation( "stop.sew" ),
 
-mSpecification( NULL ),
-mExecutableSystem( NULL ),
+// TDD config
+mTddRegressionTestingFlag( false ),
+mTddUnitTestingFlag( false ),
+mTddReportLocation( ),
+
+// MODELS
+mSpecificationSystems( ),
+mExecutableSystems( ),
+
+mSpecification( nullptr ),
+mExecutableSystem( nullptr ),
 
 mTableOfRID( ),
 mMainExecutionContext( ),
 mInputContext( ),
-mTrace( )
+mExecutionTrace( )
 {
-	//!! NOTHING
+	mSpecificationSystems.reserve( 7 );
+
+	mExecutableSystems.reserve( 7 );
 }
 
 /**
@@ -112,21 +160,21 @@ void Configuration::destroy()
 {
 	if( mOwnedSpecificationFlag )
 	{
-		avm_report(AVM_OS_LOG, "Configuration::destroy");
+		reportInstanceCounterUsage(AVM_OS_LOG, "Configuration::destroy");
 
-		if( mTrace.populated() )
+		if( mExecutionTrace.populated() )
 		{
 			ExecutionContext * itEC;
-			while( mTrace.nonempty() )
+			while( mExecutionTrace.nonempty() )
 			{
-				mTrace.pop_last_to( itEC );
-				mTrace.remove( itEC );
+				mExecutionTrace.pop_last_to( itEC );
+				mExecutionTrace.remove( itEC );
 				sep::destroyElement( itEC );
 			}
 		}
-		else if( mTrace.nonempty() )
+		else if( mExecutionTrace.nonempty() )
 		{
-			sep::destroyElement( mTrace.pop_last() );
+			sep::destroyElement( mExecutionTrace.pop_last() );
 		}
 
 		mMainExecutionContext.destroy();
@@ -136,12 +184,12 @@ void Configuration::destroy()
 
 		mExecutableSystem.destroy();
 
-		avm_report(AVM_OS_LOG, "~Configuration::destroy:> "
+		reportInstanceCounterUsage(AVM_OS_LOG, "~Configuration::destroy:> "
 				"after destruction of executable & execution context");
 
 		mSpecification.destroy();
 
-		avm_report(AVM_OS_LOG, "~Configuration::destroy:> "
+		reportInstanceCounterUsage(AVM_OS_LOG, "~Configuration::destroy:> "
 				"after destruction of specification");
 	}
 }
@@ -149,11 +197,9 @@ void Configuration::destroy()
 // Attention:> Necessaire pour briser des references circulaires !!!!
 void Configuration::destroyRIDRunningCode()
 {
-	TableOfRuntimeID_T::iterator it = mTableOfRID.begin();
-	TableOfRuntimeID_T::iterator itEnd = mTableOfRID.end();
-	for( ; it != itEnd ; ++it )
+	for( auto & itRID : mTableOfRID )
 	{
-		(*it).finalize();
+		itRID.finalize();
 	}
 
 //	mTableOfRID.clear();
@@ -165,33 +211,69 @@ void Configuration::destroyRIDRunningCode()
  * CONFIGURE
  */
 /*
-section project / SPECIFICATION
-	src = <source-folder-path>
-
-	file = "additional_file.xlia";
-
-	main = "ascenseur.xlia";
-endsection
+director exploration 'as main execution objective' {
+	...
+	project 'path of input model' [
+		source = "model/absolute/or/relative/path"
+		model  = "model.xlia"
+	] // end project
+	...
+	output 'standard analysis file' [
+		filename = 'model_%1%'
+		specification = 'model.xlia'
+		executable = 'model.fexe'
+		initialization = 'model_init.fet'
+		scenarii = 'model.fscn'
+	] // end output
+	debug 'analysis file at different stage' [
+		filename = 'model_%1%'
+		parsing = 'model_parsed.xlia'
+		executable = 'model.fexe'
+		execution = 'model.fet'
+	] // end debug
+	...
+}
 */
 bool Configuration::configure(
-		WObject * wfConfiguration, Configuration * prevConfiguration)
+		const WObject * wfConfiguration, Configuration * prevConfiguration)
 {
-	WObject * aSECTION = Query::getWSequenceOrElse(
+	bool isOK = configureConsole(wfConfiguration);
+
+	isOK = configureShell(wfConfiguration)
+		&& isOK;
+
+	isOK = configureTDD(wfConfiguration)
+		&& isOK;
+
+
+	if( not configureSymbex(wfConfiguration) )
+	{
+		AVM_OS_ERROR_ALERT << "SymbexEngine:> "
+					"the FAMs Controller Unit initialization failed !!!"
+				<< SEND_ALERT;
+
+		return( false );
+	}
+
+
+	const WObject * aSECTION = Query::getWSequenceOrElse(
 			wfConfiguration, "project", "SPECIFICATION");
 	if( aSECTION != WObject::_NULL_ )
 	{
 		mProjectSourceLocation =
-				Query::getWPropertyStringOrElse(aSECTION,
-						"source", "src", VFS::WorkspaceSourcePath);
+				Query::getRegexWPropertyString(aSECTION,
+						OR_WID2("source", "src"), VFS::WorkspaceSourcePath);
 
 		mProjectSourceLocation = VFS::native_path(
 				mProjectSourceLocation, VFS::WorkspaceRootPath);
 
 		mSpecificationFileLocation =
-				Query::getWPropertyStringOrElse(
-						aSECTION, "model", "main", "");
+				Query::getRegexWPropertyString(
+						aSECTION, OR_WID2("model", "main"), "");
 
-		mOwnedSpecificationFlag = (mSpecificationFileLocation.size() > 0);
+		bool ignoreModel = Query::getWPropertyBoolean(aSECTION, "ignore", false);
+
+		mOwnedSpecificationFlag = (not mSpecificationFileLocation.empty());
 
 		if( mOwnedSpecificationFlag )
 		{
@@ -211,7 +293,11 @@ bool Configuration::configure(
 					<< _SEW_ << "File location:> "
 					<< VFS::relativeWorkspacePath( mSpecificationFileLocation );
 
-			if( VFS::checkReadingFile(mSpecificationFileLocation) )
+			if( ignoreModel )
+			{
+				//!! NOTHING TO DO for raw text model
+			}
+			else if( VFS::checkReadingFile(mSpecificationFileLocation) )
 			{
 				OS_VERBOSITY_MINIMUM_OR_DEBUG( AVM_OS_COUT )
 						<< " ==> DONE"  << std::endl;
@@ -230,7 +316,7 @@ bool Configuration::configure(
 			}
 		}
 	}
-	else if( prevConfiguration != NULL )
+	else if( prevConfiguration != nullptr )
 	{
 		mProjectSourceLocation     = prevConfiguration->mProjectSourceLocation;
 		mSpecificationFileLocation = prevConfiguration->mSpecificationFileLocation;
@@ -253,7 +339,7 @@ bool Configuration::configure(
 					Query::getWPropertyString(aSECTION, "executable", "");
 
 			mOutputExecutableEnabledGenerationFlag =
-					(mOutputExecutableFileLocation.size() > 0);
+					(not mOutputExecutableFileLocation.empty());
 			if( mOutputExecutableEnabledGenerationFlag )
 			{
 				mOutputExecutableFileLocation = VFS::native_path(
@@ -265,12 +351,29 @@ bool Configuration::configure(
 						mOutputFilenamePattern + EXECUTABLE_FILE_EXTENSION;
 			}
 
+			// Output Initialization
+			mOutputInitializationFileLocation =
+					Query::getWPropertyString(aSECTION, "initialization", "");
+
+			mOutputInitializationEnabledGenerationFlag =
+					(not mOutputInitializationFileLocation.empty());
+			if( mOutputInitializationEnabledGenerationFlag )
+			{
+				mOutputInitializationFileLocation = VFS::native_path(
+					mOutputInitializationFileLocation, VFS::WorkspaceOutputPath);
+			}
+			else
+			{
+				mOutputInitializationFileLocation =
+						mOutputFilenamePattern + SYMBEX_GRAPH_FILE_EXTENSION;
+			}
+
 			// Output SymbexGraph
 			mOutputSymbexGraphFileLocation =
 					Query::getRegexWPropertyString(aSECTION, "graph(viz)?", "");
 
 			mOutputSymbexGraphEnabledGenerationFlag =
-					(mOutputSymbexGraphFileLocation.size() > 0);
+					(not mOutputSymbexGraphFileLocation.empty());
 			if( mOutputSymbexGraphEnabledGenerationFlag )
 			{
 				mOutputSymbexGraphFileLocation = VFS::native_path(
@@ -278,8 +381,8 @@ bool Configuration::configure(
 			}
 			else
 			{
-				mOutputSymbexGraphFileLocation =
-						mOutputFilenamePattern + SYMBEX_GRAPH_FILE_EXTENSION;
+				mOutputSymbexGraphFileLocation = formatFileLocation(
+						false, "graph", GRAPHVIZ_FILE_EXTENSION);
 			}
 
 			// Output Symbex Scenaii
@@ -287,7 +390,7 @@ bool Configuration::configure(
 					Query::getWPropertyString(aSECTION, "scenarii", "");
 
 			mOutputSymbexScenariiEnabledGenerationFlag =
-					(mOutputSymbexScenariiFileLocation.size() > 0);
+					(not mOutputSymbexScenariiFileLocation.empty());
 			if( mOutputSymbexScenariiEnabledGenerationFlag )
 			{
 				mOutputSymbexScenariiFileLocation = VFS::native_path(
@@ -329,64 +432,40 @@ bool Configuration::configure(
 			return( false );
 		}
 
-		mDebugParsingStageEnabledFlag = mDebugStageEnabledFlag
+		mDebugParsingStageEnabledGenerationFlag = mDebugStageEnabledFlag
 				&& Query::hasWPropertyString(aSECTION, "parsing");
 
-		mDebugCompilingStageEnabledFlag = mDebugStageEnabledFlag
-				&& Query::hasWPropertyString(aSECTION, "executable");
+		mDebugCompilingStageEnabledGenerationFlag = mDebugStageEnabledFlag
+				&& Query::hasRegexWPropertyString(aSECTION, "compilation");
 
-		mDebugLoadingStageEnabledFlag = mDebugStageEnabledFlag
+		mDebugLoadingStageEnabledGenerationFlag = mDebugStageEnabledFlag
 				&& Query::hasWPropertyString(aSECTION, "loading");
 
-		mDebugComputingEnabledFlag = mDebugStageEnabledFlag
-				&& Query::hasWPropertyString(aSECTION, "execution");
-	}
+		// Debug Output Textual SymbexGraph
+		mDebugOutputSymbexGraphTextFileLocation =
+				Query::getWPropertyString(aSECTION, "execution", "");
 
-	bool isOK = configure_shell_symbex(wfConfiguration);
+		mDebugComputingStageEnabledGenerationFlag = mDebugStageEnabledFlag
+				&& (not mDebugOutputSymbexGraphTextFileLocation.empty());
+		if( mDebugComputingStageEnabledGenerationFlag )
+		{
+			mDebugOutputSymbexGraphTextFileLocation = VFS::native_path(
+					mDebugOutputSymbexGraphTextFileLocation,
+					VFS::WorkspaceDebugPath);
+		}
+		else
+		{
+			mDebugOutputSymbexGraphTextFileLocation = formatFileLocation(
+					true, "graph", GRAPHVIZ_FILE_EXTENSION);
+		}
+
+	}
 
 	return( isOK );
 }
 
 
-bool Configuration::configure_shell_symbex(WObject * wfConfiguration)
-{
-	// Symbex config
-	WObject * configSYMBEX = Query::getRegexWSequence(
-			wfConfiguration, Workflow::SECTION_SYMBEX_REGEX_ID);
-
-	mMultitaskingFlag = Query::getWPropertyBoolean(
-			configSYMBEX, "multitasking", mWorkflow.isMultitasking());
-
-	mThreadCount = Query::getWPropertyInt(
-			configSYMBEX, "thread", mWorkflow.getThreadCount());
-
-
-	// Shell config
-	WObject * configSHELL = Query::getRegexWSequence(
-			wfConfiguration, Workflow::SECTION_SHELL_REGEX_ID);
-
-	mInconditionalStopMarkerLocation =
-			Query::getWPropertyString(configSHELL, "stop", "");
-	if( mInconditionalStopMarkerLocation.empty() )
-	{
-		mInconditionalStopMarkerLocation =
-				mWorkflow.getInconditionalStopMarkerLocation();
-	}
-	else
-	{
-		mInconditionalStopMarkerLocation =
-				VFS::native_path(mInconditionalStopMarkerLocation);
-
-		mInconditionalStopMarkerLocation = VFS::native_path(
-				mInconditionalStopMarkerLocation, VFS::WorkspaceLogPath);
-	}
-
-	return( true );
-}
-
-
-
-bool Configuration::configureFormatter(WObject * FORMAT,
+bool Configuration::configureFormatter(const WObject * FORMAT,
 		std::string & formatPattern, const std::string & id)
 {
 	formatPattern = Query::getWPropertyString(FORMAT, id, formatPattern);
@@ -404,6 +483,343 @@ bool Configuration::configureFormatter(WObject * FORMAT,
 
 	return( true );
 }
+
+
+/**
+ * SYMBEX OPTIONS
+ */
+bool Configuration::configureSymbex(const WObject * wfConfiguration)
+{
+	bool isOK = true;
+
+	const WObject * parentSYMBEX = Query::getparentRegexWSequence(
+			wfConfiguration, WorkflowParameter::SECTION_SYMBEX_REGEX_ID);
+
+	if( parentSYMBEX != WObject::_NULL_ )
+	{
+		isOK = configureSymbexImpl(parentSYMBEX);
+	}
+
+	const WObject * localSYMBEX = Query::getRegexWSequence(
+			wfConfiguration, WorkflowParameter::SECTION_SYMBEX_REGEX_ID);
+
+	if( (localSYMBEX != WObject::_NULL_) &&  (localSYMBEX != parentSYMBEX) )
+	{
+		isOK = configureSymbexImpl(localSYMBEX)
+			|| isOK;
+	}
+
+	return( isOK );
+}
+
+bool Configuration::configureSymbexImpl(const WObject * wfSequenceSYMBEX)
+{
+	// NAME_ID SEPARATOR
+	mNameIdSeparator = Query::getRegexWPropertyString(wfSequenceSYMBEX,
+			CONS_WID3("name", "id", "separator"), mNameIdSeparator);
+
+	RuntimeID::NAME_ID_SEPARATOR = mNameIdSeparator;
+
+	RuntimeID::BASENAME = RuntimeID::BASENAME_PREFIX + mNameIdSeparator;
+
+	RuntimeID::BASENAME_PARENT =
+			RuntimeID::BASENAME_PARENT_PREFIX + mNameIdSeparator;
+
+	// PRETTY PRINTING CONFIG
+	mNewfreshParameterExperimentalHeightBasedUID =
+			Query::getRegexWPropertyBoolean(wfSequenceSYMBEX,
+					CONS_WID4("newfresh", "param(eter)?", "height", "uid"),
+					mNewfreshParameterExperimentalHeightBasedUID);
+
+	// PRETTY PRINTING CONFIG
+	mNewfreshParameterNameBasedPID =
+			Query::getRegexWPropertyBoolean(wfSequenceSYMBEX,
+					CONS_WID4("newfresh", "param(eter)?", "(name|id)", "pid"),
+					mNewfreshParameterNameBasedPID);
+
+	mExpressionPrettyPrinterBasedNAME =
+			Query::getRegexWPropertyBoolean(wfSequenceSYMBEX,
+					CONS_WID4("pretty", "printer", "var(iable)?", "(name|id)"),
+					mExpressionPrettyPrinterBasedNAME);
+
+	mExpressionPrettyPrinterBasedFQN =
+			(not mExpressionPrettyPrinterBasedNAME);
+
+	// SYMBEX $TIME OPTIONS
+	mTimeVariableNameID =
+			Query::getRegexWPropertyString(wfSequenceSYMBEX,
+					CONS_WID3("time", "name", "id"),
+					mTimeVariableNameID);
+
+	mTimeInitialVariableValue =
+			Query::getRegexWPropertyValue(wfSequenceSYMBEX,
+					CONS_WID3("time", "initial", "value"),
+					mTimeInitialVariableValue);
+
+
+	mTimeDeltaVariableNameID =
+			Query::getRegexWPropertyString(wfSequenceSYMBEX,
+					CONS_WID3("delta", "name", "id"),
+					mTimeDeltaVariableNameID);
+
+	mTimeDeltaInitialVariableValue =
+			Query::getRegexWPropertyValue(wfSequenceSYMBEX,
+					CONS_WID3("delta", "initial", "value"),
+					mTimeDeltaInitialVariableValue);
+
+	// SYMBEX PREDICATE / SOLVER OPTIONS
+	mStronglyCheckSatisfiabilityWithSatSolverEnabled =
+		SolverDef::DEFAULT_SOLVER_USAGE_FLAG =
+			Query::getRegexWPropertyBoolean(
+				wfSequenceSYMBEX,
+				OR_WID2(
+					CONS_WID5("strongly", "check", "satisfiability", "solver", "enabled"),
+					CONS_WID5("strongly", "check", "path", "condition", "satisfiability")),
+					mStronglyCheckSatisfiabilityWithSatSolverEnabled);
+
+	mCheckSatisfiabilityWithSatSolverEnabled =
+		SolverDef::DEFAULT_SOLVER_USAGE_FLAG =
+			Query::getRegexWPropertyBoolean(
+				wfSequenceSYMBEX,
+				OR_WID2(
+					CONS_WID4("check", "satisfiability", "solver", "enabled"),
+					CONS_WID4("check", "path", "condition", "satisfiability")),
+				mCheckSatisfiabilityWithSatSolverEnabled ||
+				mStronglyCheckSatisfiabilityWithSatSolverEnabled);
+
+
+	mNodeConditionComputationEnabled =
+			Query::getRegexWPropertyBoolean(wfSequenceSYMBEX,
+					CONS_WID3("node", "condition", "enabled"),
+					mNodeConditionComputationEnabled);
+
+	mPathConditionDisjonctionSeparationEnabled =
+			Query::getWPropertyBoolean(wfSequenceSYMBEX,
+					"separation_of_pc_disjunction",
+					mPathConditionDisjonctionSeparationEnabled);
+
+
+	std::string solverKind = Query::getRegexWPropertyString(
+			wfSequenceSYMBEX, CONS_WID2("constraint", "solver"), "USER_UNDEFINED");
+
+	SolverDef::DEFAULT_SOLVER_KIND = SolverDef::toSolver(solverKind,
+			SolverDef::SOLVER_CVC_KIND);
+
+	// SETTING DEFAULT SOLVER INSTANCE
+	SolverFactory::load();
+
+AVM_IF_DEBUG_ENABLED
+	AVM_OS_LOG << _SEW_ << "The default solver: < checksat="
+			<< ( SolverDef::DEFAULT_SOLVER_USAGE_FLAG ? "true" : "false" )
+			<< " , " << solverKind << " > |=> "
+			<< SolverDef::strSolver(SolverDef::DEFAULT_SOLVER_KIND)
+			<< std::endl;
+AVM_ENDIF_DEBUG_ENABLED
+
+	// Multithreading options
+	mMultitaskingFlag = Query::getWPropertyBoolean(
+			wfSequenceSYMBEX, "multitasking", mMultitaskingFlag);
+
+	mThreadCount = Query::getWPropertyInt(wfSequenceSYMBEX, "thread", mThreadCount);
+
+
+	std::string evalMode = Query::getWPropertyString(wfSequenceSYMBEX, "mode", "");
+
+AVM_IF_DEBUG_ENABLED
+	AVM_OS_LOG << _SEW_ << "Computing resource: < multitasking="
+			<< ( ( mMultitaskingFlag ) ? "true" : "false" )
+			<< " , thread=" << static_cast< unsigned int >( mThreadCount )
+			<< " >" << std::endl;
+AVM_ENDIF_DEBUG_ENABLED
+
+	return( true );
+}
+
+
+/**
+ * SHELL OPTIONS
+ */
+bool Configuration::configureConsole(const WObject * wfConfiguration)
+{
+	bool isOK = true;
+
+	const WObject * parentCONSOLE = Query::getparentRegexWSequence(
+			wfConfiguration, WorkflowParameter::SECTION_CONSOLE_REGEX_ID);
+
+	if( parentCONSOLE != WObject::_NULL_ )
+	{
+		isOK = configureConsoleImpl(parentCONSOLE);
+	}
+
+	const WObject * localCONSOLE = Query::getRegexWSequence(
+			wfConfiguration, WorkflowParameter::SECTION_CONSOLE_REGEX_ID);
+
+	if( (localCONSOLE != WObject::_NULL_) &&  (localCONSOLE != parentCONSOLE) )
+	{
+		isOK = configureConsoleImpl(localCONSOLE)
+			|| isOK;
+	}
+
+	return( isOK );
+}
+
+bool Configuration::configureConsoleImpl(const WObject * wfSequenceCONSOLE)
+{
+	// Set console verbosity level
+	mConsoleVerbosity = Query::getRegexWPropertyString(
+			wfSequenceCONSOLE, "verbos(ity|e)", mConsoleVerbosity);
+
+	mConsoleVerbosityContextChildCount =
+			Query::getWPropertyLong(wfSequenceCONSOLE, "ec_size",
+					mConsoleVerbosityContextChildCount);
+
+
+	return( true );
+}
+
+/**
+ * SHELL OPTIONS
+ */
+bool Configuration::configureShell(const WObject * wfConfiguration)
+{
+	bool isOK = true;
+
+	const WObject * parentSHELL = Query::getparentRegexWSequence(
+			wfConfiguration, WorkflowParameter::SECTION_SHELL_REGEX_ID);
+
+	if( parentSHELL != WObject::_NULL_ )
+	{
+		isOK = configureShellImpl(parentSHELL);
+	}
+
+	const WObject * localSHELL = Query::getRegexWSequence(
+			wfConfiguration, WorkflowParameter::SECTION_SHELL_REGEX_ID);
+
+	if( (localSHELL != WObject::_NULL_) &&  (localSHELL != parentSHELL) )
+	{
+		isOK = configureShellImpl(localSHELL)
+			|| isOK;
+	}
+
+	return( isOK );
+}
+
+bool Configuration::configureShellImpl(const WObject * wfSequenceSHELL)
+{
+	mInconditionalStopMarkerLocation = Query::getWPropertyString(
+			wfSequenceSHELL, "stop", mInconditionalStopMarkerLocation);
+
+	if( not mInconditionalStopMarkerLocation.empty() )
+	{
+		mInconditionalStopMarkerLocation =
+				VFS::native_path(mInconditionalStopMarkerLocation);
+
+		mInconditionalStopMarkerLocation = VFS::native_path(
+				mInconditionalStopMarkerLocation, VFS::WorkspaceOutputPath);
+	}
+
+	return( true );
+}
+
+/**
+ * TDD OPTIONS
+ */
+//section TDD
+//	@report = "avm.tdd";
+//
+//	@regression = true;
+//	@unit = true;
+//endsection TDD
+
+bool Configuration::configureTDD(const WObject * wfConfiguration)
+{
+	bool isOK = true;
+
+	const WObject * parentTDD = Query::getparentRegexWSequence(
+			wfConfiguration, WorkflowParameter::SECTION_TDD_REGEX_ID);
+
+	if( parentTDD != WObject::_NULL_ )
+	{
+		isOK = configureTDDImpl(parentTDD);
+	}
+
+	const WObject * localTDD = Query::getRegexWSequence(
+			wfConfiguration, WorkflowParameter::SECTION_TDD_REGEX_ID);
+
+	if( (localTDD != WObject::_NULL_) &&  (localTDD != parentTDD) )
+	{
+		isOK = configureTDDImpl(localTDD)
+			|| isOK;
+	}
+
+	return( isOK );
+}
+
+bool Configuration::configureTDDImpl(const WObject * wfSequenceTDD)
+{
+	mTddRegressionTestingFlag = Query::getWPropertyBoolean(
+			wfSequenceTDD, "regression", mTddRegressionTestingFlag);
+
+	mTddUnitTestingFlag = Query::getWPropertyBoolean(
+			wfSequenceTDD, "unit", mTddUnitTestingFlag);
+
+	mTddReportLocation = Query::getWPropertyString(
+			wfSequenceTDD, "report", mTddReportLocation);
+	if( not mTddReportLocation.empty() )
+	{
+		mTddReportLocation = VFS::native_path(
+				mTddReportLocation, VFS::ProjectTddPath);
+	}
+
+	return( true );
+}
+
+
+/**
+ * SETTER
+ * CURRENT ACTIVE CONFIGURATION
+ */
+void Configuration::setActive() const
+{
+	CURRENT = this;
+
+	avm_setExecVerbosityLevel( mConsoleVerbosity );
+
+	NamedElement::NAME_ID_SEPARATOR = mNameIdSeparator;
+
+	BaseInstanceForm::EXPRESSION_PRETTY_PRINTER_FQN_BASED =
+			mExpressionPrettyPrinterBasedFQN;
+
+	AvmCode::EXPRESSION_PRETTY_PRINTER_BASED_FQN =
+			mExpressionPrettyPrinterBasedFQN;
+
+
+	PropertyPart::VAR_ID_TIME = mTimeVariableNameID;
+
+	PropertyPart::VAR_TIME_INITIAL_VALUE = mTimeInitialVariableValue;
+
+
+	PropertyPart::VAR_ID_DELTA_TIME = mTimeDeltaVariableNameID;
+
+	PropertyPart::VAR_DELTA_TIME_INITIAL_VALUE = mTimeDeltaInitialVariableValue;
+
+
+	PathConditionProcessor::CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED =
+			mCheckSatisfiabilityWithSatSolverEnabled;
+
+	PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED =
+			mStronglyCheckSatisfiabilityWithSatSolverEnabled;
+
+	PathConditionProcessor::NODE_CONDITION_COMPUTATION_ENABLED =
+			mNodeConditionComputationEnabled;
+
+	PathConditionProcessor::PATH_CONDIDITON_DISJONCTION_SEPARATION_ENABLED =
+			mPathConditionDisjonctionSeparationEnabled;
+
+	ExecutionContext::EXECUTION_CONTEXT_CHILD_TRACE_MAX =
+			mConsoleVerbosityContextChildCount;
+}
+
 
 
 /**
@@ -463,150 +879,8 @@ void Configuration::saveSymbexGraph(bool isDebug, const std::string & strID)
 void Configuration::saveSymbexScenarii(bool isDebug, const std::string & strID)
 {
 	std::string saveFileLocation = formatFileLocation(
-			isDebug, strID, SYMBEX_GRAPH_FILE_EXTENSION);
+			isDebug, strID, SYMBEX_SCENARII_FILE_EXTENSION);
 }
-
-
-
-/**
- * Jose Projection
- */
-//void Configuration::saveProjection(const std::string & strPrefixName)
-//{
-//	if( mOutputSymbexProjectionGraphEnabledGenerationFlag )
-//	{
-//		ScopeNewIndent scope( AVM_OS_LOG , AVM_TAB1_INDENT );
-//
-//		AVM_OS_LOG << _SEW_ << "Saving of projection (2)" << std::endl
-//				<< TAB << "path: " << VFS::relativeWorkspacePath(
-//				mOutputSymbexProjectionGraphFileLocation )
-//				<< "... " << std::flush;
-//
-//		std::ofstream resultStream;
-//		resultStream.open(mOutputSymbexProjectionGraphFileLocation.c_str(),
-//				std::ios_base::out);
-//		if( resultStream.good() )
-//		{
-//			OutStream os(resultStream, AVM_OUTPUT_INDENT);
-//
-//			ListOfExecutionContext::iterator it = getTrace().begin();
-//			ListOfExecutionContext::iterator itEnd = getTrace().end();
-//			for( ; it != itEnd ; ++it )
-//			{
-//				// Suppression de l'indentation dans le fichier de sortie
-//				(*it)->toFscn(os, NULL);
-//			}
-//
-//			resultStream.close();
-//
-//			AVM_OS_LOG << "OK" << std::endl ;
-//		}
-//		else
-//		{
-//			AVM_OS_LOG << std::endl << TAB
-//					<< "    KO : Failed to open this file in write mode"
-//					<< std::endl;
-//		}
-//	}
-//}
-//
-//
-//void Configuration::saveProjectionScenarii(const std::string & strPrefixName)
-//{
-//	if( mOutputSymbexProjectionScenariiEnabledGenerationFlag )
-//	{
-//		ScopeNewIndent scope( AVM_OS_LOG , AVM_TAB1_INDENT );
-//
-//		AVM_OS_LOG << _SEW_ << "Saving of projection FSCN " << std::endl
-//				<< TAB << "path: " << VFS::relativeWorkspacePath(
-//				mOutputSymbexProjectionScenariiFileLocation )
-//				<< "... " << std::flush;
-//
-//		std::ofstream resultStream;
-//		resultStream.open(mOutputSymbexProjectionScenariiFileLocation.c_str(),
-//				std::ios_base::out);
-//		if( resultStream.good() )
-//		{
-//			OutStream os(resultStream, AVM_OUTPUT_INDENT);
-//
-//			ListOfExecutionContext::iterator it = getTrace().begin();
-//			ListOfExecutionContext::iterator itEnd = getTrace().end();
-//			for( ; it != itEnd ; ++it )
-//			{
-//				// Suppression de l'indentation dans le fichier de sortie
-//				(*it)->toFscn(os, NULL);
-//			}
-//
-//			resultStream.close();
-//
-//			AVM_OS_LOG << "OK" << std::endl ;
-//		}
-//		else
-//		{
-//			AVM_OS_LOG << std::endl << TAB
-//					<< "    KO : Failed to open this file in write mode"
-//					<< std::endl;
-//		}
-//	}
-//}
-// end Jose Projection
-
-
-
-///**
-// * Configuration::saveSpecification
-// *
-// */
-//void Configuration::saveSpecificationAfterCompilationStep(
-//		const std::string & strPrefixName)
-//{
-//	MainDataConfiguration * aMDC = aMDC->getInstance();
-//	ParameterManager * aPM = aMDC->getParameterManager();
-//
-//	std::string saveFileLocation =
-//			aPM->getEngineDebugParsingLocation(strPrefixName);
-//
-//	if( aMDC->hasSpecification() && (not saveFileLocation.empty()) )
-//	{
-//		AVM_OS_LOG << _SEW_
-//				<< "Saving of the internal specification "
-//					"representation in textual format "
-//				<< std::endl;
-//
-//		saveElementTextualView(aMDC->getSpecification(), saveFileLocation);
-//	}
-//}
-//
-//
-///**
-// * Configuration::saveExecutableSpecification
-// *
-// */
-//void Configuration::saveExecutableSpecification(
-//		const std::string & strPrefixName)
-//{
-//	MainDataConfiguration * aMDC = MainDataConfiguration::getInstance();
-//	ParameterManager * aPM = aMDC->getParameterManager();
-//
-//	std::string saveFileLocation =
-//			aPM->getEngineOutputExecutableLocation(strPrefixName);
-//
-//	if( not saveFileLocation.empty() )
-//	{
-//		AVM_OS_LOG << _SEW_ << "Saving of the compiled "
-//				"specification representation in textual format "
-//				<< std::endl;
-//
-//		saveFormTextualViews(aMDC->getExecutableSystem(), saveFileLocation);
-//
-//		saveFileLocation = aPM->getEngineOutputGraphLocation("fec_");
-//		if( aMDC->hasMainExecutionContext() && (! saveFileLocation.empty()) )
-//		{
-//			saveElementTextualView(
-//					aMDC->getMainExecutionContext(), saveFileLocation);
-//		}
-//	}
-//}
 
 
 /**
@@ -623,11 +897,11 @@ void Configuration::saveElementTextualView(OutStream & logger,
 			<< "... " << std::flush;
 
 	std::ofstream resultStream;
-	resultStream.open(saveFileLocation.c_str(), std::ios_base::out);
+	resultStream.open(saveFileLocation, std::ios_base::out);
 	if( resultStream.good() )
 	{
-		OutStream os(resultStream);
-		anElement.serialize(os);
+		OutStream out(resultStream);
+		anElement.serialize(out);
 
 		resultStream.close();
 
@@ -646,7 +920,7 @@ void Configuration::saveElementTextualView(OutStream & logger,
 // SERIALIZATION API
 ////////////////////////////////////////////////////////////////////////////
 
-void Configuration::serializeDebugExecutable(const std::string & strID)
+void Configuration::serializeDebugExecutable(const std::string & strID) const
 {
 	std::string saveFileLocation = formatFileLocation(
 			true, strID, EXECUTABLE_FILE_EXTENSION);
@@ -659,7 +933,7 @@ void Configuration::serializeDebugExecutable(const std::string & strID)
 			mExecutableSystem, saveFileLocation);
 }
 
-void Configuration::serializeTextualExecutable()
+void Configuration::serializeTextualExecutable() const
 {
 	AVM_OS_LOG << _SEW_
 			<< "Saving of the Executable in text format" << std::endl;
@@ -669,7 +943,7 @@ void Configuration::serializeTextualExecutable()
 }
 
 
-void Configuration::serializeGraphizExecutable()
+void Configuration::serializeGraphizExecutable() const
 {
 	ScopeNewIndent scope( AVM_OS_LOG , AVM_TAB1_INDENT );
 
@@ -685,13 +959,13 @@ void Configuration::serializeGraphizExecutable()
 			<< "... " << std::flush;
 
 	std::ofstream resultStream;
-	resultStream.open(saveFileLocation.c_str(), std::ios_base::out);
+	resultStream.open(saveFileLocation, std::ios_base::out);
 	if( resultStream.good() )
 	{
-		OutStream os(resultStream, AVM_SPC_INDENT);
+		OutStream out(resultStream, AVM_SPC_INDENT);
 
 		GraphVizStatemachineSerializer::format(
-			mSymbexEngine.getControllerUnitManager(), os, getSpecification());
+			mSymbexEngine.getControllerUnitManager(), out, getSpecification());
 
 		resultStream.close();
 
@@ -708,7 +982,7 @@ void Configuration::serializeGraphizExecutable()
 /**
  * serialize Textual SymbexGraph
  */
-void Configuration::serializeTextualSymbexGraph()
+void Configuration::serializeTextualSymbexGraph() const
 {
 	ScopeNewIndent scope( AVM_OS_LOG , AVM_TAB1_INDENT );
 
@@ -717,21 +991,19 @@ void Configuration::serializeTextualSymbexGraph()
 			"representation in textual format " << std::endl;
 
 	AVM_OS_LOG << TAB << "path: "
-			<< VFS::relativeWorkspacePath( mOutputSymbexGraphFileLocation )
+			<< VFS::relativeWorkspacePath( mDebugOutputSymbexGraphTextFileLocation )
 			<< "... " << std::flush;
 
 	std::ofstream resultStream;
-	resultStream.open(mOutputSymbexGraphFileLocation.c_str(),
+	resultStream.open(mDebugOutputSymbexGraphTextFileLocation,
 			std::ios_base::out);
 	if( resultStream.good() )
 	{
-		OutStream os(resultStream, AVM_SPC_INDENT);
+		OutStream out(resultStream, AVM_SPC_INDENT);
 
-		ListOfExecutionContext::const_iterator it = getTrace().begin();
-		ListOfExecutionContext::const_iterator itEnd = getTrace().end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itEC : getExecutionTrace() )
 		{
-			(*it)->serialize(os);
+			itEC->serialize(out);
 		}
 
 		resultStream.close();
@@ -748,7 +1020,7 @@ void Configuration::serializeTextualSymbexGraph()
 	if( hasMainExecutionContext() )
 	{
 		std::string saveFileLocation = formatFileLocation(
-				true, "tec", SYMBEX_GRAPH_FILE_EXTENSION);
+				true, "graph_tec", SYMBEX_GRAPH_FILE_EXTENSION);
 
 		saveElementTextualView(AVM_OS_LOG,
 				getMainExecutionContext(), saveFileLocation);
@@ -758,34 +1030,27 @@ void Configuration::serializeTextualSymbexGraph()
 /**
  * serialize Graphiz SymbexGraph
  */
-void Configuration::serializeGraphizSymbexGraph()
+void Configuration::serializeGraphizSymbexGraph() const
 {
-	std::string saveFileLocation = VFS::replace_extension(
-			mOutputSymbexGraphFileLocation, GRAPHVIZ_FILE_EXTENSION);
-
 	ScopeNewIndent scope( AVM_OS_LOG , AVM_TAB1_INDENT );
 
 	AVM_OS_LOG << _SEW_
-			<< "Saving of the symbex trace of the execution specification "
+			<< "Saving of the SHELL trace of the execution specification "
 			"representation in GraphViz format " << std::endl;
 
 	AVM_OS_LOG << TAB << "path: "
-			<< VFS::relativeWorkspacePath( saveFileLocation )
+			<< VFS::relativeWorkspacePath( mOutputSymbexGraphFileLocation )
 			<< "... " << std::flush;
 
 	std::ofstream resultStream;
-	resultStream.open(saveFileLocation.c_str(), std::ios_base::out);
+	resultStream.open(mOutputSymbexGraphFileLocation, std::ios_base::out);
 	if( resultStream.good() )
 	{
-		OutStream os(resultStream, AVM_SPC_INDENT);
+		OutStream out(resultStream, AVM_SPC_INDENT);
 
-		ListOfExecutionContext::const_iterator it = getTrace().begin();
-		ListOfExecutionContext::const_iterator itEnd = getTrace().end();
-		for( ; it != itEnd ; ++it )
-		{
-			GraphVizExecutionGraphSerializer::format(
-				mSymbexEngine.getControllerUnitManager(), os, *(*it));
-		}
+		GraphVizExecutionGraphSerializer::format(
+				mSymbexEngine.getControllerUnitManager(),
+				out, getExecutionTrace());
 
 		resultStream.close();
 
@@ -800,7 +1065,7 @@ void Configuration::serializeGraphizSymbexGraph()
 }
 
 
-void Configuration::serializeScenarii()
+void Configuration::serializeScenarii() const
 {
 	ScopeNewIndent scope( AVM_OS_LOG , AVM_TAB1_INDENT );
 
@@ -813,17 +1078,15 @@ void Configuration::serializeScenarii()
 			<< "... " << std::flush;
 
 	std::ofstream resultStream;
-	resultStream.open(mOutputSymbexScenariiFileLocation.c_str(),
+	resultStream.open(mOutputSymbexScenariiFileLocation,
 			std::ios_base::out);
 	if( resultStream.good() )
 	{
-		OutStream os(resultStream, AVM_FSCN_INDENT);
+		OutStream out(resultStream, AVM_FSCN_INDENT);
 
-		ListOfExecutionContext::const_iterator it = getTrace().begin();
-		ListOfExecutionContext::const_iterator itEnd = getTrace().end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itEC : getExecutionTrace() )
 		{
-			(*it)->toFscn(os, NULL);
+			itEC->toFscn(out, ExecutionData::_NULL_);
 		}
 
 		resultStream.close();
@@ -841,7 +1104,7 @@ void Configuration::serializeScenarii()
 /**
  * Serialization building stage
  */
-void Configuration::serializeBuildingResult()
+void Configuration::serializeBuildingResult() const
 {
 	if( mOutputExecutableEnabledGenerationFlag )
 	{
@@ -852,12 +1115,25 @@ void Configuration::serializeBuildingResult()
 }
 
 /**
+ * Serialization loading stage
+ */
+void Configuration::serializeLoadingResult() const
+{
+	if( mOutputInitializationEnabledGenerationFlag
+		&& hasMainExecutionContext() )
+	{
+		saveElementTextualView(AVM_OS_LOG,
+				getMainExecutionContext(), mOutputInitializationFileLocation);
+	}
+}
+
+/**
  * Serialization computing stage
  */
-void Configuration::serializeComputingResult()
+void Configuration::serializeComputingResult() const
 {
 AVM_IF_DEBUG_FLAG_AND( COMPUTING , isDebugLoadingStageEnabled() )
-		serializeDebugExecutable( "jit" );
+	serializeDebugExecutable( "jit" );
 AVM_ENDIF_DEBUG_FLAG_AND( COMPUTING )
 
 	if( mOutputSymbexScenariiEnabledGenerationFlag )
@@ -867,14 +1143,15 @@ AVM_ENDIF_DEBUG_FLAG_AND( COMPUTING )
 
 	if( mOutputSymbexGraphEnabledGenerationFlag )
 	{
-AVM_IF_DEBUG_ENABLED
-
-		serializeTextualSymbexGraph();
-
-AVM_ENDIF_DEBUG_ENABLED
-
 		serializeGraphizSymbexGraph();
 	}
+
+AVM_IF_DEBUG_FLAG_AND( COMPUTING , isDebugComputingStageEnabled() )
+
+	serializeTextualSymbexGraph();
+
+AVM_ENDIF_DEBUG_FLAG_AND( COMPUTING )
+
 
 //	saveProjection();
 //	saveProjectionScenarii(mParameterWObject);
@@ -884,71 +1161,76 @@ AVM_ENDIF_DEBUG_ENABLED
 /**
  * Serialization
  */
-void Configuration::toStream(OutStream & os) const
+void Configuration::toStream(OutStream & out) const
 {
-	os << TAB << "configuration " << getNameID() << " {" << EOL;
+	out << TAB << "configuration " << getNameID() << " {" << EOL
 
-	os << TAB2 << "WorkspaceRootPath = " << VFS::WorkspaceRootPath << EOL;
+		<< TAB2 << "WorkspaceRootPath = " << VFS::WorkspaceRootPath << EOL
 
-	os << TAB2 << "mProjectSourceLocation = "
-			<< VFS::relativeWorkspacePath( mProjectSourceLocation )
-			<< EOL;
-	os << TAB2 << "mSpecificationFileLocation = "
-			<< VFS::relativeWorkspacePath( mSpecificationFileLocation )
-			<< EOL;
+		<< TAB2 << "mProjectSourceLocation = "
+		<< VFS::relativeWorkspacePath( mProjectSourceLocation )
+		<< EOL
+		<< TAB2 << "SpecificationFileLocation = "
+		<< VFS::relativeWorkspacePath( mSpecificationFileLocation )
+		<< EOL
 
-	os << TAB2 << "mOwnedSpecificationFlag = "
-			<< ( mOwnedSpecificationFlag ? "true" : "false" )
-			<< EOL;
-	os << TAB2 << "mOutputFilenamePattern = "
-			<< VFS::relativeWorkspacePath( mOutputFilenamePattern )
-			<< EOL;
-	os << TAB2 << "mDebugFilenamePattern  = "
-			<< VFS::relativeWorkspacePath( mDebugFilenamePattern )
-			<< EOL;
+		<< TAB2 << "isOwnedSpecificationFlag = "
+		<< ( mOwnedSpecificationFlag ? "true" : "false" )
+		<< EOL
+		<< TAB2 << "OutputFilenamePattern = "
+		<< VFS::relativeWorkspacePath( mOutputFilenamePattern )
+		<< EOL
+		<< TAB2 << "DebugFilenamePattern  = "
+		<< VFS::relativeWorkspacePath( mDebugFilenamePattern )
+		<< EOL
 
-	os << TAB2 << "mOutputExecutableEnabledGenerationFlag = "
-			<< ( mOutputExecutableEnabledGenerationFlag ? "true" : "false" )
-			<< EOL;
-	os << TAB2 << "mOutputExecutableFileLocation = "
-			<< VFS::relativeWorkspacePath( mOutputExecutableFileLocation )
-			<< EOL;
+		<< TAB2 << "isOutputExecutableEnabledGenerationFlag = "
+		<< ( mOutputExecutableEnabledGenerationFlag ? "true" : "false" )
+		<< EOL
+		<< TAB2 << "OutputExecutableFileLocation = "
+		<< VFS::relativeWorkspacePath( mOutputExecutableFileLocation )
+		<< EOL
 
-	os << TAB2 << "mOutputSymbexGraphEnabledGenerationFlag = "
-			<< ( mOutputSymbexGraphEnabledGenerationFlag ? "true" : "false" )
-			<< EOL;
-	os << TAB2 << "mOutputSymbexGraphFileLocation = "
-			<< VFS::relativeWorkspacePath( mOutputSymbexGraphFileLocation )
-			<< EOL;
+		<< TAB2 << "isOutputSymbexGraphEnabledGenerationFlag = "
+		<< ( mOutputSymbexGraphEnabledGenerationFlag ? "true" : "false" )
+		<< EOL
+		<< TAB2 << "OutputSymbexGraphFileLocation = "
+		<< VFS::relativeWorkspacePath( mOutputSymbexGraphFileLocation )
+		<< EOL
 
-	os << TAB2 << "mOutputSymbexScenariiEnabledGenerationFlag = "
-			<< ( mOutputSymbexScenariiEnabledGenerationFlag ? "true" : "false" )
-			<< EOL;
-	os << TAB2 << "mOutputSymbexScenariiFileLocation = "
-			<< VFS::relativeWorkspacePath( mOutputSymbexScenariiFileLocation )
-			<< EOL;
+		<< TAB2 << "isOutputSymbexScenariiEnabledGenerationFlag = "
+		<< ( mOutputSymbexScenariiEnabledGenerationFlag ? "true" : "false" )
+		<< EOL
+		<< TAB2 << "OutputSymbexScenariiFileLocation = "
+		<< VFS::relativeWorkspacePath( mOutputSymbexScenariiFileLocation )
+		<< EOL
 
-	os << TAB2 << "mDebugStageEnabledFlag          = "
-			<< ( mDebugStageEnabledFlag ? "true" : "false" ) << EOL;
+		<< TAB2 << "isDebugStageEnabled          = "
+		<< ( mDebugStageEnabledFlag ? "true" : "false" ) << EOL
 
-	os << TAB2 << "mDebugParsingStageEnabledFlag   = "
-			<< ( mDebugParsingStageEnabledFlag ? "true" : "false" ) << EOL;
+		<< TAB2 << "isDebugParsingStageEnabled   = "
+		<< ( mDebugParsingStageEnabledGenerationFlag ? "true" : "false" )
+		<< EOL
+		<< TAB2 << "isDebugCompilingStageEnabled = "
+		<< ( mDebugCompilingStageEnabledGenerationFlag ? "true" : "false" )
+		<< EOL
+		<< TAB2 << "isebugLoadingStageEnabled   = "
+		<< ( mDebugLoadingStageEnabledGenerationFlag ? "true" : "false" )
+		<< EOL
 
-	os << TAB2 << "mDebugCompilingStageEnabledFlag = "
-			<< ( mDebugCompilingStageEnabledFlag ? "true" : "false" ) << EOL;
-
-	os << TAB2 << "mDebugLoadingStageEnabledFlag   = "
-			<< ( mDebugLoadingStageEnabledFlag ? "true" : "false" ) << EOL;
-
-	os << TAB2 << "mDebugComputingEnabledFlag      = "
-			<< ( mDebugComputingEnabledFlag ? "true" : "false" ) << EOL;
+		<< TAB2 << "isDebugComputingEnabled     = "
+		<< ( mDebugComputingStageEnabledGenerationFlag ? "true" : "false" )
+		<< EOL
+		<< TAB2 << "DebugOutputSymbexGraphTextFileLocation = "
+		<< VFS::relativeWorkspacePath( mDebugOutputSymbexGraphTextFileLocation )
+		<< EOL
 
 
-	os << TAB2 << "mInconditionalStopMarkerLocation = "
-			<< VFS::relativeWorkspacePath( mInconditionalStopMarkerLocation )
-			<< EOL;
+		<< TAB2 << "mInconditionalStopMarkerLocation = "
+		<< VFS::relativeWorkspacePath( mInconditionalStopMarkerLocation )
+		<< EOL
 
-	os << TAB << "}" << EOL_FLUSH;
+		<< TAB << "}" << EOL_FLUSH;
 }
 
 

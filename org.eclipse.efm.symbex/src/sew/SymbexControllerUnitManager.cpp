@@ -18,10 +18,10 @@
 #include <fml/workflow/Query.h>
 #include <fml/workflow/WObject.h>
 
-#include <fam/api/ProcessorUnitFactory.h>
-#include <fam/api/ProcessorUnitRepository.h>
+#include  <famcore/api/ProcessorUnitFactory.h>
+#include  <famcore/api/ProcessorUnitRepository.h>
 
-#include <fam/queue/ExecutionQueue.h>
+#include  <famcore/queue/ExecutionQueue.h>
 
 #include <sew/SymbexEngine.h>
 
@@ -64,7 +64,7 @@ AvmPrimitiveProcessor & SymbexControllerUnitManager::getPrimitiveProcessor()
 
 bool SymbexControllerUnitManager::preConfigure()
 {
-	WObject * theCONFIG = getParameterWObject();
+	const WObject * theCONFIG = getParameterWObject();
 
 	theCONFIG = Query::getRegexWSequence(theCONFIG,
 				OR_WID2("manifest", "MANIFEST"), theCONFIG);
@@ -87,7 +87,7 @@ bool SymbexControllerUnitManager::configure()
 			<< "< start > SymbexControllerUnitManager::configure ..."
 			<< std::endl;
 
-	mConfigFlag = true;
+	mConfigFlag = RunnableElement::configure();
 
 	if( preConfigure() )
 	{
@@ -95,7 +95,7 @@ bool SymbexControllerUnitManager::configure()
 	}
 
 	// Select MOE profile
-	WObject * moeProfile = Query::getRegexWSequence(
+	const WObject * moeProfile = Query::getRegexWSequence(
 			getParameterWObject(), OR_WID2("moe", "MOE"));
 	if( moeProfile == WObject::_NULL_ )
 	{
@@ -104,11 +104,11 @@ bool SymbexControllerUnitManager::configure()
 	}
 
 	// A Possible Specific Profile
-	WObject * aProfile = Query::getWPropertyWReferenceOrElse(
-			moeProfile, "moe", "profile", WObject::_NULL_);
+	const WObject * aProfile = Query::getRegexWPropertyWReference(
+			moeProfile, OR_WID2("moe", "profile"), WObject::_NULL_);
 	if( aProfile != WObject::_NULL_ )
 	{
-		WObject * thePROPERTY = Query::getRegexWSequence(
+		const WObject * thePROPERTY = Query::getRegexWSequence(
 				aProfile, OR_WID2("property", "PROPERTY"));
 		if( thePROPERTY != WObject::_NULL_ )
 		{
@@ -194,6 +194,10 @@ bool SymbexControllerUnitManager::exitImpl()
 
 bool SymbexControllerUnitManager::preprocess()
 {
+AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugPreprocessingInitialize() )
+	mMainProcessor.debugPreprocessingInitialize();
+AVM_ENDIF_DEBUG_ENABLED_AND
+
 	bool isOK = mMainProcessor.preprocess();
 
 	if( isOK )
@@ -201,8 +205,8 @@ bool SymbexControllerUnitManager::preprocess()
 		isOK = mPreprocessorControllerUnits.preprocess();
 	}
 
-AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugPreprocessing() )
-	mMainProcessor.debugPreprocessing();
+AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugPreprocessingFinalize() )
+	mMainProcessor.debugPreprocessingFinalize();
 AVM_ENDIF_DEBUG_ENABLED_AND
 
 	return( isOK );
@@ -211,6 +215,10 @@ AVM_ENDIF_DEBUG_ENABLED_AND
 
 bool SymbexControllerUnitManager::postprocess()
 {
+AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugPostprocessingInitialize() )
+	mMainProcessor.debugPostprocessingInitialize();
+AVM_ENDIF_DEBUG_ENABLED_AND
+
 	bool isOK = mMainProcessor.postprocess();
 
 	if( isOK )
@@ -218,8 +226,8 @@ bool SymbexControllerUnitManager::postprocess()
 		isOK = mPostprocessorControllerUnits.postprocess();
 	}
 
-AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugPostprocessing() )
-	mMainProcessor.debugPostprocessing();
+AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugPostprocessingFinalize() )
+	mMainProcessor.debugPostprocessingFinalize();
 AVM_ENDIF_DEBUG_ENABLED_AND
 
 	return( isOK );
@@ -257,9 +265,9 @@ bool SymbexControllerUnitManager::filteringInitialize()
 //
 //	return( false );
 
-	AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugFilteringInitialize() )
-		mMainProcessor.debugFilteringInitialize();
-	AVM_ENDIF_DEBUG_ENABLED_AND
+AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugFilteringInitialize() )
+	mMainProcessor.debugFilteringInitialize();
+AVM_ENDIF_DEBUG_ENABLED_AND
 
 	return( isOK );
 }
@@ -291,9 +299,9 @@ bool SymbexControllerUnitManager::filteringFinalize()
 //
 //	return( false );
 
-	AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugFilteringFinalize() )
-		mMainProcessor.debugFilteringFinalize();
-	AVM_ENDIF_DEBUG_ENABLED_AND
+AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugFilteringFinalize() )
+	mMainProcessor.debugFilteringFinalize();
+AVM_ENDIF_DEBUG_ENABLED_AND
 
 	return( isOK );
 }
@@ -308,7 +316,6 @@ bool SymbexControllerUnitManager::prefilter()
 AVM_IF_DEBUG_ENABLED_AND( mMainProcessor.isDebugPrefiltering() )
 	mMainProcessor.debugPrefiltering();
 AVM_ENDIF_DEBUG_ENABLED_AND
-
 
 	if( mMainProcessor.prefilter() )
 	{
@@ -374,32 +381,27 @@ AVM_ENDIF_DEBUG_ENABLED_AND
 
 void SymbexControllerUnitManager::report(OutStream & os) const
 {
-	if( mControllerUnits.nonempty() )
+	os << TAB << "REPORT" << EOL_INCR_INDENT;
+
+	mQueueProcessor.report(os);
+	os << std::flush;
+
+	mMainProcessor.report(os);
+	os << std::flush;
+
+	mRedundancyProcessor.report(os);
+	os << std::flush;
+
+	for( const auto & itProcessor : mControllerUnits )
 	{
-		os << TAB << "REPORT" << EOL_INCR_INDENT;
-
-		mQueueProcessor.report(os);
-		os << std::flush;
-
-		mMainProcessor.report(os);
-		os << std::flush;
-
-		mRedundancyProcessor.report(os);
-		os << std::flush;
-
-		controller_iterator processorIt = mControllerUnits.begin();
-		controller_iterator processorItEnd = mControllerUnits.end();
-		for( ; processorIt != processorItEnd ; ++processorIt )
+		if( itProcessor->isEnablePlugin() )
 		{
-			if( (*processorIt)->isEnablePlugin() )
-			{
-				(*processorIt)->report(os);
-				os << std::flush;
-			}
+			itProcessor->report(os);
+			os << std::flush;
 		}
-
-		os << DECR_INDENT << std::flush;
 	}
+
+	os << DECR_INDENT << std::flush;
 }
 
 
@@ -408,69 +410,56 @@ void SymbexControllerUnitManager::report(OutStream & os) const
  */
 void SymbexControllerUnitManager::traceBoundEval(OutStream & os) const
 {
-//	AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-//		CompositeControllerUnit::first() == (& mMainProcessor) )
-//			<< "You found a BUG !!!"
-//			<< SEND_EXIT;
-
 	mMainProcessor.traceBoundEval(os);
-	os << std::flush;
-
-	controller_iterator processorIt = mControllerUnits.begin();
-	controller_iterator processorItEnd = mControllerUnits.end();
-	for( ; processorIt != processorItEnd ; ++processorIt )
-	{
-		if( (*processorIt)->isEnablePlugin() )
-		{
-			(*processorIt)->traceBoundEval(os);
-		}
-	}
 }
 
+void SymbexControllerUnitManager::traceInitSpider(OutStream & os) const
+{
+	mMainProcessor.traceInitSpider(os);
+}
+
+void SymbexControllerUnitManager::traceStepSpider(
+		OutStream & os, const ExecutionContext & anEC) const
+{
+	mMainProcessor.traceStepSpider(os, anEC);
+}
+
+void SymbexControllerUnitManager::traceStopSpider(OutStream & os) const
+{
+	mMainProcessor.traceStopSpider(os);
+}
 
 void SymbexControllerUnitManager::tracePreEval(
 		OutStream & os, const ExecutionContext & anEC) const
 {
-//	AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-//		CompositeControllerUnit::first() == (& mMainProcessor) )
-//			<< "You found a BUG !!!"
-//			<< SEND_EXIT;
-
 	mMainProcessor.tracePreEval(os, anEC);
 	os << std::flush;
 
-	controller_iterator processorIt = mControllerUnits.begin();
-	controller_iterator processorItEnd = mControllerUnits.end();
-	for( ; processorIt != processorItEnd ; ++processorIt )
-	{
-		if( (*processorIt)->isEnablePlugin() &&
-			(*processorIt)->isLifecycleRunnable() )
+	AVM_VERBOSITY_IF_ISNOT_MINIMUM
+		for( const auto & itProcessor : mControllerUnits )
 		{
-			(*processorIt)->tracePreEval(os, anEC);
+			if( itProcessor->isEnablePlugin() &&
+				itProcessor->isLifecycleRunnable() )
+			{
+				itProcessor->tracePreEval(os, anEC);
+			}
 		}
-	}
+	AVM_VERBOSITY_ENDIF
 }
 
 
 void SymbexControllerUnitManager::tracePostEval(
 		OutStream & os, const ExecutionContext & anEC) const
 {
-//	AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-//		CompositeControllerUnit::first() == (& mMainProcessor) )
-//			<< "You found a BUG !!!"
-//			<< SEND_EXIT;
-
 	mMainProcessor.tracePostEval(os, anEC);
 	os << std::flush;
 
-	controller_iterator processorIt = mControllerUnits.begin();
-	controller_iterator processorItEnd = mControllerUnits.end();
-	for( ; processorIt != processorItEnd ; ++processorIt )
+	for( const auto & itProcessor : mControllerUnits )
 	{
-		if( (*processorIt)->isEnablePlugin() &&
-			(*processorIt)->isLifecycleRunnable() )
+		if( itProcessor->isEnablePlugin() &&
+			itProcessor->isLifecycleRunnable() )
 		{
-			(*processorIt)->tracePostEval(os, anEC);
+			itProcessor->tracePostEval(os, anEC);
 		}
 	}
 }
@@ -478,23 +467,7 @@ void SymbexControllerUnitManager::tracePostEval(
 
 void SymbexControllerUnitManager::reportEval(OutStream & os) const
 {
-//	AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-//		CompositeControllerUnit::first() == (& mMainProcessor) )
-//			<< "You found a BUG !!!"
-//			<< SEND_EXIT;
-
 	mMainProcessor.reportEval(os);
-	os << std::flush;
-
-	controller_iterator processorIt = mControllerUnits.begin();
-	controller_iterator processorItEnd = mControllerUnits.end();
-	for( ; processorIt != processorItEnd ; ++processorIt )
-	{
-		if( (*processorIt)->isEnablePlugin() )
-		{
-			(*processorIt)->reportEval(os);
-		}
-	}
 }
 
 
@@ -506,13 +479,11 @@ void SymbexControllerUnitManager::tddUnitReport(OutStream & os) const
 {
 	mMainProcessor.tddUnitReport(os);
 
-	controller_iterator processorIt = mControllerUnits.begin();
-	controller_iterator processorItEnd = mControllerUnits.end();
-	for( ; processorIt != processorItEnd ; ++processorIt )
+	for( const auto & itProcessor : mControllerUnits )
 	{
-		if( (*processorIt)->isEnablePlugin() )
+		if( itProcessor->isEnablePlugin() )
 		{
-			(*processorIt)->tddUnitReport(os);
+			itProcessor->tddUnitReport(os);
 		}
 	}
 }
@@ -526,13 +497,11 @@ void SymbexControllerUnitManager::tddRegressionReport(OutStream & os) const
 {
 	mMainProcessor.tddRegressionReport(os);
 
-	controller_iterator processorIt = mControllerUnits.begin();
-	controller_iterator processorItEnd = mControllerUnits.end();
-	for( ; processorIt != processorItEnd ; ++processorIt )
+	for( const auto & itProcessor : mControllerUnits )
 	{
-		if( (*processorIt)->isEnablePlugin() )
+		if( itProcessor->isEnablePlugin() )
 		{
-			(*processorIt)->tddRegressionReport(os);
+			itProcessor->tddRegressionReport(os);
 		}
 	}
 }
@@ -544,7 +513,7 @@ void SymbexControllerUnitManager::tddRegressionReport(OutStream & os) const
 
 void SymbexControllerUnitManager::toStream(OutStream & os) const
 {
-//	if( mParameterWObject != NULL )
+//	if( mParameterWObject != nullptr )
 //	{
 //		mParameterWObject->toStream(os);
 //	}

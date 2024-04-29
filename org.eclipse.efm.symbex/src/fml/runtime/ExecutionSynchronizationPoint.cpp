@@ -16,6 +16,7 @@
 #include "ExecutionSynchronizationPoint.h"
 
 
+#include <fml/executable/InstanceOfMachine.h>
 #include <fml/executable/RoutingData.h>
 
 #include <fml/runtime/RuntimeID.h>
@@ -68,7 +69,7 @@ void ExecutionSynchronizationPoint::toStream(OutStream & os) const
 
 	os << TAB2 << "rid = " << mRID.str() << ";" << EOL_INCR_INDENT;
 
-	if( mRoutingData != NULL )
+	if( mRoutingData != nullptr )
 	{
 		mRoutingData.toStream(os);
 	}
@@ -78,13 +79,26 @@ void ExecutionSynchronizationPoint::toStream(OutStream & os) const
 		mMessage.toStream(os);
 	}
 
-	if( next != NULL )
+	if( next != nullptr )
 	{
 		next->toStream(os);
 	}
 
 	os << DECR_INDENT_TAB <<  "}" << EOL;
 }
+
+
+void ExecutionSynchronizationPoint::printTrace(OutStream & out) const
+{
+	out << " RD_" << mRoutingData.raw_address()
+		<< " C_" << std::addressof( mRoutingData.getConnector() )
+		<< "< mid:" << mRoutingData.getMID()
+		<< " > " << mRoutingData.getMachine().getFullyQualifiedNameID()
+		<< ( isInput()? " <== " : " ==> " )
+		<< mRoutingData.getPort().getFullyQualifiedNameID()
+		<< EOL_FLUSH;
+}
+
 
 
 }

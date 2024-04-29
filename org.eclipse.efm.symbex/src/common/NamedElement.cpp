@@ -15,6 +15,8 @@
 
 #include "NamedElement.h"
 
+#include <util/avm_string.h>
+
 #include <boost/tokenizer.hpp>
 
 
@@ -22,10 +24,37 @@ namespace sep
 {
 
 /**
+* GLOBALS
+* NAME ID SEPARATOR
+*/
+std::string NamedElement::NAME_ID_SEPARATOR = "#";
+
+const std::regex NamedElement::REGEX_DOT_or_DIESE          = std::regex("[.#]+");
+
+const std::regex NamedElement::REGEX_DOT_or_COLON_or_DIESE = std::regex("[.:#]+");
+
+/**
  * ATTRIBUTES
  */
 const std::string NamedElement::UNNAMED_ID = "<name-id:?>";
 
+
+/**
+ * UTILS
+ */
+std::string NamedElement::relativeQualifiedNameID(
+		const NamedElement & anElement) const
+{
+	std::string thisLocationID = getLocationID();
+	std::string anElementLocationID = anElement.getLocationID();
+
+	if( StringTools::stricklyStartsWith(thisLocationID, anElementLocationID) )
+	{
+		return( thisLocationID.substr(anElementLocationID.size() + 1) );
+	}
+
+	return( getFullyQualifiedNameID() );
+}
 
 /*
  * UTIL
@@ -73,8 +102,15 @@ std::string NamedElement::makeQualifiedNameID(
 
 		if( (posLocation != std::string::npos) && (posLocation > posLocator) )
 		{
+AVM_IF_DEBUG_FLAG( ALL_NAME_ID )
+
 			return( OSS() << aQualifiedNameID.substr(0, posLocator) << ":"
 					<< aQualifiedNameID.substr(posLocation + 1) );
+AVM_ELSE
+
+			return( aQualifiedNameID.substr(posLocation + 1) );
+
+AVM_ENDIF_DEBUG_FLAG( ALL_NAME_ID )
 		}
 	}
 
@@ -94,12 +130,59 @@ std::string NamedElement::makeQualifiedNameID(
 
 		if( (posLocation != std::string::npos) && (posLocation > posLocator) )
 		{
+AVM_IF_DEBUG_FLAG( ALL_NAME_ID )
+
 			return( OSS() << aQualifiedNameID.substr(0, posLocator) << ":"
 					<< aQualifiedNameID.substr(posLocation + 1) );
+AVM_ELSE
+
+			return( aQualifiedNameID.substr(posLocation + 1) );
+
+AVM_ENDIF_DEBUG_FLAG( ALL_NAME_ID )
 		}
 	}
 
 	return( aQualifiedNameID );
+}
+
+
+std::string NamedElement::makeFullyQualifiedNameID(
+		const std::string & aFullyQualifiedNameID,
+		const std::string & aQualifiedNameID, bool preserveLocator)
+{
+	std::string newFQNID = aFullyQualifiedNameID + '.' + aQualifiedNameID;
+
+	std::string::size_type posLocation = newFQNID.find(FQN_ID_ROOT_SEPARATOR);
+
+	if( posLocation != std::string::npos )
+	{
+		return( preserveLocator ? newFQNID : newFQNID.substr(posLocation) );
+	}
+	else
+	{
+		return( FQN_ID_ROOT_SEPARATOR + newFQNID );
+	}
+}
+
+
+std::string NamedElement::makeFullyRegexQualifiedNameID(
+		const std::string & aFullyQualifiedNameID,
+		const std::string & aQualifiedNameID, bool preserveLocator)
+{
+	std::string newFQNID = aFullyQualifiedNameID + ".*\\." + aQualifiedNameID;
+
+	std::string::size_type posLocation = newFQNID.find(FQN_ID_ROOT_SEPARATOR);
+
+	if( posLocation != std::string::npos )
+	{
+		return( preserveLocator
+				? newFQNID
+				: ( ".*" + newFQNID.substr(posLocation) ) );
+	}
+	else
+	{
+		return( FQN_ID_ROOT_SEPARATOR + newFQNID );
+	}
 }
 
 
@@ -138,22 +221,20 @@ std::string NamedElement::getContainerQualifiedNameID(
  * COMPARER  FOR  QUALIFIED NAME ID  STRING
  *******************************************************************************
  */
-bool NamedElement::compareID(
+bool NamedElement::isEqualsID(
 		const std::string & aQualifiedNameID, op_comparer_t op) const
 {
 	switch( op )
 	{
 		case OP_STRONG_COMPARER   :
 			return( (mFullyQualifiedNameID == aQualifiedNameID)
-					|| NamedElement::compareLocation(
-							mFullyQualifiedNameID, aQualifiedNameID) );
+					|| this->isLocationID(aQualifiedNameID) );
 
 		case OP_STRICT_COMPARER   :
 			return( mFullyQualifiedNameID == aQualifiedNameID );
 
 		case OP_ABSOLUTE_COMPARER :
-			return( NamedElement::compareLocation(
-					mFullyQualifiedNameID, aQualifiedNameID) );
+			return( this->isLocationID(aQualifiedNameID) );
 
 		case OP_RELATIVE_COMPARER :
 			return( this->fqnEndsWith(aQualifiedNameID) );
@@ -172,8 +253,7 @@ bool NamedElement::compareID(
 				return( true );
 			}
 			if( (op & OP_ABSOLUTE_COMPARER)
-				&& NamedElement::compareLocation(
-						mFullyQualifiedNameID, aQualifiedNameID) )
+				&& this->isLocationID(aQualifiedNameID) )
 			{
 				return( true );
 			}
@@ -200,45 +280,18 @@ bool NamedElement::compareID(
 }
 
 
-/*
- * !UNUSED!
-bool NamedElement::compareID(
-		const std::string & aFullyQualifiedNameID,
-		const std::string & aQualifiedNameID, op_comparer_t op)
+/**
+ * REGEX MATCH
+ */
+bool NamedElement::fqnRegexMatch(const std::string & aRegex) const
 {
-	if( (op & OP_STRICT_COMPARER)
-		&& (aFullyQualifiedNameID == aQualifiedNameID) )
-	{
-		return( true );
-	}
-	if( (op & OP_ABSOLUTE_COMPARER)
-		&& NamedElement::compareLocation(
-				aFullyQualifiedNameID, aQualifiedNameID) )
-	{
-		return( true );
-	}
-	if( (op & OP_RELATIVE_COMPARER )
-		&& NamedElement::fqnEndsWith(aFullyQualifiedNameID, aQualifiedNameID) )
-	{
-		return( true );
-	}
-	if( (op & OP_NAME_ID_COMPARER)
-		&& (NamedElement::extractNameID(aFullyQualifiedNameID)
-			== aQualifiedNameID) )
-	{
-		return( true );
-	}
-
-	if( (op & OP_UNRESTRICTED_NAME_COMPARER)
-		&& (aFullyQualifiedNameID == aQualifiedNameID) )
-	{
-		return( true );
-	}
-
-	return( false );
+	return( REGEX_MATCH(mFullyQualifiedNameID, aRegex) );
 }
-* !UNUSED!
-*/
+
+bool NamedElement::nameRegexMatch(const std::string & aRegex) const
+{
+	return( REGEX_MATCH(mNameID, aRegex) );
+}
 
 
 /*
@@ -246,7 +299,7 @@ bool NamedElement::compareID(
  * LIST of ID of QUALIFIED NAME ID
  *******************************************************************************
  */
-avm_size_t NamedElement::collectNameID(Collection< std::string > & listNameID,
+std::size_t NamedElement::collectNameID(Collection< std::string > & listNameID,
 		const std::string & aQualifiedNameID, std::string::size_type pos)
 {
 	AVM_OS_ASSERT_FATAL_ERROR_EXIT( pos < aQualifiedNameID.size() )
@@ -260,7 +313,7 @@ avm_size_t NamedElement::collectNameID(Collection< std::string > & listNameID,
 	boost::char_separator<char> sep(".");
 
 	tokenizer tokens(subQualifiedNameID, sep);
-	avm_size_t count = 0;
+	std::size_t count = 0;
 	tokenizer::iterator it = tokens.begin();
 	for( ; it != tokens.end() ; ++it , ++count )
 	{
@@ -271,14 +324,14 @@ avm_size_t NamedElement::collectNameID(Collection< std::string > & listNameID,
 }
 
 
-avm_size_t NamedElement::collectNameID(Collection< std::string > & listNameID,
+std::size_t NamedElement::collectNameID(Collection< std::string > & listNameID,
 		const std::string & aQualifiedNameID)
 {
 	typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
 	boost::char_separator<char> sep(".");
 
 	tokenizer tokens(aQualifiedNameID, sep);
-	avm_size_t count = 0;
+	std::size_t count = 0;
 	tokenizer::iterator it = tokens.begin();
 	for( ; it != tokens.end() ; ++it , ++count )
 	{

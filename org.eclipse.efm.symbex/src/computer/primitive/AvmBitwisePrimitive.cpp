@@ -38,11 +38,11 @@ namespace sep
 // INVARIANT:> only << second >>  could be << numeric<integer> >>
 
 static void formtatBitwiseExpression(EvaluationEnvironment & ENV,
-		Operator * op, const BF & first, const BF & second)
+		const Operator * op, const BF & first, const BF & second)
 {
 	if( second.isInteger() && first.is< AvmCode >() &&
-			first.to_ptr< AvmCode >()->isOpCode(op) &&
-			first.to_ptr< AvmCode >()->second().isInteger() )
+			first.to< AvmCode >().isOpCode(op) &&
+			first.to< AvmCode >().second().isInteger() )
 	{
 		BF bresult;
 		switch( op->getAvmOpCode() )
@@ -50,19 +50,19 @@ static void formtatBitwiseExpression(EvaluationEnvironment & ENV,
 			case AVM_OPCODE_BAND: // (x & m ) & n  ==  x & (m & n)
 			{
 				bresult = ExpressionConstructor::newInteger(second.isInteger() &
-						first.to_ptr< AvmCode >()->second().isInteger());
+						first.to< AvmCode >().second().isInteger());
 				break;
 			}
 			case AVM_OPCODE_BOR: // (x | m ) | n  ==  x | (m | n)
 			{
 				bresult = ExpressionConstructor::newInteger(second.isInteger() |
-						first.to_ptr< AvmCode >()->second().isInteger());
+						first.to< AvmCode >().second().isInteger());
 				break;
 			}
 			case AVM_OPCODE_BXOR: // (x ^ m ) ^ n  ==  x ^ (m ^ n)
 			{
 				bresult = ExpressionConstructor::newInteger(second.isInteger() ^
-						first.to_ptr< AvmCode >()->second().isInteger());
+						first.to< AvmCode >().second().isInteger());
 
 				break;
 			}
@@ -71,7 +71,7 @@ static void formtatBitwiseExpression(EvaluationEnvironment & ENV,
 			case AVM_OPCODE_RSHIFT: // (x >> m ) >> n  ==  x >> (m + n)
 			{
 				bresult = ExpressionConstructor::newInteger(second.isInteger() +
-						first.to_ptr< AvmCode >()->second().isInteger());
+						first.to< AvmCode >().second().isInteger());
 
 				break;
 			}
@@ -88,7 +88,7 @@ static void formtatBitwiseExpression(EvaluationEnvironment & ENV,
 		}
 
 		ENV.outVAL = ExpressionConstructor::newCode(op,
-				first.to_ptr< AvmCode >()->first(), bresult);
+				first.to< AvmCode >().first(), bresult);
 	}
 	else
 	{
@@ -96,7 +96,7 @@ static void formtatBitwiseExpression(EvaluationEnvironment & ENV,
 	}
 
 //	ENV.outVAL = ENV.create(
-//			ENV.outED->mRID, op->getUnrestrictedName(), TypeManager::INTEGER, ENV.outVAL);
+//			ENV.outED.getRID(), op->getUnrestrictedName(), TypeManager::INTEGER, ENV.outVAL);
 }
 
 
@@ -120,15 +120,15 @@ bool AvmPrimitive_BNOT::seval(EvaluationEnvironment & ENV)
 				~ (ENV.mARG->at(0).toInteger()) );
 	}
 	else if( ENV.mARG->at(0).is< AvmCode >() &&
-			ENV.mARG->at(0).to_ptr< AvmCode >()->isOpCode( AVM_OPCODE_BNOT ) )
+			ENV.mARG->at(0).to< AvmCode >().isOpCode( AVM_OPCODE_BNOT ) )
 	{
-		ENV.outVAL = ENV.mARG->at(0).to_ptr< AvmCode >()->first();
+		ENV.outVAL = ENV.mARG->at(0).to< AvmCode >().first();
 	}
 	else
 	{
 		ENV.outVAL = ExpressionConstructor::newCode(
 				OperatorManager::OPERATOR_BNOT, ENV.mARG->at(0));
-//			ENV.outVAL = ENV.create(ENV.mARG->outED->mRID, "BNOT",
+//			ENV.outVAL = ENV.create(ENV.mARG->outED.getRID(), "BNOT",
 //					TypeManager::INTEGER, ENV.mARG->at(0));
 	}
 

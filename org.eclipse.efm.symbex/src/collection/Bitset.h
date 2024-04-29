@@ -16,13 +16,13 @@
 #ifndef AVMBITSET_H_
 #define AVMBITSET_H_
 
-#include <util/avm_injector.h>
 #include <boost/dynamic_bitset.hpp>
 
-#include <util/avm_numeric.h>
+#include <base/Injector.h>
 #include <collection/Array.h>
 #include <collection/Vector.h>
 
+#include <util/avm_numeric.h>
 
 
 namespace sep
@@ -52,7 +52,7 @@ public:
 		//!! NOTHING
 	}
 
-	explicit Bitset(avm_size_t length, bool isSet)
+	explicit Bitset(std::size_t length, bool isSet)
 	: base_bitset_t( length )
 	{
 		if( isSet )

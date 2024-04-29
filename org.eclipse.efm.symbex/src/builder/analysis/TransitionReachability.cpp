@@ -41,20 +41,21 @@ namespace sep
  * Default
  */
 TransitionReachability::TransitionReachability(const ExecutionContext & anEC,
-		const RuntimeID & aRID, AvmTransition * aTransition)
+		const RuntimeID & aRID, const AvmTransition & aTransition)
 : theEC( anEC ),
-theED( anEC.refExecutionData() ),
+theED( anEC.getExecutionData() ),
 theRID( aRID ),
 theTransition( aTransition ),
-theTransitionPoint( NULL ),
+theTransitionPoint( nullptr ),
 theTraceElement( ),
 
 theRuntimePathComputingCountLimit( 16 ),
 
 theGoalAchievedFlag( false ),
 
-theVirtualBuffer(theTransition, NULL, 0, TYPE_LIFO_SPECIFIER, -1),
-theEmitOutput( & theVirtualBuffer ),
+theVirtualBuffer( const_cast< AvmTransition & >(theTransition),
+		Buffer::nullref(), 0, TYPE_LIFO_SPECIFIER, -1),
+theEmitOutput( theVirtualBuffer ),
 
 theTableOfRuntimeStatus( *( theED.getRuntimeFormStateTable() ) )
 {
@@ -71,14 +72,15 @@ bool TransitionReachability::initialize()
 
 	if( theRID.invalid() )
 	{
-		if( theED.mRID.getExecutable()->getTransition().contains(theTransition) )
+		if( theED.getRID().refExecutable().
+				getTransition().contains(& theTransition) )
 		{
-			theRID = theED.mRID;
+			theRID = theED.getRID();
 		}
 
 		if( theRID.invalid() )
 		{
-			if( theTransitionPoint != NULL )
+			if( theTransitionPoint != nullptr )
 			{
 				theTransitionPoint->updateRID( theED );
 
@@ -86,7 +88,7 @@ bool TransitionReachability::initialize()
 			}
 			else
 			{
-				theRID = theED.getRuntimeID( theTransition->getExecutable() );
+				theRID = theED.getRuntimeID( theTransition.refExecutable() );
 			}
 		}
 	}
@@ -131,7 +133,7 @@ bool TransitionReachability::computePath(TraceSequence & aTraceElement)
 
 void TransitionReachability::report(OutStream & os)
 {
-	os << "Trace to reach :> " << theTransition->strTransitionHeader();
+	os << "Trace to reach :> " << theTransition.strTransitionHeader();
 	theTraceElement.toStream(os);
 
 //	os << TAB << "Emit Output :>" << to_stream( theEmitOutput );
@@ -142,18 +144,18 @@ void TransitionReachability::report(OutStream & os)
 
 
 bool TransitionReachability::computePath(
-		const RuntimeID & aRID, AvmTransition * aTransition)
+		const RuntimeID & aRID, const AvmTransition & aTransition)
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 	AVM_OS_COUT << TAB << "computePath from :> ";
 	theEC.traceMinimum(AVM_OS_COUT);
 	AVM_OS_COUT << TAB2 << aRID.strUniqId() << " |==> ";
-	aTransition->toStreamHeader(AVM_OS_COUT); AVM_OS_COUT << std::endl;
-	if( aTransition->hasInternalCommunicationCode() )
+	aTransition.toStreamHeader(AVM_OS_COUT); AVM_OS_COUT << std::endl;
+	if( aTransition.hasInternalCommunicationCode() )
 	{
 		AVM_OS_COUT << TAB2 << "com |==> ";
-		BaseCompiledForm::toStreamStaticCom(AVM_OS_COUT,
-				aTransition->getInternalCommunicationCode());
+		BaseAvmProgram::toStreamStaticCom(AVM_OS_COUT,
+				aTransition.getInternalCommunicationCode());
 	}
 	AVM_OS_COUT << TAB2 << "Emit Output :>" << to_stream( theEmitOutput )
 			 << TAB << "end //computePath" << std::endl;
@@ -174,12 +176,12 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
 
 bool TransitionReachability::fireTransition(
-		const RuntimeID & aRID, AvmTransition * aTransition)
+		const RuntimeID & aRID, const AvmTransition & aTransition)
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 	AVM_OS_COUT << std::endl
 			<< TAB << "fireTransition :> " << aRID.strUniqId()
-			<< " |==> " << aTransition->strTransitionHeader() << std::endl
+			<< " |==> " << aTransition.strTransitionHeader() << std::endl
 			<< TAB2 << "Emit Output :>" << to_stream( theEmitOutput )
 			<< TAB << "end //fireTransition" << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
@@ -187,9 +189,9 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
 	theTableOfRuntimeStatus.stateSet(aRID.getOffset(), PROCESS_SUSPENDED_STATE);
 
-	if( aTransition->hasInputCom() )
+	if( aTransition.hasInputCom() )
 	{
-		ListOfInstanceOfPort anInputTrace( aTransition->getInputCom() );
+		ListOfInstanceOfPort anInputTrace( aTransition.getInputCom() );
 		if( theEmitOutput.uncontains( anInputTrace ) )
 		{
 			// trouver des émetteurs pour les INPUT attendu au regard de ED< SC >
@@ -228,21 +230,21 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
 
 void TransitionReachability::traceTransition(
-		const RuntimeID & aRID, AvmTransition * aTransition)
+		const RuntimeID & aRID, const AvmTransition & aTransition)
 {
 	TracePoint * tmpTP = new TracePoint(
 			ENUM_TRACE_POINT::TRACE_TRANSITION_NATURE,
-			AVM_OPCODE_INVOKE_TRANSITION, aRID, aTransition);
+			AVM_OPCODE_INVOKE_TRANSITION, aRID, (& aTransition));
 
 	theTraceElement.points.append( BF(tmpTP) );
 
 	// Virtual Eval Of aTransition
-	if( aTransition->hasOutputCom() )
+	if( aTransition.hasOutputCom() )
 	{
 		ListOfInstanceOfPort::const_iterator itOutput =
-				aTransition->getOutputCom().begin();
+				aTransition.getOutputCom().begin();
 		ListOfInstanceOfPort::const_iterator endOutput =
-				aTransition->getOutputCom().end();
+				aTransition.getOutputCom().end();
 		for( ; itOutput != endOutput ; ++itOutput )
 		{
 			theEmitOutput.push( Message(aRID, INCR_BF(*itOutput)) );
@@ -252,12 +254,12 @@ void TransitionReachability::traceTransition(
 
 
 bool TransitionReachability::computePathToTransition(
-		const RuntimeID & aRID, AvmTransition * aTransition)
+		const RuntimeID & aRID, const AvmTransition & aTransition)
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 	AVM_OS_COUT << std::endl
 			<< TAB << "computePathToTransition using :> " << aRID.strUniqId()
-			<< " |==> " << aTransition->strTransitionHeader() << std::endl;
+			<< " |==> " << aTransition.strTransitionHeader() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
 
@@ -276,7 +278,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 	AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( tmpRID )
 			<< "Runnable Ancestor Statemachine for "
 			<< aRID.strUniqId() << " in the context of "
-			<< aTransition->getFullyQualifiedNameID() << " !!!"
+			<< aTransition.getFullyQualifiedNameID() << " !!!"
 			<< SEND_EXIT;
 
 	const RuntimeForm & tmpRF = theED.getRuntime(tmpRID);
@@ -302,20 +304,20 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
 
 bool TransitionReachability::computePathFromRunnable(
-		const RuntimeID & aRID, AvmTransition * aTransition)
+		const RuntimeID & aRID, const AvmTransition & aTransition)
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 	AVM_OS_COUT << std::endl
 			<< TAB << "computePathFromRunnable using :> " << aRID.strUniqId()
-			<< " |==> " << aTransition->strTransitionHeader() << std::endl;
+			<< " |==> " << aTransition.strTransitionHeader() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
-	if( not aRID.getExecutable()->
-			containsForwardReachableTransition(aTransition) )
+	if( not aRID.refExecutable().
+			containsForwardReachableTransition(& aTransition) )
 	{
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 		AVM_OS_COUT << TAB2 << "Unreachable transition :> "
-				<< theTransition->strTransitionHeader() << std::endl
+				<< theTransition.strTransitionHeader() << std::endl
 				<< TAB2 << "from : " << aRID.str() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
@@ -343,15 +345,17 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 //		computePathToTransition(aRID, aTransition, allTransitionPaths);
 
 		RuntimeID tmpRID = aRID;
+
+		const AvmTransition * itTransition = nullptr;
 		do
 		{
-			aTransition = oneTransitionPath.front();
+			itTransition = oneTransitionPath.front();
 
-			if( fireTransition(tmpRID, aTransition) )
+			if( fireTransition(tmpRID, (* itTransition)) )
 			{
 				oneTransitionPath.pop_front();
 
-				if( not computeTargetMachine(tmpRID, aTransition->getCode()) )
+				if( not computeTargetMachine(tmpRID, itTransition->getAvmCode()) )
 				{
 					return( false );
 				}
@@ -372,20 +376,20 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
 
 //bool TransitionReachability::computePathFromRunnable(
-//		const RuntimeID & aRID, AvmTransition * aTransition)
+//		const RuntimeID & aRID, const AvmTransition & aTransition)
 //{
 //AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 //	AVM_OS_COUT << std::endl
 //			<< TAB << "computePathFromRunnable using :> " << aRID.strUniqId()
-//			<< " |==> " << aTransition->strTransitionHeader() << std::endl;
+//			<< " |==> " << aTransition.strTransitionHeader() << std::endl;
 //AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 //
-//	if( not aRID.getExecutable()->
+//	if( not aRID.refExecutable().
 //			containsForwardReachableTransition(aTransition) )
 //	{
 //AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 //		AVM_OS_COUT << TAB2 << "Unreachable transition :> "
-//				<< theTransition->strTransitionHeader() << std::endl
+//				<< theTransition.strTransitionHeader() << std::endl
 //				<< TAB2 << "from : " << aRID.str() << std::endl;
 //AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 //
@@ -416,7 +420,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 //
 //AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 //	AVM_OS_COUT << TAB << "Found Path --> "
-//			<< aTransition->getFullyQualifiedNameID() << std::endl << INCR_INDENT;
+//			<< aTransition.getFullyQualifiedNameID() << std::endl << INCR_INDENT;
 //	AvmTransition::toStream(AVM_OS_COUT, oneTransitionPath);
 //	AVM_OS_COUT << DECR_INDENT << std::endl;
 //AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
@@ -430,7 +434,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 //			{
 //				oneTransitionPath.pop_front();
 //
-//				computeTargetMachine(tmpRID, aTransition->getCode());
+//				computeTargetMachine(tmpRID, aTransition.getCode());
 //			}
 //			else
 //			{
@@ -467,7 +471,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
 
 bool TransitionReachability::computePathToInput(
-		const RuntimeID & aRID, InstanceOfPort * anInputTrace)
+		const RuntimeID & aRID, const InstanceOfPort * anInputTrace)
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 	AVM_OS_COUT << TAB << "computePathToInput :> " << std::endl
@@ -478,15 +482,13 @@ AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
 
-	ExecutableForm * tmpExecutable = NULL;
+	ExecutableForm * tmpExecutable = nullptr;
 	RuntimeID srcRID;
 
 	// Parcourir tous les états et repérer ceux contenant les bons output/outputTo
-	TableOfRuntimeT::const_iterator itRF = theED.getTableOfRuntime().begin();
-	TableOfRuntimeT::const_iterator endRF = theED.getTableOfRuntime().end();
-	for( ; itRF != endRF ; ++itRF )
+	for( const auto & itRF : theED.getTableOfRuntime() )
 	{
-		srcRID = (*itRF)->getRID();
+		srcRID = itRF->getRID();
 		tmpExecutable = srcRID.getExecutable();
 
 		if( theTableOfRuntimeStatus.isSuspended(srcRID.getOffset()) )
@@ -496,27 +498,24 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 		else if( theED.isIdleOrRunning( srcRID ) &&
 			tmpExecutable->getForwardReachableTransition().nonempty() )
 		{
-			ListOfAvmTransition::const_iterator itTrans =
-					tmpExecutable->getForwardReachableTransition().begin();
-			ListOfAvmTransition::const_iterator endTrans =
-					tmpExecutable->getForwardReachableTransition().end();
-			for( ; itTrans != endTrans ; ++itTrans )
+			for( const auto & itTrans : tmpExecutable->getForwardReachableTransition() )
 			{
-				if( (*itTrans)->getOutputCom().contains(anInputTrace) )
+				if( itTrans->getOutputCom().contains(
+						const_cast< InstanceOfPort * >(anInputTrace) ) )
 				{
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 	AVM_OS_COUT << TAB << "found Output in :> " << srcRID.strUniqId() << " |==> "
-			<< (*itTrans)->strTransitionHeader() << std::endl;
+			<< itTrans->strTransitionHeader() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 
-					if( tmpExecutable != (*itTrans)->getExecutable() )
+					if( tmpExecutable != itTrans->getExecutable() )
 					{
-						if( computePathFromRunnable(srcRID, (*itTrans)) )
+						if( computePathFromRunnable(srcRID, (* itTrans)) )
 						{
 							return( true );
 						}
 					}
-					else if( fireTransition(srcRID, (*itTrans)) )
+					else if( fireTransition(srcRID, (* itTrans)) )
 					{
 						return( true );
 					}
@@ -534,8 +533,9 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSOR , TRANSITION )
 }
 
 
-bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
-		AvmTransition * aTransition, ListOfAvmTransition & oneTransitionPath)
+bool TransitionReachability::computePathToTransition(
+		const RuntimeID & aRID, const AvmTransition & aTransition,
+		ListOfAvmTransition & oneTransitionPath)
 {
 	ListOfListOfAvmTransition anyTransitionPaths;
 
@@ -543,22 +543,21 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 	InstanceOfMachine * tgtInstance;
 
 	// Initialization step
-	ExecutableForm * fwdMachine = aRID.getExecutable();
+	const ExecutableForm * fwdMachine = aRID.getExecutable();
 	fwdMachine->getOutgoingTransition( listOfOutgoingTransition );
 
-	ExecutableForm * tgtMachine = fwdMachine;
+	const ExecutableForm * tgtMachine = fwdMachine;
 
-	ListOfAvmTransition::const_iterator itTrans = listOfOutgoingTransition.begin();
-	ListOfAvmTransition::const_iterator endTrans = listOfOutgoingTransition.end();
-	for( ; itTrans != endTrans ; ++itTrans )
+	for( const auto & itTrans : listOfOutgoingTransition )
 	{
-		if( (tgtInstance = (*itTrans)->getTransitionTarget()) != NULL )
+		tgtInstance = itTrans->getTransitionTarget();
+		if( tgtInstance != nullptr )
 		{
 			tgtMachine = tgtInstance->getExecutable();
 		}
-		if( tgtMachine->containsForwardReachableTransition(aTransition) )
+		if( tgtMachine->containsForwardReachableTransition(& aTransition) )
 		{
-			anyTransitionPaths.append( ListOfAvmTransition(*itTrans) );
+			anyTransitionPaths.append( ListOfAvmTransition(itTrans) );
 		}
 	}
 
@@ -572,14 +571,15 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 		aTransitionPath.splice( anyTransitionPaths.front() );
 		anyTransitionPaths.pop_front();
 
-		if( (tgtInstance = aTransitionPath.back()->getTransitionTarget()) != NULL )
+		tgtInstance = aTransitionPath.back()->getTransitionTarget();
+		if( tgtInstance != nullptr )
 		{
 			fwdMachine = tgtInstance->getExecutable();
 		}
-		if( fwdMachine->getTransition().contains(aTransition) )
+		if( fwdMachine->getTransition().contains(& aTransition) )
 		{
 			oneTransitionPath.splice( aTransitionPath );
-			oneTransitionPath.push_back( aTransition );
+			oneTransitionPath.push_back( & aTransition );
 
 			return( true );
 		}
@@ -588,23 +588,22 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 			listOfOutgoingTransition.clear();
 			fwdMachine->getOutgoingTransition( listOfOutgoingTransition );
 
-			itTrans = listOfOutgoingTransition.begin();
-			endTrans = listOfOutgoingTransition.end();
-			for( ; itTrans != endTrans ; ++itTrans )
+			for( const auto & itTrans : listOfOutgoingTransition )
 			{
-				if( not aTransitionPath.contains( *itTrans ) )
+				if( not aTransitionPath.contains( itTrans ) )
 				{
-					if( (tgtInstance = (*itTrans)->getTransitionTarget()) != NULL )
+					tgtInstance = itTrans->getTransitionTarget();
+					if( tgtInstance != nullptr )
 					{
 						tgtMachine = tgtInstance->getExecutable();
 					}
-					if( tgtMachine->containsForwardReachableTransition(aTransition) )
+					if( tgtMachine->containsForwardReachableTransition(& aTransition) )
 					{
 						if( anyTransitionPaths.size() <
 							theRuntimePathComputingCountLimit )
 						{
 							anyTransitionPaths.push_back( aTransitionPath );
-							anyTransitionPaths.back().push_back( *itTrans );
+							anyTransitionPaths.back().push_back( itTrans );
 						}
 					}
 				}
@@ -616,8 +615,9 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 }
 
 
-bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
-		AvmTransition * aTransition, ListOfListOfAvmTransition & allTransitionPaths)
+bool TransitionReachability::computePathToTransition(
+		const RuntimeID & aRID, const AvmTransition & aTransition,
+		ListOfListOfAvmTransition & allTransitionPaths)
 {
 	ListOfListOfAvmTransition anyTransitionPaths;
 	ListOfListOfAvmTransition prefixLoopTransitionPaths;
@@ -628,22 +628,21 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 	InstanceOfMachine * tgtInstance;
 
 	// Initialization step
-	ExecutableForm * fwdMachine = aRID.getExecutable();
+	const ExecutableForm * fwdMachine = aRID.getExecutable();
 	fwdMachine->getOutgoingTransition( listOfOutgoingTransition );
 
-	ExecutableForm * tgtMachine = fwdMachine;
+	const ExecutableForm * tgtMachine = fwdMachine;
 
-	ListOfAvmTransition::const_iterator itTrans = listOfOutgoingTransition.begin();
-	ListOfAvmTransition::const_iterator endTrans = listOfOutgoingTransition.end();
-	for( ; itTrans != endTrans ; ++itTrans )
+	for( const auto & itTrans : listOfOutgoingTransition )
 	{
-		if( (tgtInstance = (*itTrans)->getTransitionTarget()) != NULL )
+		tgtInstance = itTrans->getTransitionTarget();
+		if( tgtInstance != nullptr )
 		{
 			tgtMachine = tgtInstance->getExecutable();
 		}
-		if( tgtMachine->containsForwardReachableTransition(aTransition) )
+		if( tgtMachine->containsForwardReachableTransition(& aTransition) )
 		{
-			anyTransitionPaths.append( ListOfAvmTransition(*itTrans) );
+			anyTransitionPaths.append( ListOfAvmTransition(itTrans) );
 		}
 	}
 
@@ -653,7 +652,7 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 //		AVM_OS_COUT << TAB << "TMP found paths :> " << std::endl;
 //		ListOfListOfAvmTransition::const_iterator itList = allTransitionPaths.begin();
 //		ListOfListOfAvmTransition::const_iterator endList = allTransitionPaths.end();
-//		for( avm_size_t number = 0 ; itList != endList ; ++itList , ++number )
+//		for( std::size_t number = 0 ; itList != endList ; ++itList , ++number )
 //		{
 //			AVM_OS_COUT << TAB << "Path number :" << number << ">"
 //					<< std::endl << INCR_INDENT;
@@ -664,7 +663,7 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 //		AVM_OS_COUT << TAB << "TMP Computing paths :> " << std::endl;
 //		itList = anyTransitionPaths.begin();
 //		endList = anyTransitionPaths.end();
-//		for( avm_size_t number = 0 ; itList != endList ; ++itList , ++number )
+//		for( std::size_t number = 0 ; itList != endList ; ++itList , ++number )
 //		{
 //			AVM_OS_COUT << TAB << "Path number :" << number << ">"
 //					<< std::endl << INCR_INDENT;
@@ -677,39 +676,39 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 		aTransitionPath.splice( anyTransitionPaths.front() );
 		anyTransitionPaths.pop_front();
 
-		if( (tgtInstance = aTransitionPath.back()->getTransitionTarget()) != NULL )
+		tgtInstance = aTransitionPath.back()->getTransitionTarget();
+		if( tgtInstance != nullptr )
 		{
 			fwdMachine = tgtInstance->getExecutable();
 		}
-		if( fwdMachine->getTransition().contains(aTransition) )
+		if( fwdMachine->getTransition().contains(& aTransition) )
 		{
 			allTransitionPaths.push_back( aTransitionPath );
-			allTransitionPaths.back().push_back( aTransition );
+			allTransitionPaths.back().push_back(& aTransition);
 		}
 		else
 		{
 			listOfOutgoingTransition.clear();
 			fwdMachine->getOutgoingTransition( listOfOutgoingTransition );
 
-			itTrans = listOfOutgoingTransition.begin();
-			endTrans = listOfOutgoingTransition.end();
-			for( ; itTrans != endTrans ; ++itTrans )
+			for( const auto & itTrans : listOfOutgoingTransition )
 			{
-				if( aTransitionPath.contains( *itTrans ) )
+				if( aTransitionPath.contains( itTrans ) )
 				{
 					prefixLoopTransitionPaths.push_back( aTransitionPath );
-					prefixLoopTransitionPaths.back().push_back( *itTrans );
+					prefixLoopTransitionPaths.back().push_back( itTrans );
 				}
 				else
 				{
-					if( (tgtInstance = (*itTrans)->getTransitionTarget()) != NULL )
+					tgtInstance = itTrans->getTransitionTarget();
+					if( tgtInstance != nullptr )
 					{
 						tgtMachine = tgtInstance->getExecutable();
 					}
-					if( tgtMachine->containsForwardReachableTransition(aTransition) )
+					if( tgtMachine->containsForwardReachableTransition(& aTransition) )
 					{
 						anyTransitionPaths.push_back( aTransitionPath );
-						anyTransitionPaths.back().push_back( *itTrans );
+						anyTransitionPaths.back().push_back( itTrans );
 					}
 				}
 			}
@@ -719,10 +718,10 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 	AVM_OS_COUT << TAB << "List of found paths :> " << std::endl;
 	ListOfListOfAvmTransition::const_iterator itList = allTransitionPaths.begin();
 	ListOfListOfAvmTransition::const_iterator endList = allTransitionPaths.end();
-	for( avm_size_t number = 0 ; itList != endList ; ++itList , ++number )
+	for( std::size_t number = 0 ; itList != endList ; ++itList , ++number )
 	{
 		AVM_OS_COUT << TAB << "Path number :" << number << " --> "
-				<< aTransition->getFullyQualifiedNameID() << std::endl << INCR_INDENT;
+				<< aTransition.getFullyQualifiedNameID() << std::endl << INCR_INDENT;
 		AvmTransition::toStream(AVM_OS_COUT, *itList);
 		AVM_OS_COUT << std::endl << DECR_INDENT;
 	}
@@ -730,7 +729,7 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 //	AVM_OS_COUT << TAB << "List of found prefix-paths :> " << std::endl;
 //	itList = prefixLoopTransitionPaths.begin();
 //	endList = prefixLoopTransitionPaths.end();
-//	for( avm_size_t number = 0 ; itList != endList ; ++itList , ++number )
+//	for( std::size_t number = 0 ; itList != endList ; ++itList , ++number )
 //	{
 //		AVM_OS_COUT << TAB << "Prefix number :" << number << ">"
 //				<< std::endl << INCR_INDENT;
@@ -743,14 +742,14 @@ bool TransitionReachability::computePathToTransition(const RuntimeID & aRID,
 
 
 bool TransitionReachability::computeTargetMachine(
-		RuntimeID & aRID, AvmCode * aCode)
+		RuntimeID & aRID, const AvmCode & aCode)
 {
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_ENABLE_INVOKE:
 		case AVM_OPCODE_ENABLE_SET:
 		{
-			const BF & targetMachine = aCode->first();
+			const BF & targetMachine = aCode.first();
 
 			if( targetMachine.is< InstanceOfMachine >() )
 			{
@@ -777,8 +776,8 @@ bool TransitionReachability::computeTargetMachine(
 		}
 		case AVM_OPCODE_DISABLE_INVOKE:
 		{
-			if( (aCode->first() == ExecutableLib::MACHINE_SELF)
-				|| (aRID == aCode->first()) )
+			if( (aCode.first() == ExecutableLib::MACHINE_THIS)
+				|| (aRID == aCode.first()) )
 			{
 				aRID = aRID.getPRID();
 
@@ -791,9 +790,9 @@ bool TransitionReachability::computeTargetMachine(
 		}
 		case AVM_OPCODE_DISABLE_SELVES:
 		{
-			if( aCode->first().isInteger() )
+			if( aCode.first().isInteger() )
 			{
-				for( avm_uinteger_t level = aCode->first().toInteger() ;
+				for( avm_uinteger_t level = aCode.first().toInteger() ;
 						level > 0 ; --level )
 				{
 					aRID = aRID.getPRID();
@@ -810,14 +809,12 @@ bool TransitionReachability::computeTargetMachine(
 		{
 			if( StatementTypeChecker::isSchedule(aCode) )
 			{
-				AvmCode::const_iterator it = aCode->begin();
-				AvmCode::const_iterator endIt = aCode->end();
-				for( ; it != endIt ; ++it )
+				for( const auto & itOperand : aCode.getOperands() )
 				{
-					if( (*it).is< AvmCode >() )
+					if( itOperand.is< AvmCode >() )
 					{
 						if( not computeTargetMachine(aRID,
-								(*it).to_ptr< AvmCode >()) )
+								itOperand.to< AvmCode >()) )
 						{
 							return( false );
 						}

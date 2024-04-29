@@ -15,6 +15,10 @@
 
 #include "EnumTypeSpecifier.h"
 
+#include <collection/Set.h>
+
+#include <fml/executable/InstanceOfData.h>
+
 #include <fml/expression/ExpressionConstant.h>
 #include <fml/expression/ExpressionConstructorImpl.h>
 
@@ -32,32 +36,73 @@ void EnumTypeSpecifier::updateBound()
 	avm_integer_t min = 0;
 	avm_integer_t max = 0;
 
-	mIntegerEnumerationFlag = true;
+	Set< avm_integer_t > values;
+	std::pair< Set< avm_integer_t >::iterator , bool > insertInfo;
+	avm_integer_t previous = 0;
+	avm_integer_t current  = 0;
+
+	mIntervalEnumerationFlag = true;
 
 	TableOfSymbol::const_iterator it = getSymbolData().begin();
 	TableOfSymbol::const_iterator endIt = getSymbolData().end();
-	for( ; it != endIt ; ++it )
+
+	if( (it != endIt) && (*it).getValue().isWeakInteger() )
+	{
+		min = max = previous = current = (*it).getValue().toInteger();
+
+		values.insert(current);
+	}
+	else
+	{
+		mIntervalEnumerationFlag = false;
+	}
+
+	for( ++it ; it != endIt ; ++it )
 	{
 		if( (*it).getValue().isWeakInteger() )
 		{
-			if( (*it).getValue().toInteger() < min )
+			current = (*it).getValue().toInteger();
+
+			//![c++ > 11], used auto
+//			auto info = values.insert(current);
+			insertInfo = values.insert(current);
+			
+			if( mIntervalEnumerationFlag && insertInfo.second
+				&& (((previous + 1) == current)     // successeur du previous
+					|| (previous == (current + 1))  // predecesseur du previous
+					|| (previous == current)        // egal au previous
+					|| ((current + 1) == min)       // predecesseur du min
+					|| (current == (max + 1)) ) )   // successeur du max
 			{
-				min = (*it).getValue().toInteger();
+				previous = current;
 			}
-			if( (*it).getValue().toInteger() > max )
+			else if( insertInfo.second )
 			{
-				max = (*it).getValue().toInteger();
+				mIntervalEnumerationFlag = false;
+			}
+
+			if( current < min )
+			{
+				min = current;
+			}
+			else if( current > max )
+			{
+				max = current;
 			}
 		}
-		else if( mIntegerEnumerationFlag )
+		else
 		{
-			mIntegerEnumerationFlag = false;
-			getwModifier().setFeatureUnsafe(true);
+			mIntervalEnumerationFlag = false;
 		}
 	}
 
 	mInfimum  = ExpressionConstructorNative::newInteger(min);
 	mSupremum = ExpressionConstructorNative::newInteger(max);
+
+	if( not mIntervalEnumerationFlag )
+	{
+		getwModifier().setFeatureUnsafe(true);
+	}
 }
 
 
@@ -66,7 +111,7 @@ void EnumTypeSpecifier::updateBound(avm_integer_t min, avm_integer_t max)
 	mInfimum  = ExpressionConstructorNative::newInteger(min);
 	mSupremum = ExpressionConstructorNative::newInteger(max);
 
-	mIntegerEnumerationFlag = true;
+	mIntervalEnumerationFlag = true;
 }
 
 
@@ -74,7 +119,7 @@ void EnumTypeSpecifier::updateBound(avm_integer_t min, avm_integer_t max)
  * GETTER
  * newfresh Enum Value
  */
-BF EnumTypeSpecifier::newfreshSymbolValue()
+BF EnumTypeSpecifier::newfreshSymbolValue() const
 {
 	if( getSymbolData().nonempty() )
 	{
@@ -107,19 +152,17 @@ BF EnumTypeSpecifier::newfreshSymbolValue()
  * GETTER - SETTER
  * mSymbolData
  */
-bool EnumTypeSpecifier::hasSymbolData(InstanceOfData * aSymbolData) const
+bool EnumTypeSpecifier::hasSymbolData(const InstanceOfData & aSymbolData) const
 {
-	if( aSymbolData->getTypeSpecifier() == this )
+	if( aSymbolData.getTypeSpecifier().isTEQ(this) )
 	{
 		return( true );
 	}
 	else
 	{
-		TableOfSymbol::const_iterator it = getSymbolData().begin();
-		TableOfSymbol::const_iterator endIt = getSymbolData().end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itSymbolData : getSymbolData() )
 		{
-			if( (*it) == aSymbolData )
+			if( itSymbolData == aSymbolData )
 			{
 				return( true );
 			}
@@ -133,14 +176,12 @@ bool EnumTypeSpecifier::hasSymbolData(const BF & aSymbol) const
 {
 	if( aSymbol.is< InstanceOfData >() )
 	{
-		return( hasSymbolData( aSymbol.to_ptr< InstanceOfData >() ) );
+		return( hasSymbolData( aSymbol.to< InstanceOfData >() ) );
 	}
 
-	TableOfSymbol::const_iterator it = getSymbolData().begin();
-	TableOfSymbol::const_iterator endIt = getSymbolData().end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itSymbolData : getSymbolData() )
 	{
-		if( aSymbol.isEQ( *it ) )
+		if( aSymbol.isEQ( itSymbolData ) )
 		{
 			return( true );
 		}
@@ -152,11 +193,9 @@ bool EnumTypeSpecifier::hasSymbolData(const BF & aSymbol) const
 
 bool EnumTypeSpecifier::hasSymbolDataWithValue(const BF & aValue) const
 {
-	TableOfSymbol::const_iterator it = getSymbolData().begin();
-	TableOfSymbol::const_iterator endIt = getSymbolData().end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itSymbolData : getSymbolData() )
 	{
-		if( aValue.isEQ( (*it).getValue() ) || aValue.isEQ( *it ) )
+		if( aValue.isEQ( itSymbolData.getValue() ) || aValue.isEQ( itSymbolData ) )
 		{
 			return( true );
 		}
@@ -182,17 +221,17 @@ const Symbol & EnumTypeSpecifier::getSymbolDataByValue(const BF & aValue) const
 }
 
 
-avm_size_t EnumTypeSpecifier::getRandomSymbolOffset()
+std::size_t EnumTypeSpecifier::getRandomSymbolOffset() const
 {
 	return( RANDOM::gen_uint(0, getSymbolData().size() - 1) );
 }
 
-const Symbol & EnumTypeSpecifier::getRandomSymbolData()
+const Symbol & EnumTypeSpecifier::getRandomSymbolData() const
 {
 	return( getSymbolData( getRandomSymbolOffset() ) );
 }
 
-const BF & EnumTypeSpecifier::getRandomSymbolValue()
+const BF & EnumTypeSpecifier::getRandomSymbolValue() const
 {
 	return( getRandomSymbolData().getValue() );
 }
@@ -214,6 +253,11 @@ BF EnumTypeSpecifier::maxConstraint(const BF & aParam) const
 }
 
 
+bool EnumTypeSpecifier::couldGenerateConstraint() const
+{
+	return( mIntervalEnumerationFlag || getSymbolData().nonempty() );
+}
+
 BF EnumTypeSpecifier::genConstraint(const BF & aParam) const
 {
 	if( hasConstraint() )
@@ -225,12 +269,34 @@ BF EnumTypeSpecifier::genConstraint(const BF & aParam) const
 				<< SEND_EXIT;
 	}
 
-	if( mIntegerEnumerationFlag )
+	if( getSymbolData().singleton() )
 	{
-		return( ExpressionConstructorNative::andExpr(
-				ExpressionConstructorNative::gteExpr(aParam, getInfimum()),
-				ExpressionConstructorNative::lteExpr(aParam, getSupremum())) );
+		if( getSymbolData().first().hasValue() )
+		{
+			return( ExpressionConstructorNative::eqExpr(
+					aParam, getSymbolData().first().getValue()) );
+		}
+		else
+		{
+			return( ExpressionConstructorNative::eqExpr(
+					aParam, getSymbolData().first()) );
+		}
 	}
+
+	else if( mIntervalEnumerationFlag )
+	{
+		if( getInfimum().isEQ( getSupremum() ) )
+		{
+			return( ExpressionConstructorNative::eqExpr(aParam, getInfimum()) );
+		}
+		else
+		{
+			return( ExpressionConstructorNative::andExpr(
+					ExpressionConstructorNative::gteExpr(aParam, getInfimum()),
+					ExpressionConstructorNative::lteExpr(aParam, getSupremum())) );
+		}
+	}
+
 	else if( getSymbolData().nonempty() )
 	{
 		TableOfSymbol::const_iterator it = getSymbolData().begin();
@@ -266,7 +332,12 @@ void EnumTypeSpecifier::toStream(OutStream & out) const
 		return;
 	}
 
-	out << TAB << "type " << getFullyQualifiedNameID() << " enum {" << EOL;
+	out << TAB << "type " << getFullyQualifiedNameID() << " enum";
+	if( hasSuperTypeSpecifier() )
+	{
+		out  << "< " << getSuperTypeSpecifier().strT() << " >";
+	}
+	out << " {" << EOL;
 
 AVM_IF_DEBUG_FLAG( COMPILING )
 	if( hasAstElement() )

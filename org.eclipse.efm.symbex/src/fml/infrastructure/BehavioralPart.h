@@ -20,6 +20,7 @@
 #include <fml/common/ObjectElement.h>
 
 #include <collection/BFContainer.h>
+#include <common/BF.h>
 
 #include <fml/expression/AvmCode.h>
 
@@ -47,20 +48,44 @@ public:
 	/**
 	 * TYPEDEF
 	 */
+	typedef TableOfBF_T< Machine >  TableOfMachine;
+
 	typedef TableOfBF_T< Transition >  TableOfTransition;
 
-	typedef TableOfTransition::const_raw_iterator  const_transition_iterator;
+	typedef TableOfTransition::const_ref_iterator  transition_iterator;
 
 
 	typedef TableOfBF_T< Routine >  TableOfRoutine;
 
-	typedef TableOfRoutine::const_raw_iterator  const_routine_iterator;
+	typedef TableOfRoutine::const_ref_iterator  routine_iterator;
+
+	/**
+	 * TIME ROUTINE CONSTANT
+	 */
+	static std::string ROUTINE_ID_TIME_GET;
+	static std::string ROUTINE_ID_DELTA_GET;
+
+	static std::string ROUTINE_ID_TIME_RESET;
+
+	static std::string ROUTINE_ID_CLOCK_RESET;
+	static std::string ROUTINE_ID_CLOCK_UPDATE;
+
+	static std::string VARIABLE_ID_CLOCK_INDEX;
+
+	static std::string ROUTINE_ID_VECTOR_CLOCK_RESET;
+	static std::string ROUTINE_ID_VECTOR_CLOCK_UPDATE;
+
+	static std::string ROUTINE_ID_TIME_UPDATE;
 
 
 protected:
 	/**
 	 * ATTRIBUTES
 	 */
+	TableOfOwnedElement mOwnedElements;
+
+	TableOfMachine mOwnedBehaviors;
+
 	TableOfTransition mOutgoingTransitions;
 
 	TableOfTransition mIncomingTransitions;
@@ -107,6 +132,10 @@ public:
 	BehavioralPart(ObjectElement * aContainer,
 			const std::string & aNameID = "moe")
 	: ObjectClassifier( CLASS_KIND_T( BehavioralPart ) , aContainer , aNameID ),
+	mOwnedElements( ),
+
+	mOwnedBehaviors( ),
+
 	mOutgoingTransitions( ),
 	mIncomingTransitions( ),
 
@@ -153,6 +182,87 @@ public:
 
 
 	/**
+	 * GETTER - DISPATCH - SAVE
+	 * mOwnedElements
+	 */
+	inline const TableOfOwnedElement & getOwnedElements() const
+	{
+		return( mOwnedElements );
+	}
+
+
+	/**
+	 * [ CONST ] ITERATOR
+	 */
+	inline const_owned_iterator owned_begin() const
+	{
+		return( mOwnedElements.begin() );
+	}
+
+	inline const_owned_iterator owned_end() const
+	{
+		return( mOwnedElements.end() );
+	}
+
+
+	/**
+	 * DISPATCH - SAVE
+	 * mOwnedElements
+	 */
+	void dispatchOwnedElement(BF & anElement);
+
+	inline const BF & saveOwnedElement(BehavioralElement * ptrElement)
+	{
+		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( ptrElement )
+				<< "Behavior owned element !!!"
+				<< SEND_EXIT;
+
+		// Should be set by the executable machine container !
+		ptrElement->setOwnedOffset( mOwnedElements.size() );
+
+		mOwnedElements.append( INCR_BF( ptrElement ) );
+
+		if( (ptrElement->getContainer() == nullptr)
+			|| (ptrElement->getContainer() != this->getContainer()) )
+		{
+			ptrElement->updateContainer( this->getContainer() );
+		}
+
+		dispatchOwnedElement( mOwnedElements.last() );
+
+		return( mOwnedElements.last() );
+	}
+
+
+	inline bool empty() const
+	{
+		return( mOwnedElements.empty() );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * mOwnedBehaviors
+	 */
+	inline const TableOfMachine & getOwnedBehaviors() const
+	{
+		return( mOwnedBehaviors );
+	}
+
+	inline bool hasOwnedBehavior() const
+	{
+		return( mOwnedBehaviors.nonempty() );
+	}
+
+	inline void appendOwnedBehavior(const BF & aBehavior)
+	{
+		mOwnedBehaviors.append( aBehavior );
+	}
+
+	void appendOwnedBehavior(Machine * aBehavior);
+
+
+	/**
 	 * GETTER - SETTER
 	 * mOutgoingTransitions
 	 */
@@ -169,22 +279,26 @@ public:
 	inline void appendOutgoingTransition(const BF & aTransition)
 	{
 		mOutgoingTransitions.append( aTransition );
+
+		mOwnedElements.append( aTransition );
 	}
 
 	inline void saveOutgoingTransition(Transition * aTransition)
 	{
 		mOutgoingTransitions.append( BF(aTransition) );
+
+		mOwnedElements.append( mOutgoingTransitions.back() );
 	}
 
 	/**
 	 * [ CONST ] ITERATOR
 	 */
-	inline const_transition_iterator outgoing_transition_begin() const
+	inline transition_iterator outgoing_transition_begin() const
 	{
 		return( mOutgoingTransitions.begin() );
 	}
 
-	inline const_transition_iterator outgoing_transition_end() const
+	inline transition_iterator outgoing_transition_end() const
 	{
 		return( mOutgoingTransitions.end() );
 	}
@@ -209,20 +323,6 @@ public:
 	inline void appendIncomingTransition(const BF & aTransition)
 	{
 		mIncomingTransitions.append( aTransition );
-	}
-
-
-	/**
-	 * [ CONST ] ITERATOR
-	 */
-	inline const_transition_iterator incoming_transition_begin() const
-	{
-		return( mIncomingTransitions.begin() );
-	}
-
-	inline const_transition_iterator incoming_transition_end() const
-	{
-		return( mIncomingTransitions.end() );
 	}
 
 
@@ -284,6 +384,8 @@ public:
 	{
 		return( onInitRoutine.hasCode() );
 	}
+
+	bool hasOnInitMachine() const;
 
 	inline void setOnInit(const BFCode & aCode)
 	{
@@ -770,6 +872,11 @@ public:
 		return( onScheduleRoutine.getCode() );
 	}
 
+	inline BFCode & getOnSchedule()
+	{
+		return( onScheduleRoutine.getCode() );
+	}
+
 	inline bool hasOnSchedule() const
 	{
 		return( onScheduleRoutine.hasCode() );
@@ -783,6 +890,11 @@ public:
 	inline void seqOnSchedule(const BFCode & aCode)
 	{
 		onScheduleRoutine.seqCode( aCode );
+	}
+
+	inline void setUserDefinedSchedule()
+	{
+		onScheduleRoutine.setNameID("xschedule");
 	}
 
 
@@ -859,6 +971,12 @@ public:
 	const Routine & getActivity(AVM_OPCODE opcodeActivity) const;
 
 
+	/**
+	 * ADD
+	 * [ delta ] time property
+	 */
+	void addTimeSupport(PropertyPart & aPropertyPart);
+
 
 	/**
 	 * GETTER - SETTER
@@ -866,12 +984,16 @@ public:
 	 */
 	inline void appendRoutine(const BF & routine)
 	{
-		mRoutines.append(routine);
+		mRoutines.append( routine );
+
+		mOwnedElements.append( routine );
 	}
 
 	inline void saveRoutine(Routine * routine)
 	{
 		mRoutines.append( BF(routine) );
+
+		mOwnedElements.append( mRoutines.back() );
 	}
 
 	Routine * rawRoutineByNameID(const std::string & id) const
@@ -894,12 +1016,12 @@ public:
 	/**
 	 * [ CONST ] ITERATOR
 	 */
-	inline const_routine_iterator routine_begin() const
+	inline routine_iterator routine_begin() const
 	{
 		return( mRoutines.begin() );
 	}
 
-	inline const_routine_iterator routine_end() const
+	inline routine_iterator routine_end() const
 	{
 		return( mRoutines.end() );
 	}
@@ -913,6 +1035,8 @@ public:
 	inline void saveAnonymousInnerRoutine(Routine * routine)
 	{
 		mAnonymousInnerRoutines.append( BF(routine) );
+
+		mOwnedElements.append( mAnonymousInnerRoutines.back() );
 	}
 
 	inline bool hasAnonymousInnerRoutine() const
@@ -932,46 +1056,70 @@ public:
 
 
 	/**
+	 * GETTER for
+	 * PARSER
+	 * COMPILER
+	 */
+	inline const BF & getObjectByNameID(const std::string & aNameID) const
+	{
+//		return( mOwnedElements.getByNameID(aNameID) );
+		return( BF::REF_NULL );
+	}
+
+	inline const BF & getObjectByQualifiedNameID(
+			const std::string & aQualifiedNameID) const
+	{
+//		return( mOwnedElements.getByQualifiedNameID(aQualifiedNameID) );
+		return( BF::REF_NULL );
+	}
+
+
+	/**
 	 * Serialization
 	 */
-	virtual void strHeader(OutStream & os) const
+	virtual void strHeader(OutStream & out) const
 	{
-		os << "moe:";
+		out << "moe:";
 	}
 
 
-	void toStreamRoutine(OutStream & os) const;
+	void toStreamRoutine(OutStream & out) const;
 
-	void toStreamAnonymousInnerRoutine(OutStream & os) const;
+	void toStreamAnonymousInnerRoutine(OutStream & out) const;
 
-	inline void toStreamAnyRoutine(OutStream & os) const
+	inline void toStreamAnyRoutine(OutStream & out) const
 	{
 		if( mAnonymousInnerRoutines.nonempty() )
 		{
-			toStreamAnonymousInnerRoutine(os);
+			toStreamAnonymousInnerRoutine(out);
 		}
 
 		if( mRoutines.nonempty() )
 		{
-			toStreamRoutine( os );
+			toStreamRoutine( out );
 		}
 	}
 
-	void toStreamMoe(OutStream & os) const;
+	void toStreamMoe(OutStream & out) const;
 
-	inline void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & out) const override
 	{
+		if( mOwnedElements.nonempty() )
+		{
+			mOwnedElements.toStream(out);
+		}
+
 		if( mAnonymousInnerRoutines.nonempty() )
 		{
-			toStreamAnonymousInnerRoutine(os);
+			toStreamAnonymousInnerRoutine(out);
 		}
 
 		if( mRoutines.nonempty() )
 		{
-			toStreamRoutine( os );
+			toStreamRoutine( out );
 		}
 
-		toStreamMoe(os);
+		toStreamMoe(out);
 	}
 
 };

@@ -15,7 +15,7 @@
 
 #include "AvmcodeAssignCompiler.h"
 
-#include <computer/instruction/AvmInstruction.h>
+#include <fml/executable/AvmInstruction.h>
 
 #include <fml/expression/AvmCode.h>
 #include <fml/expression/ExpressionConstructor.h>
@@ -68,7 +68,7 @@ inline BFCode AvmcodeAssignCompiler::compileStatement(
 	if( lvalue.is< InstanceOfData >() )
 	{
 		aCTX = aCTX->clone(
-				lvalue.to_ptr< InstanceOfData >()->getTypeSpecifier() );
+				lvalue.to< InstanceOfData >().getTypeSpecifier() );
 	}
 
 	BF rvalue = compileArgRvalue(aCTX, aCode->second());
@@ -115,7 +115,7 @@ inline BF AvmcodeAssignAfterCompiler::compileExpression(
 	if( lvalue.is< InstanceOfData >() )
 	{
 		aCTX = aCTX->clone(
-				lvalue.to_ptr< InstanceOfData >()->getTypeSpecifier() );
+				lvalue.to< InstanceOfData >().getTypeSpecifier() );
 	}
 
 	return( StatementConstructor::newCode( aCode->getOperator(),
@@ -133,7 +133,7 @@ inline BF AvmcodeAssignAfterCompiler::optimizeExpression(
 	setArgcodeRValue(aCTX, argsInstruction->at(1), aCode->second());
 
 	optimizeArgExpression(aCTX, aCode, 2);
-	setArgcodeRValue(aCTX, argsInstruction->at(2), aCode->third());
+	setArgcodeRValue(aCTX, argsInstruction->at(2), aCode->operand(2));
 
 	argsInstruction->computeMainBytecode(
 			/*context  */ AVM_ARG_RETURN_CTX,
@@ -154,7 +154,7 @@ inline BFCode AvmcodeAssignAfterCompiler::compileStatement(
 	if( lvalue.is< InstanceOfData >() )
 	{
 		aCTX = aCTX->clone(
-				lvalue.to_ptr< InstanceOfData >()->getTypeSpecifier() );
+				lvalue.to< InstanceOfData >().getTypeSpecifier() );
 	}
 
 	return( StatementConstructor::newCode(OperatorManager::OPERATOR_ASSIGN,
@@ -272,7 +272,7 @@ inline BFCode AvmcodeAssignRefCompiler::compileStatement(
 	if( lvalue.is< InstanceOfData >() )
 	{
 		aCTX = aCTX->clone(
-				lvalue.to_ptr< InstanceOfData >()->getTypeSpecifier() );
+				lvalue.to< InstanceOfData >().getTypeSpecifier() );
 	}
 
 	return( StatementConstructor::newCode( aCode->getOperator(),
@@ -334,7 +334,7 @@ inline BFCode AvmcodeAssignMacroCompiler::compileStatement(
 	if( lvalue.is< InstanceOfData >() )
 	{
 		aCTX = aCTX->clone(
-				lvalue.to_ptr< InstanceOfData >()->getTypeSpecifier() );
+				lvalue.to< InstanceOfData >().getTypeSpecifier() );
 	}
 
 	return( StatementConstructor::newCode( aCode->getOperator(),

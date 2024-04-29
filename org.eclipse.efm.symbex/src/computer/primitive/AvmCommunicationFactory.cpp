@@ -25,10 +25,11 @@
 
 #include <fml/buffer/BaseBufferForm.h>
 #include <fml/buffer/BroadcastBuffer.h>
+#include <fml/buffer/SetBuffer.h>
 
 #include <fml/executable/ExecutableLib.h>
 #include <fml/executable/InstanceOfBuffer.h>
-#include <fml/executable/InstanceOfConnect.h>
+#include <fml/executable/InstanceOfConnector.h>
 #include <fml/executable/InstanceOfData.h>
 #include <fml/executable/InstanceOfMachine.h>
 #include <fml/executable/InstanceOfPort.h>
@@ -60,33 +61,33 @@ namespace sep
  * SEARCH ROUTING DATA
  */
 const RoutingData & AvmCommunicationFactory::searchInputRoutingData(
-		const ExecutionData & anED, InstanceOfPort  * aPort,
+		const ExecutionData & anED, const InstanceOfPort & aPort,
 		RuntimeID & aRoutingRID)
 {
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( aPort->getModifier().hasDirectionInput() )
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( aPort.getModifier().hasDirectionInput() )
 			<< "AvmCommunicationFactory::searchInputRoutingData :> "
 				"Unexpected non-INPUT port "
-			<< aPort->getFullyQualifiedNameID() << " !!!"
+			<< aPort.getFullyQualifiedNameID() << " !!!"
 			<< SEND_EXIT;
 
-	if( aPort->hasInputRoutingData() )
+	if( aPort.hasInputRoutingData() )
 	{
-		aRoutingRID = aPort->getInputRoutingData().getRuntimeRID();
+		aRoutingRID = aPort.getInputRoutingData().getRuntimeRID();
 
-		return( aPort->getInputRoutingData() );
+		return( aPort.getInputRoutingData() );
 	}
-	else if( aPort->isPort() )
+	else if( aPort.isPort() )
 	{
-		if( aPort->hasRuntimeContainerRID() )
+		if( aPort.hasRuntimeContainerRID() )
 		{
-			aRoutingRID = aPort->getRuntimeContainerRID();
+			aRoutingRID = aPort.getRuntimeContainerRID();
 		}
 		else if( aRoutingRID.valid() )
 		{
 			aRoutingRID = aRoutingRID.getCommunicator(aPort);
 		}
 	}
-	else if( aPort->isSignal() )
+	else if( aPort.isSignal() )
 	{
 		while( aRoutingRID.valid()
 			&& (not anED.getRuntime(aRoutingRID).hasRouter()) )
@@ -104,15 +105,13 @@ const RoutingData & AvmCommunicationFactory::searchInputRoutingData(
 				<< " >> doesn't have router !!!"
 				<< SEND_EXIT;
 
-
 		const RoutingData & aRoutingData = anED.getRuntime(aRoutingRID).
-				getRouter().getInputRouting( aPort->getRouteOffset() );
-		if( aRoutingData != NULL )
+				getRouter().getInputRouting( aPort.getRouteOffset() );
+		if( aRoutingData.valid() )
 		{
-//			aRoutingRID = ( aPort->isVisibilityPublic() )?
+//			aRoutingRID = ( aPort.isVisibilityPublic() )?
 //					aRoutingRID.getPRID() : aRoutingRID;
-			aRoutingRID = aRoutingRID.getCommunicator(
-					aRoutingData.getMachine() );
+			aRoutingRID = aRoutingRID.getCommunicator(aRoutingData.getMachine());
 		}
 
 		return( aRoutingData );
@@ -123,32 +122,32 @@ const RoutingData & AvmCommunicationFactory::searchInputRoutingData(
 
 
 const RoutingData & AvmCommunicationFactory::searchOutputRoutingData(
-		const ExecutionData & anED, InstanceOfPort  * aPort,
+		const ExecutionData & anED, const InstanceOfPort & aPort,
 		RuntimeID & aRoutingRID)
 {
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( aPort->getModifier().hasDirectionOutput() )
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( aPort.getModifier().hasDirectionOutput() )
 			<< "AvmCommunicationFactory::searchOutputRoutingData :> "
 				"Unexpected non-OUTPUT port "
-			<< aPort->getFullyQualifiedNameID() << " !!!"
+			<< aPort.getFullyQualifiedNameID() << " !!!"
 			<< SEND_EXIT;
 
-	if( aPort->hasOutputRoutingData() )
+	if( aPort.hasOutputRoutingData() )
 	{
-		aRoutingRID = aPort->getOutputRoutingData().getRuntimeRID();
-		return( aPort->getOutputRoutingData() );
+		aRoutingRID = aPort.getOutputRoutingData().getRuntimeRID();
+		return( aPort.getOutputRoutingData() );
 	}
-	else if( aPort->isPort() )
+	else if( aPort.isPort() )
 	{
-		if( aPort->hasRuntimeContainerRID() )
+		if( aPort.hasRuntimeContainerRID() )
 		{
-			aRoutingRID = aPort->getRuntimeContainerRID();
+			aRoutingRID = aPort.getRuntimeContainerRID();
 		}
 		else if( aRoutingRID.valid() )
 		{
 			aRoutingRID = aRoutingRID.getCommunicator(aPort);
 		}
 	}
-	else if( aPort->isSignal() )
+	else if( aPort.isSignal() )
 	{
 		while( aRoutingRID.valid()
 			&& (not anED.getRuntime(aRoutingRID).hasRouter()) )
@@ -168,13 +167,12 @@ const RoutingData & AvmCommunicationFactory::searchOutputRoutingData(
 
 
 		const RoutingData & aRoutingData = anED.getRuntime(aRoutingRID).
-				getRouter().getOutputRouting( aPort->getRouteOffset() );
-		if( aRoutingData != NULL )
+				getRouter().getOutputRouting( aPort.getRouteOffset() );
+		if( aRoutingData.valid() )
 		{
-//			aRoutingRID = ( aPort->isVisibilityPublic() )?
+//			aRoutingRID = ( aPort.isVisibilityPublic() )?
 //					aRoutingRID.getPRID() : aRoutingRID;
-			aRoutingRID = aRoutingRID.getCommunicator(
-					aRoutingData.getMachine() );
+			aRoutingRID = aRoutingRID.getCommunicator(aRoutingData.getMachine());
 		}
 
 		return( aRoutingData );
@@ -188,13 +186,13 @@ const RoutingData & AvmCommunicationFactory::searchOutputRoutingData(
  * CHECK ROUTING INFORMATION
  */
 bool AvmCommunicationFactory::isRoutingProtocolEnv(
-		COMPILE_CONTEXT * aCTX, InstanceOfPort * aPort)
+		COMPILE_CONTEXT * aCTX, const InstanceOfPort & aPort)
 {
 	return( false );
 }
 
 bool AvmCommunicationFactory::isRoutingProtocolRdv(
-		COMPILE_CONTEXT * aCTX, InstanceOfPort * aPort)
+		COMPILE_CONTEXT * aCTX, const InstanceOfPort & aPort)
 {
 	return( false );
 }
@@ -204,20 +202,20 @@ bool AvmCommunicationFactory::isRoutingProtocolRdv(
  * POP MESSAGE
  */
 bool AvmCommunicationFactory::popMessage(
-		ExecutionEnvironment & ENV, InstanceOfPort * aPort)
+		ExecutionEnvironment & ENV, const InstanceOfPort & aPort)
 {
-	RuntimeID aRoutingRID = ENV.mARG->outED->mRID;
+	RuntimeID aRoutingRID = ENV.mARG->outED.getRID();
 
 	const RoutingData & aRoutingData =
 			searchInputRoutingData(ENV.mARG->outED, aPort, aRoutingRID);
 
-	if( aRoutingData != NULL )
+	if( aRoutingData.valid() )
 	{
 		switch( aRoutingData.getProtocol() )
 		{
 			case ComProtocol::PROTOCOL_ENVIRONMENT_KIND:
 			{
-				if( ENV.mARG->outED->getRuntime(aRoutingRID).
+				if( ENV.mARG->outED.getRuntime(aRoutingRID).
 						isEnvironmentEnabledCommunication() )
 				{
 					return( popMessage_environment(ENV, aRoutingRID, aRoutingData) );
@@ -231,12 +229,16 @@ bool AvmCommunicationFactory::popMessage(
 			}
 
 			case ComProtocol::PROTOCOL_BUFFER_KIND:
-			case ComProtocol::PROTOCOL_BROADCAST_KIND:
-			case ComProtocol::PROTOCOL_MULTICAST_KIND:
 			case ComProtocol::PROTOCOL_UNICAST_KIND:
 			case ComProtocol::PROTOCOL_ANYCAST_KIND:
 			{
 				return( popMessage_buffer(ENV, aRoutingRID, aRoutingData) );
+			}
+
+			case ComProtocol::PROTOCOL_BROADCAST_KIND:
+			case ComProtocol::PROTOCOL_MULTICAST_KIND:
+			{
+				return( popMessageManycast_buffer(ENV, aRoutingRID, aRoutingData) );
 			}
 
 			case ComProtocol::PROTOCOL_RDV_KIND:
@@ -250,11 +252,11 @@ bool AvmCommunicationFactory::popMessage(
 			{
 				AVM_OS_EXIT( FAILED )
 						<< "popMessage :> Unknown Protocol for interaction << "
-						<< aPort->strComPointNature() << ": "
-						<< aPort->getFullyQualifiedNameID() << " >> & << machine: "
+						<< aPort.strComPointNature() << ": "
+						<< aPort.getFullyQualifiedNameID() << " >> & << machine: "
 						<< aRoutingRID.getInstance()->getFullyQualifiedNameID()
 						<< " >> in running context: << "
-						<< ENV.mARG->outED->mRID.getInstance()->getFullyQualifiedNameID()
+						<< ENV.mARG->outED.getRID().getInstance()->getFullyQualifiedNameID()
 						<< " >> !!!"
 						<< SEND_EXIT;
 
@@ -266,11 +268,11 @@ bool AvmCommunicationFactory::popMessage(
 	{
 		AVM_OS_EXIT( FAILED )
 				<< "popMessage :> Unfound RoutingData for interaction << "
-				<< aPort->strComPointNature() << ": "
-				<< aPort->getFullyQualifiedNameID() << " >> & << machine: "
+				<< aPort.strComPointNature() << ": "
+				<< aPort.getFullyQualifiedNameID() << " >> & << machine: "
 				<< aRoutingRID.getInstance()->getFullyQualifiedNameID()
 				<< " >> in running context: << "
-				<< ENV.mARG->outED->mRID.getInstance()->getFullyQualifiedNameID()
+				<< ENV.mARG->outED.getRID().getInstance()->getFullyQualifiedNameID()
 				<< " >> !!!"
 				<< SEND_EXIT;
 	}
@@ -281,20 +283,21 @@ bool AvmCommunicationFactory::popMessage(
 
 bool AvmCommunicationFactory::popMessage_environment(ExecutionEnvironment & ENV,
 		const RuntimeID & aRoutingRID, const RoutingData & aRoutingData,
-		avm_size_t firstParameterOffset /*= 1*/)
+		std::size_t firstParameterOffset /*= 1*/)
 {
 	BFCode aTraceInput(OperatorManager::OPERATOR_INPUT_ENV, ENV.mARG->at(0));
 
 	bool allSuccess = true;
 
-	if( ENV.inCODE->populated() )
+	if( ENV.inCODE->hasManyOperands() )
 	{
 		ENV.mARG->outED.makeModifiableParamTable();
 
-		InstanceOfPort * aPort = ENV.mARG->at(0).to_ptr< InstanceOfPort >();
-		avm_size_t offset = 0;
+		const InstanceOfPort & aPort =
+				ENV.mARG->at(0).to< InstanceOfPort >();
 
-		InstanceOfData * aVar = NULL;
+		std::size_t offset = 0;
+
 		BF aNewSymbolicConstant;
 		BFList paramList;
 
@@ -303,11 +306,11 @@ bool AvmCommunicationFactory::popMessage_environment(ExecutionEnvironment & ENV,
 		{
 			paramList.clear();
 
-			aVar = ENV.mARG->current().to_ptr< InstanceOfData >();
+			InstanceOfData & aVar = ENV.mARG->current().to< InstanceOfData >();
 
 			aNewSymbolicConstant = ENV.createNewFreshParam(
-					ENV.mARG->outED->mRID,
-					aPort->getParameterType(offset),
+					ENV.mARG->outED.getRID(),
+					aPort.getParameterType(offset),
 					aVar, paramList);
 
 			if( not ENV.setRvalue(ENV.mARG->outED, aVar, aNewSymbolicConstant) )
@@ -327,7 +330,9 @@ bool AvmCommunicationFactory::popMessage_environment(ExecutionEnvironment & ENV,
 	{
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 				BF( new ExecutionConfiguration(
-						ENV.mARG->outED->mRID, aTraceInput) ) );
+						ENV.mARG->outED.getRID(), aTraceInput,
+						ENV.mARG->outED.getTimeValue(
+								ENV.mARG->outED.getRID())) ));
 
 		ENV.outEDS.append( ENV.mARG->outED );
 
@@ -354,7 +359,7 @@ AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "begin "
 			"AvmCommunicationFactory::popMessage_buffer" << std::endl;
 
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStreamData(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStreamData(
 			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT);
 	AVM_OS_TRACE << DECR2_INDENT;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
@@ -369,27 +374,79 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 			aRoutingData.getBufferInstance().end();
 	for( ; itBuffer != endBuffer ; ++itBuffer )
 	{
-		bufferDeclRID = ENV.mARG->outED->getRuntimeContainerRID(
-				ENV.mARG->outED->mRID, (*itBuffer) );
+		bufferDeclRID = ENV.mARG->outED.getRuntimeContainerRID(
+				ENV.mARG->outED.getRID(), (*itBuffer) );
 
 		if( bufferDeclRID.valid() )
 		{
-			if( ENV.mARG->outED->getRuntime(bufferDeclRID).
+AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
+	AVM_OS_TRACE << TAB << "begin "
+			"AvmCommunicationFactory::popMessage_buffer" << std::endl;
+
+	ENV.mARG->outED.getRuntime(bufferDeclRID).toStreamData(
+			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT);
+	AVM_OS_TRACE << DECR2_INDENT;
+AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
+			if( ENV.mARG->outED.getRuntime(bufferDeclRID).
 					getBuffer( *itBuffer ).nonempty() )
 			{
-				BaseBufferForm & bbf = ENV.mARG->outED.getWritableRuntime(
-						bufferDeclRID ).getWritableBuffer( *itBuffer);
-
-				popMsg = bbf.pop(aRoutingData.getMID(), ENV.mARG->outED->mRID);
-
-				if( popMsg.valid() )
+				if( (*itBuffer)->hasDeterministicPolicy() )
 				{
+					if( popMessage_buffer_deterministic(ENV,
+							aRoutingData, bufferDeclRID, *(*itBuffer)) )
+					{
+						// FIFO | LIFO | RAM
+						break;
+					}
+				}
+				else if( popMessage_buffer_nondeterministic(ENV,
+						aRoutingData, bufferDeclRID, *(*itBuffer)) )
+				{
+					// SET & MULTISET
 					break;
 				}
 			}
 		}
 	}
 
+	if( itBuffer != endBuffer )
+	{
+AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStreamData(
+			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT);
+	AVM_OS_TRACE << DECR2_INDENT_TAB << "end "
+			"AvmCommunicationFactory::popMessage_buffer" << std::endl;
+AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
+
+		return( true );
+	}
+	else if( aRoutingData.hasManyCastRoutingData() )
+	{
+		for( const auto & itManyRoutingData : aRoutingData.getManyCastRoutingData() )
+		{
+			if( AvmCommunicationFactory::popMessage_buffer(ENV, aRoutingRID, itManyRoutingData) )
+			{
+				return( true );
+			}
+		}
+
+		return( false );
+	}
+	else
+	{
+		return( false );
+	}
+}
+
+
+bool AvmCommunicationFactory::popMessage_buffer_deterministic(
+		ExecutionEnvironment & ENV, const RoutingData & aRoutingData,
+		const RuntimeID & bufferDeclRID, InstanceOfBuffer & buffer)
+{
+	BaseBufferForm & bbf = ENV.mARG->outED.getWritableRuntime(
+			bufferDeclRID ).getWritableBuffer( & buffer );
+
+	Message popMsg = bbf.pop(aRoutingData.getMID(), ENV.mARG->outED.getRID());
 	if( popMsg.valid() )
 	{
 		BFCode aTraceInput(OperatorManager::OPERATOR_INPUT, ENV.mARG->at(0));
@@ -402,7 +459,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 				ENV.mARG->next() , ++itVal )
 		{
 			if( ENV.setRvalue(ENV.mARG->outED,
-					ENV.mARG->current().to_ptr< InstanceOfData >(), *itVal) )
+					ENV.mARG->current().to< InstanceOfData >(), *itVal) )
 			{
 				aTraceInput->append( *itVal );
 
@@ -415,16 +472,11 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 				BF( new ExecutionConfiguration(
-						ENV.mARG->outED->mRID, aTraceInput, popMsg) ) );
+						ENV.mARG->outED.getRID(), aTraceInput, popMsg,
+						ENV.mARG->outED.getTimeValue(
+								ENV.mARG->outED.getRID())) ));
 
 		ENV.outEDS.append( ENV.mARG->outED );
-
-AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStreamData(
-			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT);
-	AVM_OS_TRACE << DECR2_INDENT_TAB << "end "
-			"AvmCommunicationFactory::popMessage_buffer" << std::endl;
-AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 		return( true );
 	}
@@ -434,13 +486,112 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	}
 }
 
+bool AvmCommunicationFactory::popMessage_buffer_nondeterministic(
+		ExecutionEnvironment & ENV, const RoutingData & aRoutingData,
+		const RuntimeID & bufferDeclRID, InstanceOfBuffer & buffer)
+{
+	std::size_t bufferSize = ENV.mARG->outED.getRuntime(
+			bufferDeclRID ).getBuffer( & buffer ).size();
+
+	std::size_t minOccurrence = 0;
+	for( ; minOccurrence < bufferSize ; ++minOccurrence )
+	{
+		ExecutionData outED = ENV.mARG->outED;
+		BaseBufferForm & bbf = outED.getWritableRuntime(
+				bufferDeclRID ).getWritableBuffer( & buffer );
+
+		Message popMsg =
+				bbf.pop(aRoutingData.getMID(), minOccurrence, outED.getRID());
+		if( popMsg.valid() )
+		{
+			BFCode aTraceInput(OperatorManager::OPERATOR_INPUT, ENV.mARG->at(0));
+
+			Message::const_iterator itVal = popMsg.getParameters().begin();
+			Message::const_iterator endVal = popMsg.getParameters().end();
+
+			// We have to ignore the << Port >> InstanceOfPort
+			for( ENV.mARG->begin(1) ; (itVal != endVal) && ENV.mARG->hasNext() ;
+					ENV.mARG->next() , ++itVal )
+			{
+				if( ENV.setRvalue(outED,
+						ENV.mARG->current().to< InstanceOfData >(), *itVal) )
+				{
+					aTraceInput->append( *itVal );
+
+				}
+				else
+				{
+					return( false );
+				}
+			}
+
+			ExecutionDataFactory::appendIOElementTrace(outED,
+					BF( new ExecutionConfiguration(
+							outED.getRID(), aTraceInput, popMsg,
+							outED.getTimeValue(
+									outED.getRID())) ));
+
+			ENV.outEDS.append( outED );
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	return( minOccurrence != 0 );
+}
+
+
+bool AvmCommunicationFactory::popMessageManycast_buffer(
+		ExecutionEnvironment & ENV, const RuntimeID & aRoutingRID,
+		const RoutingData & aRoutingData)
+{
+AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
+	AVM_OS_TRACE << TAB << "begin "
+			"AvmCommunicationFactory::popMessageManycast_buffer" << std::endl;
+
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStreamData(
+			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT);
+	AVM_OS_TRACE << DECR2_INDENT;
+AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
+
+	bool oneSuccess = false;
+
+	if( popMessage_buffer(ENV, aRoutingRID, aRoutingData) )
+	{
+		oneSuccess = true;
+	}
+	else if( aRoutingData.hasManyCastRoutingData() )
+	{
+		for( const auto & itRoutingData : aRoutingData.getManyCastRoutingData() )
+		{
+			if( popMessage_buffer(ENV, aRoutingRID, itRoutingData) )
+			{
+				oneSuccess = true;
+
+				break;
+			}
+		}
+	}
+
+AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStreamData(
+			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT);
+	AVM_OS_TRACE << DECR2_INDENT_TAB << "end "
+			"AvmCommunicationFactory::popMessageManycast_buffer" << std::endl;
+AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
+
+	return( oneSuccess );
+}
+
 
 bool AvmCommunicationFactory::popMessage_rdv(ExecutionEnvironment & ENV,
 		const RuntimeID & aRoutingRID, const RoutingData & aRoutingData)
 {
-	Message inMsg( RuntimeID::REF_NULL,
-			ENV.mARG->outED->mRID, aRoutingData.getPort() );
-	inMsg.setMID( aRoutingData.getMID() );
+	Message inMsg( RuntimeID::REF_NULL, ENV.mARG->outED.getRID(),
+			const_cast< InstanceOfPort * >( & aRoutingData.getPort() ) );
+	inMsg.setRoutingData( aRoutingData );
 
 	// We have to ignore the << Port >> InstanceOfPort
 	for( ENV.mARG->begin(1) ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -463,21 +614,21 @@ bool AvmCommunicationFactory::popMessage_rdv(ExecutionEnvironment & ENV,
 
 bool AvmCommunicationFactory::popMessageFrom(ExecutionEnvironment & ENV)
 {
-	RuntimeID aRoutingRID = ENV.mARG->outED->mRID;
-	InstanceOfPort * aPort = ENV.mARG->at(0).to_ptr< InstanceOfPort >();
+	RuntimeID aRoutingRID = ENV.mARG->outED.getRID();
+	const InstanceOfPort & aPort = ENV.mARG->at(0).to< InstanceOfPort >();
 
 	const RoutingData & aRoutingData =
 			searchInputRoutingData(ENV.mARG->outED, aPort, aRoutingRID);
 
 	RuntimeID aSenderRID = ENV.mARG->at(1).bfRID();
 
-	if( aRoutingData != NULL )
+	if( aRoutingData.valid() )
 	{
 		switch( aRoutingData.getProtocol() )
 		{
 			case ComProtocol::PROTOCOL_ENVIRONMENT_KIND:
 			{
-				if( ENV.mARG->outED->getRuntime(aRoutingRID).
+				if( ENV.mARG->outED.getRuntime(aRoutingRID).
 						isEnvironmentEnabledCommunication() )
 				{
 					return( popMessage_environment(ENV,
@@ -513,11 +664,11 @@ bool AvmCommunicationFactory::popMessageFrom(ExecutionEnvironment & ENV)
 			{
 				AVM_OS_EXIT( FAILED )
 						<< "popMessageFrom :> Unknown Protocol for interaction << "
-						<< aPort->strComPointNature() << ": "
-						<< aPort->getFullyQualifiedNameID() << " >> & << machine: "
+						<< aPort.strComPointNature() << ": "
+						<< aPort.getFullyQualifiedNameID() << " >> & << machine: "
 						<< aRoutingRID.getInstance()->getFullyQualifiedNameID()
 						<< " >> in running context: << "
-						<< ENV.mARG->outED->mRID.getInstance()->getFullyQualifiedNameID()
+						<< ENV.mARG->outED.getRID().getInstance()->getFullyQualifiedNameID()
 						<< " >> !!!"
 						<< SEND_EXIT;
 
@@ -529,11 +680,11 @@ bool AvmCommunicationFactory::popMessageFrom(ExecutionEnvironment & ENV)
 	{
 		AVM_OS_EXIT( FAILED )
 				<< "popMessageFrom :> Unfound RoutingData for interaction << "
-				<< aPort->strComPointNature() << ": "
-				<< aPort->getFullyQualifiedNameID() << " >> & << machine: "
+				<< aPort.strComPointNature() << ": "
+				<< aPort.getFullyQualifiedNameID() << " >> & << machine: "
 				<< aRoutingRID.getInstance()->getFullyQualifiedNameID()
 				<< " >> in running context: << "
-				<< ENV.mARG->outED->mRID.getInstance()->getFullyQualifiedNameID()
+				<< ENV.mARG->outED.getRID().getInstance()->getFullyQualifiedNameID()
 				<< " >> !!!"
 				<< SEND_EXIT;
 	}
@@ -559,7 +710,7 @@ AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "begin "
 			"AvmCommunicationFactory::popMessageFrom_buffer" << std::endl;
 
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStreamData(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStreamData(
 			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT);
 	AVM_OS_TRACE << DECR2_INDENT;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
@@ -574,8 +725,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 			aRoutingData.getBufferInstance().end();
 	for( ; itBuffer != endBuffer ; ++itBuffer )
 	{
-		bufferDeclRID = ENV.mARG->outED->getRuntimeContainerRID(
-				ENV.mARG->outED->mRID, (*itBuffer));
+		bufferDeclRID = ENV.mARG->outED.getRuntimeContainerRID(
+				ENV.mARG->outED.getRID(), (*itBuffer));
 
 		if( bufferDeclRID.valid() )
 		{
@@ -585,7 +736,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 			popMsg = bbf.top();
 			if( popMsg.valid() && popMsg.isSender(aSenderRID) )
 			{
-				popMsg = bbf.pop(aRoutingData.getMID(), ENV.mARG->outED->mRID);
+				popMsg = bbf.pop(aRoutingData.getMID(), ENV.mARG->outED.getRID());
 			}
 
 			if( popMsg.valid() )
@@ -596,7 +747,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 	}
 
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStreamData(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStreamData(
 			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT);
 	AVM_OS_TRACE << DECR2_INDENT_TAB << "end "
 			"AvmCommunicationFactory::popMessageFrom_buffer" << std::endl;
@@ -614,7 +765,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 				ENV.mARG->next() , ++itVal )
 		{
 			if( ENV.setRvalue(ENV.mARG->outED,
-					ENV.mARG->current().to_ptr< InstanceOfData >(), *itVal) )
+					ENV.mARG->current().to< InstanceOfData >(), *itVal) )
 			{
 				aTraceInput->append( *itVal );
 
@@ -627,12 +778,14 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
 
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 				BF( new ExecutionConfiguration(
-						ENV.mARG->outED->mRID, aTraceInput, popMsg) ) );
+						ENV.mARG->outED.getRID(), aTraceInput, popMsg,
+						ENV.mARG->outED.getTimeValue(
+								ENV.mARG->outED.getRID())) ));
 
 		ENV.outEDS.append( ENV.mARG->outED );
 
 AVM_IF_DEBUG_FLAG( STATEMENT_COMMUNICATION )
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStreamData(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStreamData(
 			ENV.mARG->outED, AVM_OS_TRACE << INCR2_INDENT);
 	AVM_OS_TRACE << DECR2_INDENT_TAB << "end "
 			"AvmCommunicationFactory::popMessageFrom_buffer"
@@ -652,8 +805,9 @@ bool AvmCommunicationFactory::popMessageFrom_rdv(
 		ExecutionEnvironment & ENV, const RuntimeID & aSenderRID,
 		const RuntimeID & aRoutingRID, const RoutingData & aRoutingData)
 {
-	Message inMsg( aSenderRID, ENV.mARG->outED->mRID, aRoutingData.getPort() );
-	inMsg.setMID( aRoutingData.getMID() );
+	Message inMsg( aSenderRID, ENV.mARG->outED.getRID(),
+			const_cast< InstanceOfPort * >( & aRoutingData.getPort() ) );
+	inMsg.setRoutingData( aRoutingData );
 
 	// We have to ignore the << Port >> InstanceOfPort and the << Sender >>
 	for( ENV.mARG->begin(2) ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -676,14 +830,14 @@ bool AvmCommunicationFactory::popMessageFrom_rdv(
 bool AvmCommunicationFactory::pushMessage(ExecutionEnvironment & ENV,
 		const Message & anOutputMsg, RuntimeID aRoutingRID)
 {
-	InstanceOfPort * aPort = anOutputMsg.getPort();
+	const InstanceOfPort & aPort = anOutputMsg.getPort();
 
 	const RoutingData & aRoutingData =
 			searchOutputRoutingData(ENV.mARG->outED, aPort, aRoutingRID);
 
-	if( aRoutingData != NULL )
+	if( aRoutingData.valid() )
 	{
-		anOutputMsg.setMID( aRoutingData.getMID() );
+		anOutputMsg.setRoutingData( aRoutingData );
 
 		switch( aRoutingData.getProtocol() )
 		{
@@ -738,7 +892,7 @@ bool AvmCommunicationFactory::pushMessage(ExecutionEnvironment & ENV,
 			case ComProtocol::PROTOCOL_UNDEFINED_KIND:
 			default:
 			{
-//				return( pushMessage_environment(anED, ENV.mARG->outED->mRID,
+//				return( pushMessage_environment(anED, ENV.mARG->outED.getRID(),
 //						aRoutingRF, aRoutingData, anOutputMsg, listOfOutputED) );
 				return( false );
 			}
@@ -748,11 +902,11 @@ bool AvmCommunicationFactory::pushMessage(ExecutionEnvironment & ENV,
 	{
 		AVM_OS_EXIT( FAILED )
 			<< "Push message error : Unfound RoutingData for interaction << "
-			<<  aPort->strComPointNature() << ": "
+			<<  aPort.strComPointNature() << ": "
 			<< aRoutingRID.getInstance()->getFullyQualifiedNameID()
 			<< " >> in running context: << "
-			<< aPort->getFullyQualifiedNameID() << " >> & << machine: "
-			<< ENV.mARG->outED->mRID.getInstance()->getFullyQualifiedNameID()
+			<< aPort.getFullyQualifiedNameID() << " >> & << machine: "
+			<< ENV.mARG->outED.getRID().getInstance()->getFullyQualifiedNameID()
 			<< " >> !!!"
 			<< SEND_EXIT;
 	}
@@ -772,7 +926,8 @@ bool AvmCommunicationFactory::pushMessage_environment(
 
 	ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 			BF( new ExecutionConfiguration(
-					ENV.mARG->outED->mRID, aTraceOutput, anOutputMsg) ) );
+					ENV.mARG->outED.getRID(), aTraceOutput, anOutputMsg,
+					ENV.mARG->outED.getTimeValue(ENV.mARG->outED.getRID())) ));
 
 	ENV.outEDS.append( ENV.mARG->outED );
 
@@ -795,7 +950,7 @@ AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "begin "
 			"AvmCommunicationFactory::pushMessage_buffer" << std::endl;
 
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStream(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
 			AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
@@ -810,12 +965,12 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 			aRoutingData.getBufferInstance().end();
 	for( ; itBuffer != endBuffer ; ++itBuffer )
 	{
-		bufferDeclRID = ENV.mARG->outED->getRuntimeContainerRID(
+		bufferDeclRID = ENV.mARG->outED.getRuntimeContainerRID(
 				aRoutingRID, (*itBuffer));
 
 		if( bufferDeclRID.valid() )
 		{
-			APExecutionData outED = ENV.mARG->outED;
+			ExecutionData outED = ENV.mARG->outED;
 
 			BaseBufferForm & bbf = outED.getWritableRuntime(
 					bufferDeclRID ).getWritableBuffer( *itBuffer );
@@ -831,13 +986,15 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 
 				ExecutionDataFactory::appendIOElementTrace(outED,
 						BF( new ExecutionConfiguration(
-								outED->mRID, aTraceOutput, anOutputMsg) ) );
+								outED.getRID(), aTraceOutput, anOutputMsg,
+								ENV.mARG->outED.getTimeValue(
+										ENV.mARG->outED.getRID())) ));
 
 				ENV.outEDS.append( outED );
 
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
-	outED->getRuntime(aRoutingRID).toStream( AVM_OS_TRACE << INCR2_INDENT );
+	outED.getRuntime(aRoutingRID).toStream( AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT_TAB
 			<< "end AvmCommunicationFactory::pushMessage_buffer" << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
@@ -866,19 +1023,11 @@ bool AvmCommunicationFactory::pushMessage_broadcast(
 		ExecutionEnvironment & ENV, const RuntimeID & aRoutingRID,
 		const RoutingData & aRoutingData, const Message & anOutputMsg)
 {
-	return( true );
-}
-
-
-bool AvmCommunicationFactory::pushMessage_multicast(
-		ExecutionEnvironment & ENV, const RuntimeID & aRoutingRID,
-		const RoutingData & aRoutingData, const Message & anOutputMsg)
-{
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "begin "
 			"AvmCommunicationFactory::pushMessage_multicast" << std::endl;
 
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStream(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
 			AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
@@ -893,7 +1042,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 			aRoutingData.getBufferInstance().end();
 	for( ; itBuffer != endBuffer ; ++itBuffer )
 	{
-		bufferDeclRID = ENV.mARG->outED->getRuntimeContainerRID(
+		bufferDeclRID = ENV.mARG->outED.getRuntimeContainerRID(
 				aRoutingRID, (*itBuffer));
 
 		if( bufferDeclRID.valid() )
@@ -917,13 +1066,88 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 				BF( new ExecutionConfiguration(
-						ENV.mARG->outED->mRID, aTraceOutput, anOutputMsg) ) );
+						ENV.mARG->outED.getRID(), aTraceOutput, anOutputMsg,
+						ENV.mARG->outED.getTimeValue(
+								ENV.mARG->outED.getRID())) ));
 
 		ENV.outEDS.append( ENV.mARG->outED );
 
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStream(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
+			AVM_OS_TRACE << INCR2_INDENT );
+	AVM_OS_TRACE << DECR2_INDENT_TAB
+			<< "end AvmCommunicationFactory::pushMessage_buffer"
+			<< std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
+
+		return( true );
+	}
+	else
+	{
+		return( false );
+	}
+}
+
+
+bool AvmCommunicationFactory::pushMessage_multicast(
+		ExecutionEnvironment & ENV, const RuntimeID & aRoutingRID,
+		const RoutingData & aRoutingData, const Message & anOutputMsg)
+{
+AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
+	AVM_OS_TRACE << TAB << "begin "
+			"AvmCommunicationFactory::pushMessage_multicast" << std::endl;
+
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
+			AVM_OS_TRACE << INCR2_INDENT );
+	AVM_OS_TRACE << DECR2_INDENT;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
+
+	bool allSuccess = true;
+
+	RuntimeID bufferDeclRID = aRoutingRID;
+
+	ListOfInstanceOfBuffer::const_iterator itBuffer =
+			aRoutingData.getBufferInstance().begin();
+	ListOfInstanceOfBuffer::const_iterator endBuffer =
+			aRoutingData.getBufferInstance().end();
+	for( ; itBuffer != endBuffer ; ++itBuffer )
+	{
+		bufferDeclRID = ENV.mARG->outED.getRuntimeContainerRID(
+				aRoutingRID, (*itBuffer));
+
+		if( bufferDeclRID.valid() )
+		{
+			BaseBufferForm & bbf = ENV.mARG->outED.getWritableRuntime(
+					bufferDeclRID ).getWritableBuffer( *itBuffer );
+
+			if( not bbf.push( anOutputMsg ) )
+			{
+				allSuccess = false;
+
+				break;
+			}
+		}
+	}
+
+	if( allSuccess )
+	{
+		BFCode aTraceOutput(OperatorManager::OPERATOR_OUTPUT,
+				anOutputMsg.bfPort());
+
+		aTraceOutput->append( anOutputMsg.getParameters() );
+
+		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
+				BF( new ExecutionConfiguration(
+						ENV.mARG->outED.getRID(), aTraceOutput, anOutputMsg,
+						ENV.mARG->outED.getTimeValue(
+								ENV.mARG->outED.getRID())) ));
+
+		ENV.outEDS.append( ENV.mARG->outED );
+
+
+AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
 			AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT_TAB
 			<< "end AvmCommunicationFactory::pushMessage_buffer"
@@ -947,7 +1171,7 @@ AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "begin "
 			"AvmCommunicationFactory::pushMessage_multicast" << std::endl;
 
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStream(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
 			AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
@@ -962,12 +1186,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 			aRoutingData.getBufferInstance().end();
 	for( ; itBuffer != endBuffer ; ++itBuffer )
 	{
-		bufferDeclRID = ENV.mARG->outED->getRuntimeContainerRID(
-				aRoutingRID, (*itBuffer));
+		ExecutionData outED =  ENV.mARG->outED;
+
+		bufferDeclRID = outED.getRuntimeContainerRID(aRoutingRID, (*itBuffer));
 
 		if( bufferDeclRID.valid() )
 		{
-			BaseBufferForm & bbf = ENV.mARG->outED.getWritableRuntime(
+			BaseBufferForm & bbf = outED.getWritableRuntime(
 					bufferDeclRID ).getWritableBuffer( *itBuffer );
 
 			if( bbf.push( anOutputMsg ) )
@@ -979,15 +1204,16 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 
 				aTraceOutput->append( anOutputMsg.getParameters() );
 
-				ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
+				ExecutionDataFactory::appendIOElementTrace(outED,
 					BF( new ExecutionConfiguration(
-						ENV.mARG->outED->mRID, aTraceOutput, anOutputMsg) ) );
+							outED.getRID(), aTraceOutput, anOutputMsg,
+							ENV.mARG->outED.getTimeValue(
+									ENV.mARG->outED.getRID())) ));
 
-				ENV.outEDS.append( ENV.mARG->outED );
+				ENV.outEDS.append( outED );
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStream(
-			AVM_OS_TRACE << INCR2_INDENT );
+	outED.getRuntime(aRoutingRID).toStream( AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT_TAB
 			<< "end AvmCommunicationFactory::pushMessage_buffer"
 			<< std::endl;
@@ -1005,7 +1231,6 @@ bool AvmCommunicationFactory::pushMessage_anycast(
 		const RoutingData & aRoutingData, const Message & anOutputMsg)
 {
 	return( pushMessage_buffer(ENV, aRoutingRID, aRoutingData, anOutputMsg) );
-//	return( true );
 }
 
 
@@ -1017,15 +1242,15 @@ bool AvmCommunicationFactory::pushMessage_anycast(
 bool AvmCommunicationFactory::pushMessageTo(
 		ExecutionEnvironment & ENV, const Message & anOutputMsg)
 {
-	RuntimeID aRoutingRID = ENV.mARG->outED->mRID;
-	InstanceOfPort * aPort = anOutputMsg.getPort();
+	RuntimeID aRoutingRID = ENV.mARG->outED.getRID();
+	const InstanceOfPort & aPort = anOutputMsg.getPort();
 
 	const RoutingData & aRoutingData =
 			searchOutputRoutingData(ENV.mARG->outED, aPort, aRoutingRID);
 
-	if( aRoutingData != NULL )
+	if( aRoutingData.valid() )
 	{
-		anOutputMsg.setMID( aRoutingData.getMID() );
+		anOutputMsg.setRoutingData( aRoutingData );
 
 		if( (anOutputMsg.getReceiverRID() == RuntimeLib::RID_ENVIRONMENT) ||
 				(anOutputMsg.getReceiverRID() == RuntimeLib::RID_NIL) )
@@ -1089,9 +1314,9 @@ bool AvmCommunicationFactory::pushMessageTo(
 			{
 				AVM_OS_EXIT( FAILED )
 						<< "pushMessageTo :> Unknown Protocol for interaction << "
-						<< aPort->strComPointNature() << ": "
-						<< aPort->getFullyQualifiedNameID() << " >> & << machine: "
-						<< ENV.mARG->outED->mRID.getInstance()->getFullyQualifiedNameID()
+						<< aPort.strComPointNature() << ": "
+						<< aPort.getFullyQualifiedNameID() << " >> & << machine: "
+						<< ENV.mARG->outED.getRID().getInstance()->getFullyQualifiedNameID()
 						<< " >> !!!"
 						<< SEND_EXIT;
 
@@ -1103,11 +1328,11 @@ bool AvmCommunicationFactory::pushMessageTo(
 	{
 		AVM_OS_EXIT( FAILED )
 				<< "pushMessageTo :> Unfound RoutingData for interaction << "
-				<< aPort->strComPointNature() << ": "
-				<< aPort->getFullyQualifiedNameID() << " >> & << machine: "
+				<< aPort.strComPointNature() << ": "
+				<< aPort.getFullyQualifiedNameID() << " >> & << machine: "
 				<< aRoutingRID.getInstance()->getFullyQualifiedNameID()
 				<< " >> in running context: << "
-				<< ENV.mARG->outED->mRID.getInstance()->getFullyQualifiedNameID()
+				<< ENV.mARG->outED.getRID().getInstance()->getFullyQualifiedNameID()
 				<< " >> !!!"
 				<< SEND_EXIT;
 	}
@@ -1132,7 +1357,7 @@ AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "begin "
 			"AvmCommunicationFactory::pushMessageTo_buffer" << std::endl;
 
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStream(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
 			AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
@@ -1146,24 +1371,27 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	ListOfInstanceOfBuffer::const_iterator itbOut;
 	ListOfInstanceOfBuffer::const_iterator itbOutEnd;
 
-	const VectorOfPairMachinePort & theConnectedPort =
-			aRoutingRID.getExecutable()->getConnect().at(
-					aRoutingData.getConnect()->getOffset() ).
-							getInputComRouteData().getMachinePorts();
+//	const VectorOfPairMachinePort & theConnectedPort =
+//			aRoutingRID.refExecutable().getConnector().at(
+//					aRoutingData.getConnector().getOffset() ).
+//							getInputComRouteData().getMachinePorts();
+
+	VectorOfPairMachinePort theConnectedPort;
+	aRoutingRID.refExecutable().getConnector().at(
+			aRoutingData.getConnector().getOffset() ).
+			asConnector().getInputMachinePort( theConnectedPort );
 
 	RuntimeID bufferDeclRID = aRoutingRID;
 
-	VectorOfPairMachinePort::const_iterator itMP = theConnectedPort.begin();
-	VectorOfPairMachinePort::const_iterator endMP = theConnectedPort.end();
-	for( ; itMP != endMP ; ++itMP )
+	for( const auto & itMP : theConnectedPort )
 	{
-		if( anOutputMsg.isReceiverMachine( (*itMP)->first() ) )
+		if( anOutputMsg.isReceiverMachine( itMP->first() ) )
 		{
-			// get Routing Data of the connector input receiver candidate
+			// get Routing Data of the input connector receiver candidate
 			const RoutingData & connectInputRD =
-					ENV.mARG->outED->getRuntime(
+					ENV.mARG->outED.getRuntime(
 						anOutputMsg.getReceiverRID() ).getRouter().
-						getInputRouting( (*itMP)->second()->getRouteOffset() );
+						getInputRouting( itMP->second().getRouteOffset() );
 
 			// Push the message in all COMMON buffer with the OUTPUT PORT!
 			itbIn = connectInputRD.getBufferInstance().begin();
@@ -1176,7 +1404,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 				{
 					if( (*itbIn) == (*itbOut) )  // COMMON BUFFER found
 					{
-						bufferDeclRID = ENV.mARG->outED->getRuntimeContainerRID(
+						bufferDeclRID = ENV.mARG->outED.getRuntimeContainerRID(
 								anOutputMsg.getReceiverRID(), (*itbOut) );
 
 						BaseBufferForm & bbf =
@@ -1202,13 +1430,15 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 				BF( new ExecutionConfiguration(
-						ENV.mARG->outED->mRID, aTraceOutput, anOutputMsg) ) );
+						ENV.mARG->outED.getRID(), aTraceOutput, anOutputMsg,
+						ENV.mARG->outED.getTimeValue(
+								ENV.mARG->outED.getRID())) ));
 
 		ENV.outEDS.append( ENV.mARG->outED );
 
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStream(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
 			AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT_TAB
 			<< "end AvmCommunicationFactory::pushMessageTo_buffer"
@@ -1254,7 +1484,7 @@ AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	AVM_OS_TRACE << TAB << "begin "
 			"AvmCommunicationFactory::pushMessageTo_buffer" << std::endl;
 
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStream(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
 			AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
@@ -1268,24 +1498,27 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	ListOfInstanceOfBuffer::const_iterator itbOut;
 	ListOfInstanceOfBuffer::const_iterator itbOutEnd;
 
-	const VectorOfPairMachinePort & theConnectedPort =
-			aRoutingRID.getExecutable()->getConnect().at(
-					aRoutingData.getConnect()->getOffset() ).
-							getInputComRouteData().getMachinePorts();
+//	const VectorOfPairMachinePort & theConnectedPort =
+//			aRoutingRID.refExecutable().getConnector().at(
+//					aRoutingData.getConnector().getOffset() ).
+//							getInputComRouteData().getMachinePorts();
+	VectorOfPairMachinePort theConnectedPort;
+	aRoutingRID.refExecutable().getConnector().at(
+			aRoutingData.getConnector().getOffset() ).
+			asConnector().getInputMachinePort( theConnectedPort );
+
 
 	RuntimeID bufferDeclRID = aRoutingRID;
 
-	VectorOfPairMachinePort::const_iterator itMP = theConnectedPort.begin();
-	VectorOfPairMachinePort::const_iterator endMP = theConnectedPort.end();
-	for( ; itMP != endMP ; ++itMP )
+	for( const auto & itMP : theConnectedPort )
 	{
-		if( anOutputMsg.isReceiverMachine( (*itMP)->first() ) )
+		if( anOutputMsg.isReceiverMachine( itMP->first() ) )
 		{
-			// get Routing Data of the connector input receiver candidate
+			// get Routing Data of the input connector receiver candidate
 			const RoutingData & connectInputRD =
-					ENV.mARG->outED->getRuntime(
+					ENV.mARG->outED.getRuntime(
 						anOutputMsg.getReceiverRID() ).getRouter().
-						getInputRouting( (*itMP)->second()->getRouteOffset() );
+						getInputRouting( itMP->second().getRouteOffset() );
 
 			// Push the message in all COMMON buffer with the OUTPUT PORT!
 			itbIn = connectInputRD.getBufferInstance().begin();
@@ -1298,7 +1531,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 				{
 					if( (*itbIn) == (*itbOut) )  // COMMON BUFFER found
 					{
-						bufferDeclRID = ENV.mARG->outED->getRuntimeContainerRID(
+						bufferDeclRID = ENV.mARG->outED.getRuntimeContainerRID(
 								anOutputMsg.getReceiverRID(), (*itbOut) );
 
 						BaseBufferForm & bbf =
@@ -1324,13 +1557,15 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 
 		ExecutionDataFactory::appendIOElementTrace(ENV.mARG->outED,
 				BF(new ExecutionConfiguration(
-						ENV.mARG->outED->mRID, aTraceOutput, anOutputMsg) ) );
+						ENV.mARG->outED.getRID(), aTraceOutput, anOutputMsg,
+						ENV.mARG->outED.getTimeValue(
+								ENV.mARG->outED.getRID())) ));
 
 		ENV.outEDS.append( ENV.mARG->outED );
 
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
-	ENV.mARG->outED->getRuntime(aRoutingRID).toStream(
+	ENV.mARG->outED.getRuntime(aRoutingRID).toStream(
 			AVM_OS_TRACE << INCR2_INDENT );
 	AVM_OS_TRACE << DECR2_INDENT_TAB
 			<< "end AvmCommunicationFactory::pushMessageTo_buffer"
@@ -1350,7 +1585,7 @@ bool AvmCommunicationFactory::pushMessageTo_unicast(
 		ExecutionEnvironment & ENV, const RuntimeID & aRoutingRID,
 		const RoutingData & aRoutingData, const Message & anOutputMsg)
 {
-	return( true );
+	return( pushMessageTo_buffer(ENV, aRoutingRID, aRoutingData, anOutputMsg) );
 }
 
 
@@ -1359,31 +1594,28 @@ bool AvmCommunicationFactory::pushMessageTo_anycast(
 		const RoutingData & aRoutingData, const Message & anOutputMsg)
 {
 	return( pushMessageTo_buffer(ENV, aRoutingRID, aRoutingData, anOutputMsg) );
-//	return( true );
 }
 
 
 /*
  * UPDATE BUFFER
  */
-bool AvmCommunicationFactory::updateBuffer(APExecutionData & anED)
+bool AvmCommunicationFactory::updateBuffer(ExecutionData & anED)
 {
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
-	anED->getRuntime(1).toStream(AVM_OS_TRACE);
+	anED.getRuntime(1).toStream(AVM_OS_TRACE);
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 
 	TableOfBufferT & wrBufferTable = anED.getWritableRuntime(
-			anED->mRID ).getWritableBufferTable();
+			anED.getRID() ).getWritableBufferTable();
 
-	TableOfBufferT::const_iterator it = wrBufferTable.begin();
-	TableOfBufferT::const_iterator itEnd = wrBufferTable.end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itBuffer : wrBufferTable )
 	{
-		switch( (*it)->classKind() )
+		switch( itBuffer->classKind() )
 		{
 			case FORM_BUFFER_BROADCAST_KIND:
 			{
-				BroadcastBuffer * theBuffer = (*it)->to< BroadcastBuffer >();
+				BroadcastBuffer * theBuffer = itBuffer->to_ptr< BroadcastBuffer >();
 				theBuffer->push( Message::_NULL_ );
 				theBuffer->update();
 
@@ -1398,7 +1630,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 	}
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
-	anED->getRuntime(1).toStream(AVM_OS_TRACE);
+	anED.getRuntime(1).toStream(AVM_OS_TRACE);
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
 
 	return( true );
@@ -1409,14 +1641,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , STATEMENT_COMMUNICATION )
  * PRESENCE / ABSENCE status
  */
 bool AvmCommunicationFactory::computePresence(const ExecutionData & anED,
-		const RuntimeID & aReceiverRID, InstanceOfPort * aPort)
+		const RuntimeID & aReceiverRID, const InstanceOfPort & aPort)
 {
 	RuntimeID aRoutingRID = aReceiverRID;
 
 	const RoutingData & aRoutingData =
 			searchInputRoutingData(anED, aPort, aRoutingRID);
 
-	if( aRoutingData != NULL )
+	if( aRoutingData.valid() )
 	{
 		switch( aRoutingData.getProtocol() )
 		{
@@ -1436,51 +1668,20 @@ bool AvmCommunicationFactory::computePresence(const ExecutionData & anED,
 			case ComProtocol::PROTOCOL_UNICAST_KIND:
 			case ComProtocol::PROTOCOL_ANYCAST_KIND:
 			{
-				RuntimeID bufferDeclRID = aRoutingRID;
-
-				ListOfInstanceOfBuffer::const_iterator itBuffer =
-						aRoutingData.getBufferInstance().begin();
-				ListOfInstanceOfBuffer::const_iterator endBuffer =
-						aRoutingData.getBufferInstance().end();
-				for( ; itBuffer != endBuffer ; ++itBuffer )
+				if( computePresence(anED, aRoutingRID,
+						aRoutingData, aReceiverRID, aPort) )
 				{
-					bufferDeclRID = anED.getRuntimeContainerRID(
-							aReceiverRID, (*itBuffer) );
-
-					if( bufferDeclRID.valid() )
+					return( true );
+				}
+				else if( aRoutingData.hasManyCastRoutingData() )
+				{
+					for( const auto & itRoutingData :
+							aRoutingData.getManyCastRoutingData() )
 					{
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , STATEMENT_COMMUNICATION )
-	AVM_OS_TRACE << "computePresence :> "
-			<< str_header( aPort ) << std::endl
-			<< "RoutingRID  : " << aRoutingRID.getFullyQualifiedNameID()
-			<< std::endl
-			<< "BufferRID   : " << bufferDeclRID.getFullyQualifiedNameID()
-			<< std::endl
-			<< "ReceiverRID : " << aReceiverRID.getFullyQualifiedNameID()
-			<< std::endl;
-	aRoutingData.toStream(AVM_OS_TRACE);
-	anED.getRuntime(bufferDeclRID).toStream(AVM_OS_TRACE);
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , STATEMENT_COMMUNICATION )
-
-						const BaseBufferForm & bbf = anED.getRuntime(
-								bufferDeclRID ).getBuffer(*itBuffer);
-
-						if( bbf.nonempty() )
+						if( computePresence(anED, aRoutingRID,
+								itRoutingData, aReceiverRID, aPort) )
 						{
-							if( aRoutingRID.getExecutable()->
-									getSpecifier().hasFeatureInputEnabled() )
-							{
-								if( bbf.contains(
-										aRoutingData.getMID(), aReceiverRID) )
-								{
-									return( true );
-								}
-							}
-							else if( bbf.isTop(aRoutingData.getMID(),
-									aReceiverRID) )
-							{
-								return( true );
-							}
+							return( true );
 						}
 					}
 				}
@@ -1503,6 +1704,58 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , STATEMENT_COMMUNICATION )
 }
 
 
+bool AvmCommunicationFactory::computePresence(const ExecutionData & anED,
+		const RuntimeID & aRoutingRID, const RoutingData & aRoutingData,
+		const RuntimeID & aReceiverRID, const InstanceOfPort & aPort)
+{
+	RuntimeID bufferDeclRID = aRoutingRID;
+
+	for( const auto & itBuffer : aRoutingData.getBufferInstance() )
+	{
+		bufferDeclRID = anED.getRuntimeContainerRID(aReceiverRID, itBuffer);
+
+		if( bufferDeclRID.valid() )
+		{
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , STATEMENT_COMMUNICATION )
+	AVM_OS_TRACE << "computePresence :> "
+			<< str_header( aPort ) << std::endl
+			<< "RoutingRID  : " << aRoutingRID.getFullyQualifiedNameID()
+			<< std::endl
+			<< "BufferRID   : " << bufferDeclRID.getFullyQualifiedNameID()
+			<< std::endl
+			<< "ReceiverRID : " << aReceiverRID.getFullyQualifiedNameID()
+			<< std::endl;
+	aRoutingData.toStream(AVM_OS_TRACE);
+	anED.getRuntime(bufferDeclRID).toStream(AVM_OS_TRACE);
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , STATEMENT_COMMUNICATION )
+
+			const BaseBufferForm & bbf = anED.getRuntime(
+					bufferDeclRID ).getBuffer(itBuffer);
+
+			if( bbf.nonempty() )
+			{
+				if( aRoutingRID.refExecutable().
+						getSpecifier().hasFeatureInputEnabled() )
+				{
+					if( bbf.contains(
+							aRoutingData.getMID(), aReceiverRID) )
+					{
+						return( true );
+					}
+				}
+				else if( bbf.isTop(aRoutingData.getMID(),
+						aReceiverRID) )
+				{
+					return( true );
+				}
+			}
+		}
+	}
+
+	return( false );
+}
+
+
 /*
  * Collect buffer message
  */
@@ -1512,14 +1765,12 @@ void AvmCommunicationFactory::collectBufferMessage(
 	TableOfBufferT::const_iterator itBuffer;
 	TableOfBufferT::const_iterator endBuffer;
 
-	TableOfRuntimeT::const_iterator itRF = anED.getTableOfRuntime().begin();
-	TableOfRuntimeT::const_iterator endRF = anED.getTableOfRuntime().end();
-	for( ; itRF != endRF ; ++itRF )
+	for( const auto & itRF : anED.getTableOfRuntime() )
 	{
-		if( (*itRF)->hasBufferTable() )
+		if( itRF->hasBufferTable() )
 		{
-			itBuffer = (*itRF)->getBufferTable().begin();
-			endBuffer = (*itRF)->getBufferTable().end();
+			itBuffer = itRF->getBufferTable().begin();
+			endBuffer = itRF->getBufferTable().end();
 			for( ; itBuffer != endBuffer ; ++itBuffer )
 			{
 				(*itBuffer)->copyTo( aBuffer );

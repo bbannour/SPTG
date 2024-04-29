@@ -15,7 +15,7 @@
 
 #include "TimedMachine.h"
 
-#include <parser/model/ParserUtil.h>
+#include <computer/PathConditionProcessor.h>
 
 #include <fml/expression/ExpressionConstant.h>
 #include <fml/expression/ExpressionConstructor.h>
@@ -40,266 +40,329 @@
 namespace sep
 {
 
-std::string TimedMachine::VAR_ID_GLOBAL_TIME( "$time"  );
-std::string TimedMachine::VAR_ID_DELTA_TIME ( "$delta" ); //"$time#delta"
-
-std::string TimedMachine::ROUTINE_ID_TIME_GET ( "time#get"  );
-std::string TimedMachine::ROUTINE_ID_DELTA_GET( "delta#get" );
-
-std::string TimedMachine::ROUTINE_ID_TIME_RESET ( "time#reset"  );
-
-std::string TimedMachine::ROUTINE_ID_CLOCK_RESET ( "clock#reset"  );
-std::string TimedMachine::ROUTINE_ID_CLOCK_UPDATE( "clock#update" );
-
-Variable * TimedMachine::SYSTEM_VAR_GLOBAL_TIME = NULL;
-Variable * TimedMachine::SYSTEM_VAR_DELTA_TIME  = NULL;
+Variable * TimedMachine::SYSTEM_VAR_GLOBAL_TIME = nullptr;
+Variable * TimedMachine::SYSTEM_VAR_DELTA_TIME  = nullptr;
 
 
-void TimedMachine::genProperty(Machine * machine)
+avm_type_specifier_kind_t
+TimedMachine::timeTypeSpecifierKind(const Specifier & specifier)
 {
-	PropertyPart & decl = machine->getPropertyPart();
-	Variable * aVar;
-
-	// TypeManager::UINTEGER/*TIME*/
-	TypeSpecifier timeType( TypeManager::newClockTime(
-			TYPE_TIME_SPECIFIER, TypeManager::UINTEGER) );
-
-	TypeSpecifier deltaType( TypeManager::newClockTime(
-			TYPE_TIME_SPECIFIER, TypeManager::POS_INTEGER) );
-
-	TypeSpecifier clockType( TypeManager::newClockTime(
-			TYPE_CLOCK_SPECIFIER, TypeManager::UINTEGER) );
-
-	Modifier mdfrTimed;
-	// GLOBAL_TIME
-	BF globalTimeVar = decl.saveOwnedVariable(
-			aVar = new Variable(machine,
-					mdfrTimed, timeType, VAR_ID_GLOBAL_TIME) );
-
-	if( machine->getSpecifier().isComponentSystem() )
+	if( specifier.isFeatureTimed() )
 	{
-		SYSTEM_VAR_GLOBAL_TIME = aVar;
+		return TYPE_TIME_SPECIFIER;
 	}
 
-
-	// DELTA_TIME
-	BF deltaTimeVar = decl.saveOwnedVariable(
-			aVar = new Variable(machine,
-					mdfrTimed.addFeatureKind(Modifier::FEATURE_UNSAFE_KIND),
-					deltaType, VAR_ID_DELTA_TIME) );
-
-	if( machine->getSpecifier().isComponentSystem() )
+	else if( specifier.isFeatureContinuousTimed() )
 	{
-		SYSTEM_VAR_DELTA_TIME = aVar;
+		return TYPE_CONTINUOUS_TIME_SPECIFIER;
+	}
+	else if( specifier.isFeatureDenseTimed() )
+	{
+		return TYPE_DENSE_TIME_SPECIFIER;
+	}
+	else //if( specifier.isFeatureDiscreteTimed() )
+	{
+		return TYPE_DISCRETE_TIME_SPECIFIER;
+	}
+}
+
+const TypeSpecifier &
+TimedMachine::timeTypeSpecifier(const Specifier & specifier)
+{
+	if( specifier.isFeatureTimed() )
+	{
+		return TypeManager::URATIONAL;
+	}
+
+	else if( specifier.isFeatureDiscreteTimed() )
+	{
+		return TypeManager::UINTEGER;
+	}
+	else if( specifier.isFeatureDenseTimed() )
+	{
+		return TypeManager::URATIONAL;
+	}
+	else // if( specifier.isFeatureContinuousTimed() )
+	{
+		return TypeManager::UREAL;
+	}
+}
+
+void TimedMachine::genProperty(Machine & machine)
+{
+	PropertyPart & aPropertyPart = machine.getPropertyPart();
+
+	avm_type_specifier_kind_t time_type_specifier =
+			timeTypeSpecifierKind(machine.getSpecifier());
+
+	TypeSpecifier timeType( TypeManager::newClockTime(time_type_specifier,
+			timeTypeSpecifier(machine.getSpecifier())) );
+
+	Variable * timeVar = aPropertyPart.addTimeSupport(timeType);
+
+	TypeSpecifier deltaType( TypeManager::newClockTime(time_type_specifier,
+			timeTypeSpecifier(machine.getSpecifier())) );
+
+	Variable * deltaVar = aPropertyPart.addDeltaTimeSupport(deltaType);
+
+	if( machine.getSpecifier().isComponentSystem() )
+	{
+		SYSTEM_VAR_GLOBAL_TIME = timeVar;
+		SYSTEM_VAR_DELTA_TIME  = deltaVar;
 	}
 
 	// time & delta getters ;
-	// clock << reset & update >> routine macro
-	BehavioralPart * moe = machine->getUniqBehaviorPart();
-
-	Modifier mdfrParam(
-			Modifier::NATURE_PARAMETER_KIND,
-			Modifier::FEATURE_TRANSIENT_KIND );
-
-	Variable * param;
-
-	// time getter routine macro
-	Routine * timeGetter = Routine::newDefine(*moe, ROUTINE_ID_TIME_GET);
-	timeGetter->getwModifier().setNatureMacro(true);
-	moe->saveRoutine( timeGetter );
-
-	param = new Variable(timeGetter, mdfrParam, timeType, "_time_");
-	timeGetter->saveReturn(param);
-	timeGetter->setCode( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_RETURN, globalTimeVar ) );
-
-	// time getter routine macro
-	Routine * deltaGetter = Routine::newDefine(*moe, ROUTINE_ID_DELTA_GET);
-	deltaGetter->getwModifier().setNatureMacro(true);
-	moe->saveRoutine( deltaGetter );
-
-	param = new Variable(deltaGetter, mdfrParam, deltaType, "_delta_");
-	deltaGetter->saveReturn(param);
-	deltaGetter->setCode( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_RETURN, deltaTimeVar ) );
-
-
-	// global time << reset >> routine macro
-	Routine * timeReset = Routine::newDefine(*moe, ROUTINE_ID_TIME_RESET);
-	timeReset->getwModifier().setNatureMacro(true);
-	moe->saveRoutine( timeReset );
-
-	timeReset->setCode( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_ASSIGN, globalTimeVar,
-			ExpressionConstant::INTEGER_ZERO ) );
-
-
-	// clock << reset >> routine macro
-	Routine * clockReset = Routine::newDefine(*moe, ROUTINE_ID_CLOCK_RESET);
-	clockReset->getwModifier().setNatureMacro(true);
-	moe->saveRoutine( clockReset );
-
-	param = new Variable(clockReset, mdfrParam, clockType, "_clock_");
-	clockReset->saveParameter( param );
-	clockReset->setCode( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_ASSIGN, INCR_BF(param),
-			ExpressionConstant::INTEGER_ZERO ) );
-
-
-	// clock << update >> routine macro
-	Routine * clockUpdate = Routine::newDefine(*moe, ROUTINE_ID_CLOCK_UPDATE);
-	clockUpdate->getwModifier().setNatureMacro(true);
-	moe->saveRoutine( clockUpdate );
-
-	param = new Variable(clockUpdate, mdfrParam, clockType, "_clock_");
-	clockUpdate->saveParameter( param );
-	clockUpdate->setCode( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_ASSIGN, INCR_BF(param),
-			ExpressionConstructor::newCode(
-					OperatorManager::OPERATOR_PLUS,
-					INCR_BF(param), INCR_BF(aVar)) ) );
+	// clock << reset & update >> routine macros
+	machine.getUniqBehaviorPart()->addTimeSupport( aPropertyPart );
 }
 
 
 
-void TimedMachine::genBehavior(Machine * machine)
+void TimedMachine::genBehavior(Machine & machine)
 {
 	TimedMachine::genBehaviorInit(machine);
 
-	TimedMachine::genBehaviorIRun(machine);
+	TimedMachine::genTimeUpdate(machine);
+
+//	TimedMachine::genBehaviorIRun(machine);
 }
 
 
-void TimedMachine::genBehaviorInit(Machine * machine)
+void TimedMachine::genBehaviorInit(Machine & machine)
 {
 	BFCode initCurrentTime = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_ASSIGN,
-			machine->getPropertyPart().
-					getVariables().getByNameID(VAR_ID_GLOBAL_TIME),
-			TypeManager::UINTEGER/*TIME*/.getDefaultValue()/*TIME*/);
+			machine.getPropertyPart().exprTimeVariable(),
+			machine.getPropertyPart().exprTimeInitialConstant());
 
 	BFCode initDeltaTime = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_ASSIGN,
-			machine->getPropertyPart().
-					getVariables().getByNameID(VAR_ID_DELTA_TIME),
-			TypeManager::UINTEGER/*TIME*/.getDefaultValue());
+			machine.getPropertyPart().exprDeltaTimeVariable(),
+			machine.getPropertyPart().exprDeltaTimeInitialConstant());
 
-	machine->getUniqBehaviorPart()->setOnInit(
+	machine.getUniqBehaviorPart()->setOnInit(
 			StatementConstructor::xnewCodeFlat(
 					OperatorManager::OPERATOR_SEQUENCE,
 					StatementConstructor::newCode(
 							OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
 							initCurrentTime, initDeltaTime),
-					machine->getUniqBehaviorPart()->getOnInit()) );
+					machine.getUniqBehaviorPart()->getOnInit()) );
 }
 
 
-void TimedMachine::genBehaviorIRun(Machine * machine)
+void TimedMachine::genBehaviorIRun(Machine & machine)
 {
-	BF varDeltaTime = machine->getPropertyPart().
-			getVariables().getByNameID(VAR_ID_DELTA_TIME);
+	BF varDeltaTime = machine.getPropertyPart().exprDeltaTimeVariable();
 
 	BFCode newfreshDeltaTime = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_ASSIGN_NEWFRESH, varDeltaTime );
 
-// Problème de scalabilite: passage à l'echelle ? est-ce utile ?
-//	BFCode guardDeltaTime = StatementConstructor::newCode(
-//			OperatorManager::OPERATOR_TIMED_GUARD,
-//					ExpressionConstructor::newCode(
-//						OperatorManager::OPERATOR_GT,
-//						varDeltaTime, ExpressionConstant::INTEGER_ZERO) );
+	BFCode guardDeltaTime;
+// Problème de scalabilite: passage à l'echelle ?
+	if( PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED )
+	{
+		guardDeltaTime = StatementConstructor::newCode(
+				OperatorManager::OPERATOR_TIMED_GUARD,
+						ExpressionConstructor::newCode(
+							OperatorManager::OPERATOR_GT,
+							varDeltaTime, ExpressionConstant::INTEGER_ZERO) );
+	}
 
 // Problème de scalabilite: passage à l'echelle ? est-ce utile ?
-//	BF varCurrentTime = machine->getPropertyPart().
-//			getVariables().getByNameID(VAR_ID_GLOBAL_TIME);
-//
-//	BFCode incrCurrentTime = StatementConstructor::newCode(
-//			OperatorManager::OPERATOR_ASSIGN, varCurrentTime,
-//			ExpressionConstructor::newCode(
-//					OperatorManager::OPERATOR_PLUS,
-//					varCurrentTime, varDeltaTime) );
+	BF varCurrentTime = machine.getPropertyPart().exprTimeVariable();
 
+	BFCode incrCurrentTime = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_ASSIGN, varCurrentTime,
+			ExpressionConstructor::newCode(
+					OperatorManager::OPERATOR_PLUS,
+					varCurrentTime, varDeltaTime) );
 
-	BFCode updateTimeClock = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
-			newfreshDeltaTime/*, guardDeltaTime, incrCurrentTime*/);
+	BFCode updateTimeClock = guardDeltaTime.valid()
+			? StatementConstructor::newCode(
+					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
+					newfreshDeltaTime, guardDeltaTime, incrCurrentTime)
+			: StatementConstructor::newCode(
+					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
+					newfreshDeltaTime, incrCurrentTime);
 
 	updateClock(machine, machine, varDeltaTime, updateTimeClock);
 
-	machine->getUniqBehaviorPart()->setOnIRun(
+	machine.getUniqBehaviorPart()->setOnIRun(
 			StatementConstructor::xnewCodeFlat(
 					OperatorManager::OPERATOR_SEQUENCE, updateTimeClock,
-					machine->getUniqBehaviorPart()->getOnIRun()) );
+					machine.getUniqBehaviorPart()->getOnIRun()) );
 }
 
 
-void TimedMachine::updateClock(const Machine * modelMachine,
-		Machine * aMachine, const BF & varDeltaTime,
+void TimedMachine::genTimeUpdate(Machine & machine)
+{
+	// time << update >> routine macro
+	Routine * timeUpdate = Routine::newDefine(
+			*(machine.getBehavior()), BehavioralPart::ROUTINE_ID_TIME_UPDATE);
+	timeUpdate->getwModifier().setNatureMacro(true);
+	machine.getBehavior()->saveRoutine( timeUpdate );
+
+
+	BF varDeltaTime = machine.getPropertyPart().exprDeltaTimeVariable();
+
+	BFCode newfreshDeltaTime = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_ASSIGN_NEWFRESH, varDeltaTime );
+
+	BFCode guardDeltaTime;
+	// Problème de scalabilite: passage à l'echelle ?
+	if( PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED )
+	{
+		guardDeltaTime = StatementConstructor::newCode(
+				OperatorManager::OPERATOR_TIMED_GUARD,
+						ExpressionConstructor::newCode(
+							OperatorManager::OPERATOR_GT,
+							varDeltaTime, ExpressionConstant::INTEGER_ZERO) );
+	}
+
+	BF varCurrentTime = machine.getPropertyPart().exprTimeVariable();
+
+	BFCode incrCurrentTime = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_ASSIGN, varCurrentTime,
+			ExpressionConstructor::newCode(
+					OperatorManager::OPERATOR_PLUS,
+					varCurrentTime, varDeltaTime) );
+
+
+	BFCode updateTimeClock = guardDeltaTime.valid()
+			? StatementConstructor::newCode(
+					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
+					newfreshDeltaTime, guardDeltaTime, incrCurrentTime)
+			: StatementConstructor::newCode(
+					OperatorManager::OPERATOR_ATOMIC_SEQUENCE,
+					newfreshDeltaTime, incrCurrentTime);
+
+	updateClock(machine, machine, varDeltaTime, updateTimeClock);
+
+	timeUpdate->setCode( updateTimeClock );
+
+	// exec $ROUTINE_ID_TIME_UPDATE
+	if( machine.getPropertyPart().getTimeVariable()
+			->getTypeSpecifier().isTypedDiscreteTime() )
+	{
+		machine.getUniqBehaviorPart()->setOnIRun(
+				StatementConstructor::xnewCodeFlat(
+						OperatorManager::OPERATOR_SEQUENCE,
+						Routine::invokeRoutineStatement(
+							Routine::newInvoke(machine, INCR_BF(timeUpdate))),
+						machine.getUniqBehaviorPart()->getOnIRun()) );
+	}
+	else
+	{
+		machine.getUniqBehaviorPart()->setOnRun(
+				StatementConstructor::xnewCodeFlat(
+						OperatorManager::OPERATOR_SEQUENCE,
+						Routine::invokeRoutineStatement(
+							Routine::newInvoke(machine, INCR_BF(timeUpdate))),
+						machine.getUniqBehaviorPart()->getOnRun()) );
+	}
+}
+
+
+void TimedMachine::updateClock(Machine & modelMachine,
+		Machine & machine, const BF & varDeltaTime,
 		const BFCode & seqCode, const std::string & aQualifiedNameID)
 {
 	std::string aRelativeNameID = aQualifiedNameID.empty()
-				? aMachine->getFullyQualifiedNameID()
-				: (aQualifiedNameID + "." + aMachine->getNameID());
+				? machine.getFullyQualifiedNameID()
+				: (aQualifiedNameID + "." + machine.getNameID());
 
-	updateClock(aMachine, modelMachine->getPropertyPart().getVariables(),
+	updateClock(machine, modelMachine.getPropertyPart().getVariables(),
 			varDeltaTime, seqCode, aRelativeNameID);
 
-	CompositePart::const_machine_iterator itMachine =
-			modelMachine->getCompositePart()->machine_begin();
-	CompositePart::const_machine_iterator endMachine =
-			modelMachine->getCompositePart()->machine_end();
-	for( ; itMachine != endMachine ; ++itMachine )
+	CompositePart::machine_iterator itMachine =
+			modelMachine.getCompositePart()->machine_begin();
+	CompositePart::machine_iterator endMachine =
+			modelMachine.getCompositePart()->machine_end();
+	for( Machine * pMachine = nullptr ; itMachine != endMachine ; ++itMachine )
 	{
 		if( (itMachine)->getSpecifier().isDesignPrototypeStatic() )
 		{
-			modelMachine = (itMachine);
+			pMachine = (*itMachine).to_ptr< Machine >();
 
 		}
 		else if( (itMachine)->getSpecifier().isDesignInstanceStatic() )
 		{
-			modelMachine = (itMachine)->getModelMachine();
+			pMachine = const_cast< Machine * >( (itMachine)->getModelMachine() );
 		}
 		else
 		{
-			modelMachine = NULL;
+			pMachine = nullptr;
 		}
 
-		if( (modelMachine != NULL)
-			&& (not modelMachine->getSpecifier().hasFeatureTimed())
-			&& (modelMachine->getPropertyPart().hasVariable()
-				|| modelMachine->hasMachine()) )
+		if( (pMachine != nullptr)
+			&& (not pMachine->getSpecifier().hasFeatureTimed())
+			&& (pMachine->getPropertyPart().hasVariable()
+				|| pMachine->hasMachine()) )
 		{
-			updateClock(modelMachine, (itMachine),
+			updateClock((* pMachine), (itMachine),
 					varDeltaTime, seqCode, aRelativeNameID);
 		}
 	}
 }
 
-void TimedMachine::updateClock(Machine * machine,
+void TimedMachine::updateClock(Machine & machine,
 		const TableOfVariable & variables, const BF & varDeltaTime,
 		const BFCode & seqCode, const std::string & aQualifiedNameID)
 {
 	BF varInstance;
 
+	BFCode updateCode(OperatorManager::OPERATOR_ATOMIC_SEQUENCE);
+
 	TableOfVariable::const_raw_iterator itVar = variables.begin();
 	TableOfVariable::const_raw_iterator endvar = variables.end();
 	for( ; itVar != endvar ; ++itVar )
 	{
-		if( (itVar)->hasTypeSpecifier() &&
-			(itVar)->getTypeSpecifier()->isTypedClock() )
+		std::string routineNameID;
+		if( (itVar)->hasTypeSpecifier() )
+		{
+			const BaseTypeSpecifier & aTypeSpecifier = (itVar)->getTypeSpecifier();
+			if( aTypeSpecifier.isTypedClock() )
+			{
+				routineNameID = BehavioralPart::ROUTINE_ID_CLOCK_UPDATE;
+			}
+			else if( aTypeSpecifier.hasTypeArrayVector()
+					&& aTypeSpecifier.to< ContainerTypeSpecifier >()
+							.getContentsTypeSpecifier().isTypedClock() )
+			{
+				routineNameID = BehavioralPart::ROUTINE_ID_VECTOR_CLOCK_UPDATE;
+			}
+		}
+		else if( (itVar)->hasDataType() )
+		{
+			const DataType & aDataType = (itVar)->getDataType();
+			if( aDataType.hasTypeArrayVector()
+				&& aDataType.hasContentsTypeSpecifier() )
+			{
+				const BF & aType = aDataType.getContentsTypeSpecifier();
+
+				if( aType.is< BaseTypeSpecifier >()
+					&& aType.to< BaseTypeSpecifier >().isTypedClock() )
+				{
+					routineNameID = BehavioralPart::ROUTINE_ID_VECTOR_CLOCK_UPDATE;
+				}
+			}
+		}
+
+		if( not routineNameID.empty() )
 		{
 			if( not (itVar)->getModifier().hasModifierPublicVolatile() )
 			{
 				(itVar)->getwModifier().setModifierPublicVolatile();
 			}
 
-			if( not (itVar)->hasValue() )
+			if( not (itVar)->hasValue()
+				&& (routineNameID == BehavioralPart::ROUTINE_ID_CLOCK_UPDATE) )
 			{
 				(itVar)->setValue(ExpressionConstant::INTEGER_ZERO);
 			}
 
-			if( (machine == (itVar)->getContainerMachine())
-				&& (machine->getFullyQualifiedNameID() == aQualifiedNameID) )
+			if( machine.isTEQ( (itVar)->getContainerMachine() )
+				&& (machine.getFullyQualifiedNameID() == aQualifiedNameID) )
 			{
 				varInstance = (*itVar);
 			}
@@ -309,23 +372,14 @@ void TimedMachine::updateClock(Machine * machine,
 						aQualifiedNameID + "." + (itVar)->getNameID() );
 			}
 
-			BFCode updateCode(OperatorManager::OPERATOR_IF,
-					StatementConstructor::newCode(
-							OperatorManager::OPERATOR_STATUS_IS,
-							INCR_BF(OperatorManager::OPERATOR_SCHEDULE_INVOKE),
-							ExpressionConstructor::newQualifiedIdentifier(
-									aQualifiedNameID) ) );
-
-
-			Routine * updateClock =
-					machine->rawsemRoutineByNameID(ROUTINE_ID_CLOCK_UPDATE);
-			if( updateClock != NULL )
+			Routine * updateClock = machine.rawsemRoutineByNameID(routineNameID);
+			if( updateClock != nullptr )
 			{
-//				AVM_OS_COUT << EMPHASIS("ROUTINE_ID_CLOCK_UPDATE", '*', 42);
 				updateClock = Routine::newInvoke(machine, INCR_BF(updateClock));
-				updateClock->appendParameter( varInstance );
+				updateClock->getPropertyPart().appendVariableParameter(
+						varInstance );
 
-				updateCode->append(ParserUtil::invokeRoutineStatement(updateClock));
+				updateCode->append(Routine::invokeRoutineStatement(updateClock));
 			}
 			else
 			{
@@ -335,8 +389,28 @@ void TimedMachine::updateClock(Machine * machine,
 								OperatorManager::OPERATOR_PLUS,
 								varInstance, varDeltaTime) ) );
 			}
+		}
+	}
 
-			seqCode->append( updateCode );
+	if( updateCode->hasOperand() )
+	{
+		if( machine.getSpecifier().hasFeatureTimed() )
+		{
+			seqCode->append(
+					updateCode->hasOneOperand() ?
+							updateCode->first() : updateCode );
+		}
+		else
+		{
+			seqCode->append( StatementConstructor::newCode(
+					OperatorManager::OPERATOR_IF,
+					StatementConstructor::newCode(
+							OperatorManager::OPERATOR_STATUS_IS,
+							INCR_BF(OperatorManager::OPERATOR_ENABLE_INVOKE),
+							ExpressionConstructor::newQualifiedIdentifier(
+									aQualifiedNameID) ),
+					( updateCode->hasOneOperand() ?
+							updateCode->first() : updateCode ) ) );
 		}
 	}
 }

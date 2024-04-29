@@ -159,9 +159,9 @@ public:
 	}
 
 
-	TransitionMoc(WObject * moc)
+	TransitionMoc(const WObject * mocWObject)
 	{
-		setFlags(moc);
+		setFlags( mocWObject );
 	}
 
 
@@ -178,7 +178,7 @@ public:
 	 * GETTER - SETTER
 	 * Set all flags using old FSP form
 	 */
-	void setFlags(WObject * moc);
+	void setFlags(const WObject * mocWObject);
 
 
 	/**

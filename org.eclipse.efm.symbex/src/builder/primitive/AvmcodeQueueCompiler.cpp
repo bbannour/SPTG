@@ -50,21 +50,24 @@ BFCode AvmcodePushCompiler::compileStatement(
 BFCode AvmcodePushCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
+	AvmCode::iterator itOperand = aCode->begin();
+	AvmCode::iterator endOperand = aCode->end();
 	BFCode optimizedCode( aCode->getOperator() );
 
 	AvmInstruction * argsInstruction =
 			optimizedCode->newInstruction( aCode->size() );
 
-	BF arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+	avm_arg_processor_t arg_cpu = AVM_ARG_STATEMENT_CPU;
+
+
+	BF arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*itOperand));
 	optimizedCode->append( arg );
 
 	setArgcodeContainerWValue(aCTX, argsInstruction->at(0), arg);
 
 	if( argsInstruction->at(0).dtype->isTypedBuffer() )
 	{
-		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*(++it)));
+		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*(++itOperand)));
 		optimizedCode->append( arg );
 
 		if( ExpressionTypeChecker::isTyped(TypeManager::MESSAGE, arg) )
@@ -79,50 +82,62 @@ BFCode AvmcodePushCompiler::optimizeStatement(
 
 			if( arg.is< InstanceOfPort >() )
 			{
-				InstanceOfPort * aPort = arg.to_ptr< InstanceOfPort >();
-				avm_size_t paramCount = aPort->getParameterCount();
+				const InstanceOfPort & aPort = arg.to< InstanceOfPort >();
+				std::size_t paramCount = aPort.getParameterCount();
 
-				for( avm_size_t offset = 2 ;
-						(++it != endIt) && (offset <= paramCount) ; ++offset )
+				for( std::size_t offset = 2 ;
+					(++itOperand != endOperand) && (offset <= paramCount) ;
+					++offset )
 				{
-					arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+					arg = AVMCODE_COMPILER.
+							decode_optimizeExpression(aCTX, (*itOperand));
 					optimizedCode->append( arg );
 
-					argsInstruction->at(offset).dtype = aPort->getParameterType(offset-1);
+					argsInstruction->at(offset).dtype =
+							&( aPort.getParameterType(offset-1) );
+
 					setArgcodeRValue(aCTX, argsInstruction->at(offset), arg);
 				}
 			}
-			else for( avm_size_t offset = 2 ; (++it != endIt) ; ++offset )
+			else for( std::size_t offset = 2 ;
+					(++itOperand != endOperand) ; ++offset )
 			{
-				arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+				arg = AVMCODE_COMPILER.
+						decode_optimizeExpression(aCTX, (*itOperand));
 				optimizedCode->append( arg );
 
 				argsInstruction->at(offset).dtype = TypeManager::UNIVERSAL;
-				setArgcodeRValue(aCTX, argsInstruction->at(offset), (*it), false);
+				setArgcodeRValue(aCTX,
+						argsInstruction->at(offset), (*itOperand), false);
 			}
 		}
-		else for( avm_size_t offset = 2 ; (++it != endIt) ; ++offset )
+		else for( std::size_t offset = 2 ;
+				(++itOperand != endOperand) ; ++offset )
 		{
-			arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+			arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*itOperand));
 			optimizedCode->append( arg );
 
 			argsInstruction->at(offset).dtype = TypeManager::UNIVERSAL;
-			setArgcodeRValue(aCTX, argsInstruction->at(offset), (*it), false);
+			setArgcodeRValue(aCTX,
+					argsInstruction->at(offset), (*itOperand), false);
 		}
 	}
 
 	else if( argsInstruction->at(0).dtype->hasTypeCollection() )
 	{
-		BaseTypeSpecifier * aTS = argsInstruction->at(0).dtype->
-				as< ContainerTypeSpecifier >()->getContentsTypeSpecifier();
+		arg_cpu = argsInstruction->at(0).dtype->hasTypeVector() ?
+				AVM_ARG_VECTOR_CPU : AVM_ARG_COLLECTION_CPU;
 
-		for( avm_offset_t offset = 1 ; (++it != endIt) ; ++offset )
+		const BaseTypeSpecifier & aTS = argsInstruction->at(0).dtype
+				->as< ContainerTypeSpecifier >().getContentsTypeSpecifier();
+
+		for( avm_offset_t offset = 1 ; (++itOperand != endOperand) ; ++offset )
 		{
 			arg = AVMCODE_COMPILER.decode_optimizeExpression(
-					aCTX->clone(aTS), (*it));
+					aCTX->clone(aTS), (*itOperand));
 			optimizedCode->append( arg );
 
-			argsInstruction->at(offset).dtype = aTS;
+			argsInstruction->at(offset).dtype = (& aTS);
 			setArgcodeRValue(aCTX, argsInstruction->at(offset), arg);
 		}
 	}
@@ -130,7 +145,7 @@ BFCode AvmcodePushCompiler::optimizeStatement(
 
 	argsInstruction->computeMainBytecode(
 			/*context  */ AVM_ARG_STANDARD_CTX,
-			/*processor*/ AVM_ARG_STATEMENT_CPU,
+			/*processor*/ arg_cpu,
 			/*operation*/ AVM_ARG_SEVAL_RVALUE,
 			/*operand  */ AVM_ARG_STATEMENT_KIND,
 			/*dtype    */ argsInstruction->at(0).dtype);
@@ -170,21 +185,21 @@ BFCode AvmcodeAssignTopCompiler::compileStatement(
 BFCode AvmcodeAssignTopCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
+	AvmCode::iterator itOperand = aCode->begin();
+	AvmCode::iterator endOperand = aCode->end();
 	BFCode optimizedCode( aCode->getOperator() );
 
 	AvmInstruction * argsInstruction =
 			optimizedCode->newInstruction( aCode->size() );
 
-	BF arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+	BF arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*itOperand));
 	optimizedCode->append( arg );
 
 	setArgcodeContainerWValue(aCTX, argsInstruction->at(0), arg);
 
 	if( argsInstruction->at(0).dtype->isTypedBuffer() )
 	{
-		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*(++it)));
+		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*(++itOperand)));
 		optimizedCode->append( arg );
 
 		if( ExpressionTypeChecker::isTyped(TypeManager::MESSAGE, arg) )
@@ -199,50 +214,58 @@ BFCode AvmcodeAssignTopCompiler::optimizeStatement(
 
 			if( arg.is< InstanceOfPort >() )
 			{
-				InstanceOfPort * aPort = arg.to_ptr< InstanceOfPort >();
-				avm_size_t paramCount = aPort->getParameterCount();
+				const InstanceOfPort & aPort = arg.to< InstanceOfPort >();
+				std::size_t paramCount = aPort.getParameterCount();
 
-				for( avm_size_t offset = 2 ;
-						(++it != endIt) && (offset <= paramCount) ; ++offset )
+				for( std::size_t offset = 2 ;
+					(++itOperand != endOperand) && (offset <= paramCount) ;
+					++offset )
 				{
-					arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+					arg = AVMCODE_COMPILER.
+							decode_optimizeExpression(aCTX, (*itOperand));
 					optimizedCode->append( arg );
 
-					argsInstruction->at(offset).dtype = aPort->getParameterType(offset-1);
+					argsInstruction->at(offset).dtype =
+							&( aPort.getParameterType(offset-1) );
+
 					setArgcodeLValue(aCTX, argsInstruction->at(offset), arg);
 				}
 			}
-			else for( avm_size_t offset = 2 ; (++it != endIt) ; ++offset )
+			else for( std::size_t offset = 2 ;
+					(++itOperand != endOperand) ; ++offset )
 			{
-				arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+				arg = AVMCODE_COMPILER.
+						decode_optimizeExpression(aCTX, (*itOperand));
 				optimizedCode->append( arg );
 
 				argsInstruction->at(offset).dtype = TypeManager::UNIVERSAL;
-				setArgcodeLValue(aCTX, argsInstruction->at(offset), (*it), false);
+				setArgcodeLValue(aCTX,
+						argsInstruction->at(offset), (*itOperand), false);
 			}
 		}
-		else for( avm_size_t offset = 2 ; (++it != endIt) ; ++offset )
+		else for( std::size_t offset = 2 ; (++itOperand != endOperand) ; ++offset )
 		{
-			arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+			arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*itOperand));
 			optimizedCode->append( arg );
 
 			argsInstruction->at(offset).dtype = TypeManager::UNIVERSAL;
-			setArgcodeLValue(aCTX, argsInstruction->at(offset), (*it), false);
+			setArgcodeLValue(aCTX,
+					argsInstruction->at(offset), (*itOperand), false);
 		}
 	}
 
 	else if( argsInstruction->at(0).dtype->hasTypeCollection() )
 	{
-		BaseTypeSpecifier * aTS = argsInstruction->at(0).dtype->
-				as< ContainerTypeSpecifier >()->getContentsTypeSpecifier();
+		const BaseTypeSpecifier & aTS = argsInstruction->at(0).dtype
+				->as< ContainerTypeSpecifier >().getContentsTypeSpecifier();
 
-		for( avm_offset_t offset = 1 ; (++it != endIt) ; ++offset )
+		for( avm_offset_t offset = 1 ; (++itOperand != endOperand) ; ++offset )
 		{
 			arg = AVMCODE_COMPILER.decode_optimizeExpression(
-					aCTX->clone(aTS), (*it));
+					aCTX->clone(aTS), (*itOperand));
 			optimizedCode->append( arg );
 
-			argsInstruction->at(offset).dtype = aTS;
+			argsInstruction->at(offset).dtype = (& aTS);
 			setArgcodeRValue(aCTX, argsInstruction->at(offset), arg);
 		}
 	}
@@ -326,21 +349,21 @@ BFCode AvmcodePopCompiler::compileStatement(
 BFCode AvmcodePopCompiler::optimizeStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
+	AvmCode::iterator itOperand = aCode->begin();
+	AvmCode::iterator endOperand = aCode->end();
 	BFCode optimizedCode( aCode->getOperator() );
 
 	AvmInstruction * argsInstruction =
 			optimizedCode->newInstruction( aCode->size() );
 
-	BF arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+	BF arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*itOperand));
 	optimizedCode->append( arg );
 
 	setArgcodeContainerWValue(aCTX, argsInstruction->at(0), arg);
 
 	if( argsInstruction->at(0).dtype->isTypedBuffer() )
 	{
-		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*(++it)));
+		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*(++itOperand)));
 		optimizedCode->append( arg );
 
 		if( ExpressionTypeChecker::isTyped(TypeManager::MESSAGE, arg) )
@@ -355,50 +378,59 @@ BFCode AvmcodePopCompiler::optimizeStatement(
 
 			if( arg.is< InstanceOfPort >() )
 			{
-				InstanceOfPort * aPort = arg.to_ptr< InstanceOfPort >();
-				avm_size_t paramCount = aPort->getParameterCount();
+				const InstanceOfPort & aPort = arg.to< InstanceOfPort >();
+				std::size_t paramCount = aPort.getParameterCount();
 
-				for( avm_size_t offset = 2 ;
-						(++it != endIt) && (offset <= paramCount) ; ++offset )
+				for( std::size_t offset = 2 ;
+					(++itOperand != endOperand) && (offset <= paramCount) ;
+					++offset )
 				{
-					arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+					arg = AVMCODE_COMPILER.
+							decode_optimizeExpression(aCTX, (*itOperand));
 					optimizedCode->append( arg );
 
-					argsInstruction->at(offset).dtype = aPort->getParameterType(offset-1);
+					argsInstruction->at(offset).dtype =
+							&( aPort.getParameterType(offset-1) );
+
 					setArgcodeLValue(aCTX, argsInstruction->at(offset), arg);
 				}
 			}
-			else for( avm_size_t offset = 2 ; (++it != endIt) ; ++offset )
+			else for( std::size_t offset = 2 ;
+					(++itOperand != endOperand) ; ++offset )
 			{
-				arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+				arg = AVMCODE_COMPILER.
+						decode_optimizeExpression(aCTX, (*itOperand));
 				optimizedCode->append( arg );
 
 				argsInstruction->at(offset).dtype = TypeManager::UNIVERSAL;
-				setArgcodeLValue(aCTX, argsInstruction->at(offset), (*it), false);
+				setArgcodeLValue(aCTX,
+						argsInstruction->at(offset), (*itOperand), false);
 			}
 		}
-		else for( avm_size_t offset = 2 ; (++it != endIt) ; ++offset )
+		else for( std::size_t offset = 2 ;
+				(++itOperand != endOperand) ; ++offset )
 		{
-			arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+			arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*itOperand));
 			optimizedCode->append( arg );
 
 			argsInstruction->at(offset).dtype = TypeManager::UNIVERSAL;
-			setArgcodeLValue(aCTX, argsInstruction->at(offset), (*it), false);
+			setArgcodeLValue(aCTX,
+					argsInstruction->at(offset), (*itOperand), false);
 		}
 	}
 
 	else if( argsInstruction->at(0).dtype->hasTypeCollection() )
 	{
-		BaseTypeSpecifier * aTS = argsInstruction->at(0).dtype->
-				as< ContainerTypeSpecifier >()->getContentsTypeSpecifier();
+		const BaseTypeSpecifier & aTS = argsInstruction->at(0).dtype
+				->as_ptr< ContainerTypeSpecifier >()->getContentsTypeSpecifier();
 
-		for( avm_offset_t offset = 1 ; (++it != endIt) ; ++offset )
+		for( avm_offset_t offset = 1 ; (++itOperand != endOperand) ; ++offset )
 		{
 			arg = AVMCODE_COMPILER.decode_optimizeExpression(
-					aCTX->clone(aTS), (*it));
+					aCTX->clone(aTS), (*itOperand));
 			optimizedCode->append( arg );
 
-			argsInstruction->at(offset).dtype = aTS;
+			argsInstruction->at(offset).dtype = (& aTS);
 			setArgcodeLValue(aCTX, argsInstruction->at(offset), arg);
 		}
 	}
@@ -450,18 +482,21 @@ BFCode AvmcodePopFromCompiler::optimizeStatement(
 	AvmInstruction * argsInstruction = aCode->genInstruction();
 
 	optimizeArgExpression(aCTX, aCode, 0);
-	setArgcodeContainerWValue(aCTX, argsInstruction->at(0), aCode->first());
+	setArgcodeContainerWValue(aCTX,
+			argsInstruction->at(0), aCode->first());
 
 	if( argsInstruction->at(0).dtype->isTypedBuffer() )
 	{
 		//!!! TODO
 		optimizeArgExpression(aCTX, aCode, 1);
-		setArgcodeContainerRValue(aCTX, argsInstruction->at(1), aCode->second());
+		setArgcodeContainerRValue(aCTX,
+				argsInstruction->at(1), aCode->second());
 	}
 	else if( argsInstruction->at(0).dtype->hasTypeCollection() )
 	{
 		optimizeArgExpression(aCTX, aCode, 1);
-		setArgcodeContainerRValue(aCTX, argsInstruction->at(1), aCode->second());
+		setArgcodeContainerRValue(aCTX,
+				argsInstruction->at(1), aCode->second());
 	}
 
 

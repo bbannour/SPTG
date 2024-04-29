@@ -41,7 +41,7 @@ protected:
 	 * ATTRIBUTES
 	 */
 	// the Type Specifier
-	TypeSpecifier mContentsTypeSpecifier;
+	const TypeSpecifier mContentsTypeSpecifier;
 
 
 public:
@@ -50,24 +50,22 @@ public:
 	 * Default
 	 */
 	ContainerTypeSpecifier(avm_type_specifier_kind_t aSpecifierKind,
-			DataType * aCompiledType,
-			const TypeSpecifier & aTypeSpecifier, avm_size_t aSize)
-	: BaseTypeSpecifier(CLASS_KIND_T( ContainerTypeSpecifier ),
-			aSpecifierKind, aCompiledType, aSize,
-			aSize * (aTypeSpecifier.valid() ?
-					aTypeSpecifier.getDataSize() : 1) + 1, 0),
+			const DataType & astType,
+			const TypeSpecifier & aTypeSpecifier, std::size_t aSize)
+	: BaseTypeSpecifier(CLASS_KIND_T( ContainerTypeSpecifier ), aSpecifierKind,
+			astType, aSize, aSize * ( aTypeSpecifier.valid() ?
+					aTypeSpecifier.getDataSize() : 1 ) + 1, 0),
 	mContentsTypeSpecifier( aTypeSpecifier )
 	{
 		//!!! NOTHING
 	}
 
 	ContainerTypeSpecifier(avm_type_specifier_kind_t aSpecifierKind,
-			const std::string & aTypeID, const TypeSpecifier & aTypeSpecifier,
-			avm_size_t aSize)
-	: BaseTypeSpecifier(CLASS_KIND_T( ContainerTypeSpecifier ),
-			aSpecifierKind, aTypeID, aSize,
-			aSize * (aTypeSpecifier.valid() ?
-					aTypeSpecifier.getDataSize() : 1) + 1, 0),
+			const std::string & aTypeID,
+			const TypeSpecifier & aTypeSpecifier, std::size_t aSize)
+	: BaseTypeSpecifier(CLASS_KIND_T( ContainerTypeSpecifier ), aSpecifierKind,
+			aTypeID, aSize, ( aSize * (aTypeSpecifier.valid() ?
+					aTypeSpecifier.getDataSize() : 1) + 1 ), 0),
 	mContentsTypeSpecifier( aTypeSpecifier )
 	{
 		//!!! NOTHING
@@ -92,25 +90,15 @@ public:
 		return( mContentsTypeSpecifier );
 	}
 
-	inline bool hasContentsTypeSpecifier() const
-	{
-		return( mContentsTypeSpecifier.valid() );
-	}
-
-	inline void setContentsTypeSpecifier(const TypeSpecifier & aTypeSpecifier)
-	{
-		mContentsTypeSpecifier = aTypeSpecifier;
-	}
 
 
 	/**
 	 * GETTER - SETTER
 	 * the Bloc Data Size
 	 */
-	inline avm_size_t bsize()
+	inline std::size_t bsize()
 	{
-		return( mContentsTypeSpecifier.valid() ?
-				mContentsTypeSpecifier.getDataSize() : 1 );
+		return( mContentsTypeSpecifier.getDataSize() );
 	}
 
 
@@ -118,14 +106,19 @@ public:
 	 * CONSTRAINT generation
 	 * for a given parameter
 	 */
-	BF genConstraint(const BF & aParam) const;
+	virtual bool couldGenerateConstraint() const override;
+
+	virtual BF genConstraint(const BF & aParam) const override;
 
 
 	/**
 	 * Format a value w.r.t. its type
 	 */
 	inline virtual void formatStream(
-			OutStream & os, const ArrayBF & arrayValue) const;
+			OutStream & os, const ArrayBF & arrayValue) const override;
+
+	// Due to [-Woverloaded-virtual=]
+	using BaseTypeSpecifier::formatStream;
 
 
 	/**
@@ -133,14 +126,19 @@ public:
 	 */
 	static std::string strSpecifierKing(avm_type_specifier_kind_t aSpecifierKind);
 
+	inline std::string strSpecifierKing() const
+	{
+		return( ContainerTypeSpecifier::strSpecifierKing( getTypeSpecifierKind() ) );
+	}
+
 	std::string strType() const;
 
-	std::string strT() const
+	std::string strT() const override
 	{
 		return( isAnonymID() ? strType() : getNameID() );
 	}
 
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & os) const override;
 
 };
 

@@ -22,8 +22,6 @@
 
 #include <fml/lib/ITypeSpecifier.h>
 
-#include <fml/infrastructure/Routine.h>
-
 
 namespace sep
 {
@@ -34,12 +32,16 @@ class Machine;
 
 class PropertyPart;
 
+class Routine;
+
+class Variable;
 
 
 class DataType :
 		public ObjectElement ,
 		public ITypeSpecifier,
 		public IIntervalKind,
+		AVM_INJECT_STATIC_NULL_REFERENCE( DataType ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( DataType )
 {
 
@@ -52,7 +54,7 @@ protected:
 	avm_type_specifier_kind_t mSpecifierKind;
 
 	// for Alias, Interval Support, Container Contents
-	BF mTypeSpecifier;
+	const BF mTypeSpecifier;
 
 	// for general purpose
 	Routine * mConstraintRoutine;
@@ -98,7 +100,8 @@ private:
 	 * Union
 	 */
 	DataType(ObjectElement * aContainer, const std::string & aNameID,
-			avm_type_specifier_kind_t aSpecifierKind);
+			avm_type_specifier_kind_t aSpecifierKind,
+			const BF & aTypeSpecifier = BF::REF_NULL);
 
 
 public:
@@ -117,15 +120,24 @@ public:
 
 	/**
 	 * GETTER
-	 * ITypeSpecifier API
+	 * Unique Null Reference
 	 */
-
-	inline virtual const BaseTypeSpecifier * thisTypeSpecifier() const
+	inline static DataType & nullref()
 	{
-		return( NULL );
+		static 	DataType _NULL_(nullptr, "$null<DataType>", TYPE_NULL_SPECIFIER);
+		_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+
+		return( _NULL_ );
 	}
 
-	inline virtual avm_type_specifier_kind_t getTypeSpecifierKind() const
+
+	/**
+	 * GETTER
+	 * ITypeSpecifier API
+	 */
+	inline virtual const BaseTypeSpecifier & thisTypeSpecifier() const override;
+
+	inline virtual avm_type_specifier_kind_t getTypeSpecifierKind() const override
 	{
 		return( mSpecifierKind );
 	}
@@ -145,9 +157,16 @@ public:
 		return( mTypeSpecifier.valid() );
 	}
 
-	inline void setTypeSpecifier(const BF & aType)
+	inline bool hasSuperTypeSpecifier() const
 	{
-		mTypeSpecifier = aType;
+		return( mTypeSpecifier.is< DataType >()
+				&& (mTypeSpecifier.to< DataType >().getTypeSpecifierKind()
+						== mSpecifierKind) );
+	}
+
+	inline bool isDataTypeAlias() const
+	{
+		return( mSpecifierKind == TYPE_ALIAS_SPECIFIER );
 	}
 
 
@@ -155,14 +174,11 @@ public:
 	 * GETTER - SETTER
 	 * mConstraint
 	 */
-	inline Routine * getConstraintRoutine() const
-	{
-		return( mConstraintRoutine );
-	}
+	const Routine & getConstraintRoutine() const;
 
 	inline bool hasConstraintRoutine() const
 	{
-		return( mConstraintRoutine != NULL );
+		return( mConstraintRoutine != nullptr );
 	}
 
 	inline void setConstraintRoutine(Routine * aConstraintRoutine)
@@ -188,7 +204,7 @@ public:
 	 * mIntervalKind
 	 * IIntervalKind API
 	 */
-	inline virtual IIntervalKind::KIND getIntervalKind() const
+	inline virtual IIntervalKind::KIND getIntervalKind() const override
 	{
 		return( mIntervalKind );
 	}
@@ -248,7 +264,7 @@ public:
 	 * GETTER
 	 * Interval Length
 	 */
-	avm_integer_t getIntervalLength();
+	avm_integer_t getIntervalLength() const;
 
 	/**
 	 * Serialization
@@ -271,7 +287,7 @@ public:
 		}
 	}
 
-	void toStreamInterval(OutStream & os) const;
+	void toStreamInterval(OutStream & out) const;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -297,6 +313,11 @@ public:
 	inline const BF & getContentsTypeSpecifier() const
 	{
 		return( mTypeSpecifier );
+	}
+
+	inline bool hasContentsTypeSpecifier() const
+	{
+		return( mTypeSpecifier.valid() );
 	}
 
 	inline avm_type_specifier_kind_t getContainerSpecifierKind() const
@@ -334,14 +355,20 @@ public:
 	}
 
 
+	inline bool isBound() const
+	{
+		return( mMaximumSize >= 0 );
+	}
+
+	inline bool isUnbound() const
+	{
+		return( mMaximumSize < 0 );
+	}
+
+
 	inline long size()
 	{
 		return( mMaximumSize );
-	}
-
-	inline void setSize(long maxSize)
-	{
-		mMaximumSize = maxSize;
 	}
 
 	/**
@@ -381,7 +408,7 @@ public:
 		return( isAnonymID() ? strContainerType() : getNameID() );
 	}
 
-	void toStreamContainer(OutStream & os) const;
+	void toStreamContainer(OutStream & out) const;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -418,7 +445,7 @@ public:
 
 	bool hasBehavior() const
 	{
-		return( mBehavioralSpecification != NULL );
+		return( mBehavioralSpecification != nullptr );
 	}
 
 
@@ -430,13 +457,17 @@ public:
 	 * Enumeration
 	 */
 	static DataType * newEnum(
-			const PropertyPart & aPropertyPart, const std::string & aNameID);
+			const PropertyPart & aPropertyPart, const std::string & aNameID,
+			const BF & superEnumerationType = BF::REF_NULL );
 
 	/**
 	 * GETTER
 	 * Enumeration Size
 	 */
-	avm_size_t getEnumSize();
+	std::size_t getEnumSize() const;
+
+	const BF & getEnumSymbol(const std::string & aNameID) const;
+
 
 	/**
 	 * GETTER - SETTER
@@ -450,7 +481,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStreamEnum(OutStream & os) const;
+	void toStreamEnum(OutStream & out) const;
 
 
 
@@ -467,7 +498,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStreamStructure(OutStream & os) const;
+	void toStreamStructure(OutStream & out) const;
 
 
 
@@ -484,7 +515,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStreamUnion(OutStream & os) const;
+	void toStreamUnion(OutStream & out) const;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -500,7 +531,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStreamChoice(OutStream & os) const;
+	void toStreamChoice(OutStream & out) const;
 
 
 
@@ -518,7 +549,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStreamAlias(OutStream & os) const;
+	void toStreamAlias(OutStream & out) const;
 
 
 
@@ -544,9 +575,9 @@ public:
 	}
 
 
-	virtual void strHeader(OutStream & os) const;
+	virtual void strHeader(OutStream & out) const override;
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
 
 
 public:

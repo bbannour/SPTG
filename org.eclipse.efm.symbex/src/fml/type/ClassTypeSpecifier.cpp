@@ -30,18 +30,18 @@ void ClassTypeSpecifier::formatStream(
 {
 	out << out.VALUE_STRUCT_CSS.BEGIN;
 
-	avm_size_t offset = 1;
+	std::size_t offset = 1;
 	TableOfSymbol::const_iterator it = getSymbolData().begin();
 	TableOfSymbol::const_iterator itEnd = getSymbolData().end();
 	if( it != itEnd )
 	{
-		(*it).getTypeSpecifier()->formatStream(out, arrayValue[0]);
+		(*it).getTypeSpecifier().formatStream(out, arrayValue[0]);
 
 		for( ++it ; (offset < arrayValue.size()) && (it != itEnd) ;
 				++it , ++offset )
 		{
 			out << out.VALUE_STRUCT_CSS.SEPARATOR;
-			(*it).getTypeSpecifier()->formatStream(out, arrayValue[offset]);
+			(*it).getTypeSpecifier().formatStream(out, arrayValue[offset]);
 		}
 	}
 

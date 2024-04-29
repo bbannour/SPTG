@@ -41,15 +41,15 @@ bool AvmPrimitive_For::run(ExecutionEnvironment & ENV)
 
 bool AvmPrimitive_For::resume(ExecutionEnvironment & ENV)
 {
-	return( run(ENV, ENV.inCODE->third()) );
+	return( run(ENV, ENV.inCODE->operand(2)) );
 }
 
 
 bool AvmPrimitive_For::run(ExecutionEnvironment & ENV, const BF & initStmnt)
 {
 	const BF &     forCond = ENV.inCODE->second();
-	const BFCode & forIncr = ENV.inCODE->third().bfCode();
-	const BFCode & forStmnt = ENV.inCODE->fourth().bfCode();
+	const BFCode & forIncr = ENV.inCODE->operand(2).bfCode();
+	const BFCode & forStmnt = ENV.inCODE->operand(3).bfCode();
 
 	ExecutionEnvironment stmntENV(ENV, BFCode::REF_NULL);
 
@@ -65,7 +65,7 @@ bool AvmPrimitive_For::run(ExecutionEnvironment & ENV, const BF & initStmnt)
 		return( false );
 	}
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	while( iterENV.outEDS.nonempty() )
 	{
@@ -106,7 +106,7 @@ bool AvmPrimitive_For::run(ExecutionEnvironment & ENV, const BF & initStmnt)
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Throw unexpected "
 						"NON CONCRETE BOOLEAN VALUE FOR CONDITION : "
-					<< tmpED->mRID.strUniqId()
+					<< tmpED.getRID().strUniqId()
 					<< " ," << str_indent( condENV.outVAL )
 					<< " |=>" << forCond.str() << " !!!"
 					<< SEND_EXIT;
@@ -117,7 +117,7 @@ bool AvmPrimitive_For::run(ExecutionEnvironment & ENV, const BF & initStmnt)
 		{
 			stmntENV.outEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -158,7 +158,7 @@ bool AvmPrimitive_For::run(ExecutionEnvironment & ENV, const BF & initStmnt)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -171,7 +171,7 @@ bool AvmPrimitive_For::run(ExecutionEnvironment & ENV, const BF & initStmnt)
 		{
 			stmntENV.irqEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_BREAK:
 				{
@@ -209,7 +209,7 @@ bool AvmPrimitive_For::run(ExecutionEnvironment & ENV, const BF & initStmnt)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as irqEDS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -234,7 +234,9 @@ bool AvmPrimitive_For::run(ExecutionEnvironment & ENV, const BF & initStmnt)
  */
 bool AvmPrimitive_Foreach::run(ExecutionEnvironment & ENV)
 {
-	InstanceOfData * forIterator = ENV.mARG->at(0).to_ptr< InstanceOfData >();
+	const InstanceOfData & forIterator =
+			ENV.mARG->at(0).to< InstanceOfData >();
+
 	const BF     & forCollection = ENV.mARG->at(1);
 	const BFCode & forStatement  = ENV.mARG->at(2).bfCode();
 
@@ -243,10 +245,10 @@ bool AvmPrimitive_Foreach::run(ExecutionEnvironment & ENV)
 	ExecutionEnvironment iterENV(ENV, BFCode::REF_NULL);
 	iterENV.appendOutput( ENV.mARG->outED );
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
-	avm_size_t endOffset = forCollection.size();
-	for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+	std::size_t endOffset = forCollection.size();
+	for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 	{
 		while( iterENV.outEDS.nonempty() )
 		{
@@ -283,7 +285,7 @@ bool AvmPrimitive_Foreach::run(ExecutionEnvironment & ENV)
 		{
 			stmntENV.outEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -308,7 +310,7 @@ bool AvmPrimitive_Foreach::run(ExecutionEnvironment & ENV)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -321,7 +323,7 @@ bool AvmPrimitive_Foreach::run(ExecutionEnvironment & ENV)
 		{
 			stmntENV.irqEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_BREAK:
 				{
@@ -351,7 +353,7 @@ bool AvmPrimitive_Foreach::run(ExecutionEnvironment & ENV)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as irqEDS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -381,11 +383,11 @@ bool AvmPrimitive_WhileDo::run(ExecutionEnvironment & ENV)
 	const BF &   whileCond = ENV.inCODE->first();
 	const BFCode & doStmnt = ENV.inCODE->second().bfCode();
 
-	ListOfAPExecutionData tmpListOfInputED( ENV.inED );
+	ListOfExecutionData tmpListOfInputED( ENV.inED );
 
 	ExecutionEnvironment stmntENV(ENV, BFCode::REF_NULL);
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	while( tmpListOfInputED.nonempty() )
 	{
@@ -426,7 +428,7 @@ bool AvmPrimitive_WhileDo::run(ExecutionEnvironment & ENV)
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Throw unexpected "
 						"NON CONCRETE BOOLEAN VALUE FOR CONDITION : "
-					<< tmpED->mRID.strUniqId()
+					<< tmpED.getRID().strUniqId()
 					<< " ," << str_indent( condENV.outVAL )
 					<< " |=>" << whileCond.str() << " !!!"
 					<< SEND_EXIT;
@@ -437,7 +439,7 @@ bool AvmPrimitive_WhileDo::run(ExecutionEnvironment & ENV)
 		{
 			stmntENV.outEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -462,7 +464,7 @@ bool AvmPrimitive_WhileDo::run(ExecutionEnvironment & ENV)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -475,7 +477,7 @@ bool AvmPrimitive_WhileDo::run(ExecutionEnvironment & ENV)
 		{
 			stmntENV.irqEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_BREAK:
 				{
@@ -506,7 +508,7 @@ bool AvmPrimitive_WhileDo::run(ExecutionEnvironment & ENV)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as irqEDS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -542,11 +544,11 @@ bool AvmPrimitive_DoWhile::run(ExecutionEnvironment & ENV)
 	const BFCode & doStmnt = ENV.inCODE->first().bfCode();
 	const BF &    whileCond = ENV.inCODE->second();
 
-	ListOfAPExecutionData tmpListOfInputED( ENV.inED );
+	ListOfExecutionData tmpListOfInputED( ENV.inED );
 
 	ExecutionEnvironment stmntENV(ENV, BFCode::REF_NULL);
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	while( tmpListOfInputED.nonempty() )
 	{
@@ -567,7 +569,7 @@ bool AvmPrimitive_DoWhile::run(ExecutionEnvironment & ENV)
 		{
 			stmntENV.outEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -575,7 +577,7 @@ bool AvmPrimitive_DoWhile::run(ExecutionEnvironment & ENV)
 				{
 					tmpED.mwsetAEES( AEES_OK );
 
-					//!!! NO << break >> for these statement
+					[[fallthrough]]; //!! No BREAK for that CASE statement
 				}
 				case AEES_OK:
 				case AEES_STEP_RESUME:
@@ -610,7 +612,7 @@ bool AvmPrimitive_DoWhile::run(ExecutionEnvironment & ENV)
 						AVM_OS_FATAL_ERROR_EXIT
 								<< "Throw unexpected "
 								"NON CONCRETE BOOLEAN VALUE FOR CONDITION : "
-								<< tmpED->mRID.strUniqId()
+								<< tmpED.getRID().strUniqId()
 								<< " ," << str_indent( condENV.outVAL )
 								<< " |=>" << whileCond.str() << " !!!"
 								<< SEND_EXIT;
@@ -623,7 +625,7 @@ bool AvmPrimitive_DoWhile::run(ExecutionEnvironment & ENV)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -636,7 +638,7 @@ bool AvmPrimitive_DoWhile::run(ExecutionEnvironment & ENV)
 		{
 			stmntENV.irqEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_BREAK:
 				{
@@ -686,7 +688,7 @@ bool AvmPrimitive_DoWhile::run(ExecutionEnvironment & ENV)
 						AVM_OS_FATAL_ERROR_EXIT
 								<< "Throw unexpected "
 								"NON CONCRETE BOOLEAN VALUE FOR CONDITION : "
-								<< tmpED->mRID.strUniqId()
+								<< tmpED.getRID().strUniqId()
 								<< " ," << str_indent( condENV.outVAL )
 								<< " |=>" << whileCond.str() << " !!!"
 								<< SEND_EXIT;
@@ -699,7 +701,7 @@ bool AvmPrimitive_DoWhile::run(ExecutionEnvironment & ENV)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as irqEDS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -722,11 +724,11 @@ bool AvmPrimitive_DoWhile::resume(ExecutionEnvironment & ENV)
 	const BFCode &  doStmnt = ENV.inCODE->first().bfCode();
 	const BF &    whileCond = ENV.inCODE->second();
 
-	ListOfAPExecutionData tmpListOfInputED( ENV.inED );
+	ListOfExecutionData tmpListOfInputED( ENV.inED );
 
 	ExecutionEnvironment stmntENV(ENV, BFCode::REF_NULL);
 
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	while( tmpListOfInputED.nonempty() )
 	{
@@ -767,7 +769,7 @@ bool AvmPrimitive_DoWhile::resume(ExecutionEnvironment & ENV)
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Throw unexpected "
 						"NON CONCRETE BOOLEAN VALUE FOR CONDITION : "
-					<< tmpED->mRID.strUniqId()
+					<< tmpED.getRID().strUniqId()
 					<< " ," << str_indent( condENV.outVAL )
 					<< " |=>" << whileCond.str() << " !!!"
 					<< SEND_EXIT;
@@ -778,7 +780,7 @@ bool AvmPrimitive_DoWhile::resume(ExecutionEnvironment & ENV)
 		{
 			stmntENV.outEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -803,7 +805,7 @@ bool AvmPrimitive_DoWhile::resume(ExecutionEnvironment & ENV)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as outEDS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -816,7 +818,7 @@ bool AvmPrimitive_DoWhile::resume(ExecutionEnvironment & ENV)
 		{
 			stmntENV.irqEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_BREAK:
 				{
@@ -847,7 +849,7 @@ bool AvmPrimitive_DoWhile::resume(ExecutionEnvironment & ENV)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS as irqEDS  :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );

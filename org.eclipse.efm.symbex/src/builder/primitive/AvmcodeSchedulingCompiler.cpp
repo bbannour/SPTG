@@ -37,20 +37,19 @@ BF AvmcodeSchedulingCompiler::optimizeExpression(
 {
 	BFCode optCode( aCode->getOperator() );
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		optCode->append( AVMCODE_COMPILER.decode_optimizeExpression(aCTX, *it) );
+		optCode->append(
+				AVMCODE_COMPILER.decode_optimizeExpression(aCTX, itOperand) );
 	}
 
-	if( optCode->empty() )
+	if( optCode->noOperand() )
 	{
 		return( StatementConstructor::nopCode() );
 	}
 	else
 	{
-		return( optCode->singleton() ? optCode->first().bfCode() : optCode );
+		return( optCode->hasOneOperand() ? optCode->first().bfCode() : optCode );
 	}
 }
 
@@ -60,7 +59,7 @@ BFCode AvmcodeSchedulingCompiler::compileStatement(
 {
 	BFCode newCode = AbstractAvmcodeCompiler::compileStatement(aCTX, aCode);
 
-	if( newCode->singleton() && newCode->first().is< AvmCode >() )
+	if( newCode->hasOneOperand() && newCode->first().is< AvmCode >() )
 	{
 		return( newCode->first().bfCode() );
 	}
@@ -74,20 +73,20 @@ BFCode AvmcodeSchedulingCompiler::optimizeStatement(
 {
 	BFCode optCode( aCode->getOperator() );
 
-	AvmCode::iterator it = aCode->begin();
-	AvmCode::iterator endIt = aCode->end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itOperand : aCode.getOperands() )
 	{
-		optCode->append( AVMCODE_COMPILER.decode_optimizeStatement(aCTX, *it) );
+		optCode->appendFlat(
+				AVMCODE_COMPILER.decode_optimizeStatement(aCTX, itOperand) );
 	}
 
-	if( optCode->empty() )
+	if( optCode->noOperand() )
 	{
 		return( StatementConstructor::nopCode() );
 	}
 	else
 	{
-		return( optCode->singleton() ? optCode->first().bfCode() : optCode );
+		return( optCode->hasOneOperand() ?
+				optCode->first().bfCode() : optCode );
 	}
 }
 

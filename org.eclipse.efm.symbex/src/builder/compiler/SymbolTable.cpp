@@ -61,15 +61,14 @@ namespace sep
  */
 const TypeSpecifier & SymbolTable::searchTypeSpecifier(
 		ExecutableSystem & anExecutableSystem,
-		COMPILE_CONTEXT * aCTX, const ObjectElement * astElement)
+		const BaseAvmProgram * aProgramCtx, const ObjectElement & astElement)
 {
-	BaseAvmProgram * aProgram = aCTX->mCompileCtx;
-	for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+	for( ; aProgramCtx != nullptr ; aProgramCtx = aProgramCtx->getContainer() )
 	{
-		if( aProgram->is< AvmProgram >() )
+		if( aProgramCtx->is< AvmProgram >() )
 		{
 			const TypeSpecifier & foundType =
-					aProgram->to< AvmProgram >()->getTypeSpecifier(astElement);
+				aProgramCtx->to_ptr< AvmProgram >()->getTypeSpecifier(astElement);
 			if( foundType.valid() )
 			{
 				return( foundType );
@@ -91,20 +90,26 @@ const TypeSpecifier & SymbolTable::searchTypeSpecifier(
 		}
 	}
 
-	return( TypeSpecifier::REF_NULL );
+	return( TypeSpecifier::nullref() );
 }
 
+const TypeSpecifier & SymbolTable::searchTypeSpecifier(
+		ExecutableSystem & anExecutableSystem,
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement)
+{
+	return( searchTypeSpecifier(anExecutableSystem, aCTX->mCompileCtx, astElement) );
+}
 
 const TypeSpecifier & SymbolTable::searchTypeSpecifier(
 		ExecutableSystem & anExecutableSystem, COMPILE_CONTEXT * aCTX,
 		const std::string & aFullyQualifiedNameID)
 {
-	BaseAvmProgram * aProgram = aCTX->mCompileCtx;
-	for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+	const BaseAvmProgram * aProgram = aCTX->mCompileCtx;
+	for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 	{
 		if( aProgram->is< AvmProgram >() )
 		{
-			const TypeSpecifier & foundType = aProgram->to< AvmProgram >()->
+			const TypeSpecifier & foundType = aProgram->to_ptr< AvmProgram >()->
 					getTypeSpecifier( aFullyQualifiedNameID );
 			if( foundType.valid() )
 			{
@@ -127,7 +132,7 @@ const TypeSpecifier & SymbolTable::searchTypeSpecifier(
 		}
 	}
 
-	return( TypeSpecifier::REF_NULL );
+	return( TypeSpecifier::nullref() );
 }
 
 
@@ -136,13 +141,13 @@ const TypeSpecifier & SymbolTable::searchTypeSpecifier(
  * for Data Instance
  */
 const BF & SymbolTable::searchDataInstance(
-		BaseAvmProgram * tmpProgram, const ObjectElement * astElement) const
+		BaseAvmProgram * tmpProgram, const ObjectElement & astElement) const
 {
-	for( ; tmpProgram != NULL ; tmpProgram = tmpProgram->getContainer() )
+	for( ; tmpProgram != nullptr ; tmpProgram = tmpProgram->getContainer() )
 	{
 		{
 			const BF & foundInstance =
-					tmpProgram->getAllData().getByAstElement(astElement);
+					tmpProgram->getAllVariables().getByAstElement(astElement);
 			if( foundInstance.valid() )
 			{
 				return( foundInstance );
@@ -151,7 +156,7 @@ const BF & SymbolTable::searchDataInstance(
 
 		{
 			const BF & foundInstance =
-					tmpProgram->getDataAlias().getByAstElement(astElement);
+					tmpProgram->getVariableAlias().getByAstElement(astElement);
 			if( foundInstance.valid() )
 			{
 				return( foundInstance );
@@ -161,8 +166,8 @@ const BF & SymbolTable::searchDataInstance(
 		if( tmpProgram->is< AvmProgram >() )
 		{
 			{
-				const BF & foundInstance = tmpProgram->to< AvmProgram >()->
-						getConstData().getByAstElement(astElement);
+				const BF & foundInstance = tmpProgram->to_ptr< AvmProgram >()->
+						getConstVariable().getByAstElement(astElement);
 				if( foundInstance.valid() )
 				{
 					return( foundInstance );
@@ -170,7 +175,7 @@ const BF & SymbolTable::searchDataInstance(
 			}
 
 			{
-				const BF & foundInstance = tmpProgram->to< AvmProgram >()->
+				const BF & foundInstance = tmpProgram->to_ptr< AvmProgram >()->
 						getSymbolDataByAstElement(astElement);
 				if( foundInstance.valid() )
 				{
@@ -184,13 +189,13 @@ const BF & SymbolTable::searchDataInstance(
 }
 
 const BF & SymbolTable::searchDataInstance(
-		COMPILE_CONTEXT * aCTX, const ObjectElement * objElement)
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement)
 {
 	// RESET ERROR
 	resetError();
 
 	const BF & foundInstance =
-			searchDataInstance(aCTX->mCompileCtx, objElement);
+			searchDataInstance(aCTX->mCompileCtx, astElement);
 	if( foundInstance.valid() )
 	{
 		return( foundInstance );
@@ -198,14 +203,14 @@ const BF & SymbolTable::searchDataInstance(
 	else if( aCTX->isSpecificRuntimeCtx() )
 	{
 		const BF & foundInstance =
-				searchDataInstance(aCTX->mRuntimeCtx, objElement);
+				searchDataInstance(aCTX->mRuntimeCtx, astElement);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
 		}
 	}
 
-	return( searchDataInstanceAlias(aCTX, objElement) );
+	return( searchDataInstanceAlias(aCTX, astElement) );
 }
 
 
@@ -213,9 +218,9 @@ const BF & SymbolTable::searchDataInstance(
 const BF & SymbolTable::searchDataInstance(BaseAvmProgram * tmpProgram,
 		const std::string & aFullyQualifiedNameID) const
 {
-	for( ; tmpProgram != NULL ; tmpProgram = tmpProgram->getContainer() )
+	for( ; tmpProgram != nullptr ; tmpProgram = tmpProgram->getContainer() )
 	{
-		const BF & foundInstance = tmpProgram->getAllData().
+		const BF & foundInstance = tmpProgram->getAllVariables().
 				getByFQNameID( aFullyQualifiedNameID );
 		if( foundInstance.valid() )
 		{
@@ -225,8 +230,8 @@ const BF & SymbolTable::searchDataInstance(BaseAvmProgram * tmpProgram,
 		if( tmpProgram->is< AvmProgram >() )
 		{
 			{
-				const BF & foundInstance = tmpProgram->to< AvmProgram >()->
-						getConstData().getByFQNameID( aFullyQualifiedNameID );
+				const BF & foundInstance = tmpProgram->to_ptr< AvmProgram >()
+					->getConstVariable().getByFQNameID( aFullyQualifiedNameID );
 				if( foundInstance.valid() )
 				{
 					return( foundInstance );
@@ -234,7 +239,7 @@ const BF & SymbolTable::searchDataInstance(BaseAvmProgram * tmpProgram,
 			}
 
 			{
-				const BF & foundInstance = tmpProgram->to< AvmProgram >()->
+				const BF & foundInstance = tmpProgram->to_ptr< AvmProgram >()->
 						getSymbolData( aFullyQualifiedNameID );
 				if( foundInstance.valid() )
 				{
@@ -244,8 +249,8 @@ const BF & SymbolTable::searchDataInstance(BaseAvmProgram * tmpProgram,
 
 			if( tmpProgram->is< ExecutableForm >() )
 			{
-				const BF & foundInstance = tmpProgram->to< ExecutableForm >()->
-						getDataAlias().getByFQNameID( aFullyQualifiedNameID );
+				const BF & foundInstance = tmpProgram->to_ptr< ExecutableForm >()
+					->getVariableAlias().getByFQNameID( aFullyQualifiedNameID );
 				if( foundInstance.valid() )
 				{
 					return( foundInstance );
@@ -287,10 +292,10 @@ const BF & SymbolTable::searchDataInstance(COMPILE_CONTEXT * aCTX,
 const BF & SymbolTable::searchDataInstanceByQualifiedNameID(
 		BaseAvmProgram * tmpProgram, const std::string & aQualifiedNameID) const
 {
-	for( ; tmpProgram != NULL ; tmpProgram = tmpProgram->getContainer() )
+	for( ; tmpProgram != nullptr ; tmpProgram = tmpProgram->getContainer() )
 	{
 		const BF & foundInstance = tmpProgram->
-				getAllData().getByQualifiedNameID(aQualifiedNameID);
+				getAllVariables().getByQualifiedNameID(aQualifiedNameID);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -299,8 +304,8 @@ const BF & SymbolTable::searchDataInstanceByQualifiedNameID(
 		if( tmpProgram->is< AvmProgram >() )
 		{
 			{
-				const BF & foundInstance = tmpProgram->to< AvmProgram >()->
-						getConstData().getByQualifiedNameID(aQualifiedNameID);
+				const BF & foundInstance = tmpProgram->to_ptr< AvmProgram >()
+					->getConstVariable().getByQualifiedNameID(aQualifiedNameID);
 				if( foundInstance.valid() )
 				{
 					return( foundInstance );
@@ -308,7 +313,7 @@ const BF & SymbolTable::searchDataInstanceByQualifiedNameID(
 			}
 
 			{
-				const BF & foundInstance = tmpProgram->to< AvmProgram >()->
+				const BF & foundInstance = tmpProgram->to_ptr< AvmProgram >()->
 						getSymbolDataByQualifiedNameID(aQualifiedNameID);
 				if( foundInstance.valid() )
 				{
@@ -318,8 +323,8 @@ const BF & SymbolTable::searchDataInstanceByQualifiedNameID(
 
 			if( tmpProgram->is< ExecutableForm >() )
 			{
-				const BF & foundInstance = tmpProgram->to< ExecutableForm >()->
-						getDataAlias().getByQualifiedNameID(aQualifiedNameID);
+				const BF & foundInstance = tmpProgram->to_ptr< ExecutableForm >()
+					->getVariableAlias().getByQualifiedNameID(aQualifiedNameID);
 				if( foundInstance.valid() )
 				{
 					return( foundInstance );
@@ -361,10 +366,10 @@ const BF & SymbolTable::searchDataInstanceByQualifiedNameID(
 const BF & SymbolTable::searchDataInstanceByNameID(
 		BaseAvmProgram * tmpProgram, const std::string & aNameID) const
 {
-	for( ; tmpProgram != NULL ; tmpProgram = tmpProgram->getContainer() )
+	for( ; tmpProgram != nullptr ; tmpProgram = tmpProgram->getContainer() )
 	{
 		const BF & foundInstance =
-				tmpProgram->getAllData().getByNameID(aNameID);
+				tmpProgram->getAllVariables().getByNameID(aNameID);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -373,8 +378,8 @@ const BF & SymbolTable::searchDataInstanceByNameID(
 		if( tmpProgram->is< AvmProgram >() )
 		{
 			{
-				const BF & foundInstance = tmpProgram->to<
-						AvmProgram >()->getConstData().getByNameID(aNameID);
+				const BF & foundInstance = tmpProgram->to_ptr<
+						AvmProgram >()->getConstVariable().getByNameID(aNameID);
 				if( foundInstance.valid() )
 				{
 					return( foundInstance );
@@ -382,7 +387,7 @@ const BF & SymbolTable::searchDataInstanceByNameID(
 			}
 
 			{
-				const BF & foundInstance = tmpProgram->to<
+				const BF & foundInstance = tmpProgram->to_ptr<
 						AvmProgram >()->getSymbolDataByNameID(aNameID);
 				if( foundInstance.valid() )
 				{
@@ -392,8 +397,8 @@ const BF & SymbolTable::searchDataInstanceByNameID(
 
 			if( tmpProgram->is< ExecutableForm >() )
 			{
-				const BF & foundInstance = tmpProgram->to<
-						ExecutableForm >()->getDataAlias().getByNameID(aNameID);
+				const BF & foundInstance = tmpProgram->to_ptr< ExecutableForm >()
+						->getVariableAlias().getByNameID(aNameID);
 				if( foundInstance.valid() )
 				{
 					return( foundInstance );
@@ -407,11 +412,10 @@ const BF & SymbolTable::searchDataInstanceByNameID(
 
 
 const BF & SymbolTable::searchDataInstanceAlias(
-		COMPILE_CONTEXT * aCTX, const ObjectElement * astElement)
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement)
 {
-	ExecutableForm * tmpExecutable = NULL;
+	ExecutableForm * tmpExecutable = nullptr;
 	BF foundInstance;
-	InstanceOfData * foundData = NULL;
 
 	TableOfExecutableForm::const_raw_iterator itExec =
 			mConfiguration.getExecutableSystem().getExecutables().begin();
@@ -419,14 +423,14 @@ const BF & SymbolTable::searchDataInstanceAlias(
 			mConfiguration.getExecutableSystem().getExecutables().end();
 	for( ; itExec != endExec ; ++itExec )
 	{
-		foundInstance = (itExec)->getAllData().getByAstElement(astElement);
+		foundInstance = (itExec)->getAllVariables().getByAstElement(astElement);
 		if( foundInstance.valid() )
 		{
 			tmpExecutable = (itExec);
 			break;
 		}
 
-		foundInstance = (itExec)->getConstData().getByAstElement(astElement);
+		foundInstance = (itExec)->getConstVariable().getByAstElement(astElement);
 		if( foundInstance.valid() )
 		{
 			tmpExecutable = (itExec);
@@ -443,19 +447,20 @@ const BF & SymbolTable::searchDataInstanceAlias(
 
 	if( foundInstance.valid() )
 	{
-		foundData = foundInstance.to_ptr< InstanceOfData >();
-		if( foundData->getModifier().isVisibilityPublic( aCTX->getModifier() ) )
+		const InstanceOfData & foundVariable =
+				foundInstance.to< InstanceOfData >();
+		if( foundVariable.getModifier().isVisibilityPublic(aCTX->getModifier()) )
 		{
 			return( createDataInstanceAlias(
 					aCTX->mCompileCtx->getExecutable(),
-					astElement->getFullyQualifiedNameID(),
-					foundData, tmpExecutable) );
+					astElement.getFullyQualifiedNameID(),
+					foundVariable, tmpExecutable) );
 		}
 		else
 		{
 			incrErrorCount();
 			ERROR_OS << "Illegal acces of the NON-PUBLIC instance << &"
-					<< astElement->getFullyQualifiedNameID() << " >> !!!";
+					<< astElement.getFullyQualifiedNameID() << " >> !!!";
 		}
 	}
 
@@ -473,11 +478,11 @@ const BF & SymbolTable::searchDataInstanceAlias(
 
 	VectorOfInstanceOfMachine theInstanceOfMachinePath;
 
-	ExecutableForm * tmpExecutable = aCTX->mCompileCtx->getExecutable();
+	const ExecutableForm * tmpExecutable = aCTX->mCompileCtx->getExecutable();
 
 	Symbol aMachine;
 
-	for( ; tmpExecutable != NULL ;
+	for( ; tmpExecutable != nullptr ;
 			tmpExecutable = tmpExecutable->getExecutableContainer() )
 	{
 		if( ((aMachine = tmpExecutable->getInstanceStatic().
@@ -487,7 +492,7 @@ const BF & SymbolTable::searchDataInstanceAlias(
 		{
 			theInstanceOfMachinePath.append( aMachine.rawMachine() );
 
-			tmpExecutable = aMachine.getExecutable();
+			tmpExecutable = aMachine.ptrExecutable();
 
 			aliasFQN = aMachine.getFullyQualifiedNameID();
 
@@ -499,7 +504,7 @@ const BF & SymbolTable::searchDataInstanceAlias(
 	{
 		fqnPrefix = aFullyQualifiedNameID.substr(0,
 				aFullyQualifiedNameID.find('.'));
-		tmpExecutable = NULL;
+		tmpExecutable = nullptr;
 
 		TableOfExecutableForm::const_raw_iterator itExec =
 				mConfiguration.getExecutableSystem().getExecutables().begin();
@@ -512,8 +517,7 @@ const BF & SymbolTable::searchDataInstanceAlias(
 				tmpExecutable = (itExec);
 				break;
 			}
-			else if( NamedElement::compareLocation(
-					(itExec)->getAstFullyQualifiedNameID(), fqnPrefix) )
+			else if( (itExec)->getAstElement().isLocationID(fqnPrefix) )
 			{
 				tmpExecutable = (itExec);
 				break;
@@ -526,7 +530,7 @@ const BF & SymbolTable::searchDataInstanceAlias(
 		}
 	}
 
-	if( tmpExecutable != NULL )
+	if( tmpExecutable != nullptr )
 	{
 		ListOfString strList;
 
@@ -539,30 +543,31 @@ const BF & SymbolTable::searchDataInstanceAlias(
 			fqnPrefix = tmpExecutable->getAstFullyQualifiedNameID() +
 					'.' + strList.pop_first();
 
-			if( tmpExecutable->getAllData().getByFQNameID(fqnPrefix).invalid() )
+			if( tmpExecutable->getAllVariables().
+					getByFQNameID(fqnPrefix).invalid() )
 			{
-				tmpExecutable = NULL;
+				tmpExecutable = nullptr;
 			}
 		}
 
-		while( strList.populated() && (tmpExecutable != NULL) )
+		while( strList.populated() && (tmpExecutable != nullptr) )
 		{
 			fqnPrefix = tmpExecutable->getAstFullyQualifiedNameID()
 					+ '.' + strList.pop_first();
 
 			aMachine = tmpExecutable->
 					getInstanceStatic().getByFQNameID( fqnPrefix );
-			if( aMachine != NULL )
+			if( aMachine != nullptr )
 			{
 				aliasFQN = aMachine.getFullyQualifiedNameID();
 
 				theInstanceOfMachinePath.append( aMachine.rawMachine() );
 
-				tmpExecutable = aMachine.getExecutable();
+				tmpExecutable = aMachine.ptrExecutable();
 			}
 			else
 			{
-				if( tmpExecutable->getAllData().
+				if( tmpExecutable->getAllVariables().
 						getByFQNameID(fqnPrefix).invalid() )
 				{
 					break;
@@ -570,7 +575,7 @@ const BF & SymbolTable::searchDataInstanceAlias(
 			}
 		}
 
-		if( tmpExecutable != NULL )
+		if( tmpExecutable != nullptr )
 		{
 			while( strList.nonempty() )
 			{
@@ -579,18 +584,18 @@ const BF & SymbolTable::searchDataInstanceAlias(
 			}
 
 			const BF & foundInstance =
-					tmpExecutable->getAllData().getByFQNameID(fqnPrefix);
+					tmpExecutable->getAllVariables().getByFQNameID(fqnPrefix);
 
 			if( foundInstance.valid() )
 			{
-				InstanceOfData * foundData =
-						foundInstance.to_ptr< InstanceOfData >();
-				if( foundData->getModifier().
+				const InstanceOfData & foundVariable =
+						foundInstance.to< InstanceOfData >();
+				if( foundVariable.getModifier().
 						isVisibilityPublic( aCTX->getModifier() ) )
 				{
 					return( createDataInstanceAlias(
 							aCTX->mCompileCtx->getExecutable(),
-							aliasFQN, foundData, theInstanceOfMachinePath) );
+							aliasFQN, foundVariable, theInstanceOfMachinePath) );
 				}
 				else
 				{
@@ -608,11 +613,11 @@ const BF & SymbolTable::searchDataInstanceAlias(
 
 const BF & SymbolTable::createDataInstanceAlias(ExecutableForm * anExecutable,
 		const std::string & aFullyQualifiedNameID,
-		InstanceOfData * anInstance, ExecutableForm * instContainer)
+		const InstanceOfData & anInstance, ExecutableForm * instContainer)
 {
 	const ExecutableForm * lcaExecutable = anExecutable->LCA( instContainer );
 
-	if( lcaExecutable != NULL )
+	if( lcaExecutable != nullptr )
 	{
 		std::string fqnPrefix = lcaExecutable->getAstFullyQualifiedNameID();
 
@@ -630,20 +635,20 @@ const BF & SymbolTable::createDataInstanceAlias(ExecutableForm * anExecutable,
 			if( execInstance.valid() )
 			{
 				theInstanceOfMachinePath.append(execInstance.rawMachine());
-				lcaExecutable = execInstance.getExecutable();
+				lcaExecutable = execInstance.ptrExecutable();
 			}
 			else
 			{
-				if( lcaExecutable->getAllData().
+				if( lcaExecutable->getAllVariables().
 						getByFQNameID( fqnPrefix ).invalid() )
 				{
-					lcaExecutable = NULL;
+					lcaExecutable = nullptr;
 				}
 				break;
 			}
 		}
 
-		if( lcaExecutable != NULL )
+		if( lcaExecutable != nullptr )
 		{
 			while( strList.nonempty() )
 			{
@@ -651,11 +656,11 @@ const BF & SymbolTable::createDataInstanceAlias(ExecutableForm * anExecutable,
 			}
 
 			BF foundInstance =
-					lcaExecutable->getAllData().getByFQNameID( fqnPrefix );
+					lcaExecutable->getAllVariables().getByFQNameID( fqnPrefix );
 			if( foundInstance.invalid() )
 			{
 				foundInstance =
-						lcaExecutable->getConstData().getByFQNameID( fqnPrefix );
+						lcaExecutable->getConstVariable().getByFQNameID( fqnPrefix );
 
 				if( foundInstance.invalid() )
 				{
@@ -663,7 +668,7 @@ const BF & SymbolTable::createDataInstanceAlias(ExecutableForm * anExecutable,
 				}
 			}
 
-			if( foundInstance == anInstance )
+			if( foundInstance == (& anInstance) )
 			{
 				InstanceOfData * aliasInstance( new InstanceOfData(
 						anExecutable, anInstance, theInstanceOfMachinePath) );
@@ -671,7 +676,7 @@ const BF & SymbolTable::createDataInstanceAlias(ExecutableForm * anExecutable,
 						aFullyQualifiedNameID.substr(
 								aFullyQualifiedNameID.find(':')) );
 
-				return( anExecutable->saveDataAlias(aliasInstance) );
+				return( anExecutable->saveVariableAlias(aliasInstance) );
 			}
 			else
 			{
@@ -697,13 +702,14 @@ const BF & SymbolTable::createDataInstanceAlias(ExecutableForm * anExecutable,
 
 
 const BF & SymbolTable::createDataInstanceAlias(ExecutableForm * anExecutable,
-		const std::string & aFullyQualifiedNameID, InstanceOfData * anInstance,
+		const std::string & aFullyQualifiedNameID,
+		const InstanceOfData & anInstance,
 		VectorOfInstanceOfMachine & theInstanceOfMachinePath)
 {
 	const ExecutableForm * lcaExecutable = anExecutable->LCRA(
 			theInstanceOfMachinePath.last()->getContainer()->getExecutable() );
 
-	if( lcaExecutable != NULL )
+	if( lcaExecutable != nullptr )
 	{
 		if( lcaExecutable->hasContainer()
 			&& theInstanceOfMachinePath.populated()
@@ -731,7 +737,7 @@ const BF & SymbolTable::createDataInstanceAlias(ExecutableForm * anExecutable,
 		aliasInstance->setFullyQualifiedNameID( "alias" +
 				aFullyQualifiedNameID.substr(aFullyQualifiedNameID.find(':')) );
 
-		return( anExecutable->saveDataAlias(aliasInstance) );
+		return( anExecutable->saveVariableAlias(aliasInstance) );
 	}
 
 	return( BF::REF_NULL );
@@ -743,8 +749,7 @@ const BF & SymbolTable::createDataInstanceAlias(ExecutableForm * anExecutable,
  * SEARCH PORT CONNECT INSTANCE
  ******************************************************************************
  */
-
-InstanceOfPort * SymbolTable::searchPortConnectorInstance(
+InstanceOfPort * SymbolTable::searchPortConnectorPoint(
 		ExecutableForm * anExecutable,
 		const std::string & aFullyQualifiedNameID) const
 {
@@ -765,24 +770,25 @@ InstanceOfPort * SymbolTable::searchPortConnectorInstance(
 			anExecutable->getInstanceStatic().end();
 	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		const Symbol & foundInstance = (*itMachine).getExecutable()->getPort().
-				getByFQNameID( aFullyQualifiedNameID );
+		const Symbol & foundInstance = (*itMachine).getExecutable().
+				getPort().getByFQNameID( aFullyQualifiedNameID );
 		if( foundInstance.valid() )
 		{
 			return( foundInstance.rawPort() );
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
-InstanceOfPort * SymbolTable::searchPortConnectorInstance(
-		ExecutableForm * anExecutable, const ObjectElement * aPort) const
+
+InstanceOfPort * SymbolTable::searchPortConnectorPoint(
+		ExecutableForm * anExecutable, const ObjectElement & astPort) const
 {
 	// SEACH FOR INTERNAL PORT CONNEXION
 	{
 		const Symbol & foundInstance =
-				anExecutable->getPort().getByAstElement(aPort);
+				anExecutable->getPort().getByAstElement(astPort);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance.rawPort() );
@@ -796,8 +802,8 @@ InstanceOfPort * SymbolTable::searchPortConnectorInstance(
 			anExecutable->getInstanceStatic().end();
 	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		const Symbol & foundInstance = (*itMachine).getExecutable()->
-				getPort().getByAstElement(aPort);
+		const Symbol & foundInstance = (*itMachine).getExecutable().
+				getPort().getByAstElement(astPort);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance.rawPort() );
@@ -805,13 +811,13 @@ InstanceOfPort * SymbolTable::searchPortConnectorInstance(
 	}
 
 	const Symbol & foundInstance = XQuery.getSemPortByAstElement(
-			anExecutable->getExecutableContainer(), aPort);
+			anExecutable->getExecutableContainer(), astPort);
 	if( foundInstance.valid() )
 	{
 		return( foundInstance.rawPort() );
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
@@ -821,7 +827,7 @@ InstanceOfPort * SymbolTable::searchPortConnectorInstance(
  ******************************************************************************
  */
 const Symbol & SymbolTable::searchPortSymbolInstance(
-		ExecutableForm * anExec, Port * aPort) const
+		ExecutableForm * anExec, const Port & aPort) const
 {
 	const Symbol & foundInstance = XQuery.getSemPortByAstElement(anExec, aPort);
 	if( foundInstance.valid() )
@@ -829,10 +835,10 @@ const Symbol & SymbolTable::searchPortSymbolInstance(
 		return foundInstance;
 	}
 
-	if( aPort->hasRoutingChannel() )
+	if( aPort.hasRoutingChannel() )
 	{
 		const Symbol & foundChannel =
-				XQuery.getChannel( aPort->getRoutingChannel() );
+				XQuery.getChannel( aPort.getRoutingChannel() );
 		if( foundChannel.valid() )
 		{
 			return foundChannel.channel().getContents().getByAstElement(aPort);
@@ -850,12 +856,12 @@ const Symbol & SymbolTable::searchPortSymbolInstance(
  */
 
 const Symbol & SymbolTable::searchBufferInstance(
-		ExecutableForm * anExecutable, const ObjectElement * objElement) const
+		ExecutableForm * anExecutable, const ObjectElement & astElement) const
 {
 	// SEARCH ON CURRENT BUFFER LIST
 	{
 		const Symbol & anInstance =
-				anExecutable->getBuffer().getByAstElement(objElement);
+				anExecutable->getBuffer().getByAstElement(astElement);
 		if( anInstance.valid() )
 		{
 			return( anInstance );
@@ -865,7 +871,7 @@ const Symbol & SymbolTable::searchBufferInstance(
 	// SEARCH ON CURRENT ALIAS BUFFER LIST
 	{
 		const Symbol & anInstance =
-				anExecutable->getAlias().getByAstElement(objElement);
+				anExecutable->getAlias().getByAstElement(astElement);
 		if( anInstance.is< InstanceOfBuffer >() )
 		{
 			return( anInstance );
@@ -874,27 +880,27 @@ const Symbol & SymbolTable::searchBufferInstance(
 
 
 	// SEARCH ON CURRENT MODEL CHILD BUFFER LIST & MAKE AN ALIAS
-	InstanceOfBuffer * aBufferInstance = NULL;
+	InstanceOfBuffer * aBufferInstance = nullptr;
 
 	TableOfSymbol::const_iterator itMachine = anExecutable->instance_model_begin();
 	TableOfSymbol::const_iterator endMachine = anExecutable->instance_model_end();
 	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		aBufferInstance = (*itMachine).getExecutable()->
-				getBuffer().getByAstElement(objElement).rawBuffer();
-		if( aBufferInstance != NULL )
+		aBufferInstance = (*itMachine).getExecutable().
+				getBuffer().getByAstElement(astElement).rawBuffer();
+		if( aBufferInstance != nullptr )
 		{
 			break;
 		}
 	}
 
-	if( aBufferInstance != NULL )
+	if( aBufferInstance != nullptr )
 	{
 		VectorOfInstanceOfMachine theInstanceOfMachinePath;
 		theInstanceOfMachinePath.append( (*itMachine).rawMachine() );
 
 		InstanceOfBuffer * aliasInstance = new InstanceOfBuffer(
-				anExecutable, aBufferInstance, theInstanceOfMachinePath);
+				anExecutable, (* aBufferInstance), theInstanceOfMachinePath);
 
 		std::string aFullyQualifiedNameID =
 				aBufferInstance->getFullyQualifiedNameID();
@@ -905,18 +911,30 @@ const Symbol & SymbolTable::searchBufferInstance(
 		return( anExecutable->saveAlias(aliasInstance) );
 	}
 
-	return( searchBufferInstance(objElement) );
+	return( searchBufferInstance(astElement) );
 }
 
 
 
-const Symbol & SymbolTable::searchBufferInstance(ExecutableForm * anExecutable,
+const Symbol & SymbolTable::searchBufferInstance(
+		ExecutableForm & anExecutable,
 		const std::string & aFullyQualifiedNameID)
 {
 	// SEARCH ON CURRENT BUFFER LIST
 	{
 		const Symbol & anInstance =
-			anExecutable->getBuffer().getByFQNameID( aFullyQualifiedNameID );
+			anExecutable.getBuffer().getByFQNameID( aFullyQualifiedNameID );
+		if( anInstance.valid() )
+		{
+			return( anInstance );
+		}
+	}
+
+	// SEMANTIC a.k.a. HIERARCHIC SEARCH BUFFER
+	{
+		const Symbol & anInstance =
+				searchBufferInstanceByQualifiedNameID(
+						anExecutable, aFullyQualifiedNameID );
 		if( anInstance.valid() )
 		{
 			return( anInstance );
@@ -926,7 +944,7 @@ const Symbol & SymbolTable::searchBufferInstance(ExecutableForm * anExecutable,
 	// SEARCH ON CURRENT ALIAS BUFFER LIST
 	{
 		const Symbol & anInstance =
-				anExecutable->getAlias().getByFQNameID( aFullyQualifiedNameID );
+				anExecutable.getAlias().getByFQNameID( aFullyQualifiedNameID );
 		if( anInstance.is< InstanceOfBuffer >() )
 		{
 			return( anInstance );
@@ -934,46 +952,48 @@ const Symbol & SymbolTable::searchBufferInstance(ExecutableForm * anExecutable,
 	}
 
 	// SEARCH ON CURRENT MODEL CHILD BUFFER LIST & MAKE AN ALIAS
-	InstanceOfBuffer * aBufferInstance = NULL;
+	InstanceOfBuffer * aBufferInstance = nullptr;
 
-	TableOfSymbol::const_iterator itMachine = anExecutable->instance_model_begin();
-	TableOfSymbol::const_iterator endMachine = anExecutable->instance_model_end();
+	TableOfSymbol::const_iterator itMachine = anExecutable.instance_model_begin();
+	TableOfSymbol::const_iterator endMachine = anExecutable.instance_model_end();
 	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		aBufferInstance = (*itMachine).getExecutable()->
+		aBufferInstance = (*itMachine).getExecutable().
 				getBuffer().getByFQNameID( aFullyQualifiedNameID ).rawBuffer();
-		if( aBufferInstance != NULL )
+		if( aBufferInstance != nullptr )
 		{
 			break;
 		}
 	}
 
-	if( aBufferInstance != NULL )
+	if( aBufferInstance != nullptr )
 	{
 		VectorOfInstanceOfMachine theInstanceOfMachinePath;
 		theInstanceOfMachinePath.append( (*itMachine).rawMachine() );
 
 		InstanceOfBuffer * aliasInstance = new InstanceOfBuffer(
-				anExecutable, aBufferInstance, theInstanceOfMachinePath );
+			(& anExecutable), (* aBufferInstance), theInstanceOfMachinePath );
 
 		std::string fqnID = aBufferInstance->getFullyQualifiedNameID();
 		aliasInstance->setFullyQualifiedNameID( "alias" +
 				fqnID.substr(fqnID.find(':')) );
 
-		return( anExecutable->saveAlias(aliasInstance) );
+		return( anExecutable.saveAlias(aliasInstance) );
 	}
 
-	return( searchBufferInstanceAlias(anExecutable, aFullyQualifiedNameID) );
+	return( searchBufferInstanceAlias((& anExecutable), aFullyQualifiedNameID) );
 }
 
 
 const Symbol & SymbolTable::searchBufferInstanceByQualifiedNameID(
-		ExecutableForm * anExec, const std::string & aQualifiedNameID) const
+		const ExecutableForm & anExecutable,
+		const std::string & aQualifiedNameID) const
 {
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	const ExecutableForm * semExec = (& anExecutable);
+	for( ; semExec != nullptr ; semExec = semExec->getExecutableContainer() )
 	{
 		const Symbol & anInstance =
-				anExec->getBuffer().getByQualifiedNameID(aQualifiedNameID);
+				semExec->getBuffer().getByQualifiedNameID(aQualifiedNameID);
 		if( anInstance.valid() )
 		{
 			return( anInstance );
@@ -987,7 +1007,7 @@ const Symbol & SymbolTable::searchBufferInstanceByQualifiedNameID(
 const Symbol & SymbolTable::searchBufferInstanceByNameID(
 		ExecutableForm * anExec, const std::string & aNameID) const
 {
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
 				anExec->getBuffer().getByNameID(aNameID);
@@ -1002,8 +1022,7 @@ const Symbol & SymbolTable::searchBufferInstanceByNameID(
 
 
 const Symbol & SymbolTable::searchBufferInstanceAlias(
-		ExecutableForm * anExecutable,
-		const std::string & aFullyQualifiedNameID)
+	ExecutableForm * anExecutable, const std::string & aFullyQualifiedNameID)
 {
 	std::string fqnPrefix = aFullyQualifiedNameID.substr(0,
 			aFullyQualifiedNameID.find_last_of('.'));
@@ -1012,11 +1031,11 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 
 	VectorOfInstanceOfMachine theInstanceOfMachinePath;
 
-	ExecutableForm * tmpExecutable = anExecutable;
+	const ExecutableForm * tmpExecutable = anExecutable;
 
 	Symbol aMachine;
 
-	for( ; tmpExecutable != NULL ;
+	for( ; tmpExecutable != nullptr ;
 			tmpExecutable = tmpExecutable->getExecutableContainer() )
 	{
 		if( ((aMachine = tmpExecutable->getInstanceStatic().getByFQNameID(
@@ -1026,7 +1045,7 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 		{
 			theInstanceOfMachinePath.append( aMachine.rawMachine() );
 
-			tmpExecutable = aMachine.getExecutable();
+			tmpExecutable = aMachine.ptrExecutable();
 
 			aliasFQN = aMachine.getFullyQualifiedNameID();
 
@@ -1038,7 +1057,7 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 	{
 		fqnPrefix = aFullyQualifiedNameID.substr(0,
 				aFullyQualifiedNameID.find('.'));
-		tmpExecutable = NULL;
+		tmpExecutable = nullptr;
 
 		TableOfExecutableForm::const_raw_iterator itExec =
 				mConfiguration.getExecutableSystem().getExecutables().begin();
@@ -1051,8 +1070,7 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 				tmpExecutable = (itExec);
 				break;
 			}
-			else if( NamedElement::compareLocation(
-					(itExec)->getAstFullyQualifiedNameID(), fqnPrefix) )
+			else if( (itExec)->getAstElement().isLocationID(fqnPrefix) )
 			{
 				tmpExecutable = (itExec);
 				break;
@@ -1065,7 +1083,7 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 		}
 	}
 
-	if( tmpExecutable != NULL )
+	if( tmpExecutable != nullptr )
 	{
 		ListOfString strList;
 
@@ -1080,11 +1098,11 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 
 			if( tmpExecutable->getBuffer().getByFQNameID(fqnPrefix).invalid() )
 			{
-				tmpExecutable = NULL;
+				tmpExecutable = nullptr;
 			}
 		}
 
-		while( strList.populated() && (tmpExecutable != NULL) )
+		while( strList.populated() && (tmpExecutable != nullptr) )
 		{
 			fqnPrefix = tmpExecutable->getAstFullyQualifiedNameID()
 					+ '.' + strList.pop_first();
@@ -1097,7 +1115,7 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 
 				theInstanceOfMachinePath.append( aMachine.rawMachine() );
 
-				tmpExecutable = aMachine.getExecutable();
+				tmpExecutable = aMachine.ptrExecutable();
 			}
 			else
 			{
@@ -1109,7 +1127,7 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 			}
 		}
 
-		if( tmpExecutable != NULL )
+		if( tmpExecutable != nullptr )
 		{
 			while( strList.nonempty() )
 			{
@@ -1125,7 +1143,7 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 				if( foundInstance.getModifier().isVisibilityPublic() )
 				{
 					return( createBufferInstanceAlias(anExecutable, aliasFQN,
-							foundInstance.rawBuffer(), theInstanceOfMachinePath) );
+							foundInstance.asBuffer(), theInstanceOfMachinePath) );
 				}
 				else
 				{
@@ -1143,14 +1161,16 @@ const Symbol & SymbolTable::searchBufferInstanceAlias(
 
 
 
-const Symbol & SymbolTable::createBufferInstanceAlias(ExecutableForm * anExecutable,
-		const std::string & aFullyQualifiedNameID, InstanceOfBuffer * anInstance,
+const Symbol & SymbolTable::createBufferInstanceAlias(
+		ExecutableForm * anExecutable,
+		const std::string & aFullyQualifiedNameID,
+		const InstanceOfBuffer & anInstance,
 		VectorOfInstanceOfMachine & theInstanceOfMachinePath)
 {
 	const ExecutableForm * lcaExecutable = anExecutable->LCRA(
 			theInstanceOfMachinePath.last()->getContainer()->getExecutable() );
 
-	if( lcaExecutable != NULL )
+	if( lcaExecutable != nullptr )
 	{
 		if( lcaExecutable->hasContainer()
 			&& (theInstanceOfMachinePath.first()
@@ -1187,17 +1207,17 @@ const Symbol & SymbolTable::createBufferInstanceAlias(ExecutableForm * anExecuta
 
 /*
  *******************************************************************************
- * SEARCH CONNECT SYMBOL INSTANCE
+ * SEARCH CONNECTOR SYMBOL INSTANCE
  *******************************************************************************
  */
 
 const Symbol & SymbolTable::searchConnectorInstance(
-		ExecutableForm * anExecutable, const ObjectElement * objElement) const
+		ExecutableForm * anExecutable, const ObjectElement & astElement) const
 {
 	// SEARCH ON CURRENT BUFFER LIST
 	{
 		const Symbol & anInstance =
-				anExecutable->getConnect().getByAstElement(objElement);
+				anExecutable->getConnector().getByAstElement(astElement);
 		if( anInstance.valid() )
 		{
 			return( anInstance );
@@ -1207,8 +1227,8 @@ const Symbol & SymbolTable::searchConnectorInstance(
 	// SEARCH ON CURRENT ALIAS BUFFER LIST
 	{
 		const Symbol & anInstance =
-				anExecutable->getAlias().getByAstElement(objElement);
-		if( anInstance.is< InstanceOfConnect >() )
+				anExecutable->getAlias().getByAstElement(astElement);
+		if( anInstance.is< InstanceOfConnector >() )
 		{
 			return( anInstance );
 		}
@@ -1222,8 +1242,8 @@ const Symbol & SymbolTable::searchConnectorInstance(
 	TableOfSymbol::const_iterator itEnd = anExecutable->instance_model_end();
 	for( ; itMachine != itEnd ; ++itMachine )
 	{
-		bfConnect = (*itMachine).getExecutable()->
-				getConnect().getByAstElement(objElement);
+		bfConnect = (*itMachine).getExecutable().
+				getConnector().getByAstElement(astElement);
 		if( bfConnect.valid() )
 		{
 			break;
@@ -1235,8 +1255,8 @@ const Symbol & SymbolTable::searchConnectorInstance(
 		VectorOfInstanceOfMachine theInstanceOfMachinePath;
 		theInstanceOfMachinePath.append( (*itMachine).rawMachine() );
 
-		InstanceOfConnect * aliasInstance = new InstanceOfConnect(
-				anExecutable, bfConnect.rawConnect(), theInstanceOfMachinePath );
+		InstanceOfConnector * aliasInstance = new InstanceOfConnector(
+				anExecutable, bfConnect.asConnector(), theInstanceOfMachinePath );
 
 		const std::string & aFullyQualifiedNameID =
 				bfConnect.getFullyQualifiedNameID();
@@ -1247,18 +1267,19 @@ const Symbol & SymbolTable::searchConnectorInstance(
 		return( anExecutable->saveAlias(aliasInstance) );
 	}
 
-	return( searchConnectorInstance(objElement) );
+	return( searchConnectorInstance(astElement) );
 }
 
 
 
-const Symbol & SymbolTable::searchConnectorInstance(ExecutableForm * anExecutable,
+const Symbol & SymbolTable::searchConnectorInstance(
+		ExecutableForm * anExecutable,
 		const std::string & aFullyQualifiedNameID) const
 {
 	// SEARCH ON CURRENT BUFFER LIST
 	{
 		const Symbol & anInstance =
-			anExecutable->getConnect().getByFQNameID( aFullyQualifiedNameID );
+			anExecutable->getConnector().getByFQNameID( aFullyQualifiedNameID );
 		if( anInstance.valid() )
 		{
 			return( anInstance );
@@ -1269,7 +1290,7 @@ const Symbol & SymbolTable::searchConnectorInstance(ExecutableForm * anExecutabl
 	{
 		const Symbol & anInstance =
 				anExecutable->getAlias().getByFQNameID( aFullyQualifiedNameID );
-		if( anInstance.is< InstanceOfConnect >() )
+		if( anInstance.is< InstanceOfConnector >() )
 		{
 			return( anInstance );
 		}
@@ -1282,7 +1303,7 @@ const Symbol & SymbolTable::searchConnectorInstance(ExecutableForm * anExecutabl
 	TableOfSymbol::const_iterator endMachine = anExecutable->instance_model_end();
 	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		bfConnect = (*itMachine).getExecutable()->getConnect().
+		bfConnect = (*itMachine).getExecutable().getConnector().
 				getByFQNameID( aFullyQualifiedNameID );
 		if( bfConnect.valid() )
 		{
@@ -1295,8 +1316,8 @@ const Symbol & SymbolTable::searchConnectorInstance(ExecutableForm * anExecutabl
 		VectorOfInstanceOfMachine theInstanceOfMachinePath;
 		theInstanceOfMachinePath.append( (*itMachine).rawMachine() );
 
-		InstanceOfConnect * aliasInstance = new InstanceOfConnect(
-				anExecutable, bfConnect.rawConnect(), theInstanceOfMachinePath );
+		InstanceOfConnector * aliasInstance = new InstanceOfConnector(
+				anExecutable, bfConnect.asConnector(), theInstanceOfMachinePath );
 
 		const std::string & aFullyQualifiedNameID =
 				bfConnect.getFullyQualifiedNameID();
@@ -1314,10 +1335,10 @@ const Symbol & SymbolTable::searchConnectorInstance(ExecutableForm * anExecutabl
 const Symbol & SymbolTable::searchConnectorInstanceByQualifiedNameID(
 		ExecutableForm * anExec, const std::string & aQualifiedNameID) const
 {
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
-				anExec->getConnect().getByQualifiedNameID(aQualifiedNameID);
+				anExec->getConnector().getByQualifiedNameID(aQualifiedNameID);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -1331,10 +1352,10 @@ const Symbol & SymbolTable::searchConnectorInstanceByQualifiedNameID(
 const Symbol & SymbolTable::searchConnectorInstanceByNameID(
 		ExecutableForm * anExec, const std::string & aNameID) const
 {
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
-				anExec->getConnect().getByNameID(aNameID);
+				anExec->getConnector().getByNameID(aNameID);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -1353,7 +1374,7 @@ const Symbol & SymbolTable::searchConnectorInstanceByNameID(
 const Symbol & SymbolTable::searchInstanceModelByNameID(
 		ExecutableForm * anExec, const std::string & aNameID) const
 {
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
 				anExec->getInstanceModel().getByNameID(aNameID);
@@ -1377,7 +1398,7 @@ const Symbol & SymbolTable::searchInstanceModelByNameID(
 const Symbol & SymbolTable::searchMachineInstanceByNameID(
 		ExecutableForm * anExec, const std::string & aNameID) const
 {
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
 				anExec->getInstanceStatic().getByNameID(aNameID);
@@ -1403,11 +1424,11 @@ const Symbol & SymbolTable::searchMachineInstanceByNameID(
  * for Machine Instance
  */
 const Symbol & SymbolTable::searchInstanceModel(
-		COMPILE_CONTEXT * aCTX, const ObjectElement * astElement) const
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const
 {
 	ExecutableForm * anExec = aCTX->mCompileCtx->getExecutable();
 
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
 				anExec->getByAstInstanceModel(astElement);
@@ -1422,11 +1443,11 @@ const Symbol & SymbolTable::searchInstanceModel(
 
 
 const Symbol & SymbolTable::searchInstanceStatic(
-		COMPILE_CONTEXT * aCTX, const ObjectElement * astElement) const
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const
 {
 	ExecutableForm * anExec = aCTX->mCompileCtx->getExecutable();
 
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
 				anExec->getByAstInstanceStatic(astElement);
@@ -1441,11 +1462,11 @@ const Symbol & SymbolTable::searchInstanceStatic(
 
 
 const Symbol & SymbolTable::searchInstanceDynamic(
-		COMPILE_CONTEXT * aCTX, const ObjectElement * astElement) const
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const
 {
 	ExecutableForm * anExec = aCTX->mCompileCtx->getExecutable();
 
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const Symbol & foundInstance =
 				anExec->getByAstInstanceDynamic(astElement);
@@ -1462,14 +1483,14 @@ const Symbol & SymbolTable::searchInstanceDynamic(
 
 
 InstanceOfMachine * SymbolTable::searchInstanceStatic(
-		const ObjectElement * fromMachine, const UniFormIdentifier & anUFI)
+		const ObjectElement & fromMachine, const UniFormIdentifier & anUFI)
 {
 	// RESET ERROR
 	resetError();
 
 	BFList listofMachine;
 	searchInstanceStatic(
-			fromMachine->getContainerMachine(), anUFI, listofMachine);
+			*( fromMachine.getContainerMachine() ), anUFI, listofMachine);
 
 	if( listofMachine.populated() )
 	{
@@ -1489,11 +1510,11 @@ InstanceOfMachine * SymbolTable::searchInstanceStatic(
 		ERROR_OS << "Unfound statemachine << "
 				<< anUFI.str() << " >> !";
 
-		return( NULL );
+		return( nullptr );
 	}
 }
 
-void SymbolTable::searchInstanceStatic(const ObjectElement * refMachine,
+void SymbolTable::searchInstanceStatic(const ObjectElement & refMachine,
 		const UniFormIdentifier & anUFI, BFList & foundList) const
 {
 	std::string strUFI = anUFI.str();
@@ -1501,7 +1522,7 @@ void SymbolTable::searchInstanceStatic(const ObjectElement * refMachine,
 
 	if( not anUFI.hasLocator() )
 	{
-		std::string refUfi = refMachine->getFullyQualifiedNameID();
+		std::string refUfi = refMachine.getFullyQualifiedNameID();
 		refUfi = refUfi.substr(
 				refUfi.find(FQN_ID_ROOT_SEPARATOR), refUfi.size());
 
@@ -1568,12 +1589,15 @@ void SymbolTable::searchInstanceByNameID(COMPILE_CONTEXT * aCTX,
 		case TYPE_UINTEGER_SPECIFIER:
 		case TYPE_INTEGER_SPECIFIER:
 
+		case TYPE_POS_RATIONAL_SPECIFIER:
 		case TYPE_URATIONAL_SPECIFIER:
 		case TYPE_RATIONAL_SPECIFIER:
 
+		case TYPE_POS_FLOAT_SPECIFIER:
 		case TYPE_UFLOAT_SPECIFIER:
 		case TYPE_FLOAT_SPECIFIER:
 
+		case TYPE_POS_REAL_SPECIFIER:
 		case TYPE_UREAL_SPECIFIER:
 		case TYPE_REAL_SPECIFIER:
 
@@ -1584,7 +1608,7 @@ void SymbolTable::searchInstanceByNameID(COMPILE_CONTEXT * aCTX,
 
 		case TYPE_CLOCK_SPECIFIER:
 		case TYPE_TIME_SPECIFIER:
-		case TYPE_CONTINUOUS_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
 		case TYPE_DISCRETE_TIME_SPECIFIER:
 
 		case TYPE_INTERVAL_SPECIFIER:
@@ -1671,12 +1695,15 @@ void SymbolTable::searchInstanceByQualifiedNameID(COMPILE_CONTEXT * aCTX,
 		case TYPE_UINTEGER_SPECIFIER:
 		case TYPE_INTEGER_SPECIFIER:
 
+		case TYPE_POS_RATIONAL_SPECIFIER:
 		case TYPE_URATIONAL_SPECIFIER:
 		case TYPE_RATIONAL_SPECIFIER:
 
+		case TYPE_POS_FLOAT_SPECIFIER:
 		case TYPE_UFLOAT_SPECIFIER:
 		case TYPE_FLOAT_SPECIFIER:
 
+		case TYPE_POS_REAL_SPECIFIER:
 		case TYPE_UREAL_SPECIFIER:
 		case TYPE_REAL_SPECIFIER:
 
@@ -1687,7 +1714,7 @@ void SymbolTable::searchInstanceByQualifiedNameID(COMPILE_CONTEXT * aCTX,
 
 		case TYPE_CLOCK_SPECIFIER:
 		case TYPE_TIME_SPECIFIER:
-		case TYPE_CONTINUOUS_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
 		case TYPE_DISCRETE_TIME_SPECIFIER:
 
 		case TYPE_INTERVAL_SPECIFIER:
@@ -1738,13 +1765,13 @@ void SymbolTable::searchInstanceByQualifiedNameID(COMPILE_CONTEXT * aCTX,
  * for DataFactory, Port or Machine
  */
 const BF & SymbolTable::searchInstance(
-		COMPILE_CONTEXT * aCTX, const ObjectElement * objElement)
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement)
 {
 	// CASE form is a PORT
-	if( objElement->is< Port >() )
+	if( astElement.is< Port >() )
 	{
 		const Symbol & foundInstance = XQuery.getSemPortByAstElement(
-				aCTX->mCompileCtx->getExecutable(), objElement);
+				aCTX->mCompileCtx->getExecutable(), astElement);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -1752,11 +1779,11 @@ const BF & SymbolTable::searchInstance(
 	}
 
 	// CASE form is a [STATE]MACHINE
-	if( objElement->is< Machine >() )
+	if( astElement.is< Machine >() )
 	{
 		{
 			const Symbol & foundInstance =
-					searchInstanceStatic(aCTX, objElement);
+					searchInstanceStatic(aCTX, astElement);
 			if( foundInstance.valid() )
 			{
 				return( foundInstance );
@@ -1764,21 +1791,21 @@ const BF & SymbolTable::searchInstance(
 		}
 		{
 			const Symbol & foundInstance =
-					searchInstanceModel(aCTX, objElement);
+					searchInstanceModel(aCTX, astElement);
 			if( foundInstance.valid() )
 			{
 				return( foundInstance );
 			}
 		}
 
-		return( searchInstanceStatic(objElement) );
+		return( searchInstanceStatic(astElement) );
 	}
 
 	// CASE form is a BUFFER
-	if( objElement->is< Buffer >() )
+	if( astElement.is< Buffer >() )
 	{
 		const Symbol & foundInstance = searchBufferInstance(
-				aCTX->mCompileCtx->getExecutable(), objElement);
+				aCTX->mCompileCtx->getExecutable(), astElement);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -1786,11 +1813,11 @@ const BF & SymbolTable::searchInstance(
 	}
 
 
-	// CASE form is a CONNECT
-	if( objElement->is< Connector >() )
+	// CASE form is a CONNECTOR
+	if( astElement.is< Connector >() )
 	{
 		const Symbol & foundInstance = searchConnectorInstance(
-				aCTX->mCompileCtx->getExecutable(), objElement);
+				aCTX->mCompileCtx->getExecutable(), astElement);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -1798,7 +1825,7 @@ const BF & SymbolTable::searchInstance(
 	}
 
 	{
-		const BF & foundInstance = searchDataInstance(aCTX, objElement);
+		const BF & foundInstance = searchDataInstance(aCTX, astElement);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -1807,7 +1834,7 @@ const BF & SymbolTable::searchInstance(
 
 	// For the Case of undetected TYPE
 	{
-		const Symbol & foundInstance = searchInstanceStatic(objElement);
+		const Symbol & foundInstance = searchInstanceStatic(astElement);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -1848,7 +1875,7 @@ const BF & SymbolTable::searchInstance(COMPILE_CONTEXT * aCTX,
 	if( aCTX->typeMustBeBufferFamily() )
 	{
 		const Symbol & foundInstance = searchBufferInstance(
-				aCTX->mCompileCtx->getExecutable(), aFullyQualifiedNameID);
+				aCTX->mCompileCtx->refExecutable(), aFullyQualifiedNameID);
 		if( foundInstance.valid() )
 		{
 			return( foundInstance );
@@ -1856,7 +1883,7 @@ const BF & SymbolTable::searchInstance(COMPILE_CONTEXT * aCTX,
 	}
 
 
-	// CASE element is a CONNECT
+	// CASE element is a CONNECTOR
 	if( aCTX->typeMustBeConnectorFamily() )
 	{
 		const Symbol & foundInstance = searchConnectorInstance(
@@ -1887,13 +1914,13 @@ const BF & SymbolTable::searchInstance(COMPILE_CONTEXT * aCTX,
  * Program for a given FORM
  */
 const BF & SymbolTable::searchTransition(
-		COMPILE_CONTEXT * aCTX, const ObjectElement * objElement) const
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const
 {
 	ExecutableForm * anExec = aCTX->mCompileCtx->getExecutable();
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const BF & tmpTransition =
-				anExec->getTransitionByAstElement(objElement);
+				anExec->getTransitionByAstElement(astElement);
 		if( tmpTransition.valid() )
 		{
 			return( tmpTransition );
@@ -1901,7 +1928,7 @@ const BF & SymbolTable::searchTransition(
 	}
 
 	{
-		const BF & aTransition = searchTransition(objElement);
+		const BF & aTransition = searchTransition(astElement);
 		if( aTransition.valid() )
 		{
 			return( aTransition );
@@ -1917,7 +1944,7 @@ const BF & SymbolTable::searchTransition(
 {
 	ExecutableForm * anExec = aCTX->mCompileCtx->getExecutable();
 
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const BF & tmpTransition = anExec->getTransition(aFullyQualifiedNameID);
 		if( tmpTransition.valid() )
@@ -1943,7 +1970,7 @@ const BF & SymbolTable::searchTransitionByNameID(
 {
 	ExecutableForm * anExec = aCTX->mCompileCtx->getExecutable();
 
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const BF & tmpTransition = anExec->getTransitionByNameID(aNameID);
 		if( tmpTransition.valid() )
@@ -1965,12 +1992,12 @@ const BF & SymbolTable::searchTransitionByNameID(
 
 
 const BF & SymbolTable::searchProgram(
-		COMPILE_CONTEXT * aCTX, const ObjectElement * objElement) const
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const
 {
 	ExecutableForm * anExec = aCTX->mCompileCtx->getExecutable();
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
-		const BF & tmpProgram = anExec->getProgramByAstElement(objElement);
+		const BF & tmpProgram = anExec->getProgramByAstElement(astElement);
 		if( tmpProgram.valid() )
 		{
 			return( tmpProgram );
@@ -1978,14 +2005,14 @@ const BF & SymbolTable::searchProgram(
 	}
 
 	{
-		const BF & aProgram = searchProgram(objElement);
+		const BF & aProgram = searchProgram(astElement);
 		if( aProgram.valid() )
 		{
 			return( aProgram );
 		}
 	}
 
-	return( searchExecutable(objElement) );
+	return( searchExecutable(astElement) );
 }
 
 
@@ -1994,7 +2021,7 @@ const BF & SymbolTable::searchProgram(
 {
 	ExecutableForm * anExec = aCTX->mCompileCtx->getExecutable();
 
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const BF & tmpProgram = anExec->getProgram(aFullyQualifiedNameID);
 		if( tmpProgram.valid() )
@@ -2020,7 +2047,7 @@ const BF & SymbolTable::searchProgramByNameID(
 {
 	ExecutableForm * anExec = aCTX->mCompileCtx->getExecutable();
 
-	for( ; anExec != NULL ; anExec = anExec->getExecutableContainer() )
+	for( ; anExec != nullptr ; anExec = anExec->getExecutableContainer() )
 	{
 		const BF & tmpProgram = anExec->getProgramByNameID(aNameID);
 		if( tmpProgram.valid() )
@@ -2053,9 +2080,9 @@ ExecutableForm * SymbolTable::searchExecutableModel(const Machine * aMachine)
 	const BF & aModel = aMachine->getType();
 	if( aModel.is< Machine >() )
 	{
-		if( aModel.to_ptr< Machine >()->getSpecifier().hasDesignModel() )
+		if( aModel.to< Machine >().getSpecifier().hasDesignModel() )
 		{
-			return( searchExecutable(aModel.to_ptr< Machine >()).
+			return( searchExecutable(aModel.to< Machine >()).
 					to_ptr< ExecutableForm >() );
 		}
 		else
@@ -2065,27 +2092,27 @@ ExecutableForm * SymbolTable::searchExecutableModel(const Machine * aMachine)
 	}
 	else if( aModel.is< Identifier >() )
 	{
-		std::string aNameID = aModel.to_ptr< Identifier >()->getValue();
+		std::string aNameID = aModel.to< Identifier >().getValue();
 
 		const BF & foundExec = searchExecutableByNameID(aNameID);
 
 		return( foundExec.valid() ?
-				foundExec.as_ptr< ExecutableForm >() : NULL );
+				foundExec.as_ptr< ExecutableForm >() : nullptr );
 	}
 
 	else
 	{
 		std::string aQualifiedNameID = aModel.is< QualifiedIdentifier >()
-				? aModel.to_ptr< QualifiedIdentifier >()->getValue()
+				? aModel.to< QualifiedIdentifier >().getValue()
 				: ( aModel.is< UniFormIdentifier >()
-					? aModel.to_ptr< UniFormIdentifier >()->toStringLocation()
+					? aModel.to< UniFormIdentifier >().toStringLocation()
 					: aModel.str() );
 
 		const BF & foundExec =
 				searchExecutableByQualifiedNameID( aQualifiedNameID );
 
 		return( foundExec.valid() ?
-				foundExec.as_ptr< ExecutableForm >() : NULL );
+				foundExec.as_ptr< ExecutableForm >() : nullptr );
 	}
 }
 
@@ -2094,11 +2121,11 @@ ExecutableForm * SymbolTable::searchExecutableModel(const Machine * aMachine)
  * SEARCH SYMBOL
  * for DataFactory, Port, Machine, Executable
  */
-const BF & SymbolTable::searchSymbol(COMPILE_CONTEXT * aCTX,
-		const ObjectElement * objElement)
+const BF & SymbolTable::searchSymbol(
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement)
 {
 	{
-		const BF & theSymbol = searchInstance(aCTX, objElement);
+		const BF & theSymbol = searchInstance(aCTX, astElement);
 		if( theSymbol.valid() )
 		{
 			return( theSymbol );
@@ -2106,14 +2133,14 @@ const BF & SymbolTable::searchSymbol(COMPILE_CONTEXT * aCTX,
 	}
 
 	{
-		const BF & theSymbol = searchTransition(aCTX, objElement);
+		const BF & theSymbol = searchTransition(aCTX, astElement);
 		if( theSymbol.valid() )
 		{
 			return( theSymbol );
 		}
 	}
 	{
-		const BF & theSymbol = searchProgram(aCTX, objElement);
+		const BF & theSymbol = searchProgram(aCTX, astElement);
 		if( theSymbol.valid() )
 		{
 			return( theSymbol );
@@ -2162,7 +2189,7 @@ BF SymbolTable::searchSymbolByUFI(
 	UniFormIdentifier::const_iterator itEnd = anUFI.end();
 
 	std::ostringstream ossUFI;
-	const ObjectElement * TheMainObjectElement = NULL;
+	const ObjectElement * theMainObjectElement = nullptr;
 
 	BF bfInstance;
 	InstanceOfMachine * theInstanceMachine;
@@ -2170,9 +2197,9 @@ BF SymbolTable::searchSymbolByUFI(
 	// CHECKING ROOT MACHINE INSTANCE
 	if( (*it).is< ObjectElement >() )
 	{
-		TheMainObjectElement = (*it).to_ptr< ObjectElement >();
+		theMainObjectElement = (*it).to_ptr< ObjectElement >();
 
-		if( (bfInstance = searchInstanceStatic(TheMainObjectElement)).valid() )
+		if( (bfInstance = searchInstanceStatic(* theMainObjectElement)).valid() )
 		{
 			theInstanceMachine = bfInstance.to_ptr< InstanceOfMachine >();
 		}
@@ -2180,10 +2207,10 @@ BF SymbolTable::searchSymbolByUFI(
 		{
 			incrErrorCount();
 			ERROR_OS << "Unfound the main form < "
-					<< TheMainObjectElement->getFullyQualifiedNameID()
+					<< theMainObjectElement->getFullyQualifiedNameID()
 					<< " > of UFI < " << anUFI.str() << " > in the system << "
 					<< mConfiguration.getExecutableSystem().rawSystemInstance()
-							->getAstElement()->getFullyQualifiedNameID() << " >>"
+							->safeAstElement().getFullyQualifiedNameID() << " >>"
 					<< std::endl;
 
 			return( BF::REF_NULL );
@@ -2194,15 +2221,16 @@ BF SymbolTable::searchSymbolByUFI(
 		ossUFI << anUFI.toStringLocator()
 				<< FQN_ID_ROOT_SEPARATOR << (*it).str();
 
-		theInstanceMachine =
-				mConfiguration.getExecutableSystem().rawSystemInstance();
-		TheMainObjectElement = theInstanceMachine->getAstElement();
-		if( (TheMainObjectElement != NULL)
-			&& TheMainObjectElement->fqnEquals( ossUFI.str() ) )
+		theInstanceMachine = mConfiguration.getExecutableSystem().rawSystemInstance();
+		if( theInstanceMachine->hasAstElement() )
 		{
-			if( it == itEnd )
+			theMainObjectElement = &( theInstanceMachine->getAstElement() );
+			if( theMainObjectElement->fqnEquals( ossUFI.str() ) )
 			{
-				return( mConfiguration.getExecutableSystem().getSystemInstance() );
+				if( it == itEnd )
+				{
+					return( mConfiguration.getExecutableSystem().getSystemInstance() );
+				}
 			}
 		}
 		else
@@ -2212,7 +2240,7 @@ BF SymbolTable::searchSymbolByUFI(
 					<< ossUFI.str() << " > of UFI < "
 					<< anUFI.str() << " > in the system << "
 					<< mConfiguration.getExecutableSystem().rawSystemInstance()
-							->getAstElement()->getFullyQualifiedNameID() << " >>"
+							->safeAstElement().getFullyQualifiedNameID() << " >>"
 					<< std::endl;
 
 			return( BF::REF_NULL );
@@ -2222,6 +2250,8 @@ BF SymbolTable::searchSymbolByUFI(
 	ossUFI.str("");
 	ossUFI << theInstanceMachine->getFullyQualifiedNameID();
 
+	VectorOfInstanceOfMachine theInstanceOfMachinePath;
+
 	// CHECKING MAIN MACHINE INSTANCE
 	for( ++it ; it != itEnd ; ++it )
 	{
@@ -2229,12 +2259,12 @@ BF SymbolTable::searchSymbolByUFI(
 		{
 			ossUFI << '.' << (*it).str();
 
-			bfInstance = theInstanceMachine->getExecutable()->
+			bfInstance = theInstanceMachine->refExecutable().
 					getInstanceStatic().getByFQNameID( ossUFI.str() );
 
 			if( bfInstance.invalid() )
 			{
-				bfInstance = theInstanceMachine->getExecutable()->
+				bfInstance = theInstanceMachine->refExecutable().
 						getInstanceStatic().getByNameID( (*it).str() );
 			}
 
@@ -2242,20 +2272,31 @@ BF SymbolTable::searchSymbolByUFI(
 			{
 				theInstanceMachine = bfInstance.to_ptr< InstanceOfMachine >();
 
+				if( theInstanceMachine->getSpecifier().isDesignInstanceStatic()
+					|| theInstanceOfMachinePath.nonempty() )
+				{
+					theInstanceOfMachinePath.append( theInstanceMachine );
+				}
+
 				continue;
 			}
 		}
 		else if( (*it).is< ObjectElement >() )
 		{
-			if( (*it).to_ptr< ObjectElement >()->getContainer()
-				== TheMainObjectElement )
+			if( (*it).to< ObjectElement >().getContainer() == theMainObjectElement )
 			{
-				TheMainObjectElement = (*it).to_ptr< ObjectElement >();
+				theMainObjectElement = (*it).to_ptr< ObjectElement >();
 
-				if( (bfInstance = theInstanceMachine->getExecutable()->
-						getByAstInstanceStatic(TheMainObjectElement)).valid() )
+				if( (bfInstance = theInstanceMachine->refExecutable().
+						getByAstInstanceStatic(* theMainObjectElement)).valid() )
 				{
 					theInstanceMachine = bfInstance.to_ptr< InstanceOfMachine >();
+
+					if( theInstanceMachine->getSpecifier().isDesignInstanceStatic()
+						|| theInstanceOfMachinePath.nonempty() )
+					{
+						theInstanceOfMachinePath.append( theInstanceMachine );
+					}
 
 					ossUFI.str("");
 					ossUFI << theInstanceMachine->getFullyQualifiedNameID();
@@ -2268,10 +2309,10 @@ BF SymbolTable::searchSymbolByUFI(
 				incrErrorCount();
 				ERROR_OS << "MissFormed UFI < "
 						<< anUFI.str() << " > : the field < "
-						<< (*it).to_ptr<
-								ObjectElement >()->getFullyQualifiedNameID()
+						<< (*it).to<
+								ObjectElement >().getFullyQualifiedNameID()
 						<< " > container is not < "
-						<< TheMainObjectElement->getFullyQualifiedNameID()
+						<< theMainObjectElement->getFullyQualifiedNameID()
 						<< " > !!!" << std::endl;
 
 				return( BF::REF_NULL );
@@ -2291,21 +2332,75 @@ BF SymbolTable::searchSymbolByUFI(
 		break;
 	}
 
-	if( bfInstance.valid() )
+//	if( bfInstance.valid() )
+//	{
+//		if( it == itEnd )
+//		{
+//			return( bfInstance );
+//		}
+//
+//		// CHECKING FOR MAIN MACHINE
+//		ossUFI.str("");
+//		ossUFI << theInstanceMachine->getFullyQualifiedNameID();
+//		for( ; it != itEnd ; ++it )
+//		{
+//			if( (*it).isUfid() )
+//			{
+//				ossUFI << '.' << it->str();
+//			}
+//			else
+//			{
+//				incrErrorCount();
+//				ERROR_OS << "Unexpected < " << it->str()
+//						<< " > as field of the UFI < " << anUFI.str()
+//						<< " > !!!" << std::endl;
+//
+//				return( BF::REF_NULL );
+//			}
+//		}
+//
+//		const BF & aSymbol = theInstanceMachine->refExecutable().
+//				getSymbol(ossUFI.str(), aCTX->getTypeFamily());
+//		if( aSymbol.valid() )
+//		{
+//			return( aSymbol );
+//		}
+//		else
+//		{
+//			incrErrorCount();
+//			ERROR_OS << "Unfound a runtime symbol for the UFI < "
+//					<< anUFI.str() << " >" << std::endl;
+//		}
+//	}
+
+	if( theInstanceMachine != nullptr )
 	{
 		if( it == itEnd )
 		{
-			return( bfInstance );
+			if( bfInstance.valid() )
+			{
+				return( bfInstance );
+			}
+			else
+			{
+				return( BF::REF_NULL );
+			}
 		}
 
 		// CHECKING FOR MAIN MACHINE
 		ossUFI.str("");
 		ossUFI << theInstanceMachine->getFullyQualifiedNameID();
+
+		std::ostringstream ossModel;
+		ossModel << theInstanceMachine->refExecutable().getFullyQualifiedNameID();
+
 		for( ; it != itEnd ; ++it )
 		{
 			if( (*it).isUfid() )
 			{
 				ossUFI << '.' << it->str();
+
+				ossModel << '.' << it->str();
 			}
 			else
 			{
@@ -2318,17 +2413,327 @@ BF SymbolTable::searchSymbolByUFI(
 			}
 		}
 
-		const BF & aSymbol = theInstanceMachine->getExecutable()->
+		const BF & aSymbol = theInstanceMachine->refExecutable().
 				getSymbol(ossUFI.str(), aCTX->getTypeFamily());
 		if( aSymbol.valid() )
 		{
-			return( aSymbol );
+			if( theInstanceOfMachinePath.empty() )
+			{
+				return( aSymbol );
+			}
+			else
+			{
+				return( createSymbolAlias(aCTX->mCompileCtx->getExecutable(),
+						theInstanceOfMachinePath, aSymbol, ossUFI.str()) );
+			}
+		}
+		else
+		{
+			const BF & aSymbol = theInstanceMachine->refExecutable().
+					getSymbol(ossModel.str(), aCTX->getTypeFamily());
+			if( aSymbol.valid() )
+			{
+				if( theInstanceOfMachinePath.empty() )
+				{
+					theInstanceOfMachinePath.append( theInstanceMachine );
+				}
+
+				return( createSymbolAlias(aCTX->mCompileCtx->getExecutable(),
+						theInstanceOfMachinePath, aSymbol, ossUFI.str()) );
+			}
+			else
+			{
+				incrErrorCount();
+				ERROR_OS << "Unfound a runtime symbol for the UFI < "
+						<< anUFI.str() << " >" << std::endl;
+			}
+		}
+	}
+	return( BF::REF_NULL );
+}
+
+
+BF SymbolTable::searchSymbolByFQN(
+		COMPILE_CONTEXT * aCTX, const UniFormIdentifier & anFQN)
+{
+	UniFormIdentifier::const_iterator it = anFQN.begin();
+	UniFormIdentifier::const_iterator itEnd = anFQN.end();
+
+	std::ostringstream ossUFI;
+	const ObjectElement * theMainObjectElement = nullptr;
+
+	BF bfInstance;
+	InstanceOfMachine * theInstanceMachine;
+
+	// CHECKING ROOT MACHINE INSTANCE
+	if( (*it).is< ObjectElement >() )
+	{
+		theMainObjectElement = (*it).to_ptr< ObjectElement >();
+
+		if( (bfInstance = searchInstanceStatic(* theMainObjectElement)).valid() )
+		{
+			theInstanceMachine = bfInstance.to_ptr< InstanceOfMachine >();
 		}
 		else
 		{
 			incrErrorCount();
-			ERROR_OS << "Unfound a runtime symbol for the UFI < "
-					<< anUFI.str() << " >" << std::endl;
+			ERROR_OS << "Unfound the main form < "
+					<< theMainObjectElement->getFullyQualifiedNameID()
+					<< " > of UFI < " << anFQN.str() << " > in the system << "
+					<< mConfiguration.getExecutableSystem().rawSystemInstance()
+							->safeAstElement().getFullyQualifiedNameID() << " >>"
+					<< std::endl;
+
+			return( BF::REF_NULL );
+		}
+	}
+	else
+	{
+		ossUFI << anFQN.toStringLocator()
+				<< FQN_ID_ROOT_SEPARATOR << (*it).str();
+
+		theInstanceMachine = mConfiguration.getExecutableSystem().rawSystemInstance();
+		if( theInstanceMachine->hasAstElement() )
+		{
+			theMainObjectElement = &( theInstanceMachine->getAstElement() );
+			if( theMainObjectElement->fqnEquals( ossUFI.str() ) )
+			{
+				if( it == itEnd )
+				{
+					return( mConfiguration.getExecutableSystem().getSystemInstance() );
+				}
+			}
+		}
+		else
+		{
+			incrErrorCount();
+			ERROR_OS << "Unfound the main form < "
+					<< ossUFI.str() << " > of UFI < "
+					<< anFQN.str() << " > in the system << "
+					<< mConfiguration.getExecutableSystem().rawSystemInstance()
+							->safeAstElement().getFullyQualifiedNameID() << " >>"
+					<< std::endl;
+
+			return( BF::REF_NULL );
+		}
+	}
+
+	ossUFI.str("");
+	ossUFI << theInstanceMachine->getFullyQualifiedNameID();
+
+	VectorOfInstanceOfMachine theInstanceOfMachinePath;
+
+	// CHECKING MAIN MACHINE INSTANCE
+	for( ++it ; it != itEnd ; ++it )
+	{
+		if( (*it).isIdentifier() )
+		{
+			ossUFI << '.' << (*it).str();
+
+			bfInstance = theInstanceMachine->refExecutable().
+					getInstanceStatic().getByFQNameID( ossUFI.str() );
+
+			if( bfInstance.invalid() )
+			{
+				bfInstance = theInstanceMachine->refExecutable().
+						getInstanceStatic().getByNameID( (*it).str() );
+			}
+
+			if( bfInstance.valid() )
+			{
+				theInstanceMachine = bfInstance.to_ptr< InstanceOfMachine >();
+
+				if( theInstanceMachine->getSpecifier().isDesignInstanceStatic()
+					|| theInstanceOfMachinePath.nonempty() )
+				{
+					theInstanceOfMachinePath.append( theInstanceMachine );
+				}
+
+				continue;
+			}
+		}
+		else if( (*it).is< ObjectElement >() )
+		{
+			if( (*it).to< ObjectElement >().getContainer()
+				== theMainObjectElement )
+			{
+				theMainObjectElement = (*it).to_ptr< ObjectElement >();
+
+				if( (bfInstance = theInstanceMachine->refExecutable().
+						getByAstInstanceStatic(* theMainObjectElement)).valid() )
+				{
+					theInstanceMachine = bfInstance.to_ptr< InstanceOfMachine >();
+
+					if( theInstanceMachine->getSpecifier().isDesignInstanceStatic()
+						|| theInstanceOfMachinePath.nonempty() )
+					{
+						theInstanceOfMachinePath.append( theInstanceMachine );
+					}
+
+					ossUFI.str("");
+					ossUFI << theInstanceMachine->getFullyQualifiedNameID();
+
+					continue;
+				}
+			}
+			else
+			{
+				incrErrorCount();
+				ERROR_OS << "MissFormed UFI < "
+						<< anFQN.str() << " > : the field < "
+						<< (*it).to<
+								ObjectElement >().getFullyQualifiedNameID()
+						<< " > container is not < "
+						<< theMainObjectElement->getFullyQualifiedNameID()
+						<< " > !!!" << std::endl;
+
+				return( BF::REF_NULL );
+			}
+		}
+		else
+		{
+			incrErrorCount();
+			ERROR_OS << "Unexpected < " << it->str()
+					<< " > as field of the UFI < "
+					<< anFQN.str() << " > !!!"
+					<< std::endl;
+
+			return( BF::REF_NULL );
+		}
+
+		break;
+	}
+
+	if( theInstanceMachine != nullptr )
+	{
+		if( it == itEnd )
+		{
+			if( bfInstance.valid() )
+			{
+				return( bfInstance );
+			}
+			else
+			{
+				return( BF::REF_NULL );
+			}
+		}
+
+		// CHECKING FOR MAIN MACHINE
+		ossUFI.str("");
+		ossUFI << theInstanceMachine->getFullyQualifiedNameID();
+
+		std::ostringstream ossModel;
+		ossModel << theInstanceMachine->refExecutable().getFullyQualifiedNameID();
+
+		for( ; it != itEnd ; ++it )
+		{
+			if( (*it).isUfid() )
+			{
+				ossUFI << '.' << it->str();
+
+				ossModel << '.' << it->str();
+			}
+			else
+			{
+				incrErrorCount();
+				ERROR_OS << "Unexpected < " << it->str()
+						<< " > as field of the UFI < " << anFQN.str()
+						<< " > !!!" << std::endl;
+
+				return( BF::REF_NULL );
+			}
+		}
+
+		const BF & aSymbol = theInstanceMachine->refExecutable().
+				getSymbol(ossUFI.str(), aCTX->getTypeFamily());
+		if( aSymbol.valid() )
+		{
+			if( theInstanceOfMachinePath.empty() )
+			{
+				return( aSymbol );
+			}
+			else
+			{
+				return( createSymbolAlias(aCTX->mCompileCtx->getExecutable(),
+						theInstanceOfMachinePath, aSymbol, ossUFI.str()) );
+			}
+		}
+		else
+		{
+			const BF & aSymbol = theInstanceMachine->refExecutable().
+					getSymbol(ossModel.str(), aCTX->getTypeFamily());
+			if( aSymbol.valid() )
+			{
+				return( createSymbolAlias(aCTX->mCompileCtx->getExecutable(),
+						theInstanceOfMachinePath, aSymbol, ossUFI.str()) );
+			}
+			else
+			{
+				incrErrorCount();
+				ERROR_OS << "Unfound a runtime symbol for the UFI < "
+						<< anFQN.str() << " >" << std::endl;
+			}
+		}
+	}
+
+	return( BF::REF_NULL );
+}
+
+BF SymbolTable::createSymbolAlias(ExecutableForm * anExecutable,
+		const VectorOfInstanceOfMachine & anInstanceOfMachinePath,
+		const BF & aTargetSymbol, const std::string & aFullyQualifiedNameID)
+{
+	const std::string aliasFQN =  "alias" +
+			aFullyQualifiedNameID.substr(aFullyQualifiedNameID.find(':'));
+
+	switch( aTargetSymbol.classKind() )
+	{
+		case FORM_INSTANCE_DATA_KIND:
+		{
+			InstanceOfData * aliasInstance(
+					new InstanceOfData(anExecutable,
+							aTargetSymbol.to< InstanceOfData >(),
+							anInstanceOfMachinePath) );
+
+			aliasInstance->setFullyQualifiedNameID( aliasFQN );
+
+			return( anExecutable->saveVariableAlias(aliasInstance) );
+		}
+
+		case FORM_INSTANCE_PORT_KIND:
+		{
+			InstanceOfPort * aliasInstance(
+					new InstanceOfPort(anExecutable,
+							aTargetSymbol.to< InstanceOfPort >(),
+							anInstanceOfMachinePath) );
+
+			aliasInstance->setFullyQualifiedNameID( aliasFQN );
+
+			return( anExecutable->saveAlias(aliasInstance) );
+		}
+
+		case FORM_INSTANCE_BUFFER_KIND:
+		{
+			InstanceOfBuffer * aliasInstance(
+					new InstanceOfBuffer(anExecutable,
+							aTargetSymbol.to< InstanceOfBuffer >(),
+							anInstanceOfMachinePath) );
+
+			aliasInstance->setFullyQualifiedNameID( aliasFQN );
+
+			return( anExecutable->saveAlias(aliasInstance) );
+		}
+
+		case FORM_INSTANCE_CONNECTOR_KIND:
+		{
+			InstanceOfConnector * aliasInstance(
+					new InstanceOfConnector(anExecutable,
+							aTargetSymbol.to< InstanceOfConnector >(),
+							anInstanceOfMachinePath) );
+
+			aliasInstance->setFullyQualifiedNameID( aliasFQN );
+
+			return( anExecutable->saveAlias(aliasInstance) );
 		}
 	}
 
@@ -2336,11 +2741,15 @@ BF SymbolTable::searchSymbolByUFI(
 }
 
 
+
+
+
+
 const BF & SymbolTable::searchSemSymbol(
-		COMPILE_CONTEXT * aCTX, const ObjectElement * astElement) const
+		COMPILE_CONTEXT * aCTX, const ObjectElement & astElement) const
 {
 	BaseAvmProgram * aProgram = aCTX->mCompileCtx;
-	for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+	for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 	{
 		const BF & theSymbol =
 			aProgram->getSymbolByAstElement(astElement, aCTX->getTypeFamily());
@@ -2353,7 +2762,7 @@ const BF & SymbolTable::searchSemSymbol(
 	if( aCTX->mRuntimeCtx != aCTX->mCompileCtx )
 	{
 		aProgram = aCTX->mRuntimeCtx;
-		for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+		for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 		{
 			const BF & theSymbol = aProgram->
 					getSymbolByAstElement(astElement, aCTX->getTypeFamily());
@@ -2371,7 +2780,7 @@ const BF & SymbolTable::searchSemSymbolByQualifiedNameID(
 		COMPILE_CONTEXT * aCTX, const std::string & aQualifiedNameID) const
 {
 	BaseAvmProgram * aProgram = aCTX->mCompileCtx;
-	for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+	for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 	{
 		const BF & theSymbol = aProgram->getSymbolByQualifiedNameID(
 				aQualifiedNameID, aCTX->getTypeFamily());
@@ -2384,7 +2793,7 @@ const BF & SymbolTable::searchSemSymbolByQualifiedNameID(
 	if( aCTX->mRuntimeCtx != aCTX->mCompileCtx )
 	{
 		aProgram = aCTX->mRuntimeCtx;
-		for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+		for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 		{
 			const BF & theSymbol = aProgram->getSymbolByQualifiedNameID(
 					aQualifiedNameID, aCTX->getTypeFamily());
@@ -2403,7 +2812,7 @@ const BF & SymbolTable::searchSemSymbolByNameID(
 		COMPILE_CONTEXT * aCTX, const std::string & aNameID) const
 {
 	BaseAvmProgram * aProgram = aCTX->mCompileCtx;
-	for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+	for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 	{
 		const BF & theSymbol =
 				aProgram->getSymbolByNameID(aNameID, aCTX->getTypeFamily());
@@ -2416,7 +2825,7 @@ const BF & SymbolTable::searchSemSymbolByNameID(
 	if( aCTX->mRuntimeCtx != aCTX->mCompileCtx )
 	{
 		aProgram = aCTX->mRuntimeCtx;
-		for( ; aProgram != NULL ; aProgram = aProgram->getContainer() )
+		for( ; aProgram != nullptr ; aProgram = aProgram->getContainer() )
 		{
 			const BF & theSymbol = aProgram->
 					getSymbolByNameID(aNameID, aCTX->getTypeFamily());
@@ -2445,15 +2854,16 @@ BF SymbolTable::searchSymbolByQualifiedNameID(
 	}
 
 	ListOfString listOfId;
-	avm_size_t idCount = NamedElement::collectNameID(listOfId, aQualifiedNameID);
+	std::size_t idCount = NamedElement::collectNameID(listOfId, aQualifiedNameID);
 	if( idCount == 2 )
 	{
-		const Symbol & aMachine = aCTX->mCompileCtx->getExecutable()
-				->getInstanceStatic().getByNameID(listOfId.first());
+		const Symbol & aMachine = aCTX->mCompileCtx->refExecutable().
+				getInstanceStatic().getByNameID(listOfId.first());
 		if( aMachine.valid() )
 		{
-			const BF & theSymbol = aMachine.getExecutable()->
-					getSymbolByNameID(listOfId.second(), aCTX->getTypeFamily());
+			const BF & theSymbol =
+					aMachine.getExecutable().getSymbolByNameID(
+							listOfId.second(), aCTX->getTypeFamily());
 			if( theSymbol.valid() )
 			{
 				if( theSymbol.is< BaseInstanceForm >() )
@@ -2595,16 +3005,17 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 	const ExecutableForm * lcaExecutable = anExecutable->LCRA(
 			aContainerInstance->getContainer()->getExecutable() );
 
-	if( lcaExecutable != NULL )
+	if( lcaExecutable != nullptr )
 	{
-		BaseInstanceForm * ptrInstance = bfInstance.to_ptr< BaseInstanceForm >();
+		const BaseInstanceForm & ptrInstance =
+				bfInstance.to< BaseInstanceForm >();
 
 		std::string fqnPrefix = lcaExecutable->getAstFullyQualifiedNameID();
 
 		ListOfString strList;
 		NamedElement::collectNameID(strList,
 				aContainerInstance->getAstFullyQualifiedNameID() + '.' +
-				ptrInstance->getNameID(), fqnPrefix);
+				ptrInstance.getNameID(), fqnPrefix);
 
 		VectorOfInstanceOfMachine theInstanceOfMachinePath;
 
@@ -2617,22 +3028,22 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 			if( execInstance.valid() )
 			{
 				theInstanceOfMachinePath.append(execInstance.rawMachine());
-				lcaExecutable = execInstance.getExecutable();
+				lcaExecutable = execInstance.ptrExecutable();
 			}
 			else
 			{
-				if( lcaExecutable->getAllData().getByFQNameID( fqnPrefix ).valid()
+				if( lcaExecutable->getAllVariables().getByFQNameID( fqnPrefix ).valid()
 				|| lcaExecutable->getBuffer().getByFQNameID( fqnPrefix ).valid()
 				|| lcaExecutable->getPort().getByFQNameID( fqnPrefix ).valid()
-				|| lcaExecutable->getConnect().getByFQNameID( fqnPrefix ).valid() )
+				|| lcaExecutable->getConnector().getByFQNameID( fqnPrefix ).valid() )
 				{
-					lcaExecutable = NULL;
+					lcaExecutable = nullptr;
 				}
 				break;
 			}
 		}
 
-		if( lcaExecutable != NULL )
+		if( lcaExecutable != nullptr )
 		{
 //			if( theInstanceOfMachinePath.last() != aContainerInstance )
 //			{
@@ -2641,15 +3052,15 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 
 			Symbol newInstance;
 
-			switch ( ptrInstance->classKind() )
+			switch ( ptrInstance.classKind() )
 			{
 				case FORM_INSTANCE_DATA_KIND:
 				{
-					if( lcaExecutable->containsAllData(
+					if( lcaExecutable->containsAllVariable(
 							bfInstance.to_ptr< InstanceOfData >()) )
 					{
 						newInstance = new InstanceOfData(anExecutable,
-								ptrInstance->to< InstanceOfData >(),
+								ptrInstance.to< InstanceOfData >(),
 								theInstanceOfMachinePath);
 					}
 
@@ -2661,7 +3072,7 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 					if( lcaExecutable->getInstanceStatic().contains(bfInstance) )
 					{
 						newInstance = new InstanceOfMachine( anExecutable,
-								ptrInstance->to< InstanceOfMachine >(),
+								ptrInstance.to< InstanceOfMachine >(),
 								theInstanceOfMachinePath);
 					}
 					break;
@@ -2672,7 +3083,7 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 					if( lcaExecutable->getPort().contains(bfInstance) )
 					{
 						newInstance = new InstanceOfPort(anExecutable,
-								ptrInstance->to< InstanceOfPort >(),
+								ptrInstance.to< InstanceOfPort >(),
 								theInstanceOfMachinePath);
 					}
 					break;
@@ -2683,7 +3094,7 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 					if( lcaExecutable->getBuffer().contains(bfInstance) )
 					{
 						newInstance = new InstanceOfBuffer(anExecutable,
-								ptrInstance->to< InstanceOfBuffer >(),
+								ptrInstance.to< InstanceOfBuffer >(),
 								theInstanceOfMachinePath);
 					}
 					break;
@@ -2691,10 +3102,10 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 
 				case FORM_INSTANCE_CONNECTOR_KIND:
 				{
-					if( lcaExecutable->getConnect().contains(bfInstance) )
+					if( lcaExecutable->getConnector().contains(bfInstance) )
 					{
-						newInstance = new InstanceOfConnect(anExecutable,
-								ptrInstance->to< InstanceOfConnect >(),
+						newInstance = new InstanceOfConnector(anExecutable,
+								ptrInstance.to< InstanceOfConnector >(),
 								theInstanceOfMachinePath);
 					}
 					break;
@@ -2706,12 +3117,12 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 				}
 			}
 
-			if( newInstance != NULL )
+			if( newInstance != nullptr )
 			{
 				newInstance.setFullyQualifiedNameID( "alias"
 					+ aContainerInstance->getFullyQualifiedNameID().substr(
 						aContainerInstance->getFullyQualifiedNameID().find(':'))
-					+ "." + ptrInstance->getNameID() );
+					+ "." + ptrInstance.getNameID() );
 
 				if( not newInstance.getModifier().
 						isVisibilityPublic( aCTX->getModifier() ) )
@@ -2723,11 +3134,11 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 
 				if( newInstance.is< InstanceOfData >() )
 				{
-					aCTX->mCompileCtx->getExecutable()->appendDataAlias(newInstance);
+					aCTX->mCompileCtx->refExecutable().appendVariableAlias(newInstance);
 				}
 				else
 				{
-					aCTX->mCompileCtx->getExecutable()->appendAlias(newInstance);
+					aCTX->mCompileCtx->refExecutable().appendAlias(newInstance);
 				}
 
 				return( newInstance );
@@ -2748,12 +3159,12 @@ BF SymbolTable::createAliasIfNotAccessible(COMPILE_CONTEXT * aCTX,
 BF SymbolTable::createAliasIfNotAccessible(
 		COMPILE_CONTEXT * aCTX, const BF & bfInstance)
 {
-	BaseInstanceForm * ptrInstance = bfInstance.to_ptr< BaseInstanceForm >();
+	const BaseInstanceForm & ptrInstance = bfInstance.to< BaseInstanceForm >();
 
-	for( BaseAvmProgram * tmpProgram = aCTX->mCompileCtx ; tmpProgram != NULL ;
+	for( BaseAvmProgram * tmpProgram = aCTX->mCompileCtx ; tmpProgram != nullptr ;
 			tmpProgram = tmpProgram->getContainer() )
 	{
-		if( tmpProgram == ptrInstance->getContainer() )
+		if( tmpProgram == ptrInstance.getContainer() )
 		{
 			return( bfInstance );
 		}
@@ -2762,15 +3173,15 @@ BF SymbolTable::createAliasIfNotAccessible(
 	ExecutableForm * anExecutable = aCTX->mCompileCtx->getExecutable();
 
 	const ExecutableForm * lcaExecutable = anExecutable->LCRA(
-			ptrInstance->getContainer()->getExecutable() );
+			ptrInstance.getContainer()->getExecutable() );
 
-	if( lcaExecutable != NULL )
+	if( lcaExecutable != nullptr )
 	{
 		std::string fqnPrefix = lcaExecutable->getAstFullyQualifiedNameID();
 
 		ListOfString strList;
 		NamedElement::collectNameID(strList,
-				ptrInstance->getAstFullyQualifiedNameID(), fqnPrefix);
+				ptrInstance.getAstFullyQualifiedNameID(), fqnPrefix);
 
 		VectorOfInstanceOfMachine theInstanceOfMachinePath;
 
@@ -2783,22 +3194,22 @@ BF SymbolTable::createAliasIfNotAccessible(
 			if( execInstance.valid() )
 			{
 				theInstanceOfMachinePath.append(execInstance.rawMachine());
-				lcaExecutable = execInstance.getExecutable();
+				lcaExecutable = execInstance.ptrExecutable();
 			}
 			else
 			{
-				if( lcaExecutable->getAllData().getByFQNameID( fqnPrefix ).valid()
+				if( lcaExecutable->getAllVariables().getByFQNameID( fqnPrefix ).valid()
 				|| lcaExecutable->getBuffer().getByFQNameID(fqnPrefix ).valid()
 				|| lcaExecutable->getPort().getByFQNameID(fqnPrefix ).valid()
-				|| lcaExecutable->getConnect().getByFQNameID(fqnPrefix ).valid() )
+				|| lcaExecutable->getConnector().getByFQNameID(fqnPrefix ).valid() )
 				{
-					lcaExecutable = NULL;
+					lcaExecutable = nullptr;
 				}
 				break;
 			}
 		}
 
-		if( lcaExecutable != NULL )
+		if( lcaExecutable != nullptr )
 		{
 			Symbol newInstance;
 
@@ -2806,11 +3217,11 @@ BF SymbolTable::createAliasIfNotAccessible(
 			{
 				case FORM_INSTANCE_DATA_KIND:
 				{
-					if( lcaExecutable->containsAllData(
+					if( lcaExecutable->containsAllVariable(
 							bfInstance.to_ptr< InstanceOfData >()) )
 					{
 						newInstance = new InstanceOfData(anExecutable,
-								ptrInstance->to< InstanceOfData >(),
+								ptrInstance.to< InstanceOfData >(),
 								theInstanceOfMachinePath);
 					}
 
@@ -2822,7 +3233,7 @@ BF SymbolTable::createAliasIfNotAccessible(
 					if( lcaExecutable->getInstanceStatic().contains(bfInstance) )
 					{
 						newInstance = new InstanceOfMachine(anExecutable,
-								ptrInstance->to< InstanceOfMachine >(),
+								ptrInstance.to< InstanceOfMachine >(),
 								theInstanceOfMachinePath);
 					}
 					break;
@@ -2833,7 +3244,7 @@ BF SymbolTable::createAliasIfNotAccessible(
 					if( lcaExecutable->getPort().contains(bfInstance) )
 					{
 						newInstance = new InstanceOfPort(anExecutable,
-								ptrInstance->to< InstanceOfPort >(),
+								ptrInstance.to< InstanceOfPort >(),
 								theInstanceOfMachinePath);
 					}
 					break;
@@ -2844,7 +3255,7 @@ BF SymbolTable::createAliasIfNotAccessible(
 					if( lcaExecutable->getBuffer().contains(bfInstance) )
 					{
 						newInstance = new InstanceOfBuffer(anExecutable,
-								ptrInstance->to< InstanceOfBuffer >(),
+								ptrInstance.to< InstanceOfBuffer >(),
 								theInstanceOfMachinePath);
 					}
 					break;
@@ -2852,10 +3263,10 @@ BF SymbolTable::createAliasIfNotAccessible(
 
 				case FORM_INSTANCE_CONNECTOR_KIND:
 				{
-					if( lcaExecutable->getConnect().contains(bfInstance) )
+					if( lcaExecutable->getConnector().contains(bfInstance) )
 					{
-						newInstance = new InstanceOfConnect(anExecutable,
-								ptrInstance->to< InstanceOfConnect >(),
+						newInstance = new InstanceOfConnector(anExecutable,
+								ptrInstance.to< InstanceOfConnector >(),
 								theInstanceOfMachinePath);
 					}
 					break;
@@ -2870,8 +3281,8 @@ BF SymbolTable::createAliasIfNotAccessible(
 			if( newInstance.valid() )
 			{
 				newInstance.setFullyQualifiedNameID( "alias" +
-						ptrInstance->getFullyQualifiedNameID().substr(
-								ptrInstance->getFullyQualifiedNameID().find(':')) );
+						ptrInstance.getFullyQualifiedNameID().substr(
+								ptrInstance.getFullyQualifiedNameID().find(':')) );
 
 				if( not newInstance.getModifier().
 						isVisibilityPublic( aCTX->getModifier() ) )
@@ -2883,11 +3294,11 @@ BF SymbolTable::createAliasIfNotAccessible(
 
 				if( newInstance.is< InstanceOfData >() )
 				{
-					aCTX->mCompileCtx->getExecutable()->appendDataAlias(newInstance);
+					aCTX->mCompileCtx->refExecutable().appendVariableAlias(newInstance);
 				}
 				else
 				{
-					aCTX->mCompileCtx->getExecutable()->appendAlias(newInstance);
+					aCTX->mCompileCtx->refExecutable().appendAlias(newInstance);
 				}
 
 				return( newInstance );

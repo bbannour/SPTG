@@ -45,7 +45,7 @@ void Package::toStream(OutStream & os) const
 		TableOfMachine::const_raw_iterator endIt = mPackages.end();
 		for( ; it != endIt ; ++it )
 		{
-			os << TAB3 << (it)->as< Package >()->getLocation() << ";" << EOL;
+			os << TAB3 << (it)->as_ptr< Package >()->getLocation() << ";" << EOL;
 		}
 
 		os << TAB2 << "}" << EOL2_FLUSH;
@@ -57,7 +57,7 @@ void Package::toStream(OutStream & os) const
 		os << EOL;
 	}
 
-	if( mCompositeSpecification != NULL )
+	if( mCompositeSpecification != nullptr )
 	{
 		mCompositeSpecification->toStream( os );
 	}

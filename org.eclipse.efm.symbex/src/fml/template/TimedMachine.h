@@ -16,9 +16,8 @@
 #ifndef TIMEDMACHINE_H_
 #define TIMEDMACHINE_H_
 
-#include <util/avm_string.h>
-
 #include <fml/infrastructure/Variable.h>
+#include <fml/lib/ITypeSpecifier.h>
 
 
 namespace sep
@@ -28,6 +27,7 @@ class BF;
 class BFCode;
 
 class Machine;
+class Specifier;
 
 
 class TimedMachine
@@ -35,32 +35,30 @@ class TimedMachine
 
 public:
 
-	static std::string VAR_ID_GLOBAL_TIME;
-	static std::string VAR_ID_DELTA_TIME;
-
-	static std::string ROUTINE_ID_TIME_GET;
-	static std::string ROUTINE_ID_DELTA_GET;
-
-	static std::string ROUTINE_ID_TIME_RESET;
-
-	static std::string ROUTINE_ID_CLOCK_RESET;
-	static std::string ROUTINE_ID_CLOCK_UPDATE;
-
 	static Variable * SYSTEM_VAR_GLOBAL_TIME;
 	static Variable * SYSTEM_VAR_DELTA_TIME;
 
-	static void genProperty(Machine * machine);
 
-	static void genBehavior(Machine * machine);
-	static void genBehaviorInit(Machine * machine);
-	static void genBehaviorIRun(Machine * machine);
-
-	static void updateClock(const Machine * modelMachine, Machine * machine,
-			const BF & varDeltaTime, const BFCode & seqCode,
-			const std::string & aQualifiedNameID = "");
+	static avm_type_specifier_kind_t
+	timeTypeSpecifierKind(const Specifier & specifier);
 
 
-	static void updateClock(Machine * machine,
+	static const TypeSpecifier & timeTypeSpecifier(const Specifier & specifier);
+
+	static void genProperty(Machine & machine);
+
+	static void genBehavior(Machine & machine);
+	static void genBehaviorInit(Machine & machine);
+	static void genBehaviorIRun(Machine & machine);
+
+	static void genTimeUpdate(Machine & machine);
+
+	static void updateClock(
+			Machine & modelMachine, Machine & machine, const BF & varDeltaTime,
+			const BFCode & seqCode, const std::string & aQualifiedNameID = "");
+
+
+	static void updateClock(Machine & machine,
 			const TableOfVariable & variables, const BF & varDeltaTime,
 			const BFCode & seqCode, const std::string & aQualifiedNameID = "");
 };

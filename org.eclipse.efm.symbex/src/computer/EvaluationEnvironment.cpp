@@ -28,55 +28,58 @@ namespace sep
  * TOOLS
  */
 BF EvaluationEnvironment::ioSubst(
-		const APExecutionData & apED, AvmProgram * aProgram,
-		AvmCode * progIO, AvmCode * traceIO, const BF & aCode)
+		const ExecutionData & apED, AvmProgram * aProgram,
+		const AvmCode & progIO, const AvmCode & traceIO, const BF & aCode)
 {
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( traceIO->sameOperator( progIO )
-		&& (traceIO->size() >= progIO->size()) )
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( traceIO.sameOperator( progIO )
+		&& (traceIO.size() >= progIO.size()) )
 			<< " The traceIO and progIO are incompatible !!!"
 			<< SEND_EXIT;
 
 AVM_IF_DEBUG_LEVEL_GT_LOW
 	AVM_OS_TRACE << INCR_INDENT_TAB << "ioSubst:: << " << aCode.str() << " >>"
 			<< std::endl
-			<< TAB << " In the context Of << " << traceIO->str() << " >>"
+			<< TAB << " In the context Of << " << traceIO.str() << " >>"
 			<< std::endl;
 AVM_ENDIF_DEBUG_LEVEL_GT_LOW
 
 
 	bool destroyLocalRuntimeStack = false;
 
-	if( (aProgram != NULL) && aProgram->hasData() )
+	if( (aProgram != nullptr) && aProgram->hasVariable() )
 	{
-		if( not apED->hasLocalRuntimeStack() )
+		if( not apED.hasLocalRuntimeStack() )
 		{
 			destroyLocalRuntimeStack = true;
-			apED->createLocalRuntimeStack();
+			apED.createLocalRuntimeStack();
 		}
 
 		LocalRuntime aLocalRuntime( *aProgram );
-		apED->getLocalRuntimes()->push( aLocalRuntime );
+		apED.getLocalRuntimes()->push( aLocalRuntime );
 
-		AvmCode::iterator traceArg = traceIO->begin();
-		AvmCode::iterator itArg = progIO->begin();
-		AvmCode::iterator itEndArg = progIO->end();
-		for( ++itArg, ++traceArg ; itArg != itEndArg ; ++itArg, ++traceArg )
+		AvmCode::const_iterator itOperandTraceIO = traceIO.begin();
+		AvmCode::const_iterator itOperandProgIO = progIO.begin();
+		AvmCode::const_iterator endOperandProgIO = progIO.end();
+		for( ++itOperandProgIO , ++itOperandTraceIO ;
+				itOperandProgIO != endOperandProgIO ;
+				++itOperandProgIO , ++itOperandTraceIO )
 		{
-			aLocalRuntime.setData(itArg->as_ptr<
-					BaseInstanceForm >()->getOffset(), (*traceArg));
+			aLocalRuntime.setData(
+					itOperandProgIO->as< BaseInstanceForm >().getOffset(),
+					(*itOperandTraceIO));
 		}
 
-		eval(apED, apED->getSystemRID(), aCode);
+		eval(apED, apED.getSystemRID(), aCode);
 
-		apED->getLocalRuntimes()->pop();
+		apED.getLocalRuntimes()->pop();
 		if( destroyLocalRuntimeStack )
 		{
-			apED->destroyLocalRuntimeStack();
+			apED.destroyLocalRuntimeStack();
 		}
 	}
 	else
 	{
-		eval(apED, apED->getSystemRID(), aCode);
+		eval(apED, apED.getSystemRID(), aCode);
 	}
 
 	BF substCode = outVAL;
@@ -95,13 +98,13 @@ AVM_ENDIF_DEBUG_LEVEL_GT_LOW
 ///// the EVAL statement for FILTER
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EvaluationEnvironment::eval(const APExecutionData & anED,
+bool EvaluationEnvironment::eval(const ExecutionData & anED,
 		const RuntimeID & aRID, const BF & bf)
 {
-	RuntimeID prevRID = anED->mRID;
-	anED->mRID = aRID;
+	RuntimeID prevRID = anED.getRID();
+	anED.setRID( aRID );
 
-	inEC = anED->getExecutionContext();
+	inEC = anED.getExecutionContext();
 
 	outED = inED = anED;
 
@@ -120,19 +123,19 @@ bool EvaluationEnvironment::eval(const APExecutionData & anED,
 		rt = PRIMITIVE_PROCESSOR.decode_seval(*this);
 	}
 
-	anED->mRID = prevRID;
+	anED.setRID( prevRID );
 
 	return( rt );
 }
 
 
-bool EvaluationEnvironment::eval(const APExecutionData & anED,
+bool EvaluationEnvironment::eval(const ExecutionData & anED,
 		const RuntimeID & aRID, const BFCode & aCode)
 {
-	RuntimeID prevRID = anED->mRID;
-	anED->mRID = aRID;
+	RuntimeID prevRID = anED.getRID();
+	anED.setRID( aRID );
 
-	inEC = anED->getExecutionContext();
+	inEC = anED.getExecutionContext();
 
 	outED = inED = anED;
 
@@ -140,7 +143,7 @@ bool EvaluationEnvironment::eval(const APExecutionData & anED,
 
 	bool rt = PRIMITIVE_PROCESSOR.seval(*this);
 
-	anED->mRID = prevRID;
+	anED.setRID( prevRID );
 
 	return( rt );
 }
@@ -156,7 +159,7 @@ void EvaluationEnvironment::toStream(OutStream & os) const
 
 	inEC->traceDefaultPostEval(AVM_OS_TRACE);
 
-	outED->toStream(AVM_OS_TRACE);
+	outED.toStream(AVM_OS_TRACE);
 }
 
 
@@ -164,16 +167,16 @@ void EvaluationEnvironment::toStream(OutStream & os) const
 /**
  * CHECK SATISFIABILITY
  */
-bool EvaluationEnvironment::evalFormula(const APExecutionData & anED,
+bool EvaluationEnvironment::evalFormula(const ExecutionData & anED,
 		const RuntimeID & aRID, AvmProgram * aProgram, const BF & anExpr)
 {
 	switch( anExpr.classKind() )
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			AvmCode * aFormula = anExpr.to_ptr< AvmCode >();
+			const AvmCode & aFormula = anExpr.to< AvmCode >();
 
-			switch( aFormula->getAvmOpCode() )
+			switch( aFormula.getAvmOpCode() )
 			{
 				case AVM_OPCODE_OBS :
 				{
@@ -182,24 +185,25 @@ bool EvaluationEnvironment::evalFormula(const APExecutionData & anED,
 //			<< aFormula->second().str() << std::endl;
 //AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SOLVING )
 
-					const BFCode & evtFormula = aFormula->second().bfCode();
+					const BFCode & bfFormula = aFormula.second().bfCode();
+					const AvmCode & evtFormula = bfFormula.to< AvmCode >();
 
-					BF constraintFormula = aFormula->third();
+					BF constraintFormula = aFormula.operand(2);
 
-					switch( evtFormula->getAvmOpCode() )
+					switch( evtFormula.getAvmOpCode() )
 					{
 						case AVM_OPCODE_INPUT :
 						case AVM_OPCODE_OUTPUT :
 						{
-							if( evtFormula->first().is< BaseInstanceForm >() )
+							if( evtFormula.first().is< BaseInstanceForm >() )
 							{
-								BaseInstanceForm * ioInstance = evtFormula->
-										first().to_ptr< BaseInstanceForm >();
+								const BaseInstanceForm & ioInstance =
+									evtFormula.first().to< BaseInstanceForm >();
 
-								if( ioInstance->is< InstanceOfPort >() )
+								if( ioInstance.is< InstanceOfPort >() )
 								{
 									BFCode ioTrace = searchTraceIO(
-											anED->getIOElementTrace(), evtFormula);
+										anED.getIOElementTrace(), evtFormula);
 
 									if( ioTrace.valid() )
 									{
@@ -215,7 +219,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SOLVING )
 										else
 										{
 											outVAL = ioSubst( anED, aProgram,
-													evtFormula, ioTrace,
+													evtFormula, *ioTrace,
 													constraintFormula );
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SOLVING )
@@ -227,10 +231,10 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SOLVING )
 										return( true );
 									}
 								}
-								else if( ioInstance->is< InstanceOfData >() )
+								else if( ioInstance.is< InstanceOfData >() )
 								{
 									if( isAssigned(anED, aRID,
-											ioInstance->to< InstanceOfData >()) )
+										ioInstance.to< InstanceOfData >()) )
 									{
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , SOLVING )
 	AVM_OS_TRACE << " ==> aFormula:> "
@@ -255,7 +259,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SOLVING )
 
 						default:
 						{
-							if( eval(anED, aRID, evtFormula) )
+							if( eval(anED, aRID, bfFormula) )
 							{
 								if( outVAL.isEqualTrue() )
 								{

@@ -23,6 +23,8 @@
 #include <fml/executable/ExecutableSystem.h>
 #include <fml/executable/InstanceOfPort.h>
 
+#include <fml/infrastructure/PropertyPart.h>
+
 #include <fml/symbol/Symbol.h>
 
 #include <fml/trace/TracePoint.h>
@@ -71,7 +73,7 @@ bool BasicTraceParser::parseBasicXliaTrace(TraceSequence & aTraceElement,
 
 		//for debug purposes
 	bool isOKLine = true;
-	int cptLine = 0;
+	std::size_t traceLine = 0;
 
 	bfVarTime = aVarTime;
 
@@ -79,11 +81,16 @@ bool BasicTraceParser::parseBasicXliaTrace(TraceSequence & aTraceElement,
 
 	while( inFile.good() )
 	{
-		cptLine ++;
+		traceLine ++;
 
 		std::getline(inFile, inLine);
 
-		StringTools::ltrim( inLine );
+		StringTools::trim( inLine );
+
+AVM_IF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
+	AVM_OS_CLOG << "PARSER : the trace line is >>" << inLine << "<<"
+			<< std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 
 		if( (inLine == "\\n") || inLine.empty() )
 		{
@@ -95,13 +102,17 @@ bool BasicTraceParser::parseBasicXliaTrace(TraceSequence & aTraceElement,
 			// COMMENT
 			isOKLine = true;
 		}
-		else if( StringTools::startsWith(inLine, "delta") )
+		else if( StringTools::startsWith(inLine, "delta" )
+				|| StringTools::startsWith(inLine, "$delta")
+				|| StringTools::startsWith(inLine, "delay")
+				|| StringTools::startsWith(inLine, "$delay")
+				|| StringTools::startsWith(inLine, PropertyPart::VAR_ID_DELTA_TIME) )
 		{
 			isOKLine = parseBasicXliaTraceDuration(aTraceElement, inLine, aVarTime);
 		}
 		else if( REGEX_STARTS(inLine, "(input|output|INPUT|OUTPUT)") )
 		{
-			isOKLine = parseBasicXliaTraceSignal(aTraceElement, inLine);
+			isOKLine = parseBasicXliaTraceSignal(aTraceElement, inLine, traceLine);
 		}
 
 		else if((inLine[0]) == '{')
@@ -113,8 +124,8 @@ bool BasicTraceParser::parseBasicXliaTrace(TraceSequence & aTraceElement,
 
 		if(not isOKLine)
 		{
-			AVM_OS_WARN << "Error: Error while reading trace file on line "
-					<< cptLine << ": " << inLine << std::endl;
+			AVM_OS_WARN << "Error found on the trace line "
+					<< traceLine << ": " << inLine << std::endl;
 		}
 
 	}
@@ -130,30 +141,45 @@ bool BasicTraceParser::parseBasicXliaTraceDuration(TraceSequence & aTraceElement
 	std::string delta = inLine.substr(pos+1);
 	StringTools::ltrim( delta );
 
-	avm_integer_t duration;
-	if( from_string(delta, duration, std::dec) )
+	if( (pos = delta.find_first_of("/.")) != std::string::npos )
 	{
 		bfTP = new TracePoint(
 				ENUM_TRACE_POINT::TRACE_TIME_NATURE,
-				AVM_OPCODE_TIMED_GUARD, NULL,
+				AVM_OPCODE_TIMED_GUARD, nullptr,
 				aVarTime.to_ptr< InstanceOfData >(),
-				ExpressionConstructor::newInteger(duration) );
+				ExpressionConstructor::newRational(delta) );
 
 		aTraceElement.points.append( bfTP );
 
 		return( true );
+	}
+	else
+	{
+		avm_integer_t duration;
+		if( from_string(delta, duration, std::dec) )
+		{
+			bfTP = new TracePoint(
+					ENUM_TRACE_POINT::TRACE_TIME_NATURE,
+					AVM_OPCODE_TIMED_GUARD, nullptr,
+					aVarTime.to_ptr< InstanceOfData >(),
+					ExpressionConstructor::newInteger(duration) );
+
+			aTraceElement.points.append( bfTP );
+
+			return( true );
+		}
 	}
 
 	return( false );
 }
 
 
-bool BasicTraceParser::parseBasicXliaTraceSignal(
-		TraceSequence & aTraceElement, const std::string & inLine)
+bool BasicTraceParser::parseBasicXliaTraceSignal(TraceSequence & aTraceElement,
+		const std::string & inLine, std::size_t traceLine)
 {
 	bfTP = aTracePoint = new TracePoint(ENUM_TRACE_POINT::TRACE_COM_NATURE);
 
-	Modifier::DIRECTION_KIND ioDirection;
+	Modifier::DIRECTION_KIND ioDirection = Modifier::DIRECTION_INOUT_KIND;
 
 	//std::string::size_type pos = inLine.find('?');
 	std::string message;
@@ -181,54 +207,52 @@ AVM_IF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 
 	std::string::size_type pos = message.find('(');
-	if( pos != std::string::npos )
-	{
-		ExecutableQuery XQuery( mConfiguration );
 
-		const Symbol & foundSignal =
-				XQuery.getPortByQualifiedNameID(
-						message.substr(0, pos), ioDirection, false );
+	ExecutableQuery XQuery( mConfiguration );
+
+	std::string msgPort = message.substr(0,
+			(pos != std::string::npos) ? pos : message.length());
+
+	ListOfSymbol listofPort;
+	std::size_t foundCount = XQuery.getPortByQualifiedNameID(
+			msgPort, listofPort, ioDirection, false );
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
-	AVM_OS_LOG << "PARSER : the port is >>" << message.substr(0, pos) << "<<"
-			<< std::endl;
+	AVM_OS_LOG << "PARSER : the port is >>" << msgPort << "<<" << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 
-		if( foundSignal.valid() )
+	if( foundCount == 1 )
+	{
+		InstanceOfPort * port = listofPort.first().rawPort();
+		aTracePoint->object = port;
+
+		if( ioDirection == Modifier::DIRECTION_INPUT_KIND )
 		{
-			InstanceOfPort* port = foundSignal.rawPort();
-			aTracePoint->object = port;
-
-
-			if( ioDirection == Modifier::DIRECTION_INPUT_KIND )
+			if( port->hasInputRoutingData() &&
+				port->getInputRoutingData().isProtocolENV() )
 			{
-				if( port->hasInputRoutingData() &&
-					port->getInputRoutingData().isProtocolENV() )
-				{
-					aTracePoint->op = AVM_OPCODE_INPUT_ENV;
-				}
-				else
-				{
-					aTracePoint->op = AVM_OPCODE_INPUT;
-				}
-
+				aTracePoint->op = AVM_OPCODE_INPUT_ENV;
 			}
-			else if( ioDirection == Modifier::DIRECTION_OUTPUT_KIND )
+			else
 			{
-				if( port->hasOutputRoutingData() &&
-					port->getOutputRoutingData().isProtocolENV() )
-				{
-					aTracePoint->op = AVM_OPCODE_OUTPUT_ENV;
-				}
-				else
-				{
-					aTracePoint->op = AVM_OPCODE_OUTPUT;
-				}
-
+				aTracePoint->op = AVM_OPCODE_INPUT;
 			}
+		}
+		else if( ioDirection == Modifier::DIRECTION_OUTPUT_KIND )
+		{
+			if( port->hasOutputRoutingData() &&
+				port->getOutputRoutingData().isProtocolENV() )
+			{
+				aTracePoint->op = AVM_OPCODE_OUTPUT_ENV;
+			}
+			else
+			{
+				aTracePoint->op = AVM_OPCODE_OUTPUT;
+			}
+		}
 
-			//TODO : check what happens if there is no parameter given ()
-
+		if( pos != std::string::npos )
+		{
 			if( parseBasicTraceSignalParameters(aTracePoint, port,
 					message.substr(pos + 1, message.size()-pos-2)) )
 			{
@@ -239,14 +263,35 @@ AVM_IF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 			<< message.substr(pos + 1, message.size()-pos-2) << "<<"
 			<< std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
-
-				return( true );
 			}
 		}
-	}
+		else
+		{
+			aTraceElement.points.append( bfTP );
+		}
 
+		return( true );
+	}
 	else
 	{
+		if( foundCount > 1 )
+		{
+			AVM_OS_WARN << "Error< line: " << traceLine
+						<< " >: Found < " << foundCount
+						<< " > ports named < " << msgPort << " > " << std::endl;
+			for( const auto & foundPort : listofPort )
+			{
+				AVM_OS_WARN << '\t' << foundPort.getFullyQualifiedNameID()
+							<< std::endl;
+			}
+		}
+		else
+		{
+			AVM_OS_WARN << "Error< line: " << traceLine
+						<< " > : Unfound port < "
+						<< msgPort << " > " << std::endl;
+		}
+
 		aTracePoint->value = ExpressionConstructor::newString(inLine);
 
 		aTraceElement.points.append( bfTP );
@@ -264,7 +309,7 @@ bool BasicTraceParser::parseBasicTrace(TraceSequence & aTraceElement,
 
 		//for debug purposes
 	bool isOKLine = true;
-	int cptLine = 0;
+	std::size_t traceLine = 0;
 
 	bfVarTime = aVarTime;
 
@@ -272,7 +317,7 @@ bool BasicTraceParser::parseBasicTrace(TraceSequence & aTraceElement,
 
 	while( inFile.good() )
 	{
-		cptLine ++;
+		traceLine ++;
 
 		std::getline(inFile, inLine);
 
@@ -294,7 +339,7 @@ bool BasicTraceParser::parseBasicTrace(TraceSequence & aTraceElement,
 		}
 		else if( std::isalpha(inLine[0]) )
 		{
-			isOKLine = parseBasicTraceSignal(aTraceElement, inLine);
+			isOKLine = parseBasicTraceSignal(aTraceElement, inLine, traceLine);
 		}
 
 		else if((inLine[0]) == '{')
@@ -306,8 +351,8 @@ bool BasicTraceParser::parseBasicTrace(TraceSequence & aTraceElement,
 
 		if(not isOKLine)
 		{
-			AVM_OS_WARN << "Error: Error while reading trace file on line "
-					<< cptLine << std::endl;
+			AVM_OS_WARN << "Error found on the trace line "
+					<< traceLine << ": " << inLine << std::endl << std::endl;
 		}
 
 	}
@@ -325,7 +370,7 @@ bool BasicTraceParser::parseBasicTraceDuration(TraceSequence & aTraceElement,
 	{
 		bfTP = new TracePoint(
 				ENUM_TRACE_POINT::TRACE_TIME_NATURE,
-				AVM_OPCODE_TIMED_GUARD, NULL,
+				AVM_OPCODE_TIMED_GUARD, nullptr,
 				aVarTime.to_ptr< InstanceOfData >(),
 				ExpressionConstructor::newInteger(duration) );
 
@@ -337,8 +382,8 @@ bool BasicTraceParser::parseBasicTraceDuration(TraceSequence & aTraceElement,
 	return( false );
 }
 
-bool BasicTraceParser::parseBasicTraceSignal(
-		TraceSequence & aTraceElement, const std::string & inLine)
+bool BasicTraceParser::parseBasicTraceSignal(TraceSequence & aTraceElement,
+		const std::string & inLine, std::size_t traceLine)
 {
 	bfTP = aTracePoint = new TracePoint(ENUM_TRACE_POINT::TRACE_COM_NATURE);
 
@@ -360,13 +405,15 @@ bool BasicTraceParser::parseBasicTraceSignal(
 	{
 		ExecutableQuery XQuery( mConfiguration );
 
-		const Symbol & foundSignal =
-				XQuery.getPortByQualifiedNameID(
-						inLine.substr(0, pos), io_dir, false );
+		std::string msgPort = inLine.substr(0, pos);
 
-		if( foundSignal.valid() )
+		ListOfSymbol listofPort;
+		std::size_t foundCount = XQuery.getPortByQualifiedNameID(
+				msgPort, listofPort, io_dir, false );
+
+		if( foundCount == 1 )
 		{
-			InstanceOfPort* port = foundSignal.rawPort();
+			InstanceOfPort* port = listofPort.first().rawPort();
 			aTracePoint->object = port;
 
 			if( parseBasicTraceSignalParameters(
@@ -377,14 +424,28 @@ bool BasicTraceParser::parseBasicTraceSignal(
 				return( true );
 			}
 		}
+		else if( foundCount > 1 )
+		{
+			AVM_OS_WARN << "Error< line: " << traceLine
+						<< " >: Found < " << foundCount
+						<< " > ports named < " << msgPort << " > " << std::endl;
+			for( const auto & foundPort : listofPort )
+			{
+				AVM_OS_WARN << '\t' << foundPort.getFullyQualifiedNameID()
+							<< std::endl;
+			}
+		}
+		else
+		{
+			AVM_OS_WARN << "Error< line: " << traceLine
+						<< " > : Unfound port < "
+						<< msgPort << " > " << std::endl;
+		}
 	}
 
-	else
-	{
-		aTracePoint->value = ExpressionConstructor::newString(inLine);
+	aTracePoint->value = ExpressionConstructor::newString(inLine);
 
-		aTraceElement.points.append( bfTP );
-	}
+	aTraceElement.points.append( bfTP );
 
 	return( false );
 }
@@ -395,12 +456,12 @@ bool BasicTraceParser::parseBasicTraceSignal(
  *
  */
 bool BasicTraceParser::parseBasicTraceSignalParameters(
-		TracePoint * aTracePoint, InstanceOfPort* port,
+		TracePoint * aTracePoint, const InstanceOfPort* port,
 		const std::string & anExpr)
 {
 	std::string::size_type pos;
-	avm_size_t nbParams = port->getParameterCount();
-	avm_size_t count = 0;
+	std::size_t nbParams = port->getParameterCount();
+	std::size_t count = 0;
 	//this variables is used to count the number of parameters given in the trace
 	std::string currentExpr = anExpr;
 
@@ -443,9 +504,9 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSOR )
 			// retrieving parameter from the string
 			param = currentExpr.substr(0, pos);
 			BF paramBF = parseBasicTraceSignalParameter(
-					(* (port->getParameterType(i))), param);
+					(port->getParameterType(i)), param);
 
-			if(paramBF == NULL)
+			if(paramBF == nullptr)
 			{
 				return false;
 			}
@@ -457,9 +518,9 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSOR )
 			}
 		}
 		param = StringTools::trim(currentExpr);
-		BF paramBF = parseBasicTraceSignalParameter(* port->getParameterType(i), param);
+		BF paramBF = parseBasicTraceSignalParameter(port->getParameterType(i), param);
 		//BF paramBF = ExpressionConstructor::newExpr(* port->getParameterType(i), param);
-		if(paramBF == NULL)
+		if(paramBF == nullptr)
 		{
 			return false;
 		}
@@ -487,16 +548,19 @@ BF BasicTraceParser::parseBasicTraceSignalParameter(
 	std::string param = anExpr;
 	StringTools::trim(param);
 
+	const BaseTypeSpecifier & targetTypeSpecifier =
+			aTypeSpecifier.thisTypeSpecifier().referedTypeSpecifier();
+
 	BF paramBF;
 
 //AVM_IF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 //	AVM_OS_LOG << "PARSER: parameter type: ";
-//    aTypeSpecifier.toStream(AVM_OS_LOG);
+//    targetTypeSpecifier.toStream(AVM_OS_LOG);
 //	AVM_OS_LOG << std::endl;
 //AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 
 	// Removing encompassing quotes in strings before building
-	if( aTypeSpecifier.isTypedString()
+	if( targetTypeSpecifier.isTypedString()
 		&& (not param.empty()) && (param[0] == '"') )
 	{
 		param = param.substr(1, param.size() - 2);
@@ -508,7 +572,7 @@ AVM_IF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 	}
 
-	else if( aTypeSpecifier.isTypedCharacter() && (not param.empty()) )
+	else if( targetTypeSpecifier.isTypedCharacter() && (not param.empty()) )
 	{
 		if( param.size() == 1 )
 		{
@@ -529,7 +593,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 	}
 	// machines as parameters contain run and pid information,
 	// we must remove them (no configuration yet)
-	else if( aTypeSpecifier.isTypedMachine() )
+	else if( targetTypeSpecifier.isTypedMachine() )
 	{
 		if( StringTools::startsWith(param, "run::") )
 		{
@@ -539,7 +603,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 				param = param.substr(parampos+1);
 			}
 
-			paramBF = ExpressionConstructor::newExprRuntine(mConfiguration, param);
+			paramBF = ExpressionConstructor::newExprRuntime(mConfiguration, param);
 		}
 		else
 		{
@@ -554,7 +618,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSOR )
 	else
 	{
 		paramBF = ExpressionConstructor::newExpr(
-				mConfiguration, aTypeSpecifier, param);
+				mConfiguration, targetTypeSpecifier, param);
 	}
 
 	if( paramBF.invalid() )

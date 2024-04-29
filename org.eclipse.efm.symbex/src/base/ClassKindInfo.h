@@ -21,19 +21,19 @@
 #include <typeinfo>
 #include <vector>
 
-#include <printer/OutStream.h>
+#include <base/Injector.h>
 
 #include <util/avm_assert.h>
-#include <util/avm_injector.h>
 #include <util/avm_numeric.h>
-#include <util/avm_string.h>
 
 
 namespace sep
 {
 
+class OutStream;
 
-typedef avm_uint8_t          class_kind_t;
+
+typedef std::uint8_t          class_kind_t;
 
 
 enum ENUM_CLASS_KIND
@@ -104,8 +104,14 @@ enum ENUM_CLASS_KIND
 	FORM_XFSP_SYSTEM_KIND,
 	FORM_XFSP_TRANSITION_KIND,
 	FORM_XFSP_VARIABLE_KIND,
-	// TYPE
+	// DATA TYPE
 	FORM_XFSP_DATATYPE_KIND,
+
+	// FUNCTION
+	FORM_XFSP_FUNCTION_KIND,
+
+	// TYPE SPECIFIER
+	FORM_TYPE_SPECIFIER_KIND,
 
 	// ARRAY
 	FORM_ARRAY_BOOLEAN_KIND,
@@ -141,7 +147,6 @@ enum ENUM_CLASS_KIND
 
 	// COM
 	FORM_MESSAGE_KIND,
-	FORM_COM_ROUTE_DATA_KIND,
 	FORM_ROUTER_KIND,
 	FORM_ROUTING_DATA_KIND,
 
@@ -168,9 +173,6 @@ struct ClassKindInfo :
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( ClassKindInfo )
 {
 
-	friend class ClassKindInfoInitializer;
-
-
 public:
 	/**
 	 * ATTRIBUTES
@@ -179,7 +181,7 @@ public:
 
 	const class_kind_t mKIND;
 
-	const char * mTNAME;
+	std::string mTNAME;
 
 	std::string mNAME;
 
@@ -190,7 +192,8 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	ClassKindInfo(class_kind_t aClassKind, const char * tname);
+	ClassKindInfo(class_kind_t aClassKind,
+			const std::string & tname, const std::string & aName);
 
 	/**
 	 * info
@@ -207,20 +210,24 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-static class ClassKindInfoInitializer
+static struct ClassKindInfoInitializer
 {
 
-public:
-	////////////////////////////////////////////////////////////////////////////////
-	// INITIALIZATION / DESTRUCTION  INVARIANT
-	////////////////////////////////////////////////////////////////////////////////
-
+	/**
+	 * CONSTRUCTOR
+	 * Default
+	 * Ensures equality between ENUM_CLASS_KIND literal
+	 * and ClassKindInfo::mKIND of base classes !
+	 * Due to dependencies, implementation in main/StaticInitializer
+	 */
 	ClassKindInfoInitializer();
 
+	/**
+	 * DESTRUCTOR
+	 */
 	~ClassKindInfoInitializer();
 
 
-public:
 	////////////////////////////////////////////////////////////////////////////
 	// LOADER / DISPOSER  API
 	////////////////////////////////////////////////////////////////////////////
@@ -229,28 +236,55 @@ public:
 	static void dispose();
 
 
-public:
 	/**
 	 * ATTRIBUTES
 	 */
+	static std::uint16_t NIFTY_COUNTER;
+
 	static const class_kind_t TYPE_UNDEFINED_ID = 0;
 
-	static class_kind_t TYPE_NEW_ID;
+
+	static class_kind_t generateNewTypeID()
+	{
+		static class_kind_t NEW_TYPE_ID = TYPE_UNDEFINED_ID;
+
+		// assert( NEW_TYPE_ID == 0 ) for ClassKindInfo::TYPE_UNDEFINED_INFO
+
+		return( ++NEW_TYPE_ID );
+	}
 
 
 	static std::vector< ClassKindInfo * > * CKI_TABLE;
 
 
 	template< class T >
-	static ClassKindInfo & classKindInfo()
+	static ClassKindInfo & classKindInfo(
+			ENUM_CLASS_KIND aTypeId = FORM_UNDEFINED_KIND,
+			std::string atypeName = "")
 	{
-		static ClassKindInfo _TYPE_INFO_( TYPE_NEW_ID++ , typeid(T).name() );
+		static ClassKindInfo _TYPE_INFO_(
+				(aTypeId != FORM_UNDEFINED_KIND) ? aTypeId : generateNewTypeID(),
+				typeid(T).name(),
+				atypeName.empty() ? typeid(T).name() : atypeName );
 
 		return( _TYPE_INFO_ );
 	}
 
 
-	static void toStreamTable(OutStream & os, const std::string & msg);
+	/**
+	 * Loader
+	 * Checking equality between ENUM_CLASS_KIND literal
+	 * and ClassKindInfo::mKIND of base classes !
+	 * Mandatory, call by load()
+	 * Due to dependencies, implementation in main/StaticInitializer
+	 */
+	static void checkingAssertions();
+
+	// For debug trace
+	static void toStreamTable(OutStream & out, const std::string & msg);
+
+	// Mandatory for debug trace in constructor ClassKindInfoInitializer()
+	static void toStreamTable(const std::string & msg);
 
 }  CLASS_KIND_INFO_INITIALIZER;
 
@@ -273,8 +307,6 @@ public:
 template< class T >
 class ClassKindInfoImpl
 {
-
-	friend class ClassKindInfoInitializer;
 
 public:
 	/**
@@ -318,7 +350,7 @@ ClassKindInfo & ClassKindInfoImpl< T >::CLASS_KIND_INFO =
 		ClassKindInfoInitializer::classKindInfo< T >();
 
 
-#define CLASS_KIND_T( T )  ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND
+#define CLASS_KIND_T( T )       ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND
 
 #define CLASS_KIND_NAME_T( T )  ClassKindInfoImpl< T >::CLASS_KIND_INFO.mNAME
 
@@ -367,7 +399,7 @@ public:
 	/**
 	 * DESTRUCTOR
 	 */
-	~ClassKindImpl()
+	virtual ~ClassKindImpl()
 	{
 		//!! NOTHING
 	}
@@ -395,7 +427,7 @@ public:
 	inline std::string classKindInfo() const
 	{
 		return( OSS() << "classKindInfo< "
-				<< static_cast< avm_size_t>( mClassKind ) << " , "
+				<< static_cast< std::size_t>( mClassKind ) << " , "
 				<< CKII_TABLE_INFO( mClassKind )->mNAME
 				<< " >" );
 	}
@@ -405,78 +437,155 @@ public:
 	// CLASS KIND CHECKER & CAST API
 	////////////////////////////////////////////////////////////////////////////
 
+	template< typename T >
+	inline bool is_a() const
+	{
+		return( dynamic_cast< const T * >( this ) != nullptr );
+	}
+
+	template< typename T >
+	inline bool is_not_a() const
+	{
+		return( dynamic_cast< const T * >( this ) == nullptr );
+	}
+
+	template< typename T >
+	inline bool is_exactly_a() const
+	{
+		return( typeid(T) == typeid(*this) );
+	}
+
+	template< typename T >
+	inline bool is_not_exactly_a() const
+	{
+		return( typeid(T) != typeid(*this) );
+	}
+
+
+#define TEST_TYPEID_TRACE( method , tester )   \
+	AVM_OS_LOG << "==kind== " << (ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND == mClassKind)   \
+		<< "  " << #tester << "< T > " << tester< T >() << " \tthis( " << typeid( *this ).name() \
+		<< " )->" << #method << "< " << typeid( T ).name() << " >" << std::endl << std::flush;
+
 	// Check if BF is a handle to a T, including base classes.
 	template< typename T >
 	inline bool is() const
 	{
-		return( ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND == mClassKind );
+//		TEST_TYPEID_TRACE( is , is_a )
+
+		return( (ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND == mClassKind)
+				|| is_a< T >() );
 	}
 
 	template< typename T >
 	inline bool isnot() const
 	{
-		return( ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND != mClassKind );
+//		TEST_TYPEID_TRACE( isnot , is_not_a )
+
+		return( is_not_a< T >() );
 	}
 
 	// Check if BF is a handle to a T, not including base classes.
 	template< typename T >
 	inline bool is_exactly() const
 	{
-		return( ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND == mClassKind );
+//		TEST_TYPEID_TRACE( is_exactly , is_exactly_a )
+
+		return( (ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND == mClassKind)
+				|| is_exactly_a< T >() );
 	}
 
 	template< typename T >
 	inline bool isnot_exactly() const
 	{
-		return( ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND != mClassKind );
+//		TEST_TYPEID_TRACE( isnot_exactly , is_not_exactly_a )
+
+		return( (ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND != mClassKind)
+				|| is_not_exactly_a< T >() );
 	}
 
 	// Check if BF is a handle to a T, not including specific classes.
+
 	template< typename T >
 	inline bool is_strictly() const
 	{
-		return( is< T >() );
+//		TEST_TYPEID_TRACE( is_strictly , is_a )
+
+		return( (ClassKindInfoImpl< T >::CLASS_KIND_INFO.mKIND == mClassKind)
+				|| is_a< T >() );
 	}
 
 	template< typename T >
 	inline bool isnot_strictly() const
 	{
-		return( not is_strictly< T >() );
+//		TEST_TYPEID_TRACE( isnot_strictly , is_not_a )
+
+		return( is_not_a< T >() );
 	}
 
 
+
+#define ASSERT_TYPE_CASTING( method )                       \
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( method< T >() )     \
+				<< "Invalid type casting :> static_cast< "  \
+				<< typeid( T ).name() << " * >( "           \
+				<< typeid( *this ).name() << " * )"         \
+				<< SEND_EXIT;
+
+//		AVM_OS_ASSERT_FATAL_ERROR_EXIT( is< T >() )
+//				<< "Invalid type casting :> static_cast< "
+//				<< CKII_TABLE_INFO_T( T )->mNAME
+//				<< " * >( "
+//				<< CKII_TABLE_INFO( mClassKind )->mNAME
+//				<< " * )"
+//				<< SEND_EXIT;
+
+	/**
+	 * safe cast
+	 * Check type compliance & null pointer
+	 */
 	// cast as specified pointer
 	template< typename T >
-	inline T * as()
+	inline T * as_ptr()
 	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT( is< T >() )
-				<< "Invalid type casting :> static_cast< "
-				<< CKII_TABLE_INFO_T( T )->mNAME
-				<< " * >( "
-				<< CKII_TABLE_INFO( mClassKind )->mNAME
-				<< " * )"
-				<< SEND_EXIT;
+		ASSERT_TYPE_CASTING( is )
 
 		return( static_cast< T * >( this ) );
 	}
 
 	template< typename T >
-	inline const T * as() const
+	inline const T * as_ptr() const
 	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT( is< T >() )
-				<< "Invalid type casting :> static_cast< "
-				<< CKII_TABLE_INFO_T( T )->mNAME
-				<< " * >( "
-				<< CKII_TABLE_INFO( mClassKind )->mNAME
-				<< " * )"
-				<< SEND_EXIT;
+		ASSERT_TYPE_CASTING( is )
 
 		return( static_cast< const T * >( this ) );
 	}
 
+	// cast as specified reference
+	template< typename T >
+	inline T & as()
+	{
+		ASSERT_TYPE_CASTING( is )
+
+		return( static_cast< T & >( *this ) );
+	}
 
 	template< typename T >
-	inline T * to()
+	inline const T & as() const
+	{
+		ASSERT_TYPE_CASTING( is )
+
+		return( static_cast< const T & >( *this ) );
+	}
+
+
+	/**
+	 * unsafe cast
+	 * Assume type compliance & null pointer checking
+	 */
+	// cast to specified pointer
+	template< typename T >
+	inline T * to_ptr()
 	{
 		// NO ASSERT
 		// Assumes that the type checking has been done by the user
@@ -484,15 +593,24 @@ public:
 	}
 
 	template< typename T >
-	inline const T * to() const
+	inline const T * to_ptr() const
 	{
 		// NO ASSERT
 		// Assumes that the type checking has been done by the user
 		return( static_cast< const T * >( this ) );
 	}
 
+	// cast to specified reference
 	template< typename T >
-	inline const T & to_ref() const
+	inline T & to()
+	{
+		// NO ASSERT
+		// Assumes that the type checking has been done by the user
+		return( static_cast< T & >( *this ) );
+	}
+
+	template< typename T >
+	inline const T & to() const
 	{
 		// NO ASSERT
 		// Assumes that the type checking has been done by the user
@@ -500,118 +618,6 @@ public:
 	}
 
 };
-
-
-
-/**
- * CLASS KIND CHECKER
- * CAST
- */
-class Machine;
-template<> bool ClassKindImpl::is< Machine    >() const;
-template<> bool ClassKindImpl::isnot< Machine >() const;
-
-
-class BehavioralElement;
-template<> bool ClassKindImpl::is< BehavioralElement    >() const;
-template<> bool ClassKindImpl::isnot< BehavioralElement >() const;
-
-class PropertyElement;
-template<> bool ClassKindImpl::is< PropertyElement    >() const;
-template<> bool ClassKindImpl::isnot< PropertyElement >() const;
-
-
-class ObjectElement;
-template<> bool ClassKindImpl::is< ObjectElement    >() const;
-template<> bool ClassKindImpl::isnot< ObjectElement >() const;
-
-
-class Number;
-template<> bool ClassKindImpl::is< Number    >() const;
-template<> bool ClassKindImpl::isnot< Number >() const;
-
-
-class BuiltinQueue;
-template<> bool ClassKindImpl::is< BuiltinQueue    >() const;
-template<> bool ClassKindImpl::isnot< BuiltinQueue >() const;
-
-
-class BuiltinList;
-template<> bool ClassKindImpl::is< BuiltinList    >() const;
-template<> bool ClassKindImpl::isnot< BuiltinList >() const;
-
-
-class BuiltinVector;
-template<> bool ClassKindImpl::is< BuiltinVector    >() const;
-template<> bool ClassKindImpl::isnot< BuiltinVector >() const;
-
-
-class BuiltinArray;
-template<> bool ClassKindImpl::is< BuiltinArray    >() const;
-template<> bool ClassKindImpl::isnot< BuiltinArray >() const;
-
-template<> bool ClassKindImpl::is_strictly< BuiltinArray    >() const;
-template<> bool ClassKindImpl::isnot_strictly< BuiltinArray >() const;
-
-
-class BuiltinContainer;
-template<> bool ClassKindImpl::is< BuiltinContainer    >() const;
-template<> bool ClassKindImpl::isnot< BuiltinContainer >() const;
-
-
-class BuiltinCollection;
-template<> bool ClassKindImpl::is< BuiltinCollection    >() const;
-template<> bool ClassKindImpl::isnot< BuiltinCollection >() const;
-
-
-class BuiltinForm;
-template<> bool ClassKindImpl::is< BuiltinForm    >() const;
-template<> bool ClassKindImpl::isnot< BuiltinForm >() const;
-
-
-class BaseInstanceForm;
-template<> bool ClassKindImpl::is< BaseInstanceForm    >() const;
-template<> bool ClassKindImpl::isnot< BaseInstanceForm >() const;
-
-
-
-class AvmProgram;
-template<> bool ClassKindImpl::is< AvmProgram    >() const;
-template<> bool ClassKindImpl::isnot< AvmProgram >() const;
-
-class BaseAvmProgram;
-template<> bool ClassKindImpl::is< BaseAvmProgram    >() const;
-template<> bool ClassKindImpl::isnot< BaseAvmProgram >() const;
-
-
-class BaseSymbolTypeSpecifier;
-template<> bool ClassKindImpl::is< BaseSymbolTypeSpecifier    >() const;
-template<> bool ClassKindImpl::isnot< BaseSymbolTypeSpecifier >() const;
-
-class BaseTypeSpecifier;
-template<> bool ClassKindImpl::is< BaseTypeSpecifier    >() const;
-template<> bool ClassKindImpl::isnot< BaseTypeSpecifier >() const;
-
-
-class BaseCompiledForm;
-template<> bool ClassKindImpl::is< BaseCompiledForm    >() const;
-template<> bool ClassKindImpl::isnot< BaseCompiledForm >() const;
-
-
-
-class RamBuffer;
-template<> bool ClassKindImpl::is< RamBuffer    >() const;
-template<> bool ClassKindImpl::isnot< RamBuffer >() const;
-
-
-class BaseBufferQueue;
-template<> bool ClassKindImpl::is< BaseBufferQueue    >() const;
-template<> bool ClassKindImpl::isnot< BaseBufferQueue >() const;
-
-
-class BaseBufferForm;
-template<> bool ClassKindImpl::is< BaseBufferForm    >() const;
-template<> bool ClassKindImpl::isnot< BaseBufferForm >() const;
 
 
 } /* namespace sep */

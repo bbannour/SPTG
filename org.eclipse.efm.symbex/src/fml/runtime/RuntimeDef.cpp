@@ -15,11 +15,13 @@
 
 #include "RuntimeDef.h"
 
-#include <util/avm_string.h>
+#include <string>
+
 
 namespace sep
 {
 
+#define QUOTEME( X )  #X
 
 /**
  * PROCESS EVAL STATE
@@ -78,7 +80,7 @@ std::string RuntimeDef::strPES(PROCESS_EVAL_STATE aPES)
 #define PRINT_AEES( OBJ )   case AEES_##OBJ : return( QUOTEME( AEES_##OBJ ) )
 
 
-std::string RuntimeDef::strAEES(AVM_EXEC_ENDING_STATUS anAEES)
+std::string RuntimeDef::strAEES(AVM_EXECUTION_ENDING_STATUS anAEES)
 {
 	switch ( anAEES )
 	{
@@ -128,8 +130,8 @@ std::string RuntimeDef::strAEES(AVM_EXEC_ENDING_STATUS anAEES)
 /**
  * CONVERSION
  */
-AVM_EXEC_ENDING_STATUS RuntimeDef::PES_to_AEES(
-		PROCESS_EVAL_STATE aPES, AVM_EXEC_ENDING_STATUS defaultAEES)
+AVM_EXECUTION_ENDING_STATUS RuntimeDef::PES_to_AEES(
+		PROCESS_EVAL_STATE aPES, AVM_EXECUTION_ENDING_STATUS defaultAEES)
 {
 	switch( aPES )
 	{
@@ -148,6 +150,64 @@ AVM_EXEC_ENDING_STATUS RuntimeDef::PES_to_AEES(
 	}
 }
 
+
+PROCESS_EVAL_STATE RuntimeDef::Opcode_to_PES(AVM_OPCODE opcode)
+{
+	switch( opcode )
+	{
+		case AVM_OPCODE_ENABLE_INVOKE:
+		{
+			return( PROCESS_IDLE_STATE );
+		}
+
+		case AVM_OPCODE_DISABLE_INVOKE:
+		{
+			return( PROCESS_DISABLED_STATE );
+		}
+
+		case AVM_OPCODE_ABORT_INVOKE:
+		{
+			return( PROCESS_ABORTED_STATE );
+		}
+
+
+		case AVM_OPCODE_FINAL:
+		{
+			return( PROCESS_FINALIZED_STATE );
+		}
+
+		case AVM_OPCODE_DESTROY:
+		{
+			return( PROCESS_DESTROYED_STATE );
+		}
+
+		case AVM_OPCODE_STOP:
+		{
+			return( PROCESS_STOPPED_STATE );
+		}
+
+		case AVM_OPCODE_SUSPEND:
+		{
+			return( PROCESS_SUSPENDED_STATE );
+		}
+
+		case AVM_OPCODE_WAIT:
+		{
+			return( PROCESS_WAITING_STATE );
+		}
+
+
+		case AVM_OPCODE_RUN:
+		{
+			return( PROCESS_RUNNING_STATE );
+		}
+
+		default:
+		{
+			return( PROCESS_IDLE_STATE );
+		}
+	}
+}
 
 /**
  * SYNCHRONIZATION
@@ -173,8 +233,9 @@ PROCESS_EVAL_STATE RuntimeDef::syncPES(PROCESS_EVAL_STATE refPES,
 }
 
 
-AVM_EXEC_ENDING_STATUS RuntimeDef::syncAEES(
-		AVM_EXEC_ENDING_STATUS frstAEES, AVM_EXEC_ENDING_STATUS scndAEES)
+AVM_EXECUTION_ENDING_STATUS RuntimeDef::syncAEES(
+		AVM_EXECUTION_ENDING_STATUS frstAEES,
+		AVM_EXECUTION_ENDING_STATUS scndAEES)
 {
 	if( frstAEES == scndAEES )
 	{

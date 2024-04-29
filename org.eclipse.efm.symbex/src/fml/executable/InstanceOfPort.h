@@ -18,8 +18,6 @@
 
 #include <fml/executable/BaseInstanceForm.h>
 
-#include <common/AvmPointer.h>
-
 #include <fml/lib/IComPoint.h>
 
 #include <fml/executable/InstanceOfData.h>
@@ -52,7 +50,7 @@ protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	avm_size_t mRouteOffset;
+	std::size_t mRouteOffset;
 
 	// the nature
 	ENUM_IO_NATURE mComPointNature;
@@ -76,8 +74,8 @@ public:
 	 * Default
 	 */
 	InstanceOfPort(BaseAvmProgram * aContainer,
-			PropertyElement * aCompiled, avm_offset_t anOffset,
-			avm_size_t aParameterCount, ENUM_IO_NATURE aNature);
+			const PropertyElement & astPort, avm_offset_t anOffset,
+			std::size_t aParameterCount, ENUM_IO_NATURE aNature);
 
 
 	/**
@@ -106,15 +104,15 @@ public:
 	 * CONSTRUCTOR
 	 * via Channel
 	 */
-	InstanceOfPort(BaseAvmProgram * aContainer, Port * chanPortCompiled,
-			InstanceOfPort * aChannel, InstanceOfPort * aTarget)
+	InstanceOfPort(BaseAvmProgram * aContainer, const Port & astChannelPort,
+			InstanceOfPort * aChannel, const InstanceOfPort & aTarget)
 	: BaseInstanceForm(CLASS_KIND_T( InstanceOfPort ),
-			aContainer, chanPortCompiled, aTarget),
-	mRouteOffset( aTarget->mRouteOffset ),
-	mComPointNature( aTarget->mComPointNature ),
+			aContainer, astChannelPort, aTarget),
+	mRouteOffset( aTarget.mRouteOffset ),
+	mComPointNature( aTarget.mComPointNature ),
 
-	mParameters( aTarget->mParameters ),
-	mContents( aTarget->mContents ),
+	mParameters( aTarget.mParameters ),
+	mContents( aTarget.mContents ),
 
 	mRoutingChannel( aChannel ),
 
@@ -131,17 +129,17 @@ public:
 	 * CONSTRUCTOR
 	 * for Alias
 	 */
-	InstanceOfPort(BaseAvmProgram * aContainer, InstanceOfPort * aTarget,
-			VectorOfInstanceOfMachine & aRelativeMachinePath)
+	InstanceOfPort(BaseAvmProgram * aContainer, const InstanceOfPort & aTarget,
+			const VectorOfInstanceOfMachine & aRelativeMachinePath)
 	: BaseInstanceForm(CLASS_KIND_T( InstanceOfPort ), aContainer, aTarget,
 			aRelativeMachinePath),
-	mRouteOffset( aTarget->mRouteOffset ),
-	mComPointNature( aTarget->mComPointNature ),
+	mRouteOffset( aTarget.mRouteOffset ),
+	mComPointNature( aTarget.mComPointNature ),
 
-	mParameters( aTarget->mParameters ),
-	mContents( aTarget->mContents ),
+	mParameters( aTarget.mParameters ),
+	mContents( aTarget.mContents ),
 
-	mRoutingChannel( aTarget->mRoutingChannel ),
+	mRoutingChannel( aTarget.mRoutingChannel ),
 
 	mInputRoutingData( ),
 	mOutputRoutingData( )
@@ -167,9 +165,9 @@ public:
 	 * new Port à Channel
 	 */
 	static InstanceOfPort * newChannel(BaseAvmProgram * aContainer,
-			Channel * aCompiled, avm_offset_t anOffset)
+			const Channel & astChannel, avm_offset_t anOffset)
 	{
-		return( new InstanceOfPort(aContainer, aCompiled,
+		return( new InstanceOfPort(aContainer, astChannel,
 				anOffset, 0, IO_CHANNEL_NATURE) );
 	}
 
@@ -177,12 +175,12 @@ public:
 	 * GETTER - SETTER
 	 * mRouteOffset
 	 */
-	inline avm_size_t getRouteOffset() const
+	inline std::size_t getRouteOffset() const
 	{
 		return( mRouteOffset );
 	}
 
-	inline void setRouteOffset(avm_size_t aRouteOffset)
+	inline void setRouteOffset(std::size_t aRouteOffset)
 	{
 		mRouteOffset = aRouteOffset;
 	}
@@ -194,7 +192,7 @@ public:
 	 * mComPointNature
 	 * mComPointDirection
 	 */
-	inline virtual ENUM_IO_NATURE getComPointNature() const
+	inline virtual ENUM_IO_NATURE getComPointNature() const override
 	{
 		return( mComPointNature );
 	}
@@ -215,27 +213,27 @@ public:
 	}
 
 
-	inline const BF & getParameter(avm_size_t offset) const
+	inline const BF & getParameter(std::size_t offset) const
 	{
 		return( mParameters[offset] );
 	}
 
-	inline BaseTypeSpecifier * getParameterType(avm_size_t offset) const
+	inline const BaseTypeSpecifier & getParameterType(std::size_t offset) const
 	{
 		if( mParameters[offset].is< BaseTypeSpecifier >() )
 		{
-			return( mParameters[offset].to_ptr< BaseTypeSpecifier >() );
+			return( mParameters[offset].to< BaseTypeSpecifier >() );
 		}
 		else if( mParameters[offset].is< BaseInstanceForm >() )
 		{
 			return( mParameters[offset].
-					to_ptr< BaseInstanceForm >()->getTypeSpecifier() );
+					to< BaseInstanceForm >().getTypeSpecifier() );
 		}
-		return( NULL );
+		return( BaseTypeSpecifier::nullref() );
 	}
 
 
-	inline avm_size_t getParameterCount() const
+	inline std::size_t getParameterCount() const
 	{
 		return( mParameters.size() );
 	}
@@ -246,7 +244,7 @@ public:
 		return( getParameterCount() > 0 );
 	}
 
-	inline bool hasParameterType(avm_size_t offset) const
+	inline bool hasParameterType(std::size_t offset) const
 	{
 		if( offset < getParameterCount() )
 		{
@@ -257,19 +255,19 @@ public:
 			else if( mParameters[offset].is< BaseInstanceForm >() )
 			{
 				return( mParameters[offset].
-						to_ptr< BaseInstanceForm >()->hasTypeSpecifier() );
+						to< BaseInstanceForm >().hasTypeSpecifier() );
 			}
 		}
 		return( false );
 	}
 
-	inline bool isParameterData(avm_size_t offset) const
+	inline bool isParameterData(std::size_t offset) const
 	{
 		return( mParameters[offset].is< InstanceOfData >() );
 	}
 
 
-	inline void setParameter(avm_size_t index, const BF & aParam)
+	inline void setParameter(std::size_t index, const BF & aParam)
 	{
 		mParameters[index]= aParam;
 	}
@@ -299,13 +297,13 @@ public:
 	}
 
 
-	inline const BF & getContent(avm_size_t offset) const
+	inline const BF & getContent(std::size_t offset) const
 	{
 		return( mContents[offset] );
 	}
 
 
-	inline avm_size_t getContentCount() const
+	inline std::size_t getContentCount() const
 	{
 		return( mContents.size() );
 	}
@@ -317,18 +315,18 @@ public:
 	}
 
 
-	inline bool isContentData(avm_size_t offset) const
+	inline bool isContentData(std::size_t offset) const
 	{
 		return( mContents[offset].is< InstanceOfData >() );
 	}
 
-	inline bool isContentPort(avm_size_t offset) const
+	inline bool isContentPort(std::size_t offset) const
 	{
 		return( mContents[offset].is< InstanceOfPort >() );
 	}
 
 
-	inline void setContent(avm_size_t index, const Symbol & aSymbol)
+	inline void setContent(std::size_t index, const Symbol & aSymbol)
 	{
 		mContents[index]= aSymbol;
 	}
@@ -345,7 +343,7 @@ public:
 
 	inline bool hasRoutingChannel() const
 	{
-		return( mRoutingChannel != NULL );
+		return( mRoutingChannel != nullptr );
 	}
 
 	inline void setRoutingChannel(InstanceOfPort * aRoutingChannel)
@@ -365,7 +363,7 @@ public:
 
 	inline bool hasInputRoutingData() const
 	{
-		return( mInputRoutingData != NULL );
+		return( mInputRoutingData != nullptr );
 	}
 
 	inline void setInputRoutingData(const RoutingData & anInputRoutingData)
@@ -385,7 +383,7 @@ public:
 
 	inline bool hasOutputRoutingData() const
 	{
-		return( mOutputRoutingData != NULL );
+		return( mOutputRoutingData != nullptr );
 	}
 
 	inline void setOutputRoutingData(const RoutingData & anOutputRoutingData)
@@ -408,11 +406,14 @@ public:
 	void strParameter(OutStream & out, const BF & aParameter) const;
 	void strParameter(OutStream & out) const;
 
-	void strHeader(OutStream & out) const;
+	virtual void strHeader(OutStream & out) const override;
 
 	std::string strArg() const;
 
-	void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
+
+	static void toStream(OutStream & out,
+			const ListOfInstanceOfPort & iePorts);
 
 };
 

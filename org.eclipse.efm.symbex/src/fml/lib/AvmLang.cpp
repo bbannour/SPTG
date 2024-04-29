@@ -26,7 +26,7 @@ namespace sep
 // GENERIC XLIA SYNTAX
 ////////////////////////////////////////////////////////////////////////////////
 
-BF XLIA_SYNTAX::ID_ALL = ExpressionConstructor::newIdentifier( "[*]" );
+BF XLIA_SYNTAX::ID_ALL;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +35,7 @@ BF XLIA_SYNTAX::ID_ALL = ExpressionConstructor::newIdentifier( "[*]" );
 
 void XLIA_SYNTAX::load()
 {
-	//!! NOTHING
+	ID_ALL = ExpressionConstructor::newIdentifier( "[*]" );
 }
 
 
@@ -54,11 +54,11 @@ void XLIA_SYNTAX::dispose()
  */
 
 #define PRINT_POINTER_NATURE( OBJ )   \
-	case IPointerDataNature::POINTER_##OBJ##_NATURE :  \
+	case IPointerVariableNature::POINTER_##OBJ##_NATURE :  \
 			return( QUOTEME( POINTER_##OBJ ) )
 
-std::string IPointerDataNature::strPointerDataNature(
-		IPointerDataNature::POINTER_DATA_NATURE aNature)
+std::string IPointerVariableNature::strPointerDataNature(
+		IPointerVariableNature::POINTER_VARIABLE_NATURE aNature)
 {
 	switch ( aNature )
 	{
@@ -82,55 +82,55 @@ std::string IPointerDataNature::strPointerDataNature(
 	}
 }
 
-std::string IPointerDataNature::strPointer(const POINTER_DATA_NATURE aNature)
+std::string IPointerVariableNature::strPointer(const POINTER_VARIABLE_NATURE aNature)
 {
 	switch ( aNature )
 	{
-		case IPointerDataNature::POINTER_STANDARD_NATURE:
+		case IPointerVariableNature::POINTER_STANDARD_NATURE:
 		{
 			return( "std" );
 		}
 
-		case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 		{
 			return( "index#symbex" );
 		}
-		case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 		{
 			return( "index#offset" );
 		}
-		case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
 		{
 			return( "attr" );
 		}
-		case IPointerDataNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_CHOICE_ATTRIBUTE_NATURE:
 		{
 			return( "choice" );
 		}
-		case IPointerDataNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
+		case IPointerVariableNature::POINTER_FIELD_UNION_ATTRIBUTE_NATURE:
 		{
 			return( "union" );
 		}
-		case IPointerDataNature::POINTER_ENUM_SYMBOL_NATURE:
+		case IPointerVariableNature::POINTER_ENUM_SYMBOL_NATURE:
 		{
 			return( "enum" );
 		}
 
-		case IPointerDataNature::POINTER_UFI_OFFSET_NATURE:
+		case IPointerVariableNature::POINTER_UFI_OFFSET_NATURE:
 		{
 			return( "ufi" );
 		}
-		case IPointerDataNature::POINTER_UFI_MIXED_NATURE:
+		case IPointerVariableNature::POINTER_UFI_MIXED_NATURE:
 		{
 			return( "mix" );
 		}
 
-		case IPointerDataNature::POINTER_UFI_RUNTIME_NATURE:
+		case IPointerVariableNature::POINTER_UFI_RUNTIME_NATURE:
 		{
 			return( "runtime" );
 		}
 
-		case IPointerDataNature::POINTER_UNDEFINED_NATURE:
+		case IPointerVariableNature::POINTER_UNDEFINED_NATURE:
 		{
 			return( "undef" );
 		}

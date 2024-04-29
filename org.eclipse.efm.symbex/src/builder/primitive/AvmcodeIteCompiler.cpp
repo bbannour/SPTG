@@ -38,7 +38,7 @@ BF AvmcodeIteCompiler::compileExpression(
 
 	if( aCode->isOpCode( AVM_OPCODE_IFE ) )
 	{
-		aCompiledCode->append( compileArgRvalue(aCTX, aCode->third()) );
+		aCompiledCode->append( compileArgRvalue(aCTX, aCode->operand(2)) );
 	}
 
 	return( aCompiledCode );
@@ -63,10 +63,11 @@ BF AvmcodeIteCompiler::optimizeExpression(
 	if( aCode->isOpCode( AVM_OPCODE_IFE ) )
 	{
 		optimizedCode->append( AVMCODE_COMPILER.decode_optimizeExpression(
-				aCTX, aCode->third()) );
+				aCTX, aCode->operand(2)) );
 
 		argsInstruction->at(2).dtype = TypeManager::UNIVERSAL;
-		setArgcodeRValue(aCTX, argsInstruction->at(2), optimizedCode->third());
+		setArgcodeRValue(aCTX,
+				argsInstruction->at(2), optimizedCode->operand(2));
 	}
 
 	argsInstruction->computeMainBytecode(
@@ -90,7 +91,8 @@ BFCode AvmcodeIteCompiler::compileStatement(
 	if( aCode->isOpCode( AVM_OPCODE_IFE ) )
 	{
 		aCompiledCode->append(
-				AVMCODE_COMPILER.decode_compileStatement(aCTX, aCode->third()) );
+				AVMCODE_COMPILER.decode_compileStatement(
+						aCTX, aCode->operand(2) ) );
 	}
 
 	return( aCompiledCode );
@@ -115,9 +117,10 @@ BFCode AvmcodeIteCompiler::optimizeStatement(
 	if( aCode->isOpCode( AVM_OPCODE_IFE ) )
 	{
 		optimizedCode->append( AVMCODE_COMPILER.decode_optimizeStatement(
-				aCTX, aCode->third()) );
+				aCTX, aCode->operand(2)) );
 
-		setArgcodeStatement(aCTX, argsInstruction->at(2), optimizedCode->third());
+		setArgcodeStatement(aCTX,
+				argsInstruction->at(2), optimizedCode->operand(2));
 	}
 
 	argsInstruction->computeMainBytecode(

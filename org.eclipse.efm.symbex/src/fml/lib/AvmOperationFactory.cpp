@@ -15,11 +15,16 @@
 
 #include "AvmOperationFactory.h"
 
+#include <fml/builtin/String.h>
+
 #include <fml/executable/BaseInstanceForm.h>
 #include <fml/executable/InstanceOfData.h>
 #include <fml/executable/InstanceOfMachine.h>
 
 #include <fml/expression/BuiltinContainer.h>
+
+#include <fml/infrastructure/Machine.h>
+#include <fml/infrastructure/Variable.h>
 
 #include <fml/lib/AvmOperationExpression.h>
 #include <fml/lib/AvmOperationMachine.h>
@@ -31,15 +36,12 @@
 
 #include <fml/type/BaseTypeSpecifier.h>
 
-#include <fml/infrastructure/Machine.h>
-#include <fml/infrastructure/Variable.h>
-
 
 namespace sep
 {
 
 
-std::map< std::string , Operator * > AvmOperationFactory::theGlobalMap;
+std::map< std::string , const Operator * > AvmOperationFactory::theGlobalMap;
 
 
 /**
@@ -52,6 +54,8 @@ void AvmOperationFactory::load()
 	AvmOperationMachine::load();
 
 	AvmOperationVariable::load();
+
+	put( OperatorManager::OPERATOR_INVOKE_TRANSITION );
 }
 
 
@@ -74,21 +78,21 @@ void AvmOperationFactory::dispose()
 /**
  * GETTER - SETTER
  */
-Operator * AvmOperationFactory::get(const std::string & method)
+const Operator * AvmOperationFactory::get(const std::string & method)
 {
-	Operator * op = NULL;
+	const Operator * op = nullptr;
 
-	if( (op = getGlobal(method)) != NULL )
+	if( (op = getGlobal(method)) != nullptr )
 	{
 		return( op );
 	}
 
-	if( (op = AvmOperationVariable::get(method)) != NULL )
+	if( (op = AvmOperationVariable::get(method)) != nullptr )
 	{
 		return( op );
 	}
 
-	if( (op = AvmOperationMachine::get(method)) != NULL )
+	if( (op = AvmOperationMachine::get(method)) != nullptr )
 	{
 		return( op );
 	}
@@ -97,8 +101,8 @@ Operator * AvmOperationFactory::get(const std::string & method)
 }
 
 
-Operator * AvmOperationFactory::get(const BF & aReceiver,
-		const std::string & method)
+const Operator * AvmOperationFactory::get(
+		const BF & aReceiver, const std::string & method)
 {
 	if( aReceiver.is< BaseInstanceForm >() )
 	{
@@ -117,18 +121,18 @@ Operator * AvmOperationFactory::get(const BF & aReceiver,
 
 		if( aVar->hasTypeSpecifier() )
 		{
-			BaseTypeSpecifier * varTS = aVar->getTypeSpecifier();
-			if( varTS->isTypedMachine() )
+			const BaseTypeSpecifier & varTS = aVar->getTypeSpecifier();
+			if( varTS.isTypedMachine() )
 			{
-				Operator * opVar = AvmOperationMachine::get(method);
-				if( opVar != NULL )
+				const Operator * opVar = AvmOperationMachine::get(method);
+				if( opVar != nullptr )
 				{
 					return( opVar );
 				}
 			}
 
-			Operator * opVar = AvmOperationVariable::get(varTS, method);
-			if( opVar != NULL )
+			const Operator * opVar = AvmOperationVariable::get(varTS, method);
+			if( opVar != nullptr )
 			{
 				return( opVar );
 			}
@@ -141,15 +145,15 @@ Operator * AvmOperationFactory::get(const BF & aReceiver,
 
 		if( aData->hasTypeSpecifier() )
 		{
-			BaseTypeSpecifier * varTS = aData->getTypeSpecifier();
-			if( varTS->isTypedMachine() )
+			const BaseTypeSpecifier & varTS = aData->getTypeSpecifier();
+			if( varTS.isTypedMachine() )
 			{
 				return( AvmOperationMachine::get(method) );
 			}
 			else
 			{
-				Operator * opVar = AvmOperationVariable::get(varTS, method);
-				if( opVar != NULL )
+				const Operator * opVar = AvmOperationVariable::get(varTS, method);
+				if( opVar != nullptr )
 				{
 					return( opVar );
 				}
@@ -157,15 +161,15 @@ Operator * AvmOperationFactory::get(const BF & aReceiver,
 		}
 	}
 
-	else if( aReceiver.is< BuiltinCollection >() ||
-			aReceiver.is< String >() )
+	else if( aReceiver.is< BuiltinCollection >()
+			|| aReceiver.is< String >() )
 	{
 		return( AvmOperationVariable::get(method) );
 	}
 	else
 	{
-		Operator * opExpr = AvmOperationExpression::get(aReceiver, method);
-		if( opExpr != NULL )
+		const Operator * opExpr = AvmOperationExpression::get(aReceiver, method);
+		if( opExpr != nullptr )
 		{
 			return( opExpr );
 		}
@@ -174,7 +178,7 @@ Operator * AvmOperationFactory::get(const BF & aReceiver,
 	return( get(method) );
 }
 
-Operator * AvmOperationFactory::get(
+const Operator * AvmOperationFactory::get(
 		BaseInstanceForm * anInstance, const std::string & method)
 {
 	if( anInstance->isTypedMachine() || anInstance->is< InstanceOfMachine >() )
@@ -183,8 +187,8 @@ Operator * AvmOperationFactory::get(
 	}
 	else
 	{
-		Operator * opVar = AvmOperationVariable::get(anInstance, method);
-		if( opVar != NULL )
+		const Operator * opVar = AvmOperationVariable::get(anInstance, method);
+		if( opVar != nullptr )
 		{
 			return( opVar );
 		}
@@ -195,37 +199,39 @@ Operator * AvmOperationFactory::get(
 
 
 
-bool AvmOperationFactory::exist(const std::string & method)
+bool AvmOperationFactory::exists(const std::string & method)
 {
 	return( isGlobal(method) ||
-			AvmOperationVariable::exist(method) ||
-			AvmOperationMachine::exist(method) ||
-			AvmOperationExpression::exist(method) );
+			AvmOperationVariable::exists(method) ||
+			AvmOperationMachine::exists(method) ||
+			AvmOperationExpression::exists(method) );
 }
 
 
-bool AvmOperationFactory::exist(BaseInstanceForm * anInstance,
+bool AvmOperationFactory::exists(BaseInstanceForm * anInstance,
 		const std::string & method)
 {
-	return( AvmOperationVariable::exist(anInstance, method) ||
-			AvmOperationMachine::exist(anInstance, method)  ||
+	return( AvmOperationVariable::exists(anInstance, method) ||
+			AvmOperationMachine::exists(anInstance, method)  ||
 			isGlobal(method) );
 }
 
 
-bool AvmOperationFactory::exist(const std::string & method, Operator * anOperator)
+bool AvmOperationFactory::exists(
+		const std::string & method, const Operator * anOperator)
 {
 	return( (anOperator == getGlobal(method))                 ||
-			AvmOperationVariable::exist(method, anOperator)   ||
-			AvmOperationMachine::exist(method, anOperator)    ||
-			AvmOperationExpression::exist(method, anOperator) );
+			AvmOperationVariable::exists(method, anOperator)   ||
+			AvmOperationMachine::exists(method, anOperator)    ||
+			AvmOperationExpression::exists(method, anOperator) );
 }
 
 
 
-void AvmOperationFactory::put(const std::string & method, Operator * anOperator)
+void AvmOperationFactory::put(
+		const std::string & method, const Operator * anOperator)
 {
-	if( exist(method, anOperator) )
+	if( exists(method, anOperator) )
 	{
 		return;
 	}
@@ -234,7 +240,7 @@ void AvmOperationFactory::put(const std::string & method, Operator * anOperator)
 
 
 void AvmOperationFactory::put(BaseInstanceForm * anInstance,
-		const std::string & method, Operator * anOperator)
+		const std::string & method, const Operator * anOperator)
 {
 	putGlobal(method, anOperator);
 }

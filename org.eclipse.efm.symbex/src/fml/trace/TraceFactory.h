@@ -28,6 +28,8 @@ namespace sep
 
 class AvmCode;
 
+class BuiltinArray;
+
 class Configuration;
 
 class EvaluationEnvironment;
@@ -52,16 +54,17 @@ protected:
 
 	const ExecutionData * mED;
 
-	WObject * mParameterWObject;
+	const WObject * mParameterWObject;
 
 	BFVector         mDeclaredPoint;
 	VectorOfString   mDeclaredPointID;
 
-	ExecutableForm * mLocalExecutableForm;
+	ExecutableForm & mLocalExecutableForm;
 
-	InstanceOfData * mVarTime;
-	BF              bfVarTime;
+	const InstanceOfData * mVarTime;
+	BF                     bfVarTime;
 
+	ListOfTracePoint listOfBufferTracePoint;
 	ListOfTracePoint listOfPortTracePoint;
 	ListOfTracePoint listOfVariableTracePoint;
 
@@ -72,7 +75,7 @@ protected:
 	ListOfTracePoint otherTracePoint;
 
 public:
-	avm_size_t TP_ID;
+	std::size_t TP_ID;
 
 
 public:
@@ -81,13 +84,12 @@ public:
 	 * Default
 	 */
 	TraceFactory(const Configuration & aConfiguration,
-			EvaluationEnvironment & anENV, WObject * wfParameterObject,
-			ExecutableForm * aLocalExecutable = NULL,
-			InstanceOfData * aVarTime = NULL)
+			EvaluationEnvironment & anENV, const WObject * wfParameterObject,
+			ExecutableForm & aLocalExecutable, InstanceOfData * aVarTime = nullptr)
 	: mConfiguration( aConfiguration ),
 	ENV( anENV ),
 
-	mED( NULL ),
+	mED( nullptr ),
 
 	mParameterWObject( wfParameterObject ),
 
@@ -99,13 +101,14 @@ public:
 	mVarTime( aVarTime ),
 	bfVarTime( ),
 
+	listOfBufferTracePoint( ),
 	listOfPortTracePoint( ),
 	listOfVariableTracePoint( ),
 
 	////////////////////////////////////////////////////////////////////////////
 	// Computing Variables
 	bfTP( ),
-	aTracePoint( NULL ),
+	aTracePoint( nullptr ),
 	otherTracePoint( ),
 	TP_ID( 0 )
 	{
@@ -123,15 +126,21 @@ public:
 
 	/**
 	 * GETTER
+	 * listOfBufferTracePoint
 	 * listOfPortTracePoint
 	 * listOfVariableTracePoint
 	 */
-	ListOfTracePoint & getPortTracePoints()
+	inline const ListOfTracePoint & getBufferTracePoints() const
+	{
+		return( listOfBufferTracePoint );
+	}
+
+	inline const ListOfTracePoint & getPortTracePoints() const
 	{
 		return( listOfPortTracePoint );
 	}
 
-	ListOfTracePoint & getVariableTracePoints()
+	inline const ListOfTracePoint & getVariableTracePoints() const
 	{
 		return( listOfVariableTracePoint );
 	}
@@ -141,33 +150,35 @@ public:
 	// CONFIGURE API
 	////////////////////////////////////////////////////////////////////////////
 
-	bool configure(TraceSequence & aTraceElement, const ExecutionData * anED = NULL);
+	bool configure(TraceSequence & aTraceElement, const ExecutionData * anED = nullptr);
 
-	bool configure(AvmCode * aTraceExpression, const ExecutionData * anED = NULL);
+	bool configure(AvmCode & aTraceExpression, const ExecutionData * anED = nullptr);
 
-	bool configure(WObject * aTraceSequence,
-			BFCollection & tracePoints, const ExecutionData * anED = NULL);
+	bool collectIO(AvmCode & aTraceExpression, AvmCode & aTraceIO);
 
-	bool configure(WObject * aTraceSequence,
-			TraceSequence & aTraceElement, const ExecutionData * anED = NULL);
+	bool configure(const WObject * aTraceSequence,
+			BFCollection & tracePoints, const ExecutionData * anED = nullptr);
 
-	bool configure(WObject * aTraceSequence,
-			AvmCode * aTraceExpression, const ExecutionData * anED = NULL);
+	bool configure(const WObject * aTraceSequence,
+			TraceSequence & aTraceElement, const ExecutionData * anED = nullptr);
 
-	bool configure(BFCollection & tracePoints, WObject * wfProperty);
+	bool configure(const WObject * aTraceSequence,
+			AvmCode * aTraceExpression, const ExecutionData * anED = nullptr);
 
-	bool configure(BFCollection & tracePoints, WObject * wfProperty,
+	bool configure(BFCollection & tracePoints, const WObject * wfProperty);
+
+	bool configure(BFCollection & tracePoints, const WObject * wfProperty,
 			ENUM_TRACE_POINT::TRACE_NATURE nature, const std::string & object);
 
-	bool configure(BFCollection & tracePoints, WObject * wfProperty,
+	bool configure(BFCollection & tracePoints, const WObject * wfProperty,
 			AVM_OPCODE opNature, const std::string & object);
 
 	bool configureArray(BFCollection & tracePoints,
-			WObject * wfProperty, BuiltinArray * anArray,
+			const WObject * wfProperty, BuiltinArray * anArray,
 			ENUM_TRACE_POINT::TRACE_NATURE nature, AVM_OPCODE opNature);
 
 	bool configureExpression(BFCollection & tracePoints,
-			WObject * wfProperty, AvmCode * aCode,
+			const WObject * wfProperty, const AvmCode & aCode,
 			ENUM_TRACE_POINT::TRACE_NATURE nature, AVM_OPCODE opNature);
 
 
@@ -191,6 +202,9 @@ public:
 			BFCollection & tracePoints, const BF & object);
 
 	bool configureNodePathCondition(
+			BFCollection & tracePoints, const BF & object);
+
+	bool configureNodeInformation(
 			BFCollection & tracePoints, const BF & object);
 
 	bool configureMachine(

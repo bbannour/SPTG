@@ -34,7 +34,7 @@ IComPoint::ENUM_IO_NATURE IComPoint::to_nature(const std::string & id)
 }
 
 
-std::string IComPoint::SEPARATOR = "%";
+std::string IComPoint::SEPARATOR = " % ";
 
 std::string IComPoint::str_nature(
 		IComPoint::ENUM_IO_NATURE nature, IComPoint::ENUM_IO_NATURE mask)

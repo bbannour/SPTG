@@ -15,9 +15,8 @@
 
 #include <fml/runtime/ExecutionContext.h>
 
-#include <fam/queue/ExecutionQueue.h>
+#include  <famcore/queue/ExecutionQueue.h>
 
-#include <main/SignalHandler.h>
 
 #include <sew/SymbexControllerUnitManager.h>
 #include <sew/SymbexDispatcher.h>
@@ -31,7 +30,7 @@ namespace sep
  * Default
  */
 SymbexController::SymbexController(
-		SymbexDispatcher & aSymbexDispatcher, WObject * wfParameterObject,
+		SymbexDispatcher & aSymbexDispatcher, const WObject * wfParameterObject,
 	SymbexControllerUnitManager & aControllerUnitManager)
 : SymbexJob(aSymbexDispatcher, wfParameterObject, aControllerUnitManager),
 mSymbexRequestManager( aSymbexDispatcher.getSymbexControllerRequestManager() )
@@ -83,17 +82,6 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , REPORTING , COMPUTING )
 
 		while( true )
 		{
-
-#ifdef __AVM_UNIX__
-
-			if( SignalHandler::isSIGINT() )
-			{
-				mSymbexRequestManager.fireRequestStop();
-
-				this->handleRequestStop();
-			}
-
-#endif /* __AVM_UNIX__ */
 
 			/**
 			 * PROCESSOR REQUEST API :> before << prefiltering >> step
@@ -256,6 +244,11 @@ void SymbexController::analyseResult()
  */
 void SymbexController::reportEval() const
 {
+	if( AVM_ENABLED_SPIDER_VERBOSITY_FLAG )
+	{
+		mControllerUnitManager.traceStopSpider(AVM_OS_COUT);
+	}
+
 	mControllerUnitManager.reportEval(AVM_OS_TRACE);
 
 	mControllerUnitManager.reportEval(AVM_OS_COUT);

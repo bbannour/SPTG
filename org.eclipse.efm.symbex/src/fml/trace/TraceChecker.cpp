@@ -42,7 +42,7 @@ bool TraceChecker::isPointNature(const BF & arg,
 {
 	if( arg.is< TracePoint >() )
 	{
-		return( arg.to_ptr< TracePoint >()->nature == nature );
+		return( arg.to< TracePoint >().nature == nature );
 	}
 
 	return( false );
@@ -57,14 +57,14 @@ bool TraceChecker::isSat(const ExecutionContext & anEC, const BF & arg)
 {
 	if( arg.is< TracePoint >() )
 	{
-		if( isSat(anEC, arg.to_ptr< TracePoint >()) )
+		if( isSat(anEC, arg.to< TracePoint >()) )
 		{
 			return( true );
 		}
 	}
 	else if( arg.is< AvmCode >() )
 	{
-		return( isSat(anEC, arg.to_ref< AvmCode >()) );
+		return( isSat(anEC, arg.to< AvmCode >()) );
 	}
 
 	return( false );
@@ -80,11 +80,9 @@ bool TraceChecker::isSat(const ExecutionContext & anEC, const AvmCode & aCode)
 		case AVM_OPCODE_AND_THEN:
 		case AVM_OPCODE_SCHEDULE_AND_THEN:
 		{
-			AvmCode::const_iterator it = aCode.begin();
-			AvmCode::const_iterator endIt = aCode.end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( not isSat(anEC, (*it)) )
+				if( not isSat(anEC, itOperand) )
 				{
 					return( false );
 				}
@@ -98,11 +96,9 @@ bool TraceChecker::isSat(const ExecutionContext & anEC, const AvmCode & aCode)
 		case AVM_OPCODE_SCHEDULE_OR_ELSE:
 		case AVM_OPCODE_WEAK_SYNCHRONOUS:
 		{
-			AvmCode::const_iterator it = aCode.begin();
-			AvmCode::const_iterator endIt = aCode.end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( isSat(anEC, (*it)) )
+				if( isSat(anEC, itOperand) )
 				{
 					return( true );
 				}
@@ -114,13 +110,11 @@ bool TraceChecker::isSat(const ExecutionContext & anEC, const AvmCode & aCode)
 		case AVM_OPCODE_XOR:
 		case AVM_OPCODE_EXCLUSIVE:
 		{
-			avm_size_t passCount = 0;
+			std::size_t passCount = 0;
 
-			AvmCode::const_iterator it = aCode.begin();
-			AvmCode::const_iterator endIt = aCode.end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( isSat(anEC, (*it)) )
+				if( isSat(anEC, itOperand) )
 				{
 					if( ++passCount > 1 )
 					{
@@ -141,11 +135,9 @@ bool TraceChecker::isSat(const ExecutionContext & anEC, const AvmCode & aCode)
 
 		case AVM_OPCODE_NAND:
 		{
-			AvmCode::const_iterator it = aCode.begin();
-			AvmCode::const_iterator endIt = aCode.end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( not isSat(anEC, (*it)) )
+				if( not isSat(anEC, itOperand) )
 				{
 					return( true );
 				}
@@ -156,11 +148,9 @@ bool TraceChecker::isSat(const ExecutionContext & anEC, const AvmCode & aCode)
 
 		case AVM_OPCODE_NOR:
 		{
-			AvmCode::const_iterator it = aCode.begin();
-			AvmCode::const_iterator endIt = aCode.end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( isSat(anEC, (*it)) )
+				if( isSat(anEC, itOperand) )
 				{
 					return( false );
 				}
@@ -171,13 +161,11 @@ bool TraceChecker::isSat(const ExecutionContext & anEC, const AvmCode & aCode)
 
 		case AVM_OPCODE_XNOR:
 		{
-			avm_size_t passCount = 0;
+			std::size_t passCount = 0;
 
-			AvmCode::const_iterator it = aCode.begin();
-			AvmCode::const_iterator endIt = aCode.end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( isSat(anEC, (*it)) )
+				if( isSat(anEC, itOperand) )
 				{
 					if( ++passCount > 1 )
 					{
@@ -208,8 +196,8 @@ bool TraceChecker::isSat(
 		case AVM_OPCODE_SCHEDULE_AND_THEN:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( not isSat(anEC, argArray->at(offset)) )
 				{
@@ -226,8 +214,8 @@ bool TraceChecker::isSat(
 		case AVM_OPCODE_WEAK_SYNCHRONOUS:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( isSat(anEC, argArray->at(offset)) )
 				{
@@ -242,10 +230,10 @@ bool TraceChecker::isSat(
 		case AVM_OPCODE_EXCLUSIVE:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			avm_size_t passCount = 0;
+			std::size_t endOffset = argArray->size();
+			std::size_t passCount = 0;
 
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( isSat(anEC, argArray->at(offset)) )
 				{
@@ -269,8 +257,8 @@ bool TraceChecker::isSat(
 		case AVM_OPCODE_NAND:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( not isSat(anEC, argArray->at(offset)) )
 				{
@@ -284,8 +272,8 @@ bool TraceChecker::isSat(
 		case AVM_OPCODE_NOR:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( isSat(anEC, argArray->at(offset)) )
 				{
@@ -298,11 +286,11 @@ bool TraceChecker::isSat(
 
 		case AVM_OPCODE_XNOR:
 		{
-			avm_size_t passCount = 0;
+			std::size_t passCount = 0;
 
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( isSat(anEC, argArray->at(offset)) )
 				{
@@ -325,7 +313,7 @@ bool TraceChecker::isSat(
 
 
 
-bool TraceChecker::isSat(const ExecutionContext & anEC, TracePoint * aTP)
+bool TraceChecker::isSat(const ExecutionContext & anEC, const TracePoint & aTP)
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 	AVM_OS_TRACE << "isSat ? EC:> " << anEC.str_min() << std::endl
@@ -335,7 +323,7 @@ AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 
 
-	switch( aTP->nature )
+	switch( aTP.nature )
 	{
 		case ENUM_TRACE_POINT::TRACE_FORMULA_NATURE:
 		case ENUM_TRACE_POINT::TRACE_CONDITION_NATURE:
@@ -356,7 +344,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 
 		case ENUM_TRACE_POINT::TRACE_TIME_NATURE:
 		{
-			if( aTP->op == AVM_OPCODE_ASSIGN_NEWFRESH )
+			if( aTP.op == AVM_OPCODE_ASSIGN_NEWFRESH )
 			{
 				return( isSatCom(anEC, aTP, anEC.getIOElementTrace()) );
 			}
@@ -367,7 +355,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 		}
 		case ENUM_TRACE_POINT::TRACE_VARIABLE_NATURE:
 		{
-			if( aTP->op == AVM_OPCODE_ASSIGN_NEWFRESH )
+			if( aTP.op == AVM_OPCODE_ASSIGN_NEWFRESH )
 			{
 				return( isSatCom(anEC, aTP, anEC.getIOElementTrace()) );
 			}
@@ -420,7 +408,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 
 		case ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE:
 		{
-			return( isSat(anEC, aTP->op, aTP->value) );
+			return( isSat(anEC, aTP.op, aTP.value) );
 		}
 
 		default:
@@ -431,12 +419,12 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 }
 
 
-bool TraceChecker::isSatFormula(const ExecutionContext & anEC, TracePoint * aTP)
+bool TraceChecker::isSatFormula(const ExecutionContext & anEC, const TracePoint & aTP)
 {
-	if( ENV.evalFormula(anEC, theLocalExecutableForm, aTP->value) )
+	if( ENV.evalFormula(anEC, theLocalExecutableForm, aTP.value) )
 	{
 		ENV.outVAL = ExpressionConstructorNative::andExpr(
-				anEC.refExecutionData().getAllPathCondition(), ENV.outVAL );
+				anEC.getExecutionData().getAllPathCondition(), ENV.outVAL );
 
 		return( SolverFactory::isStrongSatisfiable(theSolverKind, ENV.outVAL) );
 	}
@@ -447,26 +435,28 @@ bool TraceChecker::isSatFormula(const ExecutionContext & anEC, TracePoint * aTP)
 }
 
 
-bool TraceChecker::isSatTime(const ExecutionContext & anEC, TracePoint * aTP)
+bool TraceChecker::isSatTime(const ExecutionContext & anEC, const TracePoint & aTP)
 {
 	return( true );
 }
 
-bool TraceChecker::isSatVariable(const ExecutionContext & anEC, TracePoint * aTP)
+bool TraceChecker::isSatVariable(
+		const ExecutionContext & anEC, const TracePoint & aTP)
 {
-	if( aTP->RID.invalid() )
+	if( aTP.RID.invalid() )
 	{
-		aTP->updateRID( anEC.refExecutionData() );
+		const_cast< TracePoint & >(aTP).updateRID( anEC.getExecutionData() );
 	}
 
-	if( ENV.eval(anEC.getAPExecutionData(),
-			anEC.refExecutionData().getSystemRID(), aTP->value) )
+	if( ENV.eval(anEC.getExecutionData(),
+			anEC.getExecutionData().getSystemRID(), aTP.value) )
 	{
-		const BF & value = ( aTP->RID.valid() )
-				? ENV.getRvalue( aTP->RID, aTP->object->to< InstanceOfData >() )
-				: ENV.getRvalue( aTP->object->to< InstanceOfData >() );
+		const BF & value = ( aTP.RID.valid() )
+				? ENV.getRvalue(
+						aTP.RID, aTP.object->to< InstanceOfData >() )
+				: ENV.getRvalue( aTP.object->to< InstanceOfData >() );
 
-		switch( aTP->op )
+		switch( aTP.op )
 		{
 			case AVM_OPCODE_SEQ:
 			{
@@ -480,32 +470,32 @@ bool TraceChecker::isSatVariable(const ExecutionContext & anEC, TracePoint * aTP
 					return( true );
 				}
 
-				if( aTP->object->to< InstanceOfData >()->isTypedBoolean() )
+				if( aTP.object->to_ptr< InstanceOfData >()->isTypedBoolean() )
 				{
 					if( ENV.outVAL.isEqualTrue() )
 					{
 						ENV.outVAL = ExpressionConstructorNative::andExpr(
 							value,
-							anEC.refExecutionData().getAllPathCondition() );
+							anEC.getExecutionData().getAllPathCondition() );
 					}
 					else if( ENV.outVAL.isEqualFalse() )
 					{
 						ENV.outVAL = ExpressionConstructorNative::andExpr(
 							ExpressionConstructorNative::notExpr(value),
-							anEC.refExecutionData().getAllPathCondition() );
+							anEC.getExecutionData().getAllPathCondition() );
 					}
 					else
 					{
 						ENV.outVAL = ExpressionConstructorNative::andExpr(
 							ExpressionConstructorNative::eqExpr(ENV.outVAL, value),
-							anEC.refExecutionData().getAllPathCondition() );
+							anEC.getExecutionData().getAllPathCondition() );
 					}
 				}
 				else
 				{
 					ENV.outVAL = ExpressionConstructorNative::andExpr(
 						ExpressionConstructorNative::eqExpr(ENV.outVAL, value),
-						anEC.refExecutionData().getAllPathCondition() );
+						anEC.getExecutionData().getAllPathCondition() );
 				}
 
 				return( SolverFactory::isStrongSatisfiable(
@@ -532,7 +522,7 @@ bool TraceChecker::isSatVariable(const ExecutionContext & anEC, TracePoint * aTP
 
 
 bool TraceChecker::isSatCom(
-		const ExecutionContext & anEC, TracePoint * aTP, const BF & aTrace)
+		const ExecutionContext & anEC, const TracePoint & aTP, const BF & aTrace)
 {
 	if( aTrace.invalid() )
 	{
@@ -540,17 +530,17 @@ bool TraceChecker::isSatCom(
 	}
 	else if( aTrace.is< ExecutionConfiguration >() )
 	{
-		ExecutionConfiguration * aConf =
-				aTrace.to_ptr< ExecutionConfiguration >();
+		const ExecutionConfiguration & aConf =
+				aTrace.to< ExecutionConfiguration >();
 
-		if( aConf->getCode().is< AvmCode >() )
+		if( aConf.getCode().is< AvmCode >() )
 		{
-			AvmCode * ioCode = aConf->getCode().to_ptr< AvmCode >();
+			const AvmCode & ioCode = aConf.getCode().to< AvmCode >();
 
-			if( (aTP->object == NULL)
-				|| (aTP->object == ioCode->first().raw_pointer()) )
+			if( (aTP.object == nullptr)
+				|| (aTP.object == ioCode.first().raw_pointer()) )
 			{
-				switch( aTP->op )
+				switch( aTP.op )
 				{
 					case AVM_OPCODE_INPUT:
 					case AVM_OPCODE_INPUT_ENV:
@@ -566,28 +556,37 @@ bool TraceChecker::isSatCom(
 					case AVM_OPCODE_OUTPUT_MULTI_RDV:
 					case AVM_OPCODE_OUTPUT_BUFFER:
 					{
-//						return( ioCode->isOpCode( aTP->op )
-//								&& ( (aTP->machine == NULL)
-//									|| (not aConf->hasRuntimeID())
-//									|| aConf->getRuntimeID().
-//											hasAsAncestor(aTP->machine) ) );
+//						return( ioCode.isOpCode( aTP.op )
+//								&& ( (aTP.machine == nullptr)
+//									|| (not aConf.hasRuntimeID())
+//									|| aConf.getRuntimeID().
+//											hasAsAncestor(aTP.machine) ) );
 
-						if( ioCode->isOpCode( aTP->op ) )
+						if( ioCode.isOpCode( aTP.op ) )
 						{
-							if( (aTP->machine != NULL)
-								&& aConf->hasRuntimeID() )
+							if( aTP.any_object )
 							{
-								return( aConf->getRuntimeID().
-											hasAsAncestor(aTP->machine) );
+								return( true );
 							}
-							return( true );
+							else if( aTP.RID.valid() )
+							{
+								return( aConf.getRuntimeID().hasAsAncestor(aTP.RID) );
+							}
+							else
+							{
+								return( (aTP.machine == nullptr)
+										|| aTP.machine
+												->getSpecifier().isDesignModel()
+										|| aConf.getRuntimeID()
+												.hasAsAncestor(* aTP.machine) );
+							}
 						}
 						return( false );
 					}
 
 					case AVM_OPCODE_ASSIGN_NEWFRESH:
 					{
-						return( ioCode->isOpCode( aTP->op ) );
+						return( ioCode.isOpCode( aTP.op ) );
 					}
 
 					case AVM_OPCODE_NULL:
@@ -597,7 +596,7 @@ bool TraceChecker::isSatCom(
 
 					default:
 					{
-						return( aTP->op == ioCode->getOptimizedOpCode() );
+						return( aTP.op == ioCode.getOptimizedOpCode() );
 					}
 				}
 			}
@@ -605,13 +604,9 @@ bool TraceChecker::isSatCom(
 	}
 	else if( aTrace.is< AvmCode >() )
 	{
-		AvmCode * aCode = aTrace.to_ptr< AvmCode >();
-
-		AvmCode::const_iterator it = aCode->begin();
-		AvmCode::const_iterator endCode = aCode->end();
-		for( ; it != endCode ; ++it )
+		for( const auto & itOperand : aTrace.to< AvmCode >().getOperands() )
 		{
-			if( isSatCom(anEC, aTP, (*it)) )
+			if( isSatCom(anEC, aTP, itOperand) )
 			{
 				return( true );
 			}
@@ -623,7 +618,7 @@ bool TraceChecker::isSatCom(
 
 
 bool TraceChecker::isSatRunnable(
-		const ExecutionContext & anEC, TracePoint * aTP, const BF & aTrace)
+		const ExecutionContext & anEC, const TracePoint & aTP, const BF & aTrace)
 {
 	if( aTrace.invalid() )
 	{
@@ -631,28 +626,28 @@ bool TraceChecker::isSatRunnable(
 	}
 	else if( aTrace.is< ExecutionConfiguration >() )
 	{
-		ExecutionConfiguration * aConf =
-				aTrace.to_ptr< ExecutionConfiguration >();
+		const ExecutionConfiguration & aConf =
+				aTrace.to< ExecutionConfiguration >();
 
-		if( aTP->object != NULL )
+		if( aTP.object != nullptr )
 		{
-			if( aConf->getCode().isnot< AvmProgram >() ||
-				(aConf->getCode().to_ptr< AvmProgram >() != aTP->object) )
+			if( aConf.getCode().isnot< AvmProgram >()
+				|| (aConf.getCode().to_ptr< AvmProgram >() != aTP.object) )
 			{
 				return( false );
 			}
 		}
-		else if( aTP->op != AVM_OPCODE_NULL )
+		else if( aTP.op != AVM_OPCODE_NULL )
 		{
-			if( aConf->getCode().isnot< Operator >() ||
-				aConf->getOperator()->isnotOpCode(aTP->op) )
+			if( aConf.getCode().isnot< Operator >()
+				|| aConf.getOperator().isnotOpCode(aTP.op) )
 			{
 				return( false );
 			}
 		}
 
-		RuntimeID aRID = aConf->getRuntimeID();
-		while( aRID.valid() && (aRID.getInstance() != aTP->machine) )
+		RuntimeID aRID = aConf.getRuntimeID();
+		while( aRID.valid() && (aRID.getInstance() != aTP.machine) )
 		{
 			aRID = aRID.getPRID();
 		}
@@ -661,13 +656,9 @@ bool TraceChecker::isSatRunnable(
 	}
 	else if( aTrace.is< AvmCode >() )
 	{
-		AvmCode * aCode = aTrace.to_ptr< AvmCode >();
-
-		AvmCode::const_iterator it = aCode->begin();
-		AvmCode::const_iterator endCode = aCode->end();
-		for( ; it != endCode ; ++it )
+		for( const auto & itOperand : aTrace.to< AvmCode >().getOperands() )
 		{
-			if( isSatMachine(anEC, aTP, (*it)) )
+			if( isSatMachine(anEC, aTP, itOperand) )
 			{
 				return( true );
 			}
@@ -679,7 +670,7 @@ bool TraceChecker::isSatRunnable(
 
 
 bool TraceChecker::isSatRoutine(
-		const ExecutionContext & anEC, TracePoint * aTP, const BF & aTrace)
+		const ExecutionContext & anEC, const TracePoint & aTP, const BF & aTrace)
 {
 	if( aTrace.invalid() )
 	{
@@ -687,28 +678,28 @@ bool TraceChecker::isSatRoutine(
 	}
 	else if( aTrace.is< ExecutionConfiguration >() )
 	{
-		ExecutionConfiguration * aConf =
-				aTrace.to_ptr< ExecutionConfiguration >();
+		const ExecutionConfiguration & aConf =
+				aTrace.to< ExecutionConfiguration >();
 
-		if( aTP->object != NULL )
+		if( aTP.object != nullptr )
 		{
-			if( aConf->getCode().isnot< AvmProgram >() ||
-				(aConf->getCode().to_ptr< AvmProgram >() != aTP->object) )
+			if( aConf.getCode().isnot< AvmProgram >() ||
+				(aConf.getCode().to_ptr< AvmProgram >() != aTP.object) )
 			{
 				return( false );
 			}
 		}
-		else if( aTP->op != AVM_OPCODE_NULL )
+		else if( aTP.op != AVM_OPCODE_NULL )
 		{
-			if( aConf->getCode().isnot< Operator >() ||
-				aConf->getOperator()->isnotOpCode(aTP->op) )
+			if( aConf.getCode().isnot< Operator >()
+				|| aConf.getOperator().isnotOpCode(aTP.op) )
 			{
 				return( false );
 			}
 		}
 
-		RuntimeID aRID = aConf->getRuntimeID();
-		while( aRID.valid() && (aRID.getInstance() != aTP->machine) )
+		RuntimeID aRID = aConf.getRuntimeID();
+		while( aRID.valid() && (aRID.getInstance() != aTP.machine) )
 		{
 			aRID = aRID.getPRID();
 		}
@@ -717,13 +708,9 @@ bool TraceChecker::isSatRoutine(
 	}
 	else if( aTrace.is< AvmCode >() )
 	{
-		AvmCode * aCode = aTrace.to_ptr< AvmCode >();
-
-		AvmCode::const_iterator it = aCode->begin();
-		AvmCode::const_iterator endCode = aCode->end();
-		for( ; it != endCode ; ++it )
+		for( const auto & itOperand : aTrace.to< AvmCode >().getOperands() )
 		{
-			if( isSatMachine(anEC, aTP, (*it)) )
+			if( isSatMachine(anEC, aTP, itOperand) )
 			{
 				return( true );
 			}
@@ -734,8 +721,8 @@ bool TraceChecker::isSatRoutine(
 }
 
 
-bool TraceChecker::isSatTransition(
-		const ExecutionContext & anEC, TracePoint * aTP, const BF & aTrace)
+bool TraceChecker::isSatTransition(const ExecutionContext & anEC,
+		const TracePoint & aTP, const BF & aTrace)
 {
 	if( aTrace.invalid() )
 	{
@@ -743,23 +730,37 @@ bool TraceChecker::isSatTransition(
 	}
 	else if( aTrace.is< ExecutionConfiguration >() )
 	{
-		ExecutionConfiguration * aConf =
-				aTrace.to_ptr< ExecutionConfiguration >();
+		const ExecutionConfiguration & aConf =
+				aTrace.to< ExecutionConfiguration >();
 
-		if( aConf->getCode().is< AvmTransition >() )
+		if( aConf.getCode().is< AvmTransition >() )
 		{
-			return( aTP->object == aConf->getCode().to_ptr< AvmTransition >() );
+			if( aTP.object == aConf.getCode().to_ptr< AvmTransition >() )
+			{
+				if( aTP.any_object )
+				{
+					return( true );
+				}
+				else if( aTP.RID.valid() )
+				{
+					return( aConf.getRuntimeID().hasAsAncestor(aTP.RID) );
+				}
+				else
+				{
+					return( (aTP.machine == nullptr)
+							|| aTP.machine->getSpecifier().isDesignModel()
+							|| aConf.getRuntimeID().hasAsAncestor(* aTP.machine) );
+				}
+			}
 		}
 	}
 	else if( aTrace.is< AvmCode >() )
 	{
-		AvmCode * aCode = aTrace.to_ptr< AvmCode >();
+		const AvmCode & aCode = aTrace.to< AvmCode >();
 
-		AvmCode::const_iterator it = aCode->begin();
-		AvmCode::const_iterator endCode = aCode->end();
-		for( ; it != endCode ; ++it )
+		for( const auto & itOperand : aCode.getOperands() )
 		{
-			if( isSatTransition(anEC, aTP, (*it)) )
+			if( isSatTransition(anEC, aTP, itOperand) )
 			{
 				return( true );
 			}
@@ -770,34 +771,38 @@ bool TraceChecker::isSatTransition(
 }
 
 
-bool TraceChecker::isSatState(
-		const ExecutionContext & anEC, TracePoint * aTP, const BF & aTrace)
+bool TraceChecker::isSatState(const ExecutionContext & anEC,
+		const TracePoint & aTP, const BF & aTrace)
 {
-	if( aTP->RID.invalid() )
+	if( aTP.RID.invalid() )
 	{
-		aTP->updateRID( anEC.refExecutionData() );
+		const_cast< TracePoint & >(aTP).updateRID( anEC.getExecutionData() );
 	}
 
-	if( aTP->RID.valid() )
+	if( aTP.RID.valid() )
 	{
-		return( anEC.refExecutionData().isIdleOrRunning(aTP->RID) );
+		const ExecutionData & anED = anEC.getExecutionData();
+		return( anED.isIdleOrRunning(aTP.RID)
+				|| anED.isFinalizedOrDestroyed(aTP.RID)
+				|| isSatMachine(anEC, aTP, aTrace) );
 	}
 
 	return( isSatMachine(anEC, aTP, aTrace) );
 }
 
 
-bool TraceChecker::isSatStatemachine(
-		const ExecutionContext & anEC, TracePoint * aTP, const BF & aTrace)
+bool TraceChecker::isSatStatemachine(const ExecutionContext & anEC,
+		const TracePoint & aTP, const BF & aTrace)
 {
-	if( aTP->RID.invalid() )
+	if( aTP.RID.invalid() )
 	{
-		aTP->updateRID( anEC.refExecutionData() );
+		const_cast< TracePoint & >(aTP).updateRID( anEC.getExecutionData() );
 	}
 
-	if( aTP->RID.valid() )
+	if( aTP.RID.valid() )
 	{
-		return( anEC.refExecutionData().isIdleOrRunning(aTP->RID) );
+		return( anEC.getExecutionData().isIdleOrRunning(aTP.RID)
+				|| isSatMachine(anEC, aTP, aTrace) );
 	}
 
 	return( isSatMachine(anEC, aTP, aTrace) );
@@ -805,7 +810,7 @@ bool TraceChecker::isSatStatemachine(
 
 
 bool TraceChecker::isSatMachine(
-		const ExecutionContext & anEC, TracePoint * aTP, const BF & aTrace)
+		const ExecutionContext & anEC, const TracePoint & aTP, const BF & aTrace)
 {
 	if( aTrace.invalid() )
 	{
@@ -813,16 +818,16 @@ bool TraceChecker::isSatMachine(
 	}
 	else if( aTrace.is< ExecutionConfiguration >() )
 	{
-		ExecutionConfiguration * aConf =
-				aTrace.to_ptr< ExecutionConfiguration >();
+		const ExecutionConfiguration & aConf =
+				aTrace.to< ExecutionConfiguration >();
 
-		if( aConf->getCode().is< Operator >() )
+		if( aConf.getCode().is< Operator >() )
 		{
-			if( aConf->getCode().to_ptr< Operator >()->
+			if( aConf.getCode().to< Operator >().
 					isOpCode( AVM_OPCODE_RUN ) )
 			{
-				RuntimeID aRID = aConf->getRuntimeID();
-				while( aRID.valid() && (aRID.getInstance() != aTP->object) )
+				RuntimeID aRID = aConf.getRuntimeID();
+				while( aRID.valid() && (aRID.getInstance() != aTP.object) )
 				{
 					aRID = aRID.getPRID();
 				}
@@ -832,13 +837,9 @@ bool TraceChecker::isSatMachine(
 	}
 	else if( aTrace.is< AvmCode >() )
 	{
-		AvmCode * aCode = aTrace.to_ptr< AvmCode >();
-
-		AvmCode::const_iterator it = aCode->begin();
-		AvmCode::const_iterator endCode = aCode->end();
-		for( ; it != endCode ; ++it )
+		for( const auto & itOperand : aTrace.to< AvmCode >().getOperands() )
 		{
-			if( isSatMachine(anEC, aTP, (*it)) )
+			if( isSatMachine(anEC, aTP, itOperand) )
 			{
 				return( true );
 			}
@@ -885,11 +886,9 @@ bool TraceChecker::willNeverSat(const ExecutionContext & anEC, AvmCode * aCode)
 		case AVM_OPCODE_AND_THEN:
 		case AVM_OPCODE_SCHEDULE_AND_THEN:
 		{
-			AvmCode::const_iterator it = aCode->begin();
-			AvmCode::const_iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode->getOperands() )
 			{
-				if( not willNeverSat(anEC, (*it)) )
+				if( not willNeverSat(anEC, itOperand) )
 				{
 					return( false );
 				}
@@ -903,11 +902,9 @@ bool TraceChecker::willNeverSat(const ExecutionContext & anEC, AvmCode * aCode)
 		case AVM_OPCODE_SCHEDULE_OR_ELSE:
 		case AVM_OPCODE_WEAK_SYNCHRONOUS:
 		{
-			AvmCode::const_iterator it = aCode->begin();
-			AvmCode::const_iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode->getOperands() )
 			{
-				if( willNeverSat(anEC, (*it)) )
+				if( willNeverSat(anEC, itOperand) )
 				{
 					return( true );
 				}
@@ -918,13 +915,11 @@ bool TraceChecker::willNeverSat(const ExecutionContext & anEC, AvmCode * aCode)
 
 		case AVM_OPCODE_XOR:
 		{
-			avm_size_t passCount = 0;
+			std::size_t passCount = 0;
 
-			AvmCode::const_iterator it = aCode->begin();
-			AvmCode::const_iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode->getOperands() )
 			{
-				if( willNeverSat(anEC, (*it)) )
+				if( willNeverSat(anEC, itOperand) )
 				{
 					if( ++passCount > 1 )
 					{
@@ -945,11 +940,9 @@ bool TraceChecker::willNeverSat(const ExecutionContext & anEC, AvmCode * aCode)
 
 		case AVM_OPCODE_NAND:
 		{
-			AvmCode::const_iterator it = aCode->begin();
-			AvmCode::const_iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode->getOperands() )
 			{
-				if( not willNeverSat(anEC, (*it)) )
+				if( not willNeverSat(anEC, itOperand) )
 				{
 					return( true );
 				}
@@ -960,11 +953,9 @@ bool TraceChecker::willNeverSat(const ExecutionContext & anEC, AvmCode * aCode)
 
 		case AVM_OPCODE_NOR:
 		{
-			AvmCode::const_iterator it = aCode->begin();
-			AvmCode::const_iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode->getOperands() )
 			{
-				if( willNeverSat(anEC, (*it)) )
+				if( willNeverSat(anEC, itOperand) )
 				{
 					return( false );
 				}
@@ -975,13 +966,11 @@ bool TraceChecker::willNeverSat(const ExecutionContext & anEC, AvmCode * aCode)
 
 		case AVM_OPCODE_XNOR:
 		{
-			avm_size_t passCount = 0;
+			std::size_t passCount = 0;
 
-			AvmCode::const_iterator it = aCode->begin();
-			AvmCode::const_iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode->getOperands() )
 			{
-				if( willNeverSat(anEC, (*it)) )
+				if( willNeverSat(anEC, itOperand) )
 				{
 					if( ++passCount > 1 )
 					{
@@ -1012,8 +1001,8 @@ bool TraceChecker::willNeverSat(
 		case AVM_OPCODE_SCHEDULE_AND_THEN:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( not willNeverSat(anEC, argArray->at(offset)) )
 				{
@@ -1030,8 +1019,8 @@ bool TraceChecker::willNeverSat(
 		case AVM_OPCODE_WEAK_SYNCHRONOUS:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( willNeverSat(anEC, argArray->at(offset)) )
 				{
@@ -1046,10 +1035,10 @@ bool TraceChecker::willNeverSat(
 		case AVM_OPCODE_EXCLUSIVE:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			avm_size_t passCount = 0;
+			std::size_t endOffset = argArray->size();
+			std::size_t passCount = 0;
 
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( willNeverSat(anEC, argArray->at(offset)) )
 				{
@@ -1073,8 +1062,8 @@ bool TraceChecker::willNeverSat(
 		case AVM_OPCODE_NAND:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( not willNeverSat(anEC, argArray->at(offset)) )
 				{
@@ -1088,8 +1077,8 @@ bool TraceChecker::willNeverSat(
 		case AVM_OPCODE_NOR:
 		{
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( willNeverSat(anEC, argArray->at(offset)) )
 				{
@@ -1102,11 +1091,11 @@ bool TraceChecker::willNeverSat(
 
 		case AVM_OPCODE_XNOR:
 		{
-			avm_size_t passCount = 0;
+			std::size_t passCount = 0;
 
 			ArrayBF * argArray = arg.to_ptr< ArrayBF >();
-			avm_size_t endOffset = argArray->size();
-			for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+			std::size_t endOffset = argArray->size();
+			for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 			{
 				if( willNeverSat(anEC, argArray->at(offset)) )
 				{
@@ -1128,7 +1117,7 @@ bool TraceChecker::willNeverSat(
 }
 
 
-bool TraceChecker::willNeverSat(const ExecutionContext & anEC, TracePoint * aTP)
+bool TraceChecker::willNeverSat(const ExecutionContext & anEC, const TracePoint & aTP)
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 	AVM_OS_TRACE << "willNeverSat ? EC:> " << anEC.str_min() << std::endl
@@ -1138,7 +1127,7 @@ AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 
 
-	switch( aTP->nature )
+	switch( aTP.nature )
 	{
 		case ENUM_TRACE_POINT::TRACE_PATH_CONDITION_NATURE:
 		case ENUM_TRACE_POINT::TRACE_PATH_CONDITION_NATURE_LEAF:
@@ -1188,7 +1177,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 
 		case ENUM_TRACE_POINT::TRACE_COMPOSITE_NATURE:
 		{
-			return( willNeverSat(anEC, aTP->op, aTP->value) );
+			return( willNeverSat(anEC, aTP.op, aTP.value) );
 		}
 
 		default:
@@ -1200,10 +1189,10 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , PROCESSOR , SOLVING )
 
 
 bool TraceChecker::willNeverSatTransition(
-		const ExecutionContext & anEC, TracePoint * aTP)
+		const ExecutionContext & anEC, const TracePoint & aTP)
 {
 	ExecutableForm * sourceExecutable =
-			aTP->object->as< AvmTransition >()->getExecutableContainer();
+			aTP.object->as_ptr< AvmTransition >()->getExecutableContainer();
 
 	if( not sourceExecutable->hasPossibleDynamicInstanciation() )
 	{
@@ -1211,15 +1200,15 @@ bool TraceChecker::willNeverSatTransition(
 	}
 
 	TableOfRuntimeT::const_iterator itRF =
-			anEC.refExecutionData().getTableOfRuntime().begin();
+			anEC.getExecutionData().getTableOfRuntime().begin();
 	TableOfRuntimeT::const_iterator endRF =
-			anEC.refExecutionData().getTableOfRuntime().end();
+			anEC.getExecutionData().getTableOfRuntime().end();
 	for( RuntimeID itRID ; itRF != endRF ; ++itRF )
 	{
 		itRID = (*itRF)->getRID();
 
-		if( anEC.refExecutionData().isIdleOrRunning(itRID) &&
-				itRID.getExecutable()->hasForwardReachableMachine() )
+		if( anEC.getExecutionData().isIdleOrRunning(itRID) &&
+				itRID.refExecutable().hasForwardReachableMachine() )
 		{
 			if( (sourceExecutable == itRID.getExecutable()) ||
 				sourceExecutable->getBackwardReachableMachine().
@@ -1234,10 +1223,10 @@ bool TraceChecker::willNeverSatTransition(
 }
 
 bool TraceChecker::willNeverSatState(
-		const ExecutionContext & anEC, TracePoint * aTP)
+		const ExecutionContext & anEC, const TracePoint & aTP)
 {
 	ExecutableForm * sourceExecutable =
-			aTP->object->as< InstanceOfMachine >()->getExecutable();
+			aTP.object->as_ptr< InstanceOfMachine >()->getExecutable();
 
 	if( not sourceExecutable->hasSingleRuntimeInstance() )
 	{
@@ -1245,15 +1234,15 @@ bool TraceChecker::willNeverSatState(
 	}
 
 	TableOfRuntimeT::const_iterator itRF =
-			anEC.refExecutionData().getTableOfRuntime().begin();
+			anEC.getExecutionData().getTableOfRuntime().begin();
 	TableOfRuntimeT::const_iterator endRF =
-			anEC.refExecutionData().getTableOfRuntime().end();
+			anEC.getExecutionData().getTableOfRuntime().end();
 	for( RuntimeID itRID ; itRF != endRF ; ++itRF )
 	{
 		itRID = (*itRF)->getRID();
 
-		if( anEC.refExecutionData().isIdleOrRunning(itRID) &&
-				itRID.getExecutable()->hasForwardReachableMachine() )
+		if( anEC.getExecutionData().isIdleOrRunning(itRID) &&
+				itRID.refExecutable().hasForwardReachableMachine() )
 		{
 			if( (sourceExecutable == itRID.getExecutable()) ||
 				sourceExecutable->getBackwardReachableMachine().
@@ -1269,14 +1258,14 @@ bool TraceChecker::willNeverSatState(
 
 
 bool TraceChecker::willNeverSatStatemachine(
-		const ExecutionContext & anEC, TracePoint * aTP)
+		const ExecutionContext & anEC, const TracePoint & aTP)
 {
 	return( willNeverSatState(anEC, aTP) );
 }
 
 
 bool TraceChecker::willNeverSatMachine(
-		const ExecutionContext & anEC, TracePoint * aTP)
+		const ExecutionContext & anEC, const TracePoint & aTP)
 {
 	return( willNeverSatState(anEC, aTP) );
 }

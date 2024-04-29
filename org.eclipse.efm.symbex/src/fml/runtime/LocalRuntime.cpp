@@ -45,12 +45,12 @@ void LocalRuntimeElement::toStream(OutStream & os) const
 
 		TableOfData::const_iterator it = mDataTable.begin();
 		TableOfData::const_iterator itEnd = mDataTable.end();
-		for( avm_size_t i = 0 ; it != itEnd ; ++it , ++i )
+		for( std::size_t i = 0 ; it != itEnd ; ++it , ++i )
 		{
 			os << TAB2 << (*it).AVM_DEBUG_REF_COUNTER() << "${ := ";
 
 //			os << mRID.getVariables().get(i)->getFullyQualifiedNameID();
-			os << mProgram.getData().rawAt(i)->getNameID()
+			os << mProgram.getVariables().rawAt(i)->getNameID()
 					<< str_indent( *it ) << " }" << EOL_FLUSH;
 		}
 	}

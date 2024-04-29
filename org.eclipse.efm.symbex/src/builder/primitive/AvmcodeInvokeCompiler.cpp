@@ -15,10 +15,6 @@
 
 #include "AvmcodeInvokeCompiler.h"
 
-#include <parser/model/ParserUtil.h>
-
-#include <fml/executable/AvmLambda.h>
-#include <fml/executable/AvmProgram.h>
 #include <fml/executable/AvmTransition.h>
 #include <fml/executable/ExecutableForm.h>
 
@@ -69,15 +65,15 @@ BF AvmcodeInvokeNewCompiler::optimizeExpression(
 
 	BFCode optimizedCode( aCode->getOperator() );
 
-	AvmCode::const_iterator it = aCode->begin();
-	AvmCode::const_iterator endIt = aCode->end();
+	AvmCode::const_iterator itOperand = aCode->begin();
+	AvmCode::const_iterator endOperand = aCode->end();
 
 	AvmInstruction * argsInstruction =
 			optimizedCode->newInstruction( aCode->size() );
 
-	InstanceOfMachine * dynamicInstance = NULL;
+	InstanceOfMachine * dynamicInstance = nullptr;
 
-	BF arg = (*it);
+	BF arg = (*itOperand);
 
 	optimizedCode->append( arg );
 
@@ -104,15 +100,16 @@ BF AvmcodeInvokeNewCompiler::optimizeExpression(
 		return( aCode );
 	}
 
-	avm_size_t paramCount = dynamicInstance->getParamCount();
-	for( avm_size_t offset = 1 ;
-			(++it != endIt) && (offset <= paramCount) ; ++offset )
+	std::size_t paramCount = dynamicInstance->getParamCount();
+	for( std::size_t offset = 1 ;
+			(++itOperand != endOperand) && (offset <= paramCount) ; ++offset )
 	{
-		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*it));
+		arg = AVMCODE_COMPILER.decode_optimizeExpression(aCTX, (*itOperand));
 		optimizedCode->append( arg );
 
 		argsInstruction->at(offset).dtype =
-				dynamicInstance->getParamType( offset-1 );
+				&( dynamicInstance->getParamType( offset-1 ) );
+
 		setArgcodeRValue(aCTX, argsInstruction->at(offset), arg);
 	}
 
@@ -136,8 +133,7 @@ BFCode AvmcodeInvokeNewCompiler::compileStatement(
 		aCTX->errorContext( AVM_OS_WARN )
 				<< "Unexpected INVOKE#NEW without only one runnable "
 					"#dynamic instance machine !!!"
-				<< std::endl << aCode.toString()
-				<< SEND_EXIT;
+				<< std::endl << aCode.toString() << std::endl;
 	}
 
 	BFCode newCode = AbstractAvmcodeCompiler::compileExpressionCode(aCTX, aCode);
@@ -145,7 +141,7 @@ BFCode AvmcodeInvokeNewCompiler::compileStatement(
 	const BF & arg = newCode->first();
 	if( arg.is< InstanceOfMachine >() )
 	{
-		if( arg.to_ptr< InstanceOfMachine >()->
+		if( arg.to< InstanceOfMachine >().
 				getSpecifier().isDesignInstanceDynamic() )
 		{
 //!![MIGRATION]: see Compiler::precompileExecutableInstanceDynamique(...)
@@ -157,8 +153,7 @@ BFCode AvmcodeInvokeNewCompiler::compileStatement(
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "Unexpected INVOKE#NEW with one runnable "
 						"#dynamic instance machine !!!"
-					<< std::endl << newCode.toString()
-					<< SEND_EXIT;
+					<< std::endl << newCode.toString() << std::endl;
 		}
 	}
 	else
@@ -166,9 +161,8 @@ BFCode AvmcodeInvokeNewCompiler::compileStatement(
 		getCompilerTable().incrErrorCount();
 		aCTX->errorContext( AVM_OS_WARN )
 				<< "Unexpected INVOKE#NEW without one "
-						"runnable #dynamic #instance machine !!!"
-				<< std::endl << newCode.toString()
-				<< SEND_EXIT;
+					"runnable #dynamic #instance machine !!!"
+				<< std::endl << newCode.toString() << std::endl;
 	}
 
 	return( newCode );
@@ -180,7 +174,7 @@ BFCode AvmcodeInvokeNewCompiler::optimizeStatement(
 {
 	const BF & arg = aCode->first();
 	if( arg.is< InstanceOfMachine >()
-		&& arg.to_ptr< InstanceOfMachine >()->
+		&& arg.to< InstanceOfMachine >().
 				getSpecifier().isDesignInstanceDynamic() )
 	{
 		AvmInstruction * argsInstruction = aCode->newInstruction( aCode->size() );
@@ -269,9 +263,9 @@ BFCode AvmcodeInvokeRoutineCompiler::compileStatement(
 	}
 	else if( aCode->second().isIdentifier() )
 	{
-		Operator * op = AvmOperationFactory::get(arg,
+		const Operator * op = AvmOperationFactory::get(arg,
 				aCode->second().toIdentifier());
-		if( op != NULL )
+		if( op != nullptr )
 		{
 			newCode = StatementConstructor::newCode(op, arg);
 		}
@@ -287,11 +281,11 @@ BFCode AvmcodeInvokeRoutineCompiler::compileStatement(
 		}
 	}
 
-	AvmCode::iterator itArg = aCode->begin() + 2;
-	AvmCode::iterator itEndArg = aCode->end();
-	for( ; itArg != itEndArg ; ++itArg )
+	AvmCode::const_iterator itOperand = aCode->begin() + 2;
+	AvmCode::const_iterator endOperand = aCode->end();
+	for( ; itOperand != endOperand ; ++itOperand )
 	{
-		arg = AVMCODE_COMPILER.decode_compileStatement(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_compileStatement(aCTX, *itOperand);
 
 		if( arg.valid() )
 		{
@@ -302,10 +296,10 @@ BFCode AvmcodeInvokeRoutineCompiler::compileStatement(
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< statement > compilation error << "
-					<< (*itArg).str() << " >>"
+					<< (*itOperand).str() << " >>"
 					<< std::endl << std::endl;
 
-			newCode->append( *itArg );
+			newCode->append( *itOperand );
 			continue;
 		}
 	}
@@ -388,9 +382,9 @@ BF AvmcodeInvokeMethodCompiler::compileExpression(
 	}
 	else if( aCode->second().isIdentifier() )
 	{
-		Operator * op = AvmOperationFactory::get(arg,
+		const Operator * op = AvmOperationFactory::get(arg,
 				aCode->second().toIdentifier());
-		if( op != NULL )
+		if( op != nullptr )
 		{
 			newCode = StatementConstructor::newCode(op, arg);
 		}
@@ -408,11 +402,11 @@ BF AvmcodeInvokeMethodCompiler::compileExpression(
 		}
 	}
 
-	AvmCode::iterator itArg = aCode->begin() + 2;
-	AvmCode::iterator itEndArg = aCode->end();
-	for( ; itArg != itEndArg ; ++itArg )
+	AvmCode::const_iterator itOperand = aCode->begin() + 2;
+	AvmCode::const_iterator endOperand = aCode->end();
+	for( ; itOperand != endOperand ; ++itOperand )
 	{
-		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, *itOperand);
 
 		if( arg.valid() )
 		{
@@ -423,10 +417,10 @@ BF AvmcodeInvokeMethodCompiler::compileExpression(
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< statement > compilation error << "
-					<< (*itArg).str() << " >>"
+					<< (*itOperand).str() << " >>"
 					<< std::endl << std::endl;
 
-			newCode->append( *itArg );
+			newCode->append( *itOperand );
 			continue;
 		}
 	}
@@ -470,9 +464,9 @@ BFCode AvmcodeInvokeMethodCompiler::compileStatement(
 	}
 	else if( aCode->second().isIdentifier() )
 	{
-		Operator * op = AvmOperationFactory::get(arg,
+		const Operator * op = AvmOperationFactory::get(arg,
 				aCode->second().toIdentifier());
-		if( op != NULL )
+		if( op != nullptr )
 		{
 			newCode = StatementConstructor::newCode(op, arg);
 		}
@@ -490,11 +484,11 @@ BFCode AvmcodeInvokeMethodCompiler::compileStatement(
 		}
 	}
 
-	AvmCode::iterator itArg = aCode->begin() + 2;
-	AvmCode::iterator itEndArg = aCode->end();
-	for( ; itArg != itEndArg ; ++itArg )
+	AvmCode::const_iterator itOperand = aCode->begin() + 2;
+	AvmCode::const_iterator endOperand = aCode->end();
+	for( ; itOperand != endOperand ; ++itOperand )
 	{
-		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, *itArg);
+		arg = AVMCODE_COMPILER.decode_compileExpression(aCTX, *itOperand);
 
 		if( arg.valid() )
 		{
@@ -505,10 +499,10 @@ BFCode AvmcodeInvokeMethodCompiler::compileStatement(
 			getCompilerTable().incrErrorCount();
 			aCTX->errorContext( AVM_OS_WARN )
 					<< "AvmCode< statement > compilation error << "
-					<< (*itArg).str() << " >>"
+					<< (*itOperand).str() << " >>"
 					<< std::endl << std::endl;
 
-			newCode->append( *itArg );
+			newCode->append( *itOperand );
 			continue;
 		}
 	}

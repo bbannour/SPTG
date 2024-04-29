@@ -29,17 +29,16 @@
 #include <sew/Configuration.h>
 #include <sew/SymbexControllerUnitManager.h>
 
+#include <util/ExecutionChrono.h>
 #include <util/ExecutionTime.h>
-
 
 
 namespace sep
 {
 
-class ExecutionTime;
 class WObject;
 
-class Workflow;
+class WorkflowParameter;
 
 
 class SymbexEngine  :  public RunnableElement
@@ -52,8 +51,6 @@ protected :
 	/**
 	 * ATTRIBUTES
 	 */
-	Workflow & mWorkflow;
-
 	Configuration mConfiguration;
 
 	AvmPrimitiveProcessor mPrimitiveProcessor;
@@ -65,12 +62,16 @@ protected :
 
 	SymbexDispatcher mSymbexDispatcher;
 
+	ExecutionChrono mExecutionChronoManager;
 	ExecutionTime mExecutionTimeManager;
-
-	avm_offset_t mOffset;
 
 	SymbexEngine * mPreviousEngine;
 	SymbexEngine * mNextEngine;
+
+public:
+	std::size_t mErrorCount;
+	std::size_t mWarningCount;
+
 
 
 public :
@@ -78,8 +79,7 @@ public :
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	SymbexEngine(Workflow & aWorkflow,
-			WObject * wfParameterObject, avm_offset_t anOffset);
+	SymbexEngine(const WObject * wfParameterObject);
 
 	/**
 	 * DESTRUCTOR
@@ -90,20 +90,19 @@ public :
 	}
 
 
-	/*
-	* GETTER
-	* mWorkflow
-	*/
-	Workflow & getWorkflow()
-	{
-		return( mWorkflow );
-	}
-
-
 	/**
 	 * CONFIGURE
 	 */
-	bool configure();
+	bool configure() override;
+
+	/**
+	 * Setting CURRENT ACTIVE CONFIGURATION
+	 */
+	void setCurrentActiveConfiguration() const
+	{
+		mConfiguration.setActive();
+	}
+
 
 	/**
 	 * REPORT TRACE
@@ -112,7 +111,10 @@ public :
 	void dynReport (OutStream & os) const;
 	void postReport(OutStream & os) const;
 
-	void report(OutStream & os) const;
+	void report(OutStream & os) const override;
+
+	// Due to [-Woverloaded-virtual=]
+	using RunnableElement::report;
 
 	void failedReport();
 
@@ -120,34 +122,59 @@ public :
 	/**
 	 * INIT * PRE-PROCESS
 	 */
-	virtual bool initImpl();
+	virtual bool initImpl() override;
 
-	bool preprocess();
+	virtual bool preprocess() override;
 
 	/**
 	 * START
 	 */
 	bool start();
 
+	void reportTimeElapsing(OutStream & out);
+
 	/**
 	 * POST-PROCESS
 	 * INIT
 	 */
-	bool postprocess();
+	virtual bool postprocess() override;
 
-	virtual bool exitImpl();
+	virtual bool exitImpl() override;
 
 
 	/*
 	 * PROCESSING
 	 */
 	bool startParsing();
+	bool startParsing(const std::string & rawText);
+
 	bool startBuilding();
 	bool startComputing();
 
-	void serializeBuildingResult();
+	/*
+	 * for RPC PURPUSE
+	 */
+	bool initComputing();
 
-	void serializeComputingResult();
+	bool runPostProcessor();
+
+
+	inline void serializeBuildingResult() const
+	{
+		mConfiguration.serializeBuildingResult();
+	}
+
+	inline void serializeLoadingResult()
+	{
+		mConfiguration.serializeLoadingResult();
+	}
+
+	inline void serializeComputingResult() const
+	{
+		mConfiguration.serializeComputingResult();
+	}
+
+
 
 	/**
 	 * GETTER
@@ -198,16 +225,6 @@ public :
 	inline const SymbexDispatcher & getSymbexDispatcher() const
 	{
 		return( mSymbexDispatcher );
-	}
-
-
-	/**
-	 * GETTER
-	 * mOffset
-	 */
-	inline avm_offset_t getOffset()
-	{
-		return( mOffset );
 	}
 
 

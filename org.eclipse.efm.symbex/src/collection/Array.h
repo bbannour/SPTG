@@ -18,7 +18,8 @@
 
 #include <util/avm_assert.h>
 #include <util/avm_numeric.h>
-#include <base/SmartPointerUtil.h>
+
+#include <common/Element.h>
 
 
 namespace sep
@@ -35,7 +36,7 @@ protected:
 	 */
 	T * mTable;
 
-	avm_size_t mSize;
+	std::size_t mSize;
 
 
 public:
@@ -59,14 +60,14 @@ public:
 	 * Default
 	 */
 	Array()
-	: mTable( NULL ),
+	: mTable( nullptr ),
 	mSize( 0 )
 	{
 		//!! NOTHING
 	}
 
-	explicit Array(avm_size_t aSize)
-	: mTable( NULL ),
+	explicit Array(std::size_t aSize)
+	: mTable( nullptr ),
 	mSize( 0 )
 	{
 		alloc( aSize );
@@ -78,7 +79,7 @@ public:
 	 * Copy
 	 */
 	Array(const Array & anArray)
-	: mTable( NULL ),
+	: mTable( nullptr ),
 	mSize( 0 )
 	{
 		alloc( anArray );
@@ -89,15 +90,15 @@ public:
 	 * CONSTRUCTOR
 	 * Others
 	 */
-	explicit Array(avm_size_t aSize, const_reference defaultValue)
-	: mTable( NULL ),
+	explicit Array(std::size_t aSize, const_reference defaultValue)
+	: mTable( nullptr ),
 	mSize( 0 )
 	{
 		alloc( aSize , defaultValue );
 	}
 
 	explicit Array(const BaseVector & anArray)
-	: mTable( NULL ),
+	: mTable( nullptr ),
 	mSize( 0 )
 	{
 		alloc( anArray );
@@ -105,7 +106,7 @@ public:
 
 	explicit Array(const Array & anArray,
 			const_reference lastValue)
-	: mTable( NULL ),
+	: mTable( nullptr ),
 	mSize( 0 )
 	{
 		alloc( anArray , lastValue );
@@ -120,7 +121,7 @@ public:
 	{
 		delete[] ( mTable );
 
-		mTable = NULL;
+		mTable = nullptr;
 	}
 
 
@@ -132,7 +133,7 @@ public:
 
 	void reset(T value)
 	{
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = value;
 		}
@@ -145,19 +146,19 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline void alloc(avm_size_t aSize)
+	inline void alloc(std::size_t aSize)
 	{
 		mSize = aSize;
 
-		mTable = ( (mSize > 0)? (new T[ mSize ]) : NULL );
+		mTable = ( (mSize > 0)? (new T[ mSize ]) : nullptr );
 	}
 
 
-	inline void alloc(avm_size_t aSize, T defaultValue)
+	inline void alloc(std::size_t aSize, T defaultValue)
 	{
 		alloc( aSize );
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = defaultValue;
 		}
@@ -168,7 +169,7 @@ public:
 	{
 		alloc( anArray.size() );
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = anArray[offset];
 		}
@@ -177,10 +178,10 @@ public:
 
 	inline void alloc(const Array & anArray, T lastValue)
 	{
-		avm_size_t aSize = anArray.size();
+		std::size_t aSize = anArray.size();
 		alloc( aSize + 1 );
 
-		for( avm_size_t offset = 0 ; offset < aSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < aSize ; ++offset )
 		{
 			mTable[offset] = anArray[offset];
 		}
@@ -193,7 +194,7 @@ public:
 	{
 		alloc( anArray.size() );
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = anArray[offset];
 		}
@@ -207,7 +208,7 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline void realloc(avm_size_t aSize)
+	inline void realloc(std::size_t aSize)
 	{
 		if( mSize != aSize )
 		{
@@ -218,7 +219,7 @@ public:
 	}
 
 
-	inline void realloc(avm_size_t aSize, T defaultValue)
+	inline void realloc(std::size_t aSize, T defaultValue)
 	{
 		if( mSize != aSize )
 		{
@@ -240,7 +241,7 @@ public:
 			alloc( anArray.size() );
 		}
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = anArray[offset];
 		}
@@ -256,7 +257,7 @@ public:
 			alloc( anArray.size() );
 		}
 
-		for( avm_size_t offset = 0 ; offset < mSize ; ++offset )
+		for( std::size_t offset = 0 ; offset < mSize ; ++offset )
 		{
 			mTable[offset] = anArray[offset];
 		}
@@ -269,11 +270,11 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline void resize(avm_size_t aSize)
+	inline void resize(std::size_t aSize)
 	{
 		if( mSize > 0 )
 		{
-			avm_size_t oldSize = mSize;
+			std::size_t oldSize = mSize;
 			T * oldTable = mTable;
 
 			alloc( aSize );
@@ -283,7 +284,7 @@ public:
 				aSize = oldSize;
 			}
 
-			for( avm_size_t offset = 0 ; offset < aSize ; ++offset )
+			for( std::size_t offset = 0 ; offset < aSize ; ++offset )
 			{
 				mTable[offset] = oldTable[offset];
 			}
@@ -297,11 +298,11 @@ public:
 		}
 	}
 
-	inline void resize(avm_size_t aSize, T defaultValue)
+	inline void resize(std::size_t aSize, T defaultValue)
 	{
 		if( mSize > 0 )
 		{
-			avm_size_t oldSize = mSize;
+			std::size_t oldSize = mSize;
 			T * oldTable = mTable;
 
 			alloc( aSize );
@@ -311,7 +312,7 @@ public:
 				aSize = oldSize;
 			}
 
-			avm_size_t offset = 0;
+			std::size_t offset = 0;
 
 			for( ; offset < aSize ; ++offset )
 			{
@@ -386,32 +387,32 @@ public:
 	 * GETTER - SETTER
 	 * mTable
 	 */
-	inline reference at(avm_size_t offset)
+	inline reference at(std::size_t offset)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 
 		return( mTable[offset] );
 	}
 
-	inline const_reference at(avm_size_t offset) const
+	inline const_reference at(std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 
 		return( mTable[offset] );
 	}
 
-	inline reference get(avm_size_t offset)
+	inline reference get(std::size_t offset)
 	{
 		return( mTable[offset] );
 	}
 
-	inline const_reference get(avm_size_t offset) const
+	inline const_reference get(std::size_t offset) const
 	{
 		return( mTable[offset] );
 	}
 
 
-	inline void set(avm_size_t offset, const T & arg)
+	inline void set(std::size_t offset, const T & arg)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT( offset , mSize ) << SEND_EXIT;
 
@@ -420,12 +421,12 @@ public:
 
 
 	// operator[]
-	inline reference operator[](avm_size_t offset)
+	inline reference operator[](std::size_t offset)
 	{
 		return( mTable[offset] );
 	}
 
-	inline const_reference operator[](avm_size_t offset) const
+	inline const_reference operator[](std::size_t offset) const
 	{
 		return( mTable[offset] );
 	}
@@ -452,7 +453,7 @@ public:
 	}
 
 	// size is constant
-	inline avm_size_t size() const
+	inline std::size_t size() const
 	{
 		return( mSize );
 	}
@@ -532,7 +533,7 @@ public:
 	/**
 	 * contains a particular element
 	 */
-	inline virtual bool contains(const T & arg) const
+	inline bool contains(const T & arg) const
 	{
 		const_iterator itEnd = end();
 		for( const_iterator it = begin() ; it != itEnd ; ++it )

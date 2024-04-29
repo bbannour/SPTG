@@ -38,7 +38,7 @@ InstanceOfMachine * AvmTransition::getTargetMarchine() const
 	}
 	else
 	{
-		return( NULL );
+		return( nullptr );
 	}
 }
 
@@ -47,7 +47,7 @@ std::string AvmTransition::strTargetId() const
 {
 	if( getTarget().is< InstanceOfMachine >() )
 	{
-		return( getTarget().to_ptr< InstanceOfMachine >()->getNameID() );
+		return( getTarget().to< InstanceOfMachine >().getNameID() );
 	}
 	else if( getTarget().is< RuntimeID >() )
 	{
@@ -67,18 +67,19 @@ std::string AvmTransition::strTargetId() const
 ExecutableForm * AvmTransition::getTransitionSource() const
 {
 	return( getContainer()->is< ExecutableForm >() ?
-			getContainer()->to< ExecutableForm >() : NULL );
+			getContainer()->to_ptr< ExecutableForm >() : nullptr );
 }
 
 
-InstanceOfMachine * AvmTransition::getrecTargetMachine(AvmCode * aCode)
+InstanceOfMachine * AvmTransition::getrecTargetMachine(const AvmCode & aCode)
 {
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
+		case AVM_OPCODE_ENABLE_INVOKE:
 		case AVM_OPCODE_ENABLE_SET:
 		case AVM_OPCODE_GOTO:
 		{
-			const BF & targetMachine = aCode->first();
+			const BF & targetMachine = aCode.first();
 
 			if( targetMachine.is< InstanceOfMachine >() )
 			{
@@ -93,16 +94,15 @@ InstanceOfMachine * AvmTransition::getrecTargetMachine(AvmCode * aCode)
 		}
 		default:
 		{
-			InstanceOfMachine * targetMachine = NULL;
+			InstanceOfMachine * targetMachine = nullptr;
 
-			AvmCode::const_iterator it = aCode->begin();
-			AvmCode::const_iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( (*it).is< AvmCode >() )
+				if( itOperand.is< AvmCode >() )
 				{
-					targetMachine =	getrecTargetMachine( (*it).to_ptr< AvmCode >() );
-					if( targetMachine != NULL )
+					targetMachine =	getrecTargetMachine(
+							itOperand.to< AvmCode >() );
+					if( targetMachine != nullptr )
 					{
 						return( targetMachine );
 					}
@@ -112,42 +112,41 @@ InstanceOfMachine * AvmTransition::getrecTargetMachine(AvmCode * aCode)
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 
 void AvmTransition::getrecTargetMachine(
-		ListOfInstanceOfMachine & listOfTargets, AvmCode * aCode)
+		ListOfInstanceOfMachine & listOfTargets, const AvmCode & aCode)
 {
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_ENABLE_INVOKE:
 		case AVM_OPCODE_ENABLE_SET:
 		case AVM_OPCODE_GOTO:
 		{
-			const BF & targetMachine = aCode->first();
+			const BF & targetMachine = aCode.first();
 
 			if( targetMachine.is< InstanceOfMachine >() )
 			{
-				listOfTargets.add_union(
+				listOfTargets.add_unique(
 						targetMachine.to_ptr< InstanceOfMachine >() );
 			}
 			else if( targetMachine.is< RuntimeID >() )
 			{
-				listOfTargets.add_union( targetMachine.bfRID().getInstance() );
+				listOfTargets.add_unique( targetMachine.bfRID().getInstance() );
 			}
 
 			break;
 		}
 		default:
 		{
-			AvmCode::const_iterator it = aCode->begin();
-			AvmCode::const_iterator endIt = aCode->end();
-			for( ; it != endIt ; ++it )
+			for( const auto & itOperand : aCode.getOperands() )
 			{
-				if( (*it).is< AvmCode >() )
+				if( itOperand.is< AvmCode >() )
 				{
-					getrecTargetMachine(listOfTargets, (*it).to_ptr< AvmCode >());
+					getrecTargetMachine(listOfTargets,
+							itOperand.to< AvmCode >() );
 				}
 			}
 
@@ -175,7 +174,7 @@ bool AvmTransition::isUnstableTarget() const
 {
 	if( getTarget().is< InstanceOfMachine >() )
 	{
-		return( getTarget().to_ptr< InstanceOfMachine >()->
+		return( getTarget().to< InstanceOfMachine >().
 				getSpecifier().isPseudostate() );
 	}
 	else if( getTarget().is< RuntimeID >() )
@@ -220,7 +219,13 @@ void AvmTransition::toStream(OutStream & out) const
 
 	out << TAB << getModifier().toString()
 		<< Specifier::strScope( mScope )
-		<< "< id:" << getOffset() << " > ";
+		<< "< id:" << getOffset();
+	if( isAstTransition() && (not getAstTransition().isMocSimple()) )
+	{
+		out << ", " << getAstTransition().strMocKind(
+				~ Transition::MOC_SIMPLE_KIND );
+	}
+	out << " > ";
 
 AVM_IF_DEBUG_FLAG_AND( COMPILING , hasAstElement() )
 	out << "&" << getAstFullyQualifiedNameID() << " ";
@@ -230,7 +235,7 @@ AVM_ENDIF_DEBUG_FLAG_AND( COMPILING )
 	if( hasTarget() )
 	{
 		out << " --> " << ( getTarget().is< ObjectElement >()
-				? getTarget().to_ptr< ObjectElement >()->getNameID()
+				? getTarget().to< ObjectElement >().getNameID()
 				: getTarget().str() );
 	}
 	out << " {";
@@ -241,7 +246,7 @@ AVM_IF_DEBUG_FLAG( COMPILING )
 	if( hasContainer() )
 	{
 		out << TAB2 << "//container = "
-				<< str_header( getContainer()->as< AvmProgram >() )
+				<< str_header( getContainer()->as_ptr< AvmProgram >() )
 				<< ";" << EOL;
 	}
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
@@ -249,8 +254,8 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 //	out << TAB2 << "offset = " << getOffset() << ";" << EOL;
 
 
-	// Any program data
-	toStreamData(out);
+	// All program variables
+	toStreamVariables(out);
 
 
 	out << TAB << "moe:" << EOL;
@@ -281,12 +286,10 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 void AvmTransition::toStream(OutStream & out,
 		const ListOfAvmTransition & listofTransition)
 {
-	ListOfAvmTransition::const_iterator itTransition = listofTransition.begin();
-	ListOfAvmTransition::const_iterator endTransition = listofTransition.end();
-	for( ; itTransition != endTransition ; ++itTransition )
+	for( const auto & itTransition : listofTransition )
 	{
 		out << TAB;
-		(*itTransition)->toStreamHeader( out );
+		itTransition->toStreamHeader( out );
 		out << ";" << EOL;
 	}
 }

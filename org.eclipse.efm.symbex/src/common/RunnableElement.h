@@ -47,7 +47,7 @@ public:
 	/**
 	 * TYPEDEF
 	 */
-	typedef avm_uint16_t     lifecycle_status_t;
+	typedef std::uint16_t     lifecycle_status_t;
 
 	enum {
 		RUNNABLE_UNDEFINED_STATE       = 0x0000,
@@ -124,7 +124,7 @@ protected:
 	/**
 	 * ATTRIBUTE
 	 */
-	WObject * mParameterWObject;
+	const WObject * mParameterWObject;
 
 	//Indicateur du bon déroulement de la procédure << configure() >>
 	bool mConfigFlag;
@@ -144,9 +144,9 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	RunnableElement(WObject * wfParameterObject);
+	RunnableElement(const WObject * wfParameterObject);
 
-	RunnableElement(class_kind_t aClassKind, WObject * wfParameterObject);
+	RunnableElement(class_kind_t aClassKind, const WObject * wfParameterObject);
 
 	/**
 	 * CONSTRUCTOR
@@ -181,17 +181,27 @@ public:
 	 * GETTER - SETTER
 	 * mParameterWObject
 	 */
-	inline WObject * getParameterWObject() const
+	inline const WObject * getParameterWObject() const
 	{
 		return( mParameterWObject );
 	}
 
 	inline bool hasParameterWObject() const
 	{
-		return( mParameterWObject != NULL /*WObject::_NULL_*/ );
+		return( mParameterWObject != nullptr /*WObject::_NULL_*/ );
 	}
 
-	void setParameterWObject(WObject * wfParameterObject);
+	void setParameterWObject(const WObject * wfParameterObject);
+
+
+	/**
+	 * SETTER
+	 * mReportPrintFlag
+	 */
+	inline void enabledReportingPrinter(bool enabled)
+	{
+		mReportPrintFlag = enabled;
+	}
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -568,7 +578,7 @@ public:
 
 	virtual std::string strUniqId() const;
 
-	inline virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
 		//!! NOTHING
 	}

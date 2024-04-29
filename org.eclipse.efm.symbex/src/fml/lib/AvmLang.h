@@ -75,12 +75,12 @@ public:
 // VARIABLE DATA
 ////////////////////////////////////////////////////////////////////////////////
 
-class IPointerDataNature
+class IPointerVariableNature
 {
 
 public:
 
-	enum POINTER_DATA_NATURE
+	enum POINTER_VARIABLE_NATURE
 	{
 		POINTER_STANDARD_NATURE,
 
@@ -107,7 +107,7 @@ public:
 	/**
 	 * DESTRUCTOR
 	 */
-	virtual ~IPointerDataNature()
+	virtual ~IPointerVariableNature()
 	{
 		//!! NOTHING
 	}
@@ -115,15 +115,15 @@ public:
 	/**
 	 * STATIC
 	 */
-	static std::string strPointerDataNature(POINTER_DATA_NATURE aNature);
+	static std::string strPointerDataNature(POINTER_VARIABLE_NATURE aNature);
 
-	static std::string strPointer(const POINTER_DATA_NATURE aNature);
+	static std::string strPointer(const POINTER_VARIABLE_NATURE aNature);
 
 
 	/**
 	 * API
 	 */
-	virtual POINTER_DATA_NATURE getPointerNature() const = 0;
+	virtual POINTER_VARIABLE_NATURE getPointerNature() const = 0;
 
 
 	inline bool hasArrayIndexPointer() const

@@ -37,7 +37,7 @@ namespace sep
  * Symbol
  * !UNUSED!
  *
-const BF & RuntimeQuery::searchSymbol(WObject * aWProperty)
+const BF & RuntimeQuery::searchSymbol(const WObject * aWProperty)
 {
 	const std::string & kind = aWProperty->getNameID();
 	const std::string & qnid = aWProperty->toStringValue();
@@ -119,10 +119,10 @@ const BF & RuntimeQuery::searchSymbol(WObject * aWProperty)
 	return( BF::REF_NULL );
 }
 
-avm_size_t RuntimeQuery::searchSymbol(
-		WObject * aWProperty, BFList & listofSymbol )
+std::size_t RuntimeQuery::searchSymbol(
+		const WObject * aWProperty, BFList & listofSymbol )
 {
-	avm_size_t count = 0;
+	std::size_t count = 0;
 
 	const std::string & kind = aWProperty->getNameID();
 	const std::string & qnid = aWProperty->toStringValue();
@@ -205,7 +205,7 @@ BF RuntimeQuery::searchVariable(const ExecutionData & anED,
 		reverse_iterator itEnd = anED.getLocalRuntimes()->rend();
 		for(  ; it != itEnd ; ++it )
 		{
-			const BF & anInstance = (*it).getProgram()->getAllData().
+			const BF & anInstance = (*it).getProgram()->getAllVariables().
 					getByFQNameID( aFullyQualifiedNameID );
 			if( anInstance.valid() )
 			{
@@ -283,21 +283,21 @@ BF RuntimeQuery::searchVariable(const ExecutionData & anED,
 
 			// The ORIGINAL INSTANCE
 			InstanceOfData * anInstance =
-					anExecutable->getAllData().rawByFQNameID( osUFI.str() );
+					anExecutable->getAllVariables().rawByFQNameID( osUFI.str() );
 
-			if( anInstance != NULL )
+			if( anInstance != nullptr )
 			{
-				anInstance = anExecutable->getConstData().rawByFQNameID(
+				anInstance = anExecutable->getConstVariable().rawByFQNameID(
 						osUFI.str() );
 			}
 
-			if( anInstance != NULL )
+			if( anInstance != nullptr )
 			{
 				if( aliasPath.nonempty() )
 				{
 					anInstance = new InstanceOfData(
 							theSystemRID.getExecutable(),
-							anInstance, aliasPath );
+							(* anInstance), aliasPath );
 
 					anInstance->setCreatorContainerRID( theMachineID );
 					anInstance->setRuntimeContainerRID( theMachineID );
@@ -318,7 +318,7 @@ BF RuntimeQuery::searchVariable(const ExecutionData & anED,
 
 
 const BF & RuntimeQuery::searchVariable(const ExecutionData & anED,
-		const RuntimeID & ctxRID, const ObjectElement * astElement) const
+		const RuntimeID & ctxRID, const ObjectElement & astElement) const
 {
 	if( anED.hasLocalRuntimeStack() )
 	{
@@ -329,7 +329,7 @@ const BF & RuntimeQuery::searchVariable(const ExecutionData & anED,
 		for(  ; it != itEnd ; ++it )
 		{
 			const BF & anInstance =
-				(*it).getProgram()->getAllData().getByAstElement(astElement);
+				(*it).getProgram()->getAllVariables().getByAstElement(astElement);
 			if( anInstance.valid() )
 			{
 				return( anInstance );
@@ -342,7 +342,7 @@ const BF & RuntimeQuery::searchVariable(const ExecutionData & anED,
 	for( ; itRF != endRF ; ++itRF)
 	{
 		const BF & anInstance =
-			(*itRF)->getExecutable()->getAllData().getByAstElement(astElement);
+			(*itRF)->refExecutable().getAllVariables().getByAstElement(astElement);
 		if( anInstance.valid() )
 		{
 			return( anInstance );
@@ -365,8 +365,8 @@ BF RuntimeQuery::searchVariable(const ExecutionData & anED,
 		RuntimeID aRID = aParamInstance->hasCreatorContainerRID() ?
 				aParamInstance->getCreatorContainerRID() : ctxRID;
 
-		const BF & foundVariable = aRID.getExecutable()->getymbolByAstElement(
-				aParamInstance->getAstElement(), TYPE_UNIVERSAL_SPECIFIER);
+		const BF & foundVariable = aRID.refExecutable().getymbolByAstElement(
+				aParamInstance->safeAstElement(), TYPE_UNIVERSAL_SPECIFIER);
 
 		if( foundVariable.valid() )
 		{
@@ -375,7 +375,7 @@ BF RuntimeQuery::searchVariable(const ExecutionData & anED,
 		else
 		{
 			const BF & foundVariable = searchVariable(
-					anED, ctxRID, aParamInstance->getAstElement() );
+					anED, ctxRID, aParamInstance->safeAstElement() );
 
 			if( foundVariable.valid() )
 			{
@@ -428,7 +428,7 @@ BF RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 		reverse_iterator itEnd = anED.getLocalRuntimes()->rend();
 		for(  ; it != itEnd ; ++it )
 		{
-			const BF & anInstance = (*it).getProgram()->getAllData().
+			const BF & anInstance = (*it).getProgram()->getAllVariables().
 					getByFQNameID( aFullyQualifiedNameID );
 			if( anInstance.valid() )
 			{
@@ -500,12 +500,12 @@ BF RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 
 
 			// The ORIGINAL INSTANCE
-			BF anInstance = anExecutable->getAllData().
+			BF anInstance = anExecutable->getAllVariables().
 					getByFQNameID( osUFI.str() );
 
 			if( anInstance.invalid() )
 			{
-				anInstance = anExecutable->getConstData().
+				anInstance = anExecutable->getConstVariable().
 						getByFQNameID( osUFI.str() );
 			}
 			if( anInstance.invalid() )
@@ -520,7 +520,7 @@ BF RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 			}
 			if( anInstance.invalid() )
 			{
-				anInstance = anExecutable->getConnect().
+				anInstance = anExecutable->getConnector().
 						getByFQNameID( osUFI.str() );
 			}
 
@@ -534,7 +534,7 @@ BF RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 
 				if( aliasPath.nonempty() )
 				{
-					BaseInstanceForm * newInstance = NULL;
+					BaseInstanceForm * newInstance = nullptr;
 
 					switch ( anInstance.classKind() )
 					{
@@ -589,9 +589,9 @@ BF RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 
 						case FORM_INSTANCE_CONNECTOR_KIND:
 						{
-							newInstance = new InstanceOfConnect(
+							newInstance = new InstanceOfConnector(
 									theSystemRID.getExecutable(),
-									anInstance.to_ptr< InstanceOfConnect >(),
+									anInstance.to_ptr< InstanceOfConnector >(),
 									aliasPath);
 							newInstance->setCreatorContainerRID( theMachineID );
 							newInstance->setRuntimeContainerRID( theMachineID );
@@ -628,7 +628,7 @@ BF RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 }
 
 const BF & RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
-		const ExecutionData & anED, const ObjectElement * astElement)
+		const ExecutionData & anED, const ObjectElement & astElement)
 {
 	{
 		const BF & foundInstance = aliasTable.getByAstElement(astElement);
@@ -646,8 +646,8 @@ const BF & RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 		reverse_iterator itEnd = anED.getLocalRuntimes()->rend();
 		for(  ; it != itEnd ; ++it )
 		{
-			const BF & anInstance =
-					(*it).getProgram()->getAllData().getByAstElement(astElement);
+			const BF & anInstance = (*it).getProgram()->
+					getAllVariables().getByAstElement(astElement);
 			if( anInstance.valid() )
 			{
 				return( anInstance );
@@ -681,7 +681,7 @@ const BF & RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 		reverse_iterator itEnd = anED.getLocalRuntimes()->rend();
 		for( ; it != itEnd ; ++it )
 		{
-			if( (*it).getProgram()->containsData( aBaseInstance ) )
+			if( (*it).getProgram()->containsVariable( aBaseInstance ) )
 			{
 				return( aBaseInstance );
 			}
@@ -702,7 +702,7 @@ const BF & RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 		{
 			case FORM_INSTANCE_DATA_KIND:
 			{
-				if( itRID.getExecutable()->containsData(
+				if( itRID.refExecutable().containsVariable(
 						aBaseInstance.to_ptr< InstanceOfData >()) )
 				{
 					aliasPath.append( itRID.getInstance() );
@@ -721,7 +721,7 @@ const BF & RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 
 			case FORM_INSTANCE_MACHINE_KIND:
 			{
-				if( itRID.getExecutable()->
+				if( itRID.refExecutable().
 						getInstanceStatic().contains(aBaseInstance) )
 				{
 					aliasPath.append( itRID.getInstance() );
@@ -740,7 +740,7 @@ const BF & RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 
 			case FORM_INSTANCE_PORT_KIND:
 			{
-				if( itRID.getExecutable()->getPort().contains(aBaseInstance) )
+				if( itRID.refExecutable().getPort().contains(aBaseInstance) )
 				{
 					aliasPath.append( itRID.getInstance() );
 
@@ -760,7 +760,7 @@ const BF & RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 				InstanceOfBuffer * bufferInstance =
 						aBaseInstance.to_ptr< InstanceOfBuffer >();
 
-				if( itRID.getExecutable()->getBuffer().contains(bufferInstance) )
+				if( itRID.refExecutable().getBuffer().contains(bufferInstance) )
 				{
 					aliasPath.append( itRID.getInstance() );
 
@@ -777,14 +777,15 @@ const BF & RuntimeQuery::searchSymbol(TableOfSymbol & aliasTable,
 
 			case FORM_INSTANCE_CONNECTOR_KIND:
 			{
-				InstanceOfConnect * connectInstance =
-						aBaseInstance.to_ptr< InstanceOfConnect >();
+				InstanceOfConnector * connectInstance =
+						aBaseInstance.to_ptr< InstanceOfConnector >();
 
-				if( itRID.getExecutable()->getConnect().contains(connectInstance) )
+				if( itRID.refExecutable().
+						getConnector().contains(connectInstance) )
 				{
 					aliasPath.append( itRID.getInstance() );
 
-					InstanceOfConnect * newInstance = new InstanceOfConnect(
+					InstanceOfConnector * newInstance = new InstanceOfConnector(
 							theSystemRID.getExecutable(),
 							connectInstance, aliasPath );
 					newInstance->setCreatorContainerRID( itRID );
@@ -831,7 +832,7 @@ void RuntimeQuery::getSystemLifelines(Vector< RuntimeID > & lifelines) const
 }
 
 
-const RuntimeID & RuntimeQuery::getRuntineByQualifiedNameID(
+const RuntimeID & RuntimeQuery::getRuntimeByQualifiedNameID(
 		const std::string & aQualifiedNameID) const
 {
 	TableOfRuntimeT::const_iterator itRF =

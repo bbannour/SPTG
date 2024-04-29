@@ -121,7 +121,7 @@ public:                                                                        \
 
 #define AVM_PRIMITIVE_RUN_CLASS_HEADER(classname, supername)                   \
 AVM_PRIMITIVE_CLASS_HEADER(AvmPrimitive_##classname, supername)                \
-	virtual bool run(ExecutionEnvironment & ENV);
+	virtual bool run(ExecutionEnvironment & ENV) override;
 
 
 #define AVM_PRIMITIVE_RUN_CLASS(classname, supername)                          \
@@ -129,11 +129,16 @@ AVM_PRIMITIVE_RUN_CLASS_HEADER(classname, supername)                           \
 };
 
 
+#define AVM_PRIMITIVE_BASE_RUN_CLASS(classname)                                \
+AVM_PRIMITIVE_RUN_CLASS_HEADER(classname, BaseAvmPrimitive)                    \
+};
+
+
 
 #define AVM_PRIMITIVE_RUN_RESUME_CLASS_HEADER(classname, supername)            \
 AVM_PRIMITIVE_CLASS_HEADER(AvmPrimitive_##classname, supername)                \
-	virtual bool run(ExecutionEnvironment & ENV);                              \
-	virtual bool resume(ExecutionEnvironment & ENV);
+	virtual bool run(ExecutionEnvironment & ENV) override;                     \
+	virtual bool resume(ExecutionEnvironment & ENV) override;
 
 
 #define AVM_PRIMITIVE_RUN_RESUME_CLASS(classname, supername)                   \
@@ -148,7 +153,7 @@ AVM_PRIMITIVE_RUN_RESUME_CLASS_HEADER(classname, supername)                    \
 
 #define AVM_PRIMITIVE_EVAL_CLASS_HEADER(classname, supername)                  \
 AVM_PRIMITIVE_CLASS_HEADER(AvmPrimitive_##classname, supername)                \
-	virtual bool seval(EvaluationEnvironment & ENV);
+	virtual bool seval(EvaluationEnvironment & ENV) override;
 
 
 #define AVM_PRIMITIVE_EVAL_CLASS(classname, supername)                         \
@@ -163,8 +168,8 @@ AVM_PRIMITIVE_EVAL_CLASS_HEADER(classname, supername)                          \
 
 #define AVM_PRIMITIVE_RUN_EVAL_CLASS_HEADER(classname, supername)              \
 AVM_PRIMITIVE_CLASS_HEADER(AvmPrimitive_##classname, supername)                \
-	virtual bool run(ExecutionEnvironment & ENV);                              \
-	virtual bool seval(EvaluationEnvironment & ENV);
+	virtual bool run(ExecutionEnvironment & ENV) override;                     \
+	virtual bool seval(EvaluationEnvironment & ENV) override;
 
 
 #define AVM_PRIMITIVE_RUN_EVAL_CLASS(classname, supername)                     \

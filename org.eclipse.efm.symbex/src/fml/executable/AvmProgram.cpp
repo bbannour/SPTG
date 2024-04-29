@@ -12,7 +12,11 @@
  ******************************************************************************/
 #include "AvmProgram.h"
 
+#include <fml/common/ObjectElement.h>
+
 #include <fml/executable/ExecutableForm.h>
+#include <fml/executable/InstanceOfBuffer.h>
+#include <fml/executable/InstanceOfPort.h>
 
 
 
@@ -35,13 +39,16 @@ void AvmProgram::updateFullyQualifiedNameID()
 	if( hasAstElement() )
 	{
 		std::string aFullyQualifiedNameID = getAstFullyQualifiedNameID();
-		std::string aNameID  =
-				NamedElement::extractNameID( aFullyQualifiedNameID );
+
+		std::string aNameID = NamedElement::extractNameID(aFullyQualifiedNameID);
 
 		setFullyQualifiedNameID(schema + aFullyQualifiedNameID.substr(
 						aFullyQualifiedNameID.find(FQN_ID_ROOT_SEPARATOR)) );
 
 		setNameID( aNameID );
+
+		setUnrestrictedName( getAstElement().hasUnrestrictedName() ?
+				getAstElement().getUnrestrictedName() : aNameID );
 	}
 	else if( hasFullyQualifiedNameID() )
 	{
@@ -60,6 +67,7 @@ void AvmProgram::updateFullyQualifiedNameID()
 
 			std::string::size_type pos =
 					aFullyQualifiedNameID.find(FQN_ID_ROOT_SEPARATOR);
+
 			setFullyQualifiedNameID( (pos != std::string::npos) ?
 					schema + aFullyQualifiedNameID.substr() : getNameID() );
 		}
@@ -95,7 +103,7 @@ const BF & AvmProgram::getSymbol(
 
 	{
 		const BF & foundSymbol =
-				getConstData().getByFQNameID(aFullyQualifiedNameID);
+				getConstVariable().getByFQNameID(aFullyQualifiedNameID);
 
 		if( foundSymbol.valid() )
 		{
@@ -132,7 +140,7 @@ const BF & AvmProgram::getSymbolByQualifiedNameID(
 
 	{
 		const BF & foundSymbol =
-				getConstData().getByQualifiedNameID(aQualifiedNameID);
+				getConstVariable().getByQualifiedNameID(aQualifiedNameID);
 
 		if( foundSymbol.valid() )
 		{
@@ -167,7 +175,7 @@ const BF & AvmProgram::getSymbolByNameID(
 	}
 
 	{
-		const BF & foundSymbol = getConstData().getByNameID(id);
+		const BF & foundSymbol = getConstVariable().getByNameID(id);
 
 		if( foundSymbol.valid() )
 		{
@@ -188,7 +196,7 @@ const BF & AvmProgram::getSymbolByNameID(
 }
 
 
-const BF & AvmProgram::getymbolByAstElement(const ObjectElement * astElement,
+const BF & AvmProgram::getymbolByAstElement(const ObjectElement & astElement,
 		avm_type_specifier_kind_t typeFamily) const
 {
 	{
@@ -201,7 +209,7 @@ const BF & AvmProgram::getymbolByAstElement(const ObjectElement * astElement,
 	}
 
 	{
-		const BF & foundSymbol = getConstData().getByAstElement(astElement);
+		const BF & foundSymbol = getConstVariable().getByAstElement(astElement);
 
 		if( foundSymbol.valid() )
 		{
@@ -239,18 +247,18 @@ AVM_ENDIF_DEBUG_FLAG_AND( COMPILING )
 }
 
 
-void AvmProgram::toStreamData(OutStream & out) const
+void AvmProgram::toStreamVariables(OutStream & out) const
 {
-	TableOfInstanceOfData::const_raw_iterator itData  = getData().begin();
-	TableOfInstanceOfData::const_raw_iterator endData = getData().end();
+	TableOfInstanceOfData::const_raw_iterator itVariable  = getVariables().begin();
+	TableOfInstanceOfData::const_raw_iterator endVariable = getVariables().end();
 
 	if( hasParam() )
 	{
 		out << TAB << "parameter:" << EOL_INCR_INDENT;
-		avm_size_t param = getParamCount();
-		for( ; param > 0 ; --param , ++itData )
+		std::size_t param = getParamCount();
+		for( ; param > 0 ; --param , ++itVariable )
 		{
-			(itData)->toStream(out);
+			(itVariable)->toStream(out);
 		}
 		out << DECR_INDENT;
 	}
@@ -258,9 +266,9 @@ void AvmProgram::toStreamData(OutStream & out) const
 	if( hasReturn() )
 	{
 		out << TAB << "returns:" << EOL_INCR_INDENT;
-		for( avm_size_t ret = getReturnCount() ; ret > 0 ; --ret , ++itData )
+		for( std::size_t ret = getReturnCount() ; ret > 0 ; --ret , ++itVariable )
 		{
-			(itData)->toStream(out);
+			(itVariable)->toStream(out);
 		}
 		out << DECR_INDENT;
 	}
@@ -275,53 +283,53 @@ void AvmProgram::toStreamData(OutStream & out) const
 	}
 
 
-	if( (hasData() && (getData().size() > getParamReturnCount()))
-			|| hasConstData() || hasTypeSpecifier() )
+	if( (hasVariable() && (getVariables().size() > getParamReturnCount()))
+			|| hasConstVariable() || hasTypeSpecifier() )
 	{
 		out << TAB << "variable:" << EOL_INCR_INDENT;
 
-		if( hasConstData() )
+		if( hasConstVariable() )
 		{
-			getConstData().toStream(out);
+			getConstVariable().toStream(out);
 
 			out << EOL;
 		}
 
-		for( ; itData != endData ; ++itData )
+		for( ; itVariable != endVariable ; ++itVariable )
 		{
-			(itData)->toStream(out);
+			(itVariable)->toStream(out);
 		}
 
 		out << DECR_INDENT;
 
 AVM_IF_DEBUG_FLAG( DATA )
-		if( mAllData != &mData )
+		if( mAllVariables != (& mVariables) )
 		{
 			out << TAB << "variable#all:" << EOL_INCR_INDENT;
-			itData = getAllData().begin();
-			endData = getAllData().end();
-			for( ; itData != endData ; ++itData )
+			itVariable = getAllVariables().begin();
+			endVariable = getAllVariables().end();
+			for( ; itVariable != endVariable ; ++itVariable )
 			{
-				(itData)->toStream(out);
+				(itVariable)->toStream(out);
 			}
 			out << DECR_INDENT;
 
 		}
-		if( mBasicData != &mData )
+		if( mBasicVariables != (& mVariables) )
 		{
 			out << TAB << "variable#basic:" << EOL_INCR_INDENT;
-			itData = getBasicData().begin();
-			endData = getBasicData().end();
+			itVariable = getBasicVariables().begin();
+			endVariable = getBasicVariables().end();
 
 AVM_IF_DEBUG_LEVEL_GTE_HIGH
-			for( ; itData != endData ; ++itData )
+			for( ; itVariable != endVariable ; ++itVariable )
 			{
-				(itData)->toStream(out);
+				(itVariable)->toStream(out);
 			}
 AVM_ELSE
-			for( ; itData != endData ; ++itData )
+			for( ; itVariable != endVariable ; ++itVariable )
 			{
-				out << TAB2 << str_header( *itData )
+				out << TAB2 << str_header( *itVariable )
 						<< ";" << EOL;
 			}
 AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
@@ -331,12 +339,12 @@ AVM_ENDIF_DEBUG_LEVEL_GTE_HIGH
 AVM_ENDIF_DEBUG_FLAG( DATA )
 	}
 
-	if( getDataAlias().nonempty() )
+	if( getVariableAlias().nonempty() )
 	{
 		out << TAB << "alias:" << EOL_INCR_INDENT;
 
-		TableOfInstanceOfData::const_raw_iterator itAlias = getDataAlias().begin();
-		TableOfInstanceOfData::const_raw_iterator endAlias = getDataAlias().end();
+		TableOfInstanceOfData::const_raw_iterator itAlias = getVariableAlias().begin();
+		TableOfInstanceOfData::const_raw_iterator endAlias = getVariableAlias().end();
 		for( ; itAlias != endAlias ; ++itAlias )
 		{
 			(itAlias)->toStream(out);
@@ -353,27 +361,27 @@ void AvmProgram::toStreamStaticCom(OutStream & out) const
 	{
 		out << TAB << "communication"
 				<< (isMutableCommunication() ? "" : "<final>");
-		BaseCompiledForm::toStreamStaticCom(out, getCommunicationCode());
+		ObjectElement::toStreamStaticCom(out, getCommunicationCode());
 	}
 
 	if ( hasInternalCommunicationCode() )
 	{
 		out << TAB << "com#internal";
-		BaseCompiledForm::toStreamStaticCom(out, getInternalCommunicationCode());
+		ObjectElement::toStreamStaticCom(out, getInternalCommunicationCode());
 	}
 
 
 	if ( hasInputCom() )
 	{
 		out << TAB << "com#input{" << EOL;
-		BaseCompiledForm::toStreamStaticCom(out, getInputCom());
+		InstanceOfPort::toStream(out, getInputCom());
 		out << TAB << "}" << EOL;
 	}
 
 	if ( hasOutputCom() )
 	{
 		out << TAB << "com#output{" << EOL;
-		BaseCompiledForm::toStreamStaticCom(out, getOutputCom());
+		InstanceOfPort::toStream(out, getOutputCom());
 		out << TAB << "}" << EOL;
 	}
 
@@ -381,21 +389,21 @@ void AvmProgram::toStreamStaticCom(OutStream & out) const
 	if ( hasInputEnabledBuffer() )
 	{
 		out << TAB << "buffer#input_enabled{" << EOL;
-		BaseCompiledForm::toStreamStaticCom(out, getInputEnabledBuffer());
+		InstanceOfBuffer::toStream(out, getInputEnabledBuffer());
 		out << TAB << "}" << EOL;
 	}
 
 	if ( hasInputEnabledCom() )
 	{
 		out << TAB << "com#input_enabled{" << EOL;
-		BaseCompiledForm::toStreamStaticCom(out, getInputEnabledCom());
+		InstanceOfPort::toStream(out, getInputEnabledCom());
 		out << TAB << "}" << EOL;
 	}
 
 	if ( hasInputEnabledSave() )
 	{
 		out << TAB << "com#input_enabled#save{" << EOL;
-		BaseCompiledForm::toStreamStaticCom(out, getInputEnabledSave());
+		InstanceOfPort::toStream(out, getInputEnabledSave());
 		out << TAB << "}" << EOL;
 	}
 
@@ -403,19 +411,19 @@ void AvmProgram::toStreamStaticCom(OutStream & out) const
 	if ( hasEnvironmentCom() )
 	{
 		out << TAB << "com#env";
-		BaseCompiledForm::toStreamStaticCom(out, getEnvironmentCom());
+		ObjectElement::toStreamStaticCom(out, getEnvironmentCom());
 	}
 
 	if ( hasEnvironmentInputCom() )
 	{
 		out << TAB << "com#input#env";
-		BaseCompiledForm::toStreamStaticCom(out, getEnvironmentInputCom());
+		ObjectElement::toStreamStaticCom(out, getEnvironmentInputCom());
 	}
 
 	if ( hasEnvironmentOutputCom() )
 	{
 		out << TAB << "com#output#env";
-		BaseCompiledForm::toStreamStaticCom(out, getEnvironmentOutputCom());
+		ObjectElement::toStreamStaticCom(out, getEnvironmentOutputCom());
 	}
 //AVM_ENDIF_DEBUG_FLAG( COMMUNICATION )
 }
@@ -451,7 +459,7 @@ AVM_IF_DEBUG_FLAG( COMPILING )
 	if( hasContainer() )
 	{
 		out << TAB2 << "//container = "
-				<< str_header( getContainer()->as< AvmProgram >() )
+				<< str_header( getContainer()->as_ptr< AvmProgram >() )
 				<< ";" << EOL;
 	}
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
@@ -459,8 +467,8 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 //	out << TAB2 << "offset = " << getOffset() << ";" << EOL;
 
 
-	// Any program data
-	toStreamData(out);
+	// All program variables
+	toStreamVariables(out);
 
 
 	out << TAB << "moe:" << EOL;

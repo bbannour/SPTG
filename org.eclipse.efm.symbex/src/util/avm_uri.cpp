@@ -15,8 +15,6 @@
 
 #include "avm_uri.h"
 
-#include <fstream>
-
 #include <util/avm_assert.h>
 
 
@@ -76,7 +74,7 @@ bool AvmUri::open()
 		{
 			if( outStream.fail() )
 			{
-				if( outStream.open(location.c_str() , mode) )
+				if( outStream.open(location , mode) )
 				{
 					isAllocated = true;
 				}
@@ -94,7 +92,7 @@ bool AvmUri::open()
 
 		case AVM_URI_SOCKET_KIND:
 		{
-			outStream = NULL;
+			outStream = nullptr;
 
 			break;
 		}
@@ -102,14 +100,14 @@ bool AvmUri::open()
 
 		case AVM_URI_UNDEFINED_KIND:
 		{
-			outStream = NULL;
+			outStream = nullptr;
 
 			break;
 		}
 
 		default:
 		{
-			outStream = NULL;
+			outStream = nullptr;
 
 			break;
 		}

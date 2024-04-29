@@ -32,8 +32,7 @@ class InstanceOfPort;
 class Router;
 
 
-class RouterElement :
-		public Element ,
+class RouterElement : public Element ,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( RouterElement )
 {
 
@@ -46,9 +45,9 @@ protected:
 	 * ATTRIBUTES
 	 */
 	// The container instance
-	InstanceOfMachine * mMachine;
+	const InstanceOfMachine & mMachine;
 
-	avm_size_t mRouteID;
+	std::size_t mRouteID;
 
 	TableOfRoutingData mInputRoutingTable;
 	TableOfRoutingData mOutputRoutingTable;
@@ -59,8 +58,8 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	RouterElement(InstanceOfMachine * aMachine,
-			avm_size_t aRouteID, avm_size_t msgCount = 0)
+	RouterElement(const InstanceOfMachine & aMachine,
+			std::size_t aRouteID, std::size_t msgCount = 0)
 	: Element( CLASS_KIND_T( Router ) ),
 	mMachine( aMachine ),
 	mRouteID( aRouteID ),
@@ -96,7 +95,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 };
 
@@ -131,8 +130,8 @@ public:
 		//!! NOTHING
 	}
 
-	Router(InstanceOfMachine * aMachine,
-			avm_size_t aRouteID, avm_size_t msgCount = 0)
+	Router(const InstanceOfMachine & aMachine,
+			std::size_t aRouteID, std::size_t msgCount = 0)
 	: base_this_type( new RouterElement(aMachine, aRouteID, msgCount) )
 	{
 		//!! NOTHING
@@ -180,27 +179,21 @@ public:
 	 * GETTER - SETTER
 	 * mMachine
 	 */
-	inline InstanceOfMachine * getMachine() const
+	inline const InstanceOfMachine & getMachine() const
 	{
 		return( base_this_type::mPTR->mMachine );
 	}
-
-	inline bool hasMachine() const
-	{
-		return( base_this_type::mPTR->mMachine != NULL );
-	}
-
 
 	/**
 	 * GETTER
 	 * mRouteID
 	 */
-	inline avm_size_t getRouteID() const
+	inline std::size_t getRouteID() const
 	{
 		return( base_this_type::mPTR->mRouteID );
 	}
 
-	inline avm_size_t getTotalRouteCount() const
+	inline std::size_t getTotalRouteCount() const
 	{
 		return( std::max(base_this_type::mPTR->mInputRoutingTable.size(),
 				base_this_type::mPTR->mOutputRoutingTable.size()) );
@@ -236,7 +229,7 @@ public:
 		return( base_this_type::mPTR->mInputRoutingTable.get(offset).valid() );
 	}
 
-	inline bool hasntInputRouting(avm_offset_t offset) const
+	inline bool hasnoInputRouting(avm_offset_t offset) const
 	{
 		return( base_this_type::mPTR->mInputRoutingTable.get(offset).invalid() );
 	}
@@ -247,11 +240,11 @@ public:
 		base_this_type::mPTR->mInputRoutingTable.append(aRoutingData);
 	}
 
-	void appendInputRouting(InstanceOfPort * aPortInstance,
+	void appendInputRouting(const InstanceOfPort & aPortInstance,
 			const RoutingData & aRoutingData);
 
 
-	void setInputRouting(InstanceOfPort * aPortInstance,
+	void setInputRouting(const InstanceOfPort & aPortInstance,
 			const RoutingData & aRoutingData) const;
 
 	void setInputRouting(avm_offset_t offset,
@@ -290,7 +283,7 @@ public:
 		return( base_this_type::mPTR->mOutputRoutingTable.get(offset).valid() );
 	}
 
-	inline bool hasntOutputRouting(avm_offset_t offset) const
+	inline bool hasnoOutputRouting(avm_offset_t offset) const
 	{
 		return( base_this_type::mPTR->mOutputRoutingTable.get(offset).invalid() );
 	}
@@ -301,11 +294,11 @@ public:
 		base_this_type::mPTR->mOutputRoutingTable.append(aRoutingData);
 	}
 
-	void appendOutputRouting(InstanceOfPort * aPortInstance,
+	void appendOutputRouting(const InstanceOfPort & aPortInstance,
 			const RoutingData & aRoutingData);
 
 
-	void setOutputRouting(InstanceOfPort * aPortInstance,
+	void setOutputRouting(const InstanceOfPort & aPortInstance,
 			const RoutingData & aRoutingData) const;
 
 	void setOutputRouting(avm_offset_t offset,
@@ -318,14 +311,14 @@ public:
 	/**
 	 * TESTER
 	 */
-	inline bool hasRouting(InstanceOfPort * aPort) const
+	inline bool hasRouting(const InstanceOfPort & aPort) const
 	{
 		return( hasInputRouting(aPort) || hasOutputRouting(aPort) );
 	}
 
-	bool hasInputRouting(InstanceOfPort * aPort) const;
+	bool hasInputRouting(const InstanceOfPort & aPort) const;
 
-	bool hasOutputRouting(InstanceOfPort * aPort) const;
+	bool hasOutputRouting(const InstanceOfPort & aPort) const;
 
 
 	/**
@@ -334,7 +327,7 @@ public:
 	inline virtual std::string toString(
 			const AvmIndent & indent = AVM_TAB_INDENT) const
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
 			StringOutStream oss(indent);
 
@@ -350,7 +343,7 @@ public:
 
 	inline void toStream(OutStream & os) const
 	{
-		if( base_this_type::mPTR != NULL )
+		if( base_this_type::mPTR != nullptr )
 		{
 			base_this_type::mPTR->toStream(os);
 		}

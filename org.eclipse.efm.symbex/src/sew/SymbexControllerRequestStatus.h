@@ -19,7 +19,7 @@
 #include <util/avm_numeric.h>
 #include <collection/List.h>
 
-#include <fam/api/AbstractProcessorUnit.h>
+#include  <famcore/api/AbstractProcessorUnit.h>
 
 
 namespace sep
@@ -35,7 +35,7 @@ public:
 	/**
 	 * TYPEDEF
 	 */
-	typedef avm_uint16_t  request_status_t;
+	typedef std::uint16_t  request_status_t;
 
 	enum
 	{
@@ -175,7 +175,7 @@ public:
 		return( (mRequestStatus & REQUEST_ALIAS_CONTINUE_STATUS) != 0 );
 	}
 
-	inline bool hasntRequestsToContinue() const
+	inline bool hasnoRequestsToContinue() const
 	{
 		return( (mRequestStatus & REQUEST_ALIAS_CONTINUE_STATUS) == 0 );
 	}
@@ -189,7 +189,7 @@ public:
 		return( (mRequestStatus & REQUEST_STOP_STATUS) != 0 );
 	}
 
-	inline bool hasntRequestStop() const
+	inline bool hasnoRequestStop() const
 	{
 		return( (mRequestStatus & REQUEST_STOP_STATUS) == 0 );
 	}
@@ -203,7 +203,7 @@ public:
 		return( (mRequestStatus & REQUEST_RELEASE_STATUS) != 0 );
 	}
 
-	inline bool hasntRequestRelease() const
+	inline bool hasnoRequestRelease() const
 	{
 		return( (mRequestStatus & REQUEST_RELEASE_STATUS) == 0 );
 	}
@@ -217,7 +217,7 @@ public:
 		return( (mRequestStatus & REQUEST_RESET_STATUS) != 0 );
 	}
 
-	inline bool hasntRequestReset() const
+	inline bool hasnoRequestReset() const
 	{
 		return( (mRequestStatus & REQUEST_RESET_STATUS) == 0 );
 	}
@@ -231,7 +231,7 @@ public:
 		return( (mRequestStatus & REQUEST_RESTART_STATUS) != 0 );
 	}
 
-	inline bool hasntRequestRestart() const
+	inline bool hasnoRequestRestart() const
 	{
 		return( (mRequestStatus & REQUEST_RESTART_STATUS) == 0 );
 	}
@@ -245,7 +245,7 @@ public:
 		return( (mRequestStatus & REQUEST_CONTINUE_STATUS) != 0 );
 	}
 
-	inline bool hasntRequestContinue() const
+	inline bool hasnoRequestContinue() const
 	{
 		return( (mRequestStatus & REQUEST_CONTINUE_STATUS) == 0 );
 	}

@@ -117,14 +117,14 @@ void AvmLambda::toStreamApp(OutStream & os) const
 	os << END_INDENT;
 	//os << " )( ";
 
-	TableOfInstanceOfData::const_raw_iterator itData = getData().begin();
-	TableOfInstanceOfData::const_raw_iterator endData = getData().end();
-	for( ; itData != endData ; ++itData )
+	TableOfInstanceOfData::const_raw_iterator itVar = getVariables().begin();
+	TableOfInstanceOfData::const_raw_iterator endVar = getVariables().end();
+	for( ; itVar != endVar ; ++itVar )
 	{
-		if( (itData)->hasValue() )
+		if( (itVar)->hasValue() )
 		{
-			os << TAB << " ${ := " << (itData)->str() << " "
-					<< (itData)->strValue() << " }";
+			os << TAB << " ${ := " << (itVar)->str() << " "
+					<< (itVar)->strValue() << " }";
 		}
 	}
 	//os << " )" << EOL;
@@ -134,15 +134,15 @@ void AvmLambda::toStreamApp(OutStream & os) const
 
 void AvmLambda::toStreamLambda(OutStream & os) const
 {
-	TableOfInstanceOfData::const_raw_iterator itData = getData().begin();
-	TableOfInstanceOfData::const_raw_iterator endData = getData().end();
+	TableOfInstanceOfData::const_raw_iterator itVar = getVariables().begin();
+	TableOfInstanceOfData::const_raw_iterator endVar = getVariables().end();
 
 	//os << TAB << "lambda ";
 	os << TAB << "${ lambda ";
 
-	for( ; itData != endData ; ++itData )
+	for( ; itVar != endVar ; ++itVar )
 	{
-		os << (itData)->str() << " ";
+		os << (itVar)->str() << " ";
 	}
 	os << std::flush;
 
@@ -157,25 +157,25 @@ void AvmLambda::toStreamLambda(OutStream & os) const
 
 void AvmLambda::toStreamLet(OutStream & os) const
 {
-	TableOfInstanceOfData::const_raw_iterator itData = getData().begin();
-	TableOfInstanceOfData::const_raw_iterator endData = getData().end();
+	TableOfInstanceOfData::const_raw_iterator itVar = getVariables().begin();
+	TableOfInstanceOfData::const_raw_iterator endVar = getVariables().end();
 
 	if( os.INDENT.TABS.empty() )
 	{
 		//os << "let ";
 		os << "${ let ";
-		for( ; itData != endData ; ++itData )
+		for( ; itVar != endVar ; ++itVar )
 		{
-			if( (itData)->hasValue() )
+			if( (itVar)->hasValue() )
 			{
 				os << "${ "
 						<< OperatorManager::OPERATOR_ASSIGN->strOp() << " "
-						<< (itData)->str() << " " << (itData)->strValue()
+						<< (itVar)->str() << " " << (itVar)->strValue()
 						<< " } ";
 			}
 			else
 			{
-				os << (itData)->str() << " ";
+				os << (itVar)->str() << " ";
 			}
 		}
 		os << std::flush;
@@ -189,18 +189,18 @@ void AvmLambda::toStreamLet(OutStream & os) const
 		//os << TAB << "let " << EOL;
 		os << TAB << "${ let " << EOL;
 
-		for( ; itData != endData ; ++itData )
+		for( ; itVar != endVar ; ++itVar )
 		{
-			if( (itData)->hasValue() )
+			if( (itVar)->hasValue() )
 			{
 				os << TAB2 << "${ "
 					<< OperatorManager::OPERATOR_ASSIGN->strOp() << " "
-					<< (itData)->str() << " " << (itData)->strValue()
+					<< (itVar)->str() << " " << (itVar)->strValue()
 					<< " }";
 			}
 			else
 			{
-				os << TAB2 << (itData)->str();
+				os << TAB2 << (itVar)->str();
 			}
 
 			os << EOL;
@@ -224,15 +224,15 @@ void AvmLambda::toStreamLet(OutStream & os) const
 BF AvmLambda::convertToProgram(const std::string & id)
 {
 	AvmProgram * aProgram = new AvmProgram(Specifier::SCOPE_ROUTINE_KIND,
-			getContainer()->as< AvmProgram >(), getAstElement(), getDataSize());
+			getContainer()->as_ptr< AvmProgram >(), getAstElement(), getVariablesSize());
 
 	aProgram->setAllNameID( aProgram->getFullyQualifiedNameID() + "." + id , id );
-	aProgram->setParamOffsetCount(0, getDataSize());
+	aProgram->setParamOffsetCount(0, getVariablesSize());
 
-	avm_size_t endOffset = getData().size();
-	for( avm_size_t offset = 0 ; offset < endOffset ; ++offset )
+	std::size_t endOffset = getVariables().size();
+	for( std::size_t offset = 0 ; offset < endOffset ; ++offset )
 	{
-		aProgram->setData(offset, getData().get(offset));
+		aProgram->setVariable(offset, getVariables().get(offset));
 	}
 
 	aProgram->setCode( getExpression().bfCode() );

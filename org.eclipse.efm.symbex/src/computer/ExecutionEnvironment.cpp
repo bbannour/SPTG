@@ -50,7 +50,7 @@ ExecutionEnvironment::EXEC_ENV_CACHE;
 
 void ExecutionEnvironment::initENVS()
 {
-	for( avm_size_t i = 0 ; i < EXEC_ENV_INITIAL_COUNT ; ++i )
+	for( std::size_t i = 0 ; i < EXEC_ENV_INITIAL_COUNT ; ++i )
 	{
 		EXEC_ENV_CACHE.append( new _EXEC_ENV_() );
 	}
@@ -68,7 +68,7 @@ void ExecutionEnvironment::finalizeENVS()
 
 ExecutionEnvironment::_EXEC_ENV_ * ExecutionEnvironment::newENV()
 {
-	ExecutionEnvironment::_EXEC_ENV_ * exec_env = NULL;
+	ExecutionEnvironment::_EXEC_ENV_ * exec_env = nullptr;
 
 	if( EXEC_ENV_CACHE.nonempty() )
 	{
@@ -89,9 +89,9 @@ ExecutionEnvironment::_EXEC_ENV_ * ExecutionEnvironment::newENV()
 
 void ExecutionEnvironment::freeENV(_EXEC_ENV_ * & exec_env)
 {
-	exec_env->PRIMITIVE_PROCESSOR = NULL;
+	exec_env->PRIMITIVE_PROCESSOR = nullptr;
 
-	exec_env->inEC = NULL;
+	exec_env->inEC = nullptr;
 	exec_env->inFORM.destroy();
 	exec_env->inCODE.destroy();
 	exec_env->inED.destroy();
@@ -115,13 +115,11 @@ void ExecutionEnvironment::freeENV(_EXEC_ENV_ * & exec_env)
 
 
 bool ExecutionEnvironment::run(
-		ListOfAPExecutionData & inEDS, const BFCode & aCode)
+		ListOfExecutionData & inEDS, const BFCode & aCode)
 {
-	ListOfAPExecutionData::iterator itED = inEDS.begin();
-	ListOfAPExecutionData::iterator endED = inEDS.end();
-	for( ; itED != endED ; ++itED )
+	for( const auto & itED : inEDS )
 	{
-		inED = (*itED);
+		inED = itED;
 		inFORM = inCODE = aCode;
 		if( not PRIMITIVE_PROCESSOR.run(inCODE->getOpOffset(), *this) )
 		{
@@ -144,14 +142,12 @@ bool ExecutionEnvironment::runFromOutputs(const BFCode & aCode)
 	}
 	else
 	{
-		ListOfAPExecutionData inEDS;
+		ListOfExecutionData inEDS;
 		inEDS.splice( outEDS );
 
-		ListOfAPExecutionData::iterator itED = inEDS.begin();
-		ListOfAPExecutionData::iterator endED = inEDS.end();
-		for( ; itED != endED ; ++itED )
+		for( const auto & itED : inEDS )
 		{
-			inED = (*itED);
+			inED = itED;
 			inFORM = inCODE = aCode;
 			if( not PRIMITIVE_PROCESSOR.run(inCODE->getOpOffset(), *this) )
 			{
@@ -163,7 +159,7 @@ bool ExecutionEnvironment::runFromOutputs(const BFCode & aCode)
 }
 
 
-bool ExecutionEnvironment::runFromOutputs(Operator * op, const BFCode & aCode)
+bool ExecutionEnvironment::runFromOutputs(const Operator * op, const BFCode & aCode)
 {
 	inFORM = inCODE = aCode;
 
@@ -175,14 +171,12 @@ bool ExecutionEnvironment::runFromOutputs(Operator * op, const BFCode & aCode)
 	}
 	else
 	{
-		ListOfAPExecutionData inEDS;
+		ListOfExecutionData inEDS;
 		inEDS.splice( outEDS );
 
-		ListOfAPExecutionData::iterator itED = inEDS.begin();
-		ListOfAPExecutionData::iterator endED = inEDS.end();
-		for( ; itED != endED ; ++itED )
+		for( const auto & itED : inEDS )
 		{
-			inED = (*itED);
+			inED = itED;
 			inFORM = inCODE = aCode;
 			if( not PRIMITIVE_PROCESSOR.run(inCODE->getOpOffset(), *this) )
 			{
@@ -199,7 +193,7 @@ bool ExecutionEnvironment::runFromOutputs(Operator * op, const BFCode & aCode)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExecutionEnvironment::resume(
-		ExecutionEnvironment & ENV, APExecutionData & anED)
+		ExecutionEnvironment & ENV, ExecutionData & anED)
 {
 	inEC = ENV.inEC;
 
@@ -207,10 +201,10 @@ bool ExecutionEnvironment::resume(
 
 	inED.makeWritable();
 
-	inED->mSTATEMENT_QUEUE.popTo( saveEXEC_LOCATION );
+	inED.popExecutionLocationTo( saveEXEC_LOCATION );
 	inEXEC_LOCATION = saveEXEC_LOCATION.to_ptr< ExecutionLocation >();
 
-	inED->mRID = inEXEC_LOCATION->mRID;
+	inED.setRID( inEXEC_LOCATION->mRID );
 
 	inFORM = inCODE = inEXEC_LOCATION->mCODE;
 
@@ -230,13 +224,13 @@ void ExecutionEnvironment::appendOutput(EvaluationEnvironment & ENV)
 }
 
 bool ExecutionEnvironment::extractOtherOutputED(
-		const APExecutionData & anED, ListOfAPExecutionData & listEDS)
+		const ExecutionData & anED, ListOfExecutionData & listEDS)
 {
-	avm_uint8_t flags = 0;
+	std::uint8_t flags = 0;
 
 	while( outEDS.nonempty() )
 	{
-		if( outEDS.first()->isTNEQ( anED ) )
+		if( outEDS.first().isTNEQ( anED ) )
 		{
 			flags = flags | 0x01;
 			listEDS.append( outEDS.pop_first() );
@@ -253,12 +247,12 @@ bool ExecutionEnvironment::extractOtherOutputED(
 
 /**
  * appendOutput
- * w.r.t. AVM_EXEC_ENDING_STATUS
+ * w.r.t. AVM_EXECUTION_ENDING_STATUS
  */
-void ExecutionEnvironment::appendOutput_wrtAEES(APExecutionData & anED)
+void ExecutionEnvironment::appendOutput_wrtAEES(ExecutionData & anED)
 {
 	// Verification of EXECUTION ENDING STATUS
-	switch( anED->getAEES() )
+	switch( anED.getAEES() )
 	{
 		case AEES_STMNT_NOTHING:
 		case AEES_STMNT_BREAK:
@@ -297,7 +291,7 @@ void ExecutionEnvironment::appendOutput_wrtAEES(APExecutionData & anED)
 
 			AVM_OS_FATAL_ERROR_EXIT
 				<< "Unexpected ENDIND EXECUTION STATUS :> "
-				<< RuntimeDef::strAEES( anED->mAEES ) << " !!!"
+				<< RuntimeDef::strAEES( anED.getAEES() ) << " !!!"
 				<< SEND_EXIT;
 
 			break;
@@ -307,7 +301,7 @@ void ExecutionEnvironment::appendOutput_wrtAEES(APExecutionData & anED)
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 				<< "Unexpected ENDIND EXECUTION STATUS :> "
-				<< RuntimeDef::strAEES( anED->mAEES ) << " !!!"
+				<< RuntimeDef::strAEES( anED.getAEES() ) << " !!!"
 				<< SEND_EXIT;
 
 			break;
@@ -319,22 +313,38 @@ void ExecutionEnvironment::appendOutput_wrtAEES(APExecutionData & anED)
 /**
  * appendOutput
  * mwset PROCESS_EVAL_STATE
- * mwset AVM_EXEC_ENDING_STATUS
+ * mwset AVM_EXECUTION_ENDING_STATUS
  */
+bool ExecutionEnvironment::mwsetPES(
+		const RuntimeID & aRID, PROCESS_EVAL_STATE aPES)
+{
+	for( auto & itED : outEDS )
+	{
+		itED.mwsetRuntimeFormState(aRID, aPES);
+	}
+
+	for( auto & itED : exitEDS )
+	{
+		itED.mwsetRuntimeFormState(aRID, aPES);
+	}
+
+	return( true );
+}
+
 
 bool ExecutionEnvironment::mwsetPES_mwsetAEES(
-		APExecutionData & anED, const RuntimeID & aRID,
+		ExecutionData & anED, const RuntimeID & aRID,
 		PROCESS_EVAL_STATE aPES)
 {
 	anED.mwsetRuntimeFormState(aRID, aPES);
 
-	anED->setAEES( RuntimeDef::PES_to_AEES(aPES, anED->getAEES()) );
+	anED.setAEES( RuntimeDef::PES_to_AEES(aPES, anED.getAEES()) );
 
 	return( true );
 }
 
 bool ExecutionEnvironment::appendOutput_mwsetPES_mwsetAEES(
-		APExecutionData & anED, const RuntimeID & aRID,
+		ExecutionData & anED, const RuntimeID & aRID,
 		PROCESS_EVAL_STATE aPES)
 {
 	if( mwsetPES_mwsetAEES(anED, aRID, aPES) )
@@ -351,11 +361,16 @@ bool ExecutionEnvironment::appendOutput_mwsetPES_mwsetAEES(
 		ExecutionEnvironment & ENV, const RuntimeID & aRID,
 		PROCESS_EVAL_STATE aPES)
 {
-	ListOfAPExecutionData::iterator itED = ENV.outEDS.begin();
-	ListOfAPExecutionData::iterator endED = ENV.outEDS.end();
-	for( ; itED != endED ; ++itED )
+	for( auto & itED : ENV.outEDS )
 	{
-		appendOutput_mwsetPES_mwsetAEES((*itED), aRID, aPES);
+		appendOutput_mwsetPES_mwsetAEES(itED, aRID, aPES);
+	}
+
+	for( auto & itED : ENV.exitEDS )
+	{
+		itED.mwsetRuntimeFormState(aRID, aPES);
+
+//		exitEDS.append( itED );
 	}
 
 	return( true );
@@ -364,14 +379,14 @@ bool ExecutionEnvironment::appendOutput_mwsetPES_mwsetAEES(
 
 
 bool ExecutionEnvironment::appendOutput_mwsetPES_mwsetAEES(
-		APExecutionData & anED, const RuntimeID & aRID,
+		ExecutionData & anED, const RuntimeID & aRID,
 		PROCESS_EVAL_STATE oldPES, PROCESS_EVAL_STATE aPES)
 {
-	if( anED->getRuntimeFormState(aRID) == oldPES )
+	if( anED.getRuntimeFormState(aRID) == oldPES )
 	{
 		anED.mwsetRuntimeFormState(aRID, aPES);
 
-		anED->setAEES( RuntimeDef::PES_to_AEES(aPES, anED->getAEES()) );
+		anED.setAEES( RuntimeDef::PES_to_AEES(aPES, anED.getAEES()) );
 	}
 
 	outEDS.append( anED );
@@ -383,11 +398,19 @@ bool ExecutionEnvironment::appendOutput_mwsetPES_mwsetAEES(
 		ExecutionEnvironment & ENV, const RuntimeID & aRID,
 		PROCESS_EVAL_STATE oldPES, PROCESS_EVAL_STATE aPES)
 {
-	ListOfAPExecutionData::iterator itED = ENV.outEDS.begin();
-	ListOfAPExecutionData::iterator endED = ENV.outEDS.end();
-	for( ; itED != endED ; ++itED )
+	for( auto & itED : ENV.outEDS )
 	{
-		appendOutput_mwsetPES_mwsetAEES( (*itED), aRID, oldPES, aPES );
+		appendOutput_mwsetPES_mwsetAEES( itED, aRID, oldPES, aPES );
+	}
+
+	for( auto & itED : ENV.exitEDS )
+	{
+		if( itED.getRuntimeFormState(aRID) == oldPES )
+		{
+			itED.mwsetRuntimeFormState(aRID, aPES);
+		}
+
+//		exitEDS.append( itED );
 	}
 
 	return( true );
@@ -396,18 +419,18 @@ bool ExecutionEnvironment::appendOutput_mwsetPES_mwsetAEES(
 
 
 bool ExecutionEnvironment::appendOutput_mwsetPES_mwsetAEES_mwsetRID(
-		APExecutionData & anED,
+		ExecutionData & anED,
 		const RuntimeID & currentRID, const RuntimeID & nextRID,
 		PROCESS_EVAL_STATE oldPES, PROCESS_EVAL_STATE aPES)
 {
-	if( anED->getRuntimeFormState(currentRID) == oldPES )
+	if( anED.getRuntimeFormState(currentRID) == oldPES )
 	{
 		anED.mwsetRuntimeFormState(currentRID, aPES);
 
-		anED->setAEES( RuntimeDef::PES_to_AEES(aPES, anED->getAEES()) );
+		anED.setAEES( RuntimeDef::PES_to_AEES(aPES, anED.getAEES()) );
 	}
 
-	anED->mRID = nextRID;
+	anED.setRID( nextRID );
 
 	outEDS.append( anED );
 
@@ -419,12 +442,22 @@ bool ExecutionEnvironment::appendOutput_mwsetPES_mwsetAEES_mwsetRID(
 		const RuntimeID & currentRID, const RuntimeID & nextRID,
 		PROCESS_EVAL_STATE oldPES, PROCESS_EVAL_STATE aPES)
 {
-	ListOfAPExecutionData::iterator itED = ENV.outEDS.begin();
-	ListOfAPExecutionData::iterator endED = ENV.outEDS.end();
-	for( ; itED != endED ; ++itED )
+	for( auto & itED : ENV.outEDS )
 	{
 		appendOutput_mwsetPES_mwsetAEES_mwsetRID(
-				(*itED), currentRID, nextRID, oldPES, aPES );
+				itED, currentRID, nextRID, oldPES, aPES );
+	}
+
+	for( auto & itED : ENV.exitEDS )
+	{
+		if( itED.getRuntimeFormState(currentRID) == oldPES )
+		{
+			itED.mwsetRuntimeFormState(currentRID, aPES);
+		}
+
+		itED.setRID( nextRID );
+
+//		exitEDS.append( itED );
 	}
 
 	return( true );
@@ -445,42 +478,34 @@ void ExecutionEnvironment::toStream(OutStream & os) const
 	//inEC->writeTraceAfterExec(os, TAB2, CHAR, EOL);
 
 	os << TAB << "outEDS:>  count : " << outEDS.size() << std::endl;
-	ListOfAPExecutionData::const_iterator itED = outEDS.begin();
-	ListOfAPExecutionData::const_iterator endED = outEDS.end();
-	for( ; itED != endED ; ++itED )
+	for( const auto & itED : outEDS )
 	{
-		os << TAB2 << "==>E[?] " << (*itED)->strStateConf()
-				<< " " << (*itED)->getRunnableElementTrace().str() << EOL;
+		os << TAB2 << "==>E[?] " << itED.strStateConf()
+				<< " " << itED.getRunnableElementTrace().str() << EOL;
 	}
 	os << std::flush;
 
 	os << TAB << "syncEDS:> count : " << syncEDS.size() << std::endl;
-	itED = syncEDS.begin();
-	endED = syncEDS.end();
-	for( ; itED != endED ; ++itED )
+	for( const auto & itED : syncEDS )
 	{
-		os << TAB2 << "==>E[?] " << (*itED)->strStateConf()
-				<< " " << (*itED)->getRunnableElementTrace().str() << EOL;
+		os << TAB2 << "==>E[?] " << itED.strStateConf()
+				<< " " << itED.getRunnableElementTrace().str() << EOL;
 	}
 	os << std::flush;
 
 	os << TAB << "irqEDS:>  count : " << irqEDS.size() << std::endl;
-	itED = irqEDS.begin();
-	endED = irqEDS.end();
-	for( ; itED != endED ; ++itED )
+	for( const auto & itED : irqEDS )
 	{
-		os << TAB2 << "==>E[?] " << (*itED)->strStateConf()
-				<< " " << (*itED)->getRunnableElementTrace().str() << EOL;
+		os << TAB2 << "==>E[?] " << itED.strStateConf()
+				<< " " << itED.getRunnableElementTrace().str() << EOL;
 	}
 	os << std::flush;
 
 	os << TAB << "failEDS:> count : " << failureEDS.size() << std::endl;
-	itED = failureEDS.begin();
-	endED = failureEDS.end();
-	for( ; itED != endED ; ++itED )
+	for( const auto & itED : failureEDS )
 	{
-		os << TAB2 << "==>E[?] " << (*itED)->strStateConf()
-				<< " " << (*itED)->getRunnableElementTrace().str() << EOL;
+		os << TAB2 << "==>E[?] " << itED.strStateConf()
+				<< " " << itED.getRunnableElementTrace().str() << EOL;
 	}
 
 	os << TAB << "}" << EOL_FLUSH;

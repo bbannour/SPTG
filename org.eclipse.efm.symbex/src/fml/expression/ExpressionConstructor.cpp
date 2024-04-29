@@ -15,8 +15,6 @@
 
 #include "ExpressionConstructor.h"
 
-#include <util/avm_string.h>
-
 #include <fml/executable/ExecutableLib.h>
 #include <fml/executable/ExecutableQuery.h>
 #include <fml/executable/ExecutableSystem.h>
@@ -120,27 +118,27 @@ BF ExpressionConstructor::newUDecimal(const std::string & aValue, char sep)
 
 
 BF ExpressionConstructor::newQualifiedIdentifier(
-		Machine * machine, const std::string & aNameID)
+		const Machine & machine, const std::string & aNameID)
 {
 	return( ExpressionConstructor::newQualifiedIdentifier(
-			OSS() << machine->getFullyQualifiedNameID() << '.' << aNameID ) );
+			OSS() << machine.getFullyQualifiedNameID() << '.' << aNameID ) );
 }
 
 // new instance of Element Access FQN-ID :> machine<fqn>.element<name-id>
 BF ExpressionConstructor::newQualifiedIdentifier(
-		Machine * machine, const ObjectElement * objElement)
+		const Machine & machine, const ObjectElement & objElement)
 {
 	return( ExpressionConstructor::newQualifiedIdentifier(
-			OSS() << machine->getFullyQualifiedNameID()
-					<< '.' << objElement->getNameID() ) );
+			OSS() << machine.getFullyQualifiedNameID()
+					<< '.' << objElement.getNameID() ) );
 }
 
 
 BF ExpressionConstructor::newQualifiedPositionalIdentifier(
-		Machine * machine, avm_offset_t aPositionOffset )
+		const Machine & machine, avm_offset_t aPositionOffset )
 {
 	return( BF(new QualifiedIdentifier(
-			machine->getFullyQualifiedNameID(), aPositionOffset ) ) );
+			machine.getFullyQualifiedNameID(), aPositionOffset ) ) );
 }
 
 
@@ -204,8 +202,8 @@ BF ExpressionConstructor::newExpr(const Configuration & aConfiguration,
 
 	else if( aTypeSpecifier.isTypedEnum() )
 	{
-		return( aTypeSpecifier.thisTypeSpecifier()->
-				as< EnumTypeSpecifier >()->getDataByNameID(aValue) );
+		return( aTypeSpecifier.thisTypeSpecifier()
+				.as< EnumTypeSpecifier >().getDataByNameID(aValue) );
 	}
 
 	return( BF::REF_NULL );
@@ -237,16 +235,16 @@ BF ExpressionConstructor::newExprMachine(
 	return( BF::REF_NULL );
 }
 
-BF ExpressionConstructor::newExprRuntine(
+BF ExpressionConstructor::newExprRuntime(
 		const Configuration & aConfiguration, const std::string & aValue)
 {
 	RuntimeQuery RQuery( aConfiguration );
 
-	const RuntimeID & foundRuntine = RQuery.getRuntineByQualifiedNameID(aValue);
+	const RuntimeID & foundRuntime = RQuery.getRuntimeByQualifiedNameID(aValue);
 
-	if( foundRuntine.valid() )
+	if( foundRuntime.valid() )
 	{
-		return( foundRuntine );
+		return( foundRuntime );
 	}
 	else if( aValue == RuntimeLib::RID_ENVIRONMENT.getNameID() )
 	{
@@ -277,7 +275,7 @@ BF ExpressionConstructor::addExpr(const BF & arg, avm_integer_t val)
 		{
 			BF res = arg;
 			res.makeWritable();
-			res.to_ptr< Integer >()->addExpr(val);
+			res.to< Integer >().addExpr(val);
 
 			return( res );
 		}
@@ -286,7 +284,7 @@ BF ExpressionConstructor::addExpr(const BF & arg, avm_integer_t val)
 		{
 			BF res = arg;
 			res.makeWritable();
-			res.to_ptr< Rational >()->addExpr(val);
+			res.to< Rational >().addExpr(val);
 
 			return( res );
 		}
@@ -295,7 +293,7 @@ BF ExpressionConstructor::addExpr(const BF & arg, avm_integer_t val)
 		{
 			BF res = arg;
 			res.makeWritable();
-			res.to_ptr< Float >()->addExpr(val);
+			res.to< Float >().addExpr(val);
 
 			return( res );
 		}
@@ -312,7 +310,7 @@ BF ExpressionConstructor::addExpr(const BF & arg, avm_integer_t val)
 // FOR ALL EXPRESSION IMPLEMENTATION
 ////////////////////////////////////////////////////////////////////////////////
 
-BF ExpressionConstructor::newExpr(Operator * anOperator, const BF & arg)
+BF ExpressionConstructor::newExpr(const Operator * anOperator, const BF & arg)
 {
 	switch( anOperator->getAvmOpCode() )
 	{
@@ -344,7 +342,7 @@ BF ExpressionConstructor::newExpr(Operator * anOperator, const BF & arg)
 }
 
 BF ExpressionConstructor::newExpr(
-		Operator * anOperator, const BF & arg1, const BF & arg2)
+		const Operator * anOperator, const BF & arg1, const BF & arg2)
 {
 	switch( anOperator->getAvmOpCode() )
 	{
@@ -357,9 +355,9 @@ BF ExpressionConstructor::newExpr(
 			return( orExpr(arg1, arg2) );
 		}
 
-		case AVM_OPCODE_EXIST:
+		case AVM_OPCODE_EXISTS:
 		{
-			return( existExpr(arg1, arg2) );
+			return( existsExpr(arg1, arg2) );
 		}
 		case AVM_OPCODE_FORALL:
 		{
@@ -432,43 +430,51 @@ BF ExpressionConstructor::newExpr(
 }
 
 
-BF ExpressionConstructor::newExpr(
-		Operator * anOperator, const AvmCode::this_container_type & listOfArg)
+BF ExpressionConstructor::newExpr(const Operator * anOperator,
+		const AvmCode::OperandCollectionT & operands)
 {
 	switch( anOperator->getAvmOpCode() )
 	{
 		case AVM_OPCODE_AND:
 		{
-			return( andExpr(listOfArg) );
+			return( andExpr(operands) );
 		}
 		case AVM_OPCODE_OR:
 		{
-			return( orExpr(listOfArg) );
+			return( orExpr(operands) );
 		}
 
-		case AVM_OPCODE_EXIST:
+		case AVM_OPCODE_EXISTS:
 		{
-			return( existExpr(listOfArg) );
+			return( existsExpr(operands) );
 		}
 		case AVM_OPCODE_FORALL:
 		{
-			return( forallExpr(listOfArg) );
+			return( forallExpr(operands) );
 		}
 
 		case AVM_OPCODE_PLUS:
 		{
-			return( addExpr(listOfArg) );
+			return( addExpr(operands) );
 		}
 		case AVM_OPCODE_MULT:
 		{
-			return( multExpr(listOfArg) );
+			return( multExpr(operands) );
 		}
 
 		default:
 		{
-			return( newCode(anOperator, listOfArg) );
+			return( newCode(anOperator, operands) );
 		}
 	}
+}
+
+
+BF ExpressionConstructor::assignOpExpr(
+		const Operator * anOperator, const BF & arg1, const BF & arg2)
+{
+	return( newCode(OperatorManager::OPERATOR_ASSIGN_OP, arg1,
+			newCode(anOperator, arg2)) );
 }
 
 

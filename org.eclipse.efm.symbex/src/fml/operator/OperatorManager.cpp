@@ -32,10 +32,12 @@ BFVector OperatorManager::TABLE_OF_OPERATOR;
 
 /*
  *******************************************************************************
- * AVM NOP STATEMENT
+ * AVM NULL / NOP STATEMENT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_NOP = NULL;
+Operator * OperatorManager::OPERATOR_NULL = nullptr;
+
+Operator * OperatorManager::OPERATOR_NOP  = nullptr;
 
 
 /*
@@ -43,18 +45,18 @@ Operator * OperatorManager::OPERATOR_NOP = NULL;
  * AVM META STATEMENT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_INFORMAL = NULL;
+Operator * OperatorManager::OPERATOR_INFORMAL = nullptr;
 
-Operator * OperatorManager::OPERATOR_TRACE = NULL;
+Operator * OperatorManager::OPERATOR_TRACE = nullptr;
 
-Operator * OperatorManager::OPERATOR_DEBUG = NULL;
+Operator * OperatorManager::OPERATOR_DEBUG = nullptr;
 
-Operator * OperatorManager::OPERATOR_COMMENT = NULL;
+Operator * OperatorManager::OPERATOR_COMMENT = nullptr;
 
-Operator * OperatorManager::OPERATOR_QUOTE = NULL;
+Operator * OperatorManager::OPERATOR_QUOTE = nullptr;
 
-Operator * OperatorManager::OPERATOR_META_EVAL = NULL;
-Operator * OperatorManager::OPERATOR_META_RUN = NULL;
+Operator * OperatorManager::OPERATOR_META_EVAL = nullptr;
+Operator * OperatorManager::OPERATOR_META_RUN = nullptr;
 
 
 /*
@@ -62,7 +64,7 @@ Operator * OperatorManager::OPERATOR_META_RUN = NULL;
  * AVM UFI STATEMENT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_UFI = NULL;
+Operator * OperatorManager::OPERATOR_UFI = nullptr;
 
 
 /*
@@ -70,87 +72,99 @@ Operator * OperatorManager::OPERATOR_UFI = NULL;
  * AVM FORM CONSTRUCTOR STATEMENT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_CTOR = NULL;
+Operator * OperatorManager::OPERATOR_CTOR = nullptr;
+
+/*
+ *******************************************************************************
+ * AVM MACHINE SELF SUPER
+ *******************************************************************************
+ */
+Operator * OperatorManager::OPERATOR_SELF = nullptr;
+
+Operator * OperatorManager::OPERATOR_SUPER = nullptr;
 
 /*
  *******************************************************************************
  * AVM MACHINE MANAGING
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_CONTEXT_SWITCHER = NULL;
+Operator * OperatorManager::OPERATOR_CONTEXT_SWITCHER = nullptr;
 
-Operator * OperatorManager::OPERATOR_INIT = NULL;
-Operator * OperatorManager::OPERATOR_FINAL = NULL;
-Operator * OperatorManager::OPERATOR_DESTROY = NULL;
+Operator * OperatorManager::OPERATOR_PROCESS_STATE_GET = nullptr;
+Operator * OperatorManager::OPERATOR_PROCESS_STATE_SET = nullptr;
 
-Operator * OperatorManager::OPERATOR_START = NULL;
-Operator * OperatorManager::OPERATOR_RESTART = NULL;
-Operator * OperatorManager::OPERATOR_STOP = NULL;
+Operator * OperatorManager::OPERATOR_INIT = nullptr;
+Operator * OperatorManager::OPERATOR_FINAL = nullptr;
+Operator * OperatorManager::OPERATOR_DESTROY = nullptr;
 
-Operator * OperatorManager::OPERATOR_WAIT = NULL;
+Operator * OperatorManager::OPERATOR_START = nullptr;
+Operator * OperatorManager::OPERATOR_RESTART = nullptr;
+Operator * OperatorManager::OPERATOR_STOP = nullptr;
 
-Operator * OperatorManager::OPERATOR_SUSPEND = NULL;
-Operator * OperatorManager::OPERATOR_RESUME = NULL;
+Operator * OperatorManager::OPERATOR_WAIT = nullptr;
 
-Operator * OperatorManager::OPERATOR_IENABLE_INVOKE = NULL;
-Operator * OperatorManager::OPERATOR_ENABLE_INVOKE = NULL;
-Operator * OperatorManager::OPERATOR_ENABLE_SET = NULL;
+Operator * OperatorManager::OPERATOR_SUSPEND = nullptr;
+Operator * OperatorManager::OPERATOR_RESUME = nullptr;
 
-Operator * OperatorManager::OPERATOR_IDISABLE_INVOKE = NULL;
-Operator * OperatorManager::OPERATOR_DISABLE_INVOKE = NULL;
-Operator * OperatorManager::OPERATOR_DISABLE_SET = NULL;
-Operator * OperatorManager::OPERATOR_DISABLE_CHILD = NULL;
-Operator * OperatorManager::OPERATOR_DISABLE_SELF = NULL;
-Operator * OperatorManager::OPERATOR_DISABLE_SELVES = NULL;
+Operator * OperatorManager::OPERATOR_IENABLE_INVOKE = nullptr;
+Operator * OperatorManager::OPERATOR_ENABLE_INVOKE = nullptr;
+Operator * OperatorManager::OPERATOR_ENABLE_SET = nullptr;
 
-Operator * OperatorManager::OPERATOR_IABORT_INVOKE = NULL;
-Operator * OperatorManager::OPERATOR_ABORT_INVOKE = NULL;
-Operator * OperatorManager::OPERATOR_ABORT_SET = NULL;
-Operator * OperatorManager::OPERATOR_ABORT_CHILD = NULL;
-Operator * OperatorManager::OPERATOR_ABORT_SELF = NULL;
-Operator * OperatorManager::OPERATOR_ABORT_SELVES = NULL;
+Operator * OperatorManager::OPERATOR_IDISABLE_INVOKE = nullptr;
+Operator * OperatorManager::OPERATOR_DISABLE_INVOKE = nullptr;
+Operator * OperatorManager::OPERATOR_DISABLE_SET = nullptr;
+Operator * OperatorManager::OPERATOR_DISABLE_CHILD = nullptr;
+Operator * OperatorManager::OPERATOR_DISABLE_SELF = nullptr;
+Operator * OperatorManager::OPERATOR_DISABLE_SELVES = nullptr;
 
-Operator * OperatorManager::OPERATOR_HISTORY_CLEAR = NULL;
-Operator * OperatorManager::OPERATOR_DEEP_HISTORY_INVOKE = NULL;
-Operator * OperatorManager::OPERATOR_SHALLOW_HISTORY_INVOKE = NULL;
+Operator * OperatorManager::OPERATOR_IABORT_INVOKE = nullptr;
+Operator * OperatorManager::OPERATOR_ABORT_INVOKE = nullptr;
+Operator * OperatorManager::OPERATOR_ABORT_SET = nullptr;
+Operator * OperatorManager::OPERATOR_ABORT_CHILD = nullptr;
+Operator * OperatorManager::OPERATOR_ABORT_SELF = nullptr;
+Operator * OperatorManager::OPERATOR_ABORT_SELVES = nullptr;
+
+Operator * OperatorManager::OPERATOR_HISTORY_CLEAR = nullptr;
+Operator * OperatorManager::OPERATOR_DEEP_HISTORY_INVOKE = nullptr;
+Operator * OperatorManager::OPERATOR_SHALLOW_HISTORY_INVOKE = nullptr;
 
 
-Operator * OperatorManager::OPERATOR_IRUN = NULL;
-Operator * OperatorManager::OPERATOR_RUN = NULL;
-Operator * OperatorManager::OPERATOR_RTC = NULL;
+Operator * OperatorManager::OPERATOR_IRUN = nullptr;
+Operator * OperatorManager::OPERATOR_RUN = nullptr;
+Operator * OperatorManager::OPERATOR_RTC = nullptr;
 
-Operator * OperatorManager::OPERATOR_INVOKE_NEW = NULL;
+Operator * OperatorManager::OPERATOR_INVOKE_NEW = nullptr;
 
-Operator * OperatorManager::OPERATOR_INVOKE_ROUTINE = NULL;
+Operator * OperatorManager::OPERATOR_INVOKE_ROUTINE = nullptr;
 
-Operator * OperatorManager::OPERATOR_INVOKE_TRANSITION = NULL;
+Operator * OperatorManager::OPERATOR_INVOKE_TRANSITION = nullptr;
 
-Operator * OperatorManager::OPERATOR_INVOKE_METHOD = NULL;
-Operator * OperatorManager::OPERATOR_INVOKE_PROGRAM = NULL;
-Operator * OperatorManager::OPERATOR_INVOKE_FUNCTION = NULL;
+Operator * OperatorManager::OPERATOR_INVOKE_METHOD = nullptr;
+Operator * OperatorManager::OPERATOR_INVOKE_PROGRAM = nullptr;
+Operator * OperatorManager::OPERATOR_INVOKE_FUNCTION = nullptr;
 
-Operator * OperatorManager::OPERATOR_INVOKE_LAMBDA_APPLY = NULL;
-Operator * OperatorManager::OPERATOR_INVOKE_LAMBDA_LET = NULL;
+Operator * OperatorManager::OPERATOR_INVOKE_LAMBDA_APPLY = nullptr;
+Operator * OperatorManager::OPERATOR_INVOKE_LAMBDA_LET = nullptr;
 
-Operator * OperatorManager::OPERATOR_GOTO = NULL;
+Operator * OperatorManager::OPERATOR_GOTO = nullptr;
 
-Operator * OperatorManager::OPERATOR_SCHEDULE_INVOKE = NULL;
-Operator * OperatorManager::OPERATOR_SCHEDULE_GET = NULL;
-Operator * OperatorManager::OPERATOR_SCHEDULE_IN = NULL;
-Operator * OperatorManager::OPERATOR_SCHEDULE_SET = NULL;
+Operator * OperatorManager::OPERATOR_SCHEDULE_INVOKE = nullptr;
+Operator * OperatorManager::OPERATOR_SCHEDULE_GET = nullptr;
+Operator * OperatorManager::OPERATOR_SCHEDULE_IN = nullptr;
+Operator * OperatorManager::OPERATOR_SCHEDULE_SET = nullptr;
 
-Operator * OperatorManager::OPERATOR_DEFER_INVOKE = NULL;
-Operator * OperatorManager::OPERATOR_DEFER_GET = NULL;
-Operator * OperatorManager::OPERATOR_DEFER_SET = NULL;
+Operator * OperatorManager::OPERATOR_DEFER_INVOKE = nullptr;
+Operator * OperatorManager::OPERATOR_DEFER_GET = nullptr;
+Operator * OperatorManager::OPERATOR_DEFER_SET = nullptr;
 
-Operator * OperatorManager::OPERATOR_FORK = NULL;
-Operator * OperatorManager::OPERATOR_JOIN = NULL;
+Operator * OperatorManager::OPERATOR_FORK = nullptr;
+Operator * OperatorManager::OPERATOR_JOIN = nullptr;
 
-Operator * OperatorManager::OPERATOR_INPUT_ENABLED = NULL;
+Operator * OperatorManager::OPERATOR_INPUT_ENABLED = nullptr;
 
-Operator * OperatorManager::OPERATOR_RDV = NULL;
+Operator * OperatorManager::OPERATOR_RDV = nullptr;
 
-Operator * OperatorManager::OPERATOR_SYNCHRONIZE = NULL;
+Operator * OperatorManager::OPERATOR_SYNCHRONIZE = nullptr;
 
 
 /*
@@ -158,13 +172,13 @@ Operator * OperatorManager::OPERATOR_SYNCHRONIZE = NULL;
  * AVM DATA STATUS
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_STATUS_WAS = NULL;
-Operator * OperatorManager::OPERATOR_STATUS_IS = NULL;
-Operator * OperatorManager::OPERATOR_STATUS_BEING = NULL;
-Operator * OperatorManager::OPERATOR_STATUS_WILL = NULL;
+Operator * OperatorManager::OPERATOR_STATUS_WAS = nullptr;
+Operator * OperatorManager::OPERATOR_STATUS_IS = nullptr;
+Operator * OperatorManager::OPERATOR_STATUS_BEING = nullptr;
+Operator * OperatorManager::OPERATOR_STATUS_WILL = nullptr;
 
-Operator * OperatorManager::OPERATOR_CHANGED = NULL;
-Operator * OperatorManager::OPERATOR_CHANGED_TO = NULL;
+Operator * OperatorManager::OPERATOR_CHANGED = nullptr;
+Operator * OperatorManager::OPERATOR_CHANGED_TO = nullptr;
 
 
 /*
@@ -172,42 +186,42 @@ Operator * OperatorManager::OPERATOR_CHANGED_TO = NULL;
  * AVM PROGRAM SCHEDULING
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_ASYNCHRONOUS = NULL;
-Operator * OperatorManager::OPERATOR_STRONG_SYNCHRONOUS = NULL;
-Operator * OperatorManager::OPERATOR_WEAK_SYNCHRONOUS = NULL;
+Operator * OperatorManager::OPERATOR_ASYNCHRONOUS = nullptr;
+Operator * OperatorManager::OPERATOR_STRONG_SYNCHRONOUS = nullptr;
+Operator * OperatorManager::OPERATOR_WEAK_SYNCHRONOUS = nullptr;
 
-Operator * OperatorManager::OPERATOR_INTERLEAVING = NULL;
-Operator * OperatorManager::OPERATOR_PARTIAL_ORDER_REDUCTION = NULL;
+Operator * OperatorManager::OPERATOR_INTERLEAVING = nullptr;
+Operator * OperatorManager::OPERATOR_PARTIAL_ORDER = nullptr;
 
-Operator * OperatorManager::OPERATOR_PARALLEL = NULL;
+Operator * OperatorManager::OPERATOR_PARALLEL = nullptr;
 
 // Optimized version of concurrency for RDV synchronization
-Operator * OperatorManager::OPERATOR_RDV_ASYNCHRONOUS = NULL;
-Operator * OperatorManager::OPERATOR_RDV_STRONG_SYNCHRONOUS = NULL;
-Operator * OperatorManager::OPERATOR_RDV_WEAK_SYNCHRONOUS = NULL;
+Operator * OperatorManager::OPERATOR_RDV_ASYNCHRONOUS = nullptr;
+Operator * OperatorManager::OPERATOR_RDV_STRONG_SYNCHRONOUS = nullptr;
+Operator * OperatorManager::OPERATOR_RDV_WEAK_SYNCHRONOUS = nullptr;
 
-Operator * OperatorManager::OPERATOR_RDV_INTERLEAVING = NULL;
-Operator * OperatorManager::OPERATOR_RDV_PARTIAL_ORDER_REDUCTION = NULL;
+Operator * OperatorManager::OPERATOR_RDV_INTERLEAVING = nullptr;
+Operator * OperatorManager::OPERATOR_RDV_PARTIAL_ORDER = nullptr;
 
-Operator * OperatorManager::OPERATOR_RDV_PARALLEL = NULL;
+Operator * OperatorManager::OPERATOR_RDV_PARALLEL = nullptr;
 
 
-Operator * OperatorManager::OPERATOR_EXCLUSIVE = NULL;
-Operator * OperatorManager::OPERATOR_NONDETERMINISM = NULL;
+Operator * OperatorManager::OPERATOR_EXCLUSIVE = nullptr;
+Operator * OperatorManager::OPERATOR_NONDETERMINISM = nullptr;
 
-Operator * OperatorManager::OPERATOR_PRIOR_GT = NULL;
-Operator * OperatorManager::OPERATOR_PRIOR_LT = NULL;
+Operator * OperatorManager::OPERATOR_PRIOR_GT = nullptr;
+Operator * OperatorManager::OPERATOR_PRIOR_LT = nullptr;
 
-Operator * OperatorManager::OPERATOR_SCHEDULE_AND_THEN = NULL;
-Operator * OperatorManager::OPERATOR_SCHEDULE_OR_ELSE = NULL;
+Operator * OperatorManager::OPERATOR_SCHEDULE_AND_THEN = nullptr;
+Operator * OperatorManager::OPERATOR_SCHEDULE_OR_ELSE = nullptr;
 
-Operator * OperatorManager::OPERATOR_ATOMIC_SEQUENCE = NULL;
+Operator * OperatorManager::OPERATOR_ATOMIC_SEQUENCE = nullptr;
 
-Operator * OperatorManager::OPERATOR_SEQUENCE = NULL;
-Operator * OperatorManager::OPERATOR_SEQUENCE_SIDE = NULL;
-Operator * OperatorManager::OPERATOR_SEQUENCE_WEAK = NULL;
+Operator * OperatorManager::OPERATOR_SEQUENCE = nullptr;
+Operator * OperatorManager::OPERATOR_SEQUENCE_SIDE = nullptr;
+Operator * OperatorManager::OPERATOR_SEQUENCE_WEAK = nullptr;
 
-Operator * OperatorManager::OPERATOR_PRODUCT = NULL;
+Operator * OperatorManager::OPERATOR_PRODUCT = nullptr;
 
 
 /*
@@ -215,7 +229,7 @@ Operator * OperatorManager::OPERATOR_PRODUCT = NULL;
  * AVM BUFFER MANAGING
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_UPDATE_BUFFER = NULL;
+Operator * OperatorManager::OPERATOR_UPDATE_BUFFER = nullptr;
 
 
 /*
@@ -223,9 +237,9 @@ Operator * OperatorManager::OPERATOR_UPDATE_BUFFER = NULL;
  * LAMBDA STATEMENT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_APPLY = NULL;
+Operator * OperatorManager::OPERATOR_APPLY = nullptr;
 
-Operator * OperatorManager::OPERATOR_LAMBDA = NULL;
+Operator * OperatorManager::OPERATOR_LAMBDA = nullptr;
 
 
 /*
@@ -233,7 +247,7 @@ Operator * OperatorManager::OPERATOR_LAMBDA = NULL;
  * LET STATEMENT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_LET = NULL;
+Operator * OperatorManager::OPERATOR_LET = nullptr;
 
 
 /*
@@ -241,73 +255,73 @@ Operator * OperatorManager::OPERATOR_LET = NULL;
  * AVM PRIMITIVE STATEMENT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_ASSIGN = NULL;
-Operator * OperatorManager::OPERATOR_ASSIGN_AFTER = NULL;
-Operator * OperatorManager::OPERATOR_ASSIGN_OP = NULL;
-Operator * OperatorManager::OPERATOR_ASSIGN_OP_AFTER = NULL;
-Operator * OperatorManager::OPERATOR_ASSIGN_REF = NULL;
-Operator * OperatorManager::OPERATOR_ASSIGN_MACRO = NULL;
+Operator * OperatorManager::OPERATOR_ASSIGN = nullptr;
+Operator * OperatorManager::OPERATOR_ASSIGN_AFTER = nullptr;
+Operator * OperatorManager::OPERATOR_ASSIGN_OP = nullptr;
+Operator * OperatorManager::OPERATOR_ASSIGN_OP_AFTER = nullptr;
+Operator * OperatorManager::OPERATOR_ASSIGN_REF = nullptr;
+Operator * OperatorManager::OPERATOR_ASSIGN_MACRO = nullptr;
 
-Operator * OperatorManager::OPERATOR_ASSIGN_NEWFRESH = NULL;
+Operator * OperatorManager::OPERATOR_ASSIGN_NEWFRESH = nullptr;
 
-Operator * OperatorManager::OPERATOR_ASSIGN_RESET = NULL;
-
-
-Operator * OperatorManager::OPERATOR_GUARD = NULL;
-Operator * OperatorManager::OPERATOR_TIMED_GUARD = NULL;
-
-Operator * OperatorManager::OPERATOR_EVENT = NULL;
-Operator * OperatorManager::OPERATOR_CHECK_SAT = NULL;
+Operator * OperatorManager::OPERATOR_ASSIGN_RESET = nullptr;
 
 
-Operator * OperatorManager::OPERATOR_INPUT = NULL;
-Operator * OperatorManager::OPERATOR_INPUT_FROM = NULL;
+Operator * OperatorManager::OPERATOR_GUARD = nullptr;
+Operator * OperatorManager::OPERATOR_TIMED_GUARD = nullptr;
 
-Operator * OperatorManager::OPERATOR_INPUT_SAVE = NULL;
+Operator * OperatorManager::OPERATOR_EVENT = nullptr;
+Operator * OperatorManager::OPERATOR_CHECK_SAT = nullptr;
+
+
+Operator * OperatorManager::OPERATOR_INPUT = nullptr;
+Operator * OperatorManager::OPERATOR_INPUT_FROM = nullptr;
+
+Operator * OperatorManager::OPERATOR_INPUT_SAVE = nullptr;
 
 // Optimized version of INPUT
-Operator * OperatorManager::OPERATOR_INPUT_VAR = NULL;
-Operator * OperatorManager::OPERATOR_INPUT_FLOW = NULL;
+Operator * OperatorManager::OPERATOR_INPUT_VAR = nullptr;
+Operator * OperatorManager::OPERATOR_INPUT_FLOW = nullptr;
 
-Operator * OperatorManager::OPERATOR_INPUT_ENV = NULL;
-Operator * OperatorManager::OPERATOR_INPUT_BUFFER = NULL;
-Operator * OperatorManager::OPERATOR_INPUT_RDV = NULL;
-Operator * OperatorManager::OPERATOR_INPUT_BROADCAST = NULL;
-Operator * OperatorManager::OPERATOR_INPUT_DELEGATE = NULL;
+Operator * OperatorManager::OPERATOR_INPUT_ENV = nullptr;
+Operator * OperatorManager::OPERATOR_INPUT_BUFFER = nullptr;
+Operator * OperatorManager::OPERATOR_INPUT_RDV = nullptr;
+Operator * OperatorManager::OPERATOR_INPUT_BROADCAST = nullptr;
+Operator * OperatorManager::OPERATOR_INPUT_DELEGATE = nullptr;
 
 
-Operator * OperatorManager::OPERATOR_OUTPUT = NULL;
-Operator * OperatorManager::OPERATOR_OUTPUT_TO = NULL;
+Operator * OperatorManager::OPERATOR_OUTPUT = nullptr;
+Operator * OperatorManager::OPERATOR_OUTPUT_TO = nullptr;
 
 // Optimized version of OUTPUT
-Operator * OperatorManager::OPERATOR_OUTPUT_VAR = NULL;
-Operator * OperatorManager::OPERATOR_OUTPUT_FLOW = NULL;
+Operator * OperatorManager::OPERATOR_OUTPUT_VAR = nullptr;
+Operator * OperatorManager::OPERATOR_OUTPUT_FLOW = nullptr;
 
-Operator * OperatorManager::OPERATOR_OUTPUT_ENV = NULL;
-Operator * OperatorManager::OPERATOR_OUTPUT_BUFFER = NULL;
-Operator * OperatorManager::OPERATOR_OUTPUT_RDV = NULL;
-Operator * OperatorManager::OPERATOR_OUTPUT_BROADCAST = NULL;
-Operator * OperatorManager::OPERATOR_OUTPUT_DELEGATE = NULL;
-
-
-Operator * OperatorManager::OPERATOR_PRESENT = NULL;
-Operator * OperatorManager::OPERATOR_ABSENT = NULL;
+Operator * OperatorManager::OPERATOR_OUTPUT_ENV = nullptr;
+Operator * OperatorManager::OPERATOR_OUTPUT_BUFFER = nullptr;
+Operator * OperatorManager::OPERATOR_OUTPUT_RDV = nullptr;
+Operator * OperatorManager::OPERATOR_OUTPUT_BROADCAST = nullptr;
+Operator * OperatorManager::OPERATOR_OUTPUT_DELEGATE = nullptr;
 
 
-Operator * OperatorManager::OPERATOR_IF = NULL;
-Operator * OperatorManager::OPERATOR_IFE = NULL;
+Operator * OperatorManager::OPERATOR_PRESENT = nullptr;
+Operator * OperatorManager::OPERATOR_ABSENT = nullptr;
 
-Operator * OperatorManager::OPERATOR_FOR = NULL;
-Operator * OperatorManager::OPERATOR_FOREACH = NULL;
-Operator * OperatorManager::OPERATOR_WHILE_DO = NULL;
-Operator * OperatorManager::OPERATOR_DO_WHILE = NULL;
 
-Operator * OperatorManager::OPERATOR_BREAK = NULL;
-Operator * OperatorManager::OPERATOR_CONTINUE = NULL;
-Operator * OperatorManager::OPERATOR_RETURN = NULL;
-Operator * OperatorManager::OPERATOR_EXIT = NULL;
+Operator * OperatorManager::OPERATOR_IF = nullptr;
+Operator * OperatorManager::OPERATOR_IFE = nullptr;
 
-Operator * OperatorManager::OPERATOR_STEP_MARK = NULL;
+Operator * OperatorManager::OPERATOR_FOR = nullptr;
+Operator * OperatorManager::OPERATOR_FOREACH = nullptr;
+Operator * OperatorManager::OPERATOR_WHILE_DO = nullptr;
+Operator * OperatorManager::OPERATOR_DO_WHILE = nullptr;
+
+Operator * OperatorManager::OPERATOR_BREAK = nullptr;
+Operator * OperatorManager::OPERATOR_CONTINUE = nullptr;
+Operator * OperatorManager::OPERATOR_RETURN = nullptr;
+Operator * OperatorManager::OPERATOR_EXIT = nullptr;
+
+Operator * OperatorManager::OPERATOR_STEP_MARK = nullptr;
 
 
 /*
@@ -315,25 +329,27 @@ Operator * OperatorManager::OPERATOR_STEP_MARK = NULL;
  * AVM PREDICAT EXPRESSION
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_EXIST = NULL;
-Operator * OperatorManager::OPERATOR_FORALL = NULL;
+Operator * OperatorManager::OPERATOR_EXISTS = nullptr;
+Operator * OperatorManager::OPERATOR_FORALL = nullptr;
 
-Operator * OperatorManager::OPERATOR_NOT = NULL;
+Operator * OperatorManager::OPERATOR_NOT = nullptr;
 
-Operator * OperatorManager::OPERATOR_AND = NULL;
-Operator * OperatorManager::OPERATOR_AND_THEN = NULL;
+Operator * OperatorManager::OPERATOR_AND = nullptr;
+Operator * OperatorManager::OPERATOR_AND_THEN = nullptr;
 
-Operator * OperatorManager::OPERATOR_NAND = NULL;
+Operator * OperatorManager::OPERATOR_NAND = nullptr;
 
-Operator * OperatorManager::OPERATOR_XAND = NULL;
+Operator * OperatorManager::OPERATOR_XAND = nullptr;
 
-Operator * OperatorManager::OPERATOR_OR = NULL;
-Operator * OperatorManager::OPERATOR_OR_ELSE = NULL;
+Operator * OperatorManager::OPERATOR_OR = nullptr;
+Operator * OperatorManager::OPERATOR_OR_ELSE = nullptr;
 
-Operator * OperatorManager::OPERATOR_NOR = NULL;
+Operator * OperatorManager::OPERATOR_NOR = nullptr;
 
-Operator * OperatorManager::OPERATOR_XOR = NULL;
-Operator * OperatorManager::OPERATOR_XNOR = NULL;
+Operator * OperatorManager::OPERATOR_XOR = nullptr;
+Operator * OperatorManager::OPERATOR_XNOR = nullptr;
+
+Operator * OperatorManager::OPERATOR_IMPLIES = nullptr;
 
 
 /*
@@ -341,16 +357,16 @@ Operator * OperatorManager::OPERATOR_XNOR = NULL;
  * AVM COMPARISON EXPRESSION
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_EQ = NULL;
-Operator * OperatorManager::OPERATOR_NEQ = NULL;
+Operator * OperatorManager::OPERATOR_EQ = nullptr;
+Operator * OperatorManager::OPERATOR_NEQ = nullptr;
 
-Operator * OperatorManager::OPERATOR_SEQ = NULL;
-Operator * OperatorManager::OPERATOR_NSEQ = NULL;
+Operator * OperatorManager::OPERATOR_SEQ = nullptr;
+Operator * OperatorManager::OPERATOR_NSEQ = nullptr;
 
-Operator * OperatorManager::OPERATOR_LT = NULL;
-Operator * OperatorManager::OPERATOR_LTE = NULL;
-Operator * OperatorManager::OPERATOR_GT = NULL;
-Operator * OperatorManager::OPERATOR_GTE = NULL;
+Operator * OperatorManager::OPERATOR_LT = nullptr;
+Operator * OperatorManager::OPERATOR_LTE = nullptr;
+Operator * OperatorManager::OPERATOR_GT = nullptr;
+Operator * OperatorManager::OPERATOR_GTE = nullptr;
 
 
 
@@ -359,14 +375,14 @@ Operator * OperatorManager::OPERATOR_GTE = NULL;
  * AVM BITWISE EXPRESSION
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_BNOT = NULL;
+Operator * OperatorManager::OPERATOR_BNOT = nullptr;
 
-Operator * OperatorManager::OPERATOR_BAND = NULL;
-Operator * OperatorManager::OPERATOR_BOR = NULL;
-Operator * OperatorManager::OPERATOR_BXOR = NULL;
+Operator * OperatorManager::OPERATOR_BAND = nullptr;
+Operator * OperatorManager::OPERATOR_BOR = nullptr;
+Operator * OperatorManager::OPERATOR_BXOR = nullptr;
 
-Operator * OperatorManager::OPERATOR_LSHIFT = NULL;
-Operator * OperatorManager::OPERATOR_RSHIFT = NULL;
+Operator * OperatorManager::OPERATOR_LSHIFT = nullptr;
+Operator * OperatorManager::OPERATOR_RSHIFT = nullptr;
 
 
 /*
@@ -374,18 +390,18 @@ Operator * OperatorManager::OPERATOR_RSHIFT = NULL;
  * AVM ARITHMETIC EXPRESSION
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_PLUS = NULL;
-Operator * OperatorManager::OPERATOR_MINUS = NULL;
-Operator * OperatorManager::OPERATOR_UMINUS = NULL;
+Operator * OperatorManager::OPERATOR_PLUS = nullptr;
+Operator * OperatorManager::OPERATOR_MINUS = nullptr;
+Operator * OperatorManager::OPERATOR_UMINUS = nullptr;
 
-Operator * OperatorManager::OPERATOR_MULT = NULL;
-Operator * OperatorManager::OPERATOR_POW = NULL;
+Operator * OperatorManager::OPERATOR_MULT = nullptr;
+Operator * OperatorManager::OPERATOR_POW = nullptr;
 
-Operator * OperatorManager::OPERATOR_DIV = NULL;
-Operator * OperatorManager::OPERATOR_MOD = NULL;
+Operator * OperatorManager::OPERATOR_DIV = nullptr;
+Operator * OperatorManager::OPERATOR_MOD = nullptr;
 
-Operator * OperatorManager::OPERATOR_MIN = NULL;
-Operator * OperatorManager::OPERATOR_MAX = NULL;
+Operator * OperatorManager::OPERATOR_MIN = nullptr;
+Operator * OperatorManager::OPERATOR_MAX = nullptr;
 
 
 /*
@@ -393,12 +409,12 @@ Operator * OperatorManager::OPERATOR_MAX = NULL;
  * LOOKUP STATEMENT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_LOOKUP_INT_EXT = NULL;
-Operator * OperatorManager::OPERATOR_LOOKUP_INT = NULL;
-Operator * OperatorManager::OPERATOR_LOOKUP_NEAREST = NULL;
-Operator * OperatorManager::OPERATOR_LOOKUP_BELOW = NULL;
-Operator * OperatorManager::OPERATOR_LOOKUP_ABOVE = NULL;
-Operator * OperatorManager::OPERATOR_LOOKUP2D_INT_EXT = NULL;
+Operator * OperatorManager::OPERATOR_LOOKUP_INT_EXT = nullptr;
+Operator * OperatorManager::OPERATOR_LOOKUP_INT = nullptr;
+Operator * OperatorManager::OPERATOR_LOOKUP_NEAREST = nullptr;
+Operator * OperatorManager::OPERATOR_LOOKUP_BELOW = nullptr;
+Operator * OperatorManager::OPERATOR_LOOKUP_ABOVE = nullptr;
+Operator * OperatorManager::OPERATOR_LOOKUP2D_INT_EXT = nullptr;
 
 
 /*
@@ -407,41 +423,41 @@ Operator * OperatorManager::OPERATOR_LOOKUP2D_INT_EXT = NULL;
  *******************************************************************************
  */
  // RANDOM
-Operator * OperatorManager::OPERATOR_RANDOM = NULL;
+Operator * OperatorManager::OPERATOR_RANDOM = nullptr;
 
 // ROUNDING
-Operator * OperatorManager::OPERATOR_ABS = NULL;
+Operator * OperatorManager::OPERATOR_ABS = nullptr;
 
-Operator * OperatorManager::OPERATOR_CEIL = NULL;
-Operator * OperatorManager::OPERATOR_FLOOR = NULL;
-Operator * OperatorManager::OPERATOR_ROUND = NULL;
-Operator * OperatorManager::OPERATOR_TRUNCATE = NULL;
+Operator * OperatorManager::OPERATOR_CEIL = nullptr;
+Operator * OperatorManager::OPERATOR_FLOOR = nullptr;
+Operator * OperatorManager::OPERATOR_ROUND = nullptr;
+Operator * OperatorManager::OPERATOR_TRUNCATE = nullptr;
 
 
 // EXP - LOG
-Operator * OperatorManager::OPERATOR_SQRT = NULL;
+Operator * OperatorManager::OPERATOR_SQRT = nullptr;
 
-Operator * OperatorManager::OPERATOR_EXP = NULL;
-Operator * OperatorManager::OPERATOR_LN = NULL;
-Operator * OperatorManager::OPERATOR_LOG = NULL;
+Operator * OperatorManager::OPERATOR_EXP = nullptr;
+Operator * OperatorManager::OPERATOR_LN = nullptr;
+Operator * OperatorManager::OPERATOR_LOG = nullptr;
 
 // TRIGONOMETRIC
-Operator * OperatorManager::OPERATOR_SIN = NULL;
-Operator * OperatorManager::OPERATOR_COS = NULL;
-Operator * OperatorManager::OPERATOR_TAN = NULL;
+Operator * OperatorManager::OPERATOR_SIN = nullptr;
+Operator * OperatorManager::OPERATOR_COS = nullptr;
+Operator * OperatorManager::OPERATOR_TAN = nullptr;
 
-Operator * OperatorManager::OPERATOR_SINH = NULL;
-Operator * OperatorManager::OPERATOR_COSH = NULL;
-Operator * OperatorManager::OPERATOR_TANH = NULL;
+Operator * OperatorManager::OPERATOR_SINH = nullptr;
+Operator * OperatorManager::OPERATOR_COSH = nullptr;
+Operator * OperatorManager::OPERATOR_TANH = nullptr;
 
-Operator * OperatorManager::OPERATOR_ASIN = NULL;
-Operator * OperatorManager::OPERATOR_ACOS = NULL;
-Operator * OperatorManager::OPERATOR_ATAN = NULL;
-Operator * OperatorManager::OPERATOR_ATAN2 = NULL;
+Operator * OperatorManager::OPERATOR_ASIN = nullptr;
+Operator * OperatorManager::OPERATOR_ACOS = nullptr;
+Operator * OperatorManager::OPERATOR_ATAN = nullptr;
+Operator * OperatorManager::OPERATOR_ATAN2 = nullptr;
 
-Operator * OperatorManager::OPERATOR_ASINH = NULL;
-Operator * OperatorManager::OPERATOR_ACOSH = NULL;
-Operator * OperatorManager::OPERATOR_ATANH = NULL;
+Operator * OperatorManager::OPERATOR_ASINH = nullptr;
+Operator * OperatorManager::OPERATOR_ACOSH = nullptr;
+Operator * OperatorManager::OPERATOR_ATANH = nullptr;
 
 
 /*
@@ -449,43 +465,43 @@ Operator * OperatorManager::OPERATOR_ATANH = NULL;
  * AVM STRING / COLLECTION OPERATOR
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_CONTAINS = NULL;
+Operator * OperatorManager::OPERATOR_CONTAINS = nullptr;
 
-Operator * OperatorManager::OPERATOR_IN = NULL;
-Operator * OperatorManager::OPERATOR_NOTIN = NULL;
+Operator * OperatorManager::OPERATOR_IN = nullptr;
+Operator * OperatorManager::OPERATOR_NOTIN = nullptr;
 
-Operator * OperatorManager::OPERATOR_SUBSET = NULL;
-Operator * OperatorManager::OPERATOR_SUBSETEQ = NULL;
+Operator * OperatorManager::OPERATOR_SUBSET = nullptr;
+Operator * OperatorManager::OPERATOR_SUBSETEQ = nullptr;
 
-Operator * OperatorManager::OPERATOR_INTERSECT = NULL;
+Operator * OperatorManager::OPERATOR_INTERSECT = nullptr;
 
-Operator * OperatorManager::OPERATOR_STARTS_WITH = NULL;
-Operator * OperatorManager::OPERATOR_ENDS_WITH = NULL;
+Operator * OperatorManager::OPERATOR_STARTS_WITH = nullptr;
+Operator * OperatorManager::OPERATOR_ENDS_WITH = nullptr;
 
-Operator * OperatorManager::OPERATOR_CONCAT = NULL;
+Operator * OperatorManager::OPERATOR_CONCAT = nullptr;
 
-Operator * OperatorManager::OPERATOR_APPEND = NULL;
+Operator * OperatorManager::OPERATOR_APPEND = nullptr;
 
-Operator * OperatorManager::OPERATOR_REMOVE = NULL;
-Operator * OperatorManager::OPERATOR_CLEAR = NULL;
+Operator * OperatorManager::OPERATOR_REMOVE = nullptr;
+Operator * OperatorManager::OPERATOR_CLEAR = nullptr;
 
-Operator * OperatorManager::OPERATOR_RESIZE = NULL;
+Operator * OperatorManager::OPERATOR_RESIZE = nullptr;
 
-Operator * OperatorManager::OPERATOR_SELECT = NULL;
+Operator * OperatorManager::OPERATOR_SELECT = nullptr;
 
-Operator * OperatorManager::OPERATOR_PUSH = NULL;
-Operator * OperatorManager::OPERATOR_ASSIGN_TOP = NULL;
-Operator * OperatorManager::OPERATOR_TOP = NULL;
-Operator * OperatorManager::OPERATOR_POP = NULL;
-Operator * OperatorManager::OPERATOR_POP_FROM = NULL;
+Operator * OperatorManager::OPERATOR_PUSH = nullptr;
+Operator * OperatorManager::OPERATOR_ASSIGN_TOP = nullptr;
+Operator * OperatorManager::OPERATOR_TOP = nullptr;
+Operator * OperatorManager::OPERATOR_POP = nullptr;
+Operator * OperatorManager::OPERATOR_POP_FROM = nullptr;
 
-Operator * OperatorManager::OPERATOR_EMPTY = NULL;
-Operator * OperatorManager::OPERATOR_NONEMPTY = NULL;
-Operator * OperatorManager::OPERATOR_SINGLETON = NULL;
-Operator * OperatorManager::OPERATOR_POPULATED = NULL;
-Operator * OperatorManager::OPERATOR_FULL = NULL;
+Operator * OperatorManager::OPERATOR_EMPTY = nullptr;
+Operator * OperatorManager::OPERATOR_NONEMPTY = nullptr;
+Operator * OperatorManager::OPERATOR_SINGLETON = nullptr;
+Operator * OperatorManager::OPERATOR_POPULATED = nullptr;
+Operator * OperatorManager::OPERATOR_FULL = nullptr;
 
-Operator * OperatorManager::OPERATOR_SIZE = NULL;
+Operator * OperatorManager::OPERATOR_SIZE = nullptr;
 
 
 /*
@@ -493,12 +509,12 @@ Operator * OperatorManager::OPERATOR_SIZE = NULL;
  * IOLTL BEHAVIORAL PREDICAT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_GLOBALLY = NULL;
-Operator * OperatorManager::OPERATOR_UNTIL = NULL;
-Operator * OperatorManager::OPERATOR_NEXT = NULL;
-Operator * OperatorManager::OPERATOR_EVENTUALLY = NULL;
-Operator * OperatorManager::OPERATOR_RELEASES = NULL;
-Operator * OperatorManager::OPERATOR_OBS = NULL;
+Operator * OperatorManager::OPERATOR_GLOBALLY = nullptr;
+Operator * OperatorManager::OPERATOR_UNTIL = nullptr;
+Operator * OperatorManager::OPERATOR_NEXT = nullptr;
+Operator * OperatorManager::OPERATOR_EVENTUALLY = nullptr;
+Operator * OperatorManager::OPERATOR_RELEASES = nullptr;
+Operator * OperatorManager::OPERATOR_OBS = nullptr;
 
 
 /*
@@ -506,10 +522,10 @@ Operator * OperatorManager::OPERATOR_OBS = NULL;
  * IOLTL LOGICAL PREDICAT
  *******************************************************************************
  */
-Operator * OperatorManager::OPERATOR_AND_T = NULL;
-Operator * OperatorManager::OPERATOR_OR_T = NULL;
-Operator * OperatorManager::OPERATOR_NOT_T = NULL;
-Operator * OperatorManager::OPERATOR_IMP_T = NULL;
+Operator * OperatorManager::OPERATOR_AND_T = nullptr;
+Operator * OperatorManager::OPERATOR_OR_T = nullptr;
+Operator * OperatorManager::OPERATOR_NOT_T = nullptr;
+Operator * OperatorManager::OPERATOR_IMP_T = nullptr;
 
 
 
@@ -606,20 +622,23 @@ void OperatorManager::load()
 
 	/*
 	 ***************************************************************************
-	 * AVM NOP STATEMENT
+	 * AVM NULL / NOP STATEMENT
 	 ***************************************************************************
 	 */
-	NEW_STATEMENT( NOP , "nop" );
+	NEW_STATEMENT( NULL , "null" );
+
+	NEW_STATEMENT( NOP  , "nop" );
+
 
 	/*
 	 ***************************************************************************
 	 * AVM META STATEMENT
 	 ***************************************************************************
 	 */
-	NEW_STATEMENT( INFORMAL  , "informal"  );
-	NEW_STATEMENT( TRACE     , "trace"     );
-	NEW_STATEMENT( DEBUG     , "debug"     );
-	NEW_STATEMENT( COMMENT   , "comment"   );
+	NEW_STATEMENT( INFORMAL  , "@informal" );
+	NEW_STATEMENT( TRACE     , "@trace"    );
+	NEW_STATEMENT( DEBUG     , "@debug"    );
+	NEW_STATEMENT( COMMENT   , "@comment"  );
 	NEW_STATEMENT( QUOTE     , "quote"     );
 	NEW_STATEMENT( META_EVAL , "meta_eval" );
 	NEW_STATEMENT( META_RUN  , "meta_run"  );
@@ -640,10 +659,23 @@ void OperatorManager::load()
 
 	/*
 	 ***************************************************************************
+	 * AVM MACHINE SELF
+	 ***************************************************************************
+	 */
+	NEW_FUNCTION( SELF , "self" );
+
+	NEW_FUNCTION( SUPER , "super" );
+
+	/*
+	 ***************************************************************************
 	 * AVM MACHINE MANAGING
 	 ***************************************************************************
 	 */
 	NEW_STATEMENT( CONTEXT_SWITCHER, "ctx" );
+
+	NEW_STATEMENT( PROCESS_STATE_GET, "process#state#get" );
+	NEW_STATEMENT( PROCESS_STATE_SET, "process#state#set" );
+
 
 	NEW_STATEMENT( INIT    , "init"    );
 	NEW_STATEMENT( FINAL   , "final"   );
@@ -737,35 +769,33 @@ void OperatorManager::load()
 	 * AVM PROGRAM SCHEDULING
 	 ***************************************************************************
 	 */
-	NEW_OP_ASSOC_COM( ASYNCHRONOUS , "async" , "|a|");
+	NEW_OP_ASSOC_COM( ASYNCHRONOUS , "|async|" , "|a|");
 
-	NEW_OP_ASSOC_COM( STRONG_SYNCHRONOUS , "strong_sync" , "|and|");
+	NEW_OP_ASSOC_COM( STRONG_SYNCHRONOUS , "|strong_sync|"   , "|and|");
 
-	NEW_OP_ASSOC_COM( WEAK_SYNCHRONOUS , "weak_sync" , "|or|");
+	NEW_OP_ASSOC_COM( WEAK_SYNCHRONOUS   , "|weak_sync|"     , "|or|" );
 
-	NEW_OP_ASSOC_COM( INTERLEAVING , "interleaving" , "|i|");
+	NEW_OP_ASSOC_COM( INTERLEAVING       , "|interleaving|"  , "|i|"  );
 
-	NEW_OP_ASSOC_COM( PARTIAL_ORDER_REDUCTION , "partial_order_reduction" , "|por|");
+	NEW_OP_ASSOC_COM( PARTIAL_ORDER      , "|partial_order|" , "|~|"  );
 
-	NEW_OP_ASSOC_COM( PARALLEL , "parallel" , "|,|");
+	NEW_OP_ASSOC_COM( PARALLEL           , "|parallel|"      , "|,|"  );
 
 	// Optimized version of concurrency for RDV synchronization
-	NEW_OP_ASSOC_COM_RDV( ASYNCHRONOUS , "rdv_async" , "||a||");
+	NEW_OP_ASSOC_COM_RDV( ASYNCHRONOUS      , "|rdv_async|"        , "||a||"  );
+	NEW_OP_ASSOC_COM_RDV( STRONG_SYNCHRONOUS, "|rdv_strong_sync|"  , "||and||");
 
-	NEW_OP_ASSOC_COM_RDV( STRONG_SYNCHRONOUS , "rdv_strong_sync" , "||and||");
+	NEW_OP_ASSOC_COM_RDV( WEAK_SYNCHRONOUS  , "|rdv_weak_sync|"    , "||or||" );
 
-	NEW_OP_ASSOC_COM_RDV( WEAK_SYNCHRONOUS , "rdv_weak_sync" , "||or||");
+	NEW_OP_ASSOC_COM_RDV( INTERLEAVING      , "|rdv_interleaving|" , "||i||"  );
 
-	NEW_OP_ASSOC_COM_RDV( INTERLEAVING , "rdv_interleaving" , "||i||");
+	NEW_OP_ASSOC_COM( RDV_PARTIAL_ORDER     , "|rdv_partial_order|", "||~||"  );
 
-	NEW_OP_ASSOC_COM( RDV_PARTIAL_ORDER_REDUCTION ,
-			"rdv_partial_order_reduction" , "||por||");
+	NEW_OP_ASSOC_COM_RDV( PARALLEL          , "rdv_parallel"       , "||,||"  );
 
-	NEW_OP_ASSOC_COM_RDV( PARALLEL , "rdv_parallel" , "||,||");
+	NEW_OP_ASSOC_COM( EXCLUSIVE             , "exclusive"          , "|xor|"  );
 
-	NEW_OP_ASSOC_COM( EXCLUSIVE , "exclusive" , "|xor|");
-
-	NEW_OP_ASSOC_COM( NONDETERMINISM , "indeterminism" , "|/\\|");
+	NEW_OP_ASSOC_COM( NONDETERMINISM        , "indeterminism"      , "|/\\|"  );
 
 	NEW_OP_LEFT_ASSOC( PRIOR_GT , "prior_gt" , "|>|");
 	NEW_OP_LEFT_ASSOC( PRIOR_LT , "prior_lt" , "|<|");
@@ -893,7 +923,7 @@ void OperatorManager::load()
 	 * AVM PREDICAT EXPRESSION
 	 ***************************************************************************
 	 */
-	NEW_OP_PREFIX( EXIST  , "exist" );
+	NEW_OP_PREFIX( EXISTS  , "exists" );
 	NEW_OP_PREFIX( FORALL , "forall" );
 
 	NEW_OP_PREFIX_FULL(NOT , "not", "!", "!_", "~");
@@ -912,6 +942,8 @@ void OperatorManager::load()
 	NEW_OP_ASSOC_COM( NOR  , "nor"  , "nor"  );
 	NEW_OP_ASSOC_COM( XOR  , "xor"  , "xor"  );
 	NEW_OP_ASSOC_COM( XNOR , "xnor" , "xnor" );
+
+	NEW_OP_ASSOC_COM( IMPLIES , "implies" , "=>" );
 
 	/*
 	 ***************************************************************************
@@ -1068,7 +1100,7 @@ void OperatorManager::load()
 	NEW_OP_PREFIX_SYMB( EVENTUALLY , "eventually" , "evtly");
 	NEW_OP_PREFIX_SYMB( RELEASES   , "releases"   , "rels" );
 
-	NEW_OP_PREFIX( OBS , "obs" );
+	NEW_OP_PREFIX( OBS , "@observe" );
 
 
 	/*
@@ -1096,26 +1128,28 @@ void OperatorManager::dispose()
 
 	/*
 	 ***************************************************************************
-	 * AVM NOP STATEMENT
+	 * AVM NULL / NOP STATEMENT
 	 ***************************************************************************
 	 */
-	OPERATOR_NOP = NULL;
+	OPERATOR_NULL = nullptr;
+
+	OPERATOR_NOP  = nullptr;
 
 	/*
 	 ***************************************************************************
-	 * AVM NOP STATEMENT
+	 * AVM META STATEMENT
 	 ***************************************************************************
 	 */
-	OPERATOR_INFORMAL = NULL;
+	OPERATOR_INFORMAL = nullptr;
 
-	OPERATOR_TRACE = NULL;
-	OPERATOR_DEBUG = NULL;
+	OPERATOR_TRACE = nullptr;
+	OPERATOR_DEBUG = nullptr;
 
-	OPERATOR_COMMENT = NULL;
-	OPERATOR_QUOTE   = NULL;
+	OPERATOR_COMMENT = nullptr;
+	OPERATOR_QUOTE   = nullptr;
 
-	OPERATOR_META_EVAL = NULL;
-	OPERATOR_META_RUN  = NULL;
+	OPERATOR_META_EVAL = nullptr;
+	OPERATOR_META_RUN  = nullptr;
 
 
 	/*
@@ -1123,93 +1157,105 @@ void OperatorManager::dispose()
 	 * AVM UFI STATEMENT
 	 ***************************************************************************
 	 */
-	OPERATOR_UFI = NULL;
+	OPERATOR_UFI = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * AVM FORM CONSTRUCTOR STATEMENT
 	 ***************************************************************************
 	 */
-	OPERATOR_CTOR = NULL;
+	OPERATOR_CTOR = nullptr;
+
+	/*
+	 ***************************************************************************
+	 * AVM MACHINE SELF SUPER
+	 ***************************************************************************
+	 */
+	OPERATOR_SELF = nullptr;
+
+	OPERATOR_SUPER = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * AVM MACHINE MANAGING
 	 ***************************************************************************
 	 */
-	OPERATOR_CONTEXT_SWITCHER = NULL;
+	OPERATOR_CONTEXT_SWITCHER = nullptr;
 
-	OPERATOR_INIT = NULL;
-	OPERATOR_FINAL = NULL;
-	OPERATOR_DESTROY = NULL;
+	OPERATOR_PROCESS_STATE_GET = nullptr;
+	OPERATOR_PROCESS_STATE_SET = nullptr;
 
-	OPERATOR_START = NULL;
-	OPERATOR_RESTART = NULL;
-	OPERATOR_STOP = NULL;
+	OPERATOR_INIT = nullptr;
+	OPERATOR_FINAL = nullptr;
+	OPERATOR_DESTROY = nullptr;
 
-	OPERATOR_WAIT = NULL;
+	OPERATOR_START = nullptr;
+	OPERATOR_RESTART = nullptr;
+	OPERATOR_STOP = nullptr;
 
-	OPERATOR_SUSPEND = NULL;
-	OPERATOR_RESUME = NULL;
+	OPERATOR_WAIT = nullptr;
 
-	OPERATOR_IENABLE_INVOKE = NULL;
-	OPERATOR_ENABLE_INVOKE = NULL;
-	OPERATOR_ENABLE_SET = NULL;
+	OPERATOR_SUSPEND = nullptr;
+	OPERATOR_RESUME = nullptr;
 
-	OPERATOR_IDISABLE_INVOKE = NULL;
-	OPERATOR_DISABLE_INVOKE = NULL;
-	OPERATOR_DISABLE_SET = NULL;
-	OPERATOR_DISABLE_CHILD = NULL;
-	OPERATOR_DISABLE_SELF = NULL;
-	OPERATOR_DISABLE_SELVES = NULL;
+	OPERATOR_IENABLE_INVOKE = nullptr;
+	OPERATOR_ENABLE_INVOKE = nullptr;
+	OPERATOR_ENABLE_SET = nullptr;
 
-	OPERATOR_IABORT_INVOKE = NULL;
-	OPERATOR_ABORT_INVOKE = NULL;
-	OPERATOR_ABORT_SET = NULL;
-	OPERATOR_ABORT_CHILD = NULL;
-	OPERATOR_ABORT_SELF = NULL;
-	OPERATOR_ABORT_SELVES = NULL;
+	OPERATOR_IDISABLE_INVOKE = nullptr;
+	OPERATOR_DISABLE_INVOKE = nullptr;
+	OPERATOR_DISABLE_SET = nullptr;
+	OPERATOR_DISABLE_CHILD = nullptr;
+	OPERATOR_DISABLE_SELF = nullptr;
+	OPERATOR_DISABLE_SELVES = nullptr;
 
-	OPERATOR_HISTORY_CLEAR = NULL;
-	OPERATOR_DEEP_HISTORY_INVOKE = NULL;
-	OPERATOR_SHALLOW_HISTORY_INVOKE = NULL;
+	OPERATOR_IABORT_INVOKE = nullptr;
+	OPERATOR_ABORT_INVOKE = nullptr;
+	OPERATOR_ABORT_SET = nullptr;
+	OPERATOR_ABORT_CHILD = nullptr;
+	OPERATOR_ABORT_SELF = nullptr;
+	OPERATOR_ABORT_SELVES = nullptr;
 
-	OPERATOR_IRUN = NULL;
-	OPERATOR_RUN = NULL;
-	OPERATOR_RTC = NULL;
+	OPERATOR_HISTORY_CLEAR = nullptr;
+	OPERATOR_DEEP_HISTORY_INVOKE = nullptr;
+	OPERATOR_SHALLOW_HISTORY_INVOKE = nullptr;
 
-	OPERATOR_INVOKE_NEW = NULL;
+	OPERATOR_IRUN = nullptr;
+	OPERATOR_RUN = nullptr;
+	OPERATOR_RTC = nullptr;
 
-	OPERATOR_INVOKE_ROUTINE = NULL;
+	OPERATOR_INVOKE_NEW = nullptr;
 
-	OPERATOR_INVOKE_TRANSITION = NULL;
+	OPERATOR_INVOKE_ROUTINE = nullptr;
 
-	OPERATOR_INVOKE_METHOD = NULL;
-	OPERATOR_INVOKE_PROGRAM = NULL;
-	OPERATOR_INVOKE_FUNCTION = NULL;
+	OPERATOR_INVOKE_TRANSITION = nullptr;
 
-	OPERATOR_INVOKE_LAMBDA_APPLY = NULL;
-	OPERATOR_INVOKE_LAMBDA_LET = NULL;
+	OPERATOR_INVOKE_METHOD = nullptr;
+	OPERATOR_INVOKE_PROGRAM = nullptr;
+	OPERATOR_INVOKE_FUNCTION = nullptr;
 
-	OPERATOR_GOTO = NULL;
+	OPERATOR_INVOKE_LAMBDA_APPLY = nullptr;
+	OPERATOR_INVOKE_LAMBDA_LET = nullptr;
 
-	OPERATOR_SCHEDULE_INVOKE = NULL;
-	OPERATOR_SCHEDULE_GET = NULL;
-	OPERATOR_SCHEDULE_IN = NULL;
-	OPERATOR_SCHEDULE_SET = NULL;
+	OPERATOR_GOTO = nullptr;
 
-	OPERATOR_DEFER_INVOKE = NULL;
-	OPERATOR_DEFER_GET = NULL;
-	OPERATOR_DEFER_SET = NULL;
+	OPERATOR_SCHEDULE_INVOKE = nullptr;
+	OPERATOR_SCHEDULE_GET = nullptr;
+	OPERATOR_SCHEDULE_IN = nullptr;
+	OPERATOR_SCHEDULE_SET = nullptr;
 
-	OPERATOR_FORK = NULL;
-	OPERATOR_JOIN = NULL;
+	OPERATOR_DEFER_INVOKE = nullptr;
+	OPERATOR_DEFER_GET = nullptr;
+	OPERATOR_DEFER_SET = nullptr;
 
-	OPERATOR_INPUT_ENABLED = NULL;
+	OPERATOR_FORK = nullptr;
+	OPERATOR_JOIN = nullptr;
 
-	OPERATOR_RDV = NULL;
+	OPERATOR_INPUT_ENABLED = nullptr;
 
-	OPERATOR_SYNCHRONIZE = NULL;
+	OPERATOR_RDV = nullptr;
+
+	OPERATOR_SYNCHRONIZE = nullptr;
 
 	/*
 	 ***************************************************************************
@@ -1217,13 +1263,13 @@ void OperatorManager::dispose()
 	 ***************************************************************************
 	 */
 
-	OPERATOR_STATUS_WAS = NULL;
-	OPERATOR_STATUS_IS = NULL;
-	OPERATOR_STATUS_BEING = NULL;
-	OPERATOR_STATUS_WILL = NULL;
+	OPERATOR_STATUS_WAS = nullptr;
+	OPERATOR_STATUS_IS = nullptr;
+	OPERATOR_STATUS_BEING = nullptr;
+	OPERATOR_STATUS_WILL = nullptr;
 
-	OPERATOR_CHANGED = NULL;
-	OPERATOR_CHANGED_TO = NULL;
+	OPERATOR_CHANGED = nullptr;
+	OPERATOR_CHANGED_TO = nullptr;
 
 
 	/*
@@ -1231,148 +1277,148 @@ void OperatorManager::dispose()
 	 * AVM PROGRAM SCHEDULING
 	 ***************************************************************************
 	 */
-	OPERATOR_ASYNCHRONOUS = NULL;
-	OPERATOR_STRONG_SYNCHRONOUS = NULL;
-	OPERATOR_WEAK_SYNCHRONOUS = NULL;
+	OPERATOR_ASYNCHRONOUS = nullptr;
+	OPERATOR_STRONG_SYNCHRONOUS = nullptr;
+	OPERATOR_WEAK_SYNCHRONOUS = nullptr;
 
-	OPERATOR_INTERLEAVING = NULL;
-	OPERATOR_PARTIAL_ORDER_REDUCTION = NULL;
+	OPERATOR_INTERLEAVING = nullptr;
+	OPERATOR_PARTIAL_ORDER = nullptr;
 
-	OPERATOR_PARALLEL = NULL;
+	OPERATOR_PARALLEL = nullptr;
 
 	//// Optimized version of concurrency for RDV synchronization
-	OPERATOR_RDV_ASYNCHRONOUS = NULL;
-	OPERATOR_RDV_STRONG_SYNCHRONOUS = NULL;
-	OPERATOR_RDV_WEAK_SYNCHRONOUS = NULL;
+	OPERATOR_RDV_ASYNCHRONOUS = nullptr;
+	OPERATOR_RDV_STRONG_SYNCHRONOUS = nullptr;
+	OPERATOR_RDV_WEAK_SYNCHRONOUS = nullptr;
 
-	OPERATOR_RDV_INTERLEAVING = NULL;
-	OPERATOR_RDV_PARTIAL_ORDER_REDUCTION = NULL;
+	OPERATOR_RDV_INTERLEAVING = nullptr;
+	OPERATOR_RDV_PARTIAL_ORDER = nullptr;
 
-	OPERATOR_RDV_PARALLEL = NULL;
+	OPERATOR_RDV_PARALLEL = nullptr;
 
-	OPERATOR_EXCLUSIVE = NULL;
+	OPERATOR_EXCLUSIVE = nullptr;
 
-	OPERATOR_NONDETERMINISM = NULL;
+	OPERATOR_NONDETERMINISM = nullptr;
 
-	OPERATOR_PRIOR_GT = NULL;
-	OPERATOR_PRIOR_LT = NULL;
+	OPERATOR_PRIOR_GT = nullptr;
+	OPERATOR_PRIOR_LT = nullptr;
 
-	OPERATOR_SCHEDULE_AND_THEN = NULL;
-	OPERATOR_SCHEDULE_OR_ELSE = NULL;
+	OPERATOR_SCHEDULE_AND_THEN = nullptr;
+	OPERATOR_SCHEDULE_OR_ELSE = nullptr;
 
-	OPERATOR_ATOMIC_SEQUENCE = NULL;
+	OPERATOR_ATOMIC_SEQUENCE = nullptr;
 
-	OPERATOR_SEQUENCE = NULL;
-	OPERATOR_SEQUENCE_SIDE = NULL;
-	OPERATOR_SEQUENCE_WEAK = NULL;
+	OPERATOR_SEQUENCE = nullptr;
+	OPERATOR_SEQUENCE_SIDE = nullptr;
+	OPERATOR_SEQUENCE_WEAK = nullptr;
 
-	OPERATOR_PRODUCT = NULL;
+	OPERATOR_PRODUCT = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * AVM BUFFER MANAGING
 	 ***************************************************************************
 	 */
-	OPERATOR_UPDATE_BUFFER = NULL;
+	OPERATOR_UPDATE_BUFFER = nullptr;
 
 	/*
 	 ************************** *************************************************
 	 * LAMBDA STATEMENT
 	 ***************************************************************************
 	 */
-	OPERATOR_APPLY  = NULL;
-	OPERATOR_LAMBDA = NULL;
+	OPERATOR_APPLY  = nullptr;
+	OPERATOR_LAMBDA = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * LET STATEMENT
 	 ***************************************************************************
 	 */
-	OPERATOR_LET = NULL;
+	OPERATOR_LET = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * LOOKUP STATEMENT
 	 ***************************************************************************
 	 */
-	OPERATOR_LOOKUP_INT_EXT = NULL;
-	OPERATOR_LOOKUP_INT = NULL;
-	OPERATOR_LOOKUP_NEAREST = NULL;
-	OPERATOR_LOOKUP_BELOW = NULL;
-	OPERATOR_LOOKUP_ABOVE = NULL;
-	OPERATOR_LOOKUP2D_INT_EXT = NULL;
+	OPERATOR_LOOKUP_INT_EXT = nullptr;
+	OPERATOR_LOOKUP_INT = nullptr;
+	OPERATOR_LOOKUP_NEAREST = nullptr;
+	OPERATOR_LOOKUP_BELOW = nullptr;
+	OPERATOR_LOOKUP_ABOVE = nullptr;
+	OPERATOR_LOOKUP2D_INT_EXT = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * AVM PRIMITIVE STATEMENT
 	 ***************************************************************************
 	 */
-	OPERATOR_ASSIGN = NULL;
-	OPERATOR_ASSIGN_AFTER = NULL;
-	OPERATOR_ASSIGN_OP = NULL;
-	OPERATOR_ASSIGN_OP_AFTER = NULL;
-	OPERATOR_ASSIGN_REF = NULL;
-	OPERATOR_ASSIGN_MACRO = NULL;
+	OPERATOR_ASSIGN = nullptr;
+	OPERATOR_ASSIGN_AFTER = nullptr;
+	OPERATOR_ASSIGN_OP = nullptr;
+	OPERATOR_ASSIGN_OP_AFTER = nullptr;
+	OPERATOR_ASSIGN_REF = nullptr;
+	OPERATOR_ASSIGN_MACRO = nullptr;
 
-	OPERATOR_ASSIGN_NEWFRESH = NULL;
-	OPERATOR_ASSIGN_RESET    = NULL;
+	OPERATOR_ASSIGN_NEWFRESH = nullptr;
+	OPERATOR_ASSIGN_RESET    = nullptr;
 
-	OPERATOR_GUARD       = NULL;
-	OPERATOR_TIMED_GUARD = NULL;
+	OPERATOR_GUARD       = nullptr;
+	OPERATOR_TIMED_GUARD = nullptr;
 
-	OPERATOR_EVENT = NULL;
+	OPERATOR_EVENT = nullptr;
 
-	OPERATOR_CHECK_SAT = NULL;
-
-
-	OPERATOR_INPUT = NULL;
-	OPERATOR_INPUT_FROM = NULL;
-
-	OPERATOR_INPUT_SAVE = NULL;
-
-	OPERATOR_INPUT_VAR = NULL;
-	OPERATOR_INPUT_FLOW = NULL;
-
-	OPERATOR_INPUT_ENV       = NULL;
-	OPERATOR_INPUT_BUFFER    = NULL;
-	OPERATOR_INPUT_RDV       = NULL;
-	OPERATOR_INPUT_BROADCAST = NULL;
-	OPERATOR_INPUT_DELEGATE  = NULL;
+	OPERATOR_CHECK_SAT = nullptr;
 
 
-	OPERATOR_OUTPUT    = NULL;
-	OPERATOR_OUTPUT_TO = NULL;
+	OPERATOR_INPUT = nullptr;
+	OPERATOR_INPUT_FROM = nullptr;
 
-	OPERATOR_OUTPUT_VAR  = NULL;
-	OPERATOR_OUTPUT_FLOW = NULL;
+	OPERATOR_INPUT_SAVE = nullptr;
 
-	OPERATOR_OUTPUT_ENV       = NULL;
-	OPERATOR_OUTPUT_BUFFER    = NULL;
-	OPERATOR_OUTPUT_RDV       = NULL;
-	OPERATOR_OUTPUT_BROADCAST = NULL;
-	OPERATOR_OUTPUT_DELEGATE  = NULL;
+	OPERATOR_INPUT_VAR = nullptr;
+	OPERATOR_INPUT_FLOW = nullptr;
 
-
-	OPERATOR_PRESENT = NULL;
-	OPERATOR_ABSENT  = NULL;
+	OPERATOR_INPUT_ENV       = nullptr;
+	OPERATOR_INPUT_BUFFER    = nullptr;
+	OPERATOR_INPUT_RDV       = nullptr;
+	OPERATOR_INPUT_BROADCAST = nullptr;
+	OPERATOR_INPUT_DELEGATE  = nullptr;
 
 
-	OPERATOR_IF  = NULL;
-	OPERATOR_IFE = NULL;
+	OPERATOR_OUTPUT    = nullptr;
+	OPERATOR_OUTPUT_TO = nullptr;
 
-	OPERATOR_FOR     = NULL;
-	OPERATOR_FOREACH = NULL;
+	OPERATOR_OUTPUT_VAR  = nullptr;
+	OPERATOR_OUTPUT_FLOW = nullptr;
 
-	OPERATOR_WHILE_DO = NULL;
-	OPERATOR_DO_WHILE = NULL;
+	OPERATOR_OUTPUT_ENV       = nullptr;
+	OPERATOR_OUTPUT_BUFFER    = nullptr;
+	OPERATOR_OUTPUT_RDV       = nullptr;
+	OPERATOR_OUTPUT_BROADCAST = nullptr;
+	OPERATOR_OUTPUT_DELEGATE  = nullptr;
 
-	OPERATOR_BREAK    = NULL;
-	OPERATOR_CONTINUE = NULL;
-	OPERATOR_RETURN   = NULL;
 
-	OPERATOR_EXIT = NULL;
+	OPERATOR_PRESENT = nullptr;
+	OPERATOR_ABSENT  = nullptr;
 
-	OPERATOR_STEP_MARK = NULL;
+
+	OPERATOR_IF  = nullptr;
+	OPERATOR_IFE = nullptr;
+
+	OPERATOR_FOR     = nullptr;
+	OPERATOR_FOREACH = nullptr;
+
+	OPERATOR_WHILE_DO = nullptr;
+	OPERATOR_DO_WHILE = nullptr;
+
+	OPERATOR_BREAK    = nullptr;
+	OPERATOR_CONTINUE = nullptr;
+	OPERATOR_RETURN   = nullptr;
+
+	OPERATOR_EXIT = nullptr;
+
+	OPERATOR_STEP_MARK = nullptr;
 
 
 	/*
@@ -1380,30 +1426,23 @@ void OperatorManager::dispose()
 	 * AVM PREDICAT EXPRESSION
 	 ***************************************************************************
 	 */
-	OPERATOR_EXIST = NULL;
-	OPERATOR_FORALL = NULL;
+	OPERATOR_EXISTS = nullptr;
+	OPERATOR_FORALL = nullptr;
 
-	OPERATOR_NOT = NULL;
+	OPERATOR_NOT = nullptr;
 
-	OPERATOR_AND  = NULL;
-	OPERATOR_AND_THEN = NULL;
-	OPERATOR_NAND = NULL;
-	OPERATOR_XAND = NULL;
+	OPERATOR_AND  = nullptr;
+	OPERATOR_AND_THEN = nullptr;
+	OPERATOR_NAND = nullptr;
+	OPERATOR_XAND = nullptr;
 
-	OPERATOR_OR   = NULL;
-	OPERATOR_OR_ELSE = NULL;
-	OPERATOR_NOR  = NULL;
-	OPERATOR_XOR  = NULL;
-	OPERATOR_XNOR = NULL;
+	OPERATOR_OR   = nullptr;
+	OPERATOR_OR_ELSE = nullptr;
+	OPERATOR_NOR  = nullptr;
+	OPERATOR_XOR  = nullptr;
+	OPERATOR_XNOR = nullptr;
 
-
-	/*
-	 ***************************************************************************
-	 * AVM COMPARISON EXPRESSION
-	 ***************************************************************************
-	 */
-	OPERATOR_SEQ  = NULL;
-	OPERATOR_NSEQ = NULL;
+	OPERATOR_IMPLIES = nullptr;
 
 
 	/*
@@ -1411,28 +1450,37 @@ void OperatorManager::dispose()
 	 * AVM COMPARISON EXPRESSION
 	 ***************************************************************************
 	 */
-	OPERATOR_EQ  = NULL;
-	OPERATOR_NEQ = NULL;
+	OPERATOR_SEQ  = nullptr;
+	OPERATOR_NSEQ = nullptr;
 
-	OPERATOR_LT  = NULL;
-	OPERATOR_LTE = NULL;
 
-	OPERATOR_GT  = NULL;
-	OPERATOR_GTE = NULL;
+	/*
+	 ***************************************************************************
+	 * AVM COMPARISON EXPRESSION
+	 ***************************************************************************
+	 */
+	OPERATOR_EQ  = nullptr;
+	OPERATOR_NEQ = nullptr;
+
+	OPERATOR_LT  = nullptr;
+	OPERATOR_LTE = nullptr;
+
+	OPERATOR_GT  = nullptr;
+	OPERATOR_GTE = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * AVM BITWISE EXPRESSION
 	 ***************************************************************************
 	 */
-	OPERATOR_BNOT = NULL;
-	OPERATOR_BAND = NULL;
+	OPERATOR_BNOT = nullptr;
+	OPERATOR_BAND = nullptr;
 
-	OPERATOR_BOR  = NULL;
-	OPERATOR_BXOR = NULL;
+	OPERATOR_BOR  = nullptr;
+	OPERATOR_BXOR = nullptr;
 
-	OPERATOR_LSHIFT = NULL;
-	OPERATOR_RSHIFT = NULL;
+	OPERATOR_LSHIFT = nullptr;
+	OPERATOR_RSHIFT = nullptr;
 
 
 	/*
@@ -1440,21 +1488,21 @@ void OperatorManager::dispose()
 	 * AVM ARITHMETIC EXPRESSION
 	 ***************************************************************************
 	 */
-	OPERATOR_PLUS = NULL;
+	OPERATOR_PLUS = nullptr;
 
-	OPERATOR_MINUS = NULL;
-	OPERATOR_UMINUS = NULL;
+	OPERATOR_MINUS = nullptr;
+	OPERATOR_UMINUS = nullptr;
 
-	OPERATOR_MULT = NULL;
+	OPERATOR_MULT = nullptr;
 
-	OPERATOR_POW = NULL;
+	OPERATOR_POW = nullptr;
 
-	OPERATOR_DIV = NULL;
+	OPERATOR_DIV = nullptr;
 
-	OPERATOR_MOD = NULL;
+	OPERATOR_MOD = nullptr;
 
-	OPERATOR_MIN = NULL;
-	OPERATOR_MAX = NULL;
+	OPERATOR_MIN = nullptr;
+	OPERATOR_MAX = nullptr;
 
 
 	/*
@@ -1464,106 +1512,106 @@ void OperatorManager::dispose()
 	 */
 
 	//// RANDOM
-	OPERATOR_RANDOM = NULL;
+	OPERATOR_RANDOM = nullptr;
 
 	//// ROUNDING
-	OPERATOR_ABS   = NULL;
-	OPERATOR_CEIL  = NULL;
-	OPERATOR_FLOOR = NULL;
-	OPERATOR_ROUND = NULL;
+	OPERATOR_ABS   = nullptr;
+	OPERATOR_CEIL  = nullptr;
+	OPERATOR_FLOOR = nullptr;
+	OPERATOR_ROUND = nullptr;
 
-	OPERATOR_TRUNCATE = NULL;
+	OPERATOR_TRUNCATE = nullptr;
 
 
 	//// EXP - LOG
-	OPERATOR_SQRT = NULL;
+	OPERATOR_SQRT = nullptr;
 
-	OPERATOR_EXP = NULL;
-	OPERATOR_LN  = NULL;
-	OPERATOR_LOG = NULL;
+	OPERATOR_EXP = nullptr;
+	OPERATOR_LN  = nullptr;
+	OPERATOR_LOG = nullptr;
 
 
 	//// TRIGONOMETRIC
-	OPERATOR_SIN = NULL;
-	OPERATOR_COS = NULL;
-	OPERATOR_TAN = NULL;
+	OPERATOR_SIN = nullptr;
+	OPERATOR_COS = nullptr;
+	OPERATOR_TAN = nullptr;
 
-	OPERATOR_SINH = NULL;
-	OPERATOR_COSH = NULL;
-	OPERATOR_TANH = NULL;
+	OPERATOR_SINH = nullptr;
+	OPERATOR_COSH = nullptr;
+	OPERATOR_TANH = nullptr;
 
-	OPERATOR_ASIN = NULL;
-	OPERATOR_ACOS = NULL;
-	OPERATOR_ATAN = NULL;
-	OPERATOR_ATAN2 = NULL;
+	OPERATOR_ASIN = nullptr;
+	OPERATOR_ACOS = nullptr;
+	OPERATOR_ATAN = nullptr;
+	OPERATOR_ATAN2 = nullptr;
 
-	OPERATOR_ASINH = NULL;
-	OPERATOR_ACOSH = NULL;
-	OPERATOR_ATANH = NULL;
+	OPERATOR_ASINH = nullptr;
+	OPERATOR_ACOSH = nullptr;
+	OPERATOR_ATANH = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * AVM STRING // COLLECTION OPERATOR
 	 ***************************************************************************
 	 */
-	OPERATOR_CONTAINS = NULL;
+	OPERATOR_CONTAINS = nullptr;
 
-	OPERATOR_IN    = NULL;
-	OPERATOR_NOTIN = NULL;
+	OPERATOR_IN    = nullptr;
+	OPERATOR_NOTIN = nullptr;
 
-	OPERATOR_SUBSET   = NULL;
-	OPERATOR_SUBSETEQ = NULL;
+	OPERATOR_SUBSET   = nullptr;
+	OPERATOR_SUBSETEQ = nullptr;
 
-	OPERATOR_INTERSECT = NULL;
+	OPERATOR_INTERSECT = nullptr;
 
-	OPERATOR_STARTS_WITH = NULL;
-	OPERATOR_ENDS_WITH   = NULL;
+	OPERATOR_STARTS_WITH = nullptr;
+	OPERATOR_ENDS_WITH   = nullptr;
 
-	OPERATOR_CONCAT = NULL;
-	OPERATOR_APPEND = NULL;
+	OPERATOR_CONCAT = nullptr;
+	OPERATOR_APPEND = nullptr;
 
-	OPERATOR_REMOVE = NULL;
-	OPERATOR_CLEAR  = NULL;
-	OPERATOR_RESIZE = NULL;
-	OPERATOR_SELECT = NULL;
+	OPERATOR_REMOVE = nullptr;
+	OPERATOR_CLEAR  = nullptr;
+	OPERATOR_RESIZE = nullptr;
+	OPERATOR_SELECT = nullptr;
 
-	OPERATOR_PUSH = NULL;
-	OPERATOR_ASSIGN_TOP = NULL;
-	OPERATOR_TOP = NULL;
-	OPERATOR_POP = NULL;
-	OPERATOR_POP_FROM = NULL;
+	OPERATOR_PUSH = nullptr;
+	OPERATOR_ASSIGN_TOP = nullptr;
+	OPERATOR_TOP = nullptr;
+	OPERATOR_POP = nullptr;
+	OPERATOR_POP_FROM = nullptr;
 
-	OPERATOR_EMPTY    = NULL;
-	OPERATOR_NONEMPTY = NULL;
+	OPERATOR_EMPTY    = nullptr;
+	OPERATOR_NONEMPTY = nullptr;
 
-	OPERATOR_SINGLETON = NULL;
-	OPERATOR_POPULATED = NULL;
+	OPERATOR_SINGLETON = nullptr;
+	OPERATOR_POPULATED = nullptr;
 
-	OPERATOR_FULL = NULL;
+	OPERATOR_FULL = nullptr;
 
-	OPERATOR_SIZE = NULL;
+	OPERATOR_SIZE = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * IOLTL BEHAVIORAL PREDICAT
 	 ***************************************************************************
 	 */
-	OPERATOR_GLOBALLY    = NULL;
-	OPERATOR_UNTIL      = NULL;
-	OPERATOR_NEXT       = NULL;
-	OPERATOR_EVENTUALLY = NULL;
-	OPERATOR_RELEASES   = NULL;
-	OPERATOR_OBS        = NULL;
+	OPERATOR_GLOBALLY    = nullptr;
+	OPERATOR_UNTIL      = nullptr;
+	OPERATOR_NEXT       = nullptr;
+	OPERATOR_EVENTUALLY = nullptr;
+	OPERATOR_RELEASES   = nullptr;
+	OPERATOR_OBS        = nullptr;
 
 	/*
 	 ***************************************************************************
 	 * IOLTL LOGICAL PREDICAT
 	 ***************************************************************************
 	 */
-	OPERATOR_AND_T = NULL;
-	OPERATOR_OR_T  = NULL;
-	OPERATOR_NOT_T = NULL;
-	OPERATOR_IMP_T = NULL;
+	OPERATOR_AND_T = nullptr;
+	OPERATOR_OR_T  = nullptr;
+	OPERATOR_NOT_T = nullptr;
+	OPERATOR_IMP_T = nullptr;
 //	*/
 }
 
@@ -1806,6 +1854,7 @@ bool OperatorManager::isSchedule(const Operator * anOperator)
 		case AVM_OPCODE_STRONG_SYNCHRONOUS:
 		case AVM_OPCODE_WEAK_SYNCHRONOUS:
 		case AVM_OPCODE_INTERLEAVING:
+		case AVM_OPCODE_PARTIAL_ORDER:
 		case AVM_OPCODE_PARALLEL:
 
 		case AVM_OPCODE_EXCLUSIVE:
@@ -1842,6 +1891,9 @@ bool OperatorManager::isMachine(const Operator * anOperator)
 		 * AVM MACHINE ACTIVITY
 		 ***************************************************************************
 		 */
+		case AVM_OPCODE_SELF:
+		case AVM_OPCODE_SUPER:
+
 		case AVM_OPCODE_SCHEDULE_GET:
 
 		case AVM_OPCODE_INVOKE_NEW:
@@ -1866,6 +1918,8 @@ bool OperatorManager::isActivity(const Operator * anOperator)
 		 * AVM PROGRAM ACTIVITY
 		 ***************************************************************************
 		 */
+		case AVM_OPCODE_PROCESS_STATE_SET:
+
 		case AVM_OPCODE_INIT:
 		case AVM_OPCODE_FINAL:
 		case AVM_OPCODE_DESTROY:
@@ -1919,13 +1973,55 @@ bool OperatorManager::isActivity(const Operator * anOperator)
 }
 
 
-bool OperatorManager::isCommunication(const Operator * anOperator)
+bool OperatorManager::isScheduledActivity(const Operator * anOperator)
 {
 	switch( anOperator->getAvmOpCode() )
 	{
 		/*
 		 ***************************************************************************
-		 * AVM PROGRAM COMMUNICATION
+		 * AVM PROGRAM ACTIVITY
+		 ***************************************************************************
+		 */
+		case AVM_OPCODE_INIT:
+		case AVM_OPCODE_FINAL:
+		case AVM_OPCODE_DESTROY:
+
+		case AVM_OPCODE_START:
+		case AVM_OPCODE_RESTART:
+		case AVM_OPCODE_STOP:
+
+		case AVM_OPCODE_WAIT:
+
+		case AVM_OPCODE_SUSPEND:
+		case AVM_OPCODE_RESUME:
+
+		case AVM_OPCODE_IRUN:
+		case AVM_OPCODE_RUN:
+
+		case AVM_OPCODE_RTC:
+
+		case AVM_OPCODE_SCHEDULE_INVOKE:
+
+		case AVM_OPCODE_DEFER_INVOKE:
+		{
+			return( true );
+		}
+
+		default:
+		{
+			return( false );
+		}
+	}
+}
+
+
+bool OperatorManager::isInput(const Operator * anOperator)
+{
+	switch( anOperator->getAvmOpCode() )
+	{
+		/*
+		 ***************************************************************************
+		 * AVM PROGRAM INPUT
 		 ***************************************************************************
 		 */
 		case AVM_OPCODE_INPUT:
@@ -1933,8 +2029,50 @@ bool OperatorManager::isCommunication(const Operator * anOperator)
 
 		case AVM_OPCODE_INPUT_SAVE:
 
+		case AVM_OPCODE_INPUT_ENV:
+		case AVM_OPCODE_INPUT_VAR:
+		case AVM_OPCODE_INPUT_FLOW:
+		case AVM_OPCODE_INPUT_BUFFER:
+		case AVM_OPCODE_INPUT_BROADCAST:
+
+		case AVM_OPCODE_INPUT_RDV:
+		case AVM_OPCODE_INPUT_MULTI_RDV:
+
+		case AVM_OPCODE_INPUT_DELEGATE:
+		{
+			return( true );
+		}
+
+		default:
+		{
+			return( false );
+		}
+	}
+}
+
+
+bool OperatorManager::isOutput(const Operator * anOperator)
+{
+	switch( anOperator->getAvmOpCode() )
+	{
+		/*
+		 ***************************************************************************
+		 * AVM PROGRAM OUTPUT
+		 ***************************************************************************
+		 */
 		case AVM_OPCODE_OUTPUT:
 		case AVM_OPCODE_OUTPUT_TO:
+
+		case AVM_OPCODE_OUTPUT_ENV:
+		case AVM_OPCODE_OUTPUT_VAR:
+		case AVM_OPCODE_OUTPUT_FLOW:
+		case AVM_OPCODE_OUTPUT_BUFFER:
+		case AVM_OPCODE_OUTPUT_BROADCAST:
+
+		case AVM_OPCODE_OUTPUT_RDV:
+		case AVM_OPCODE_OUTPUT_MULTI_RDV:
+
+		case AVM_OPCODE_OUTPUT_DELEGATE:
 		{
 			return( true );
 		}
@@ -2018,12 +2156,6 @@ bool OperatorManager::isArithmetic(const Operator * anOperator)
 }
 
 
-bool OperatorManager::isBoolean(const Operator * anOperator)
-{
-	return( isRelational(anOperator) || isPropositional(anOperator) );
-}
-
-
 bool OperatorManager::isRelational(const Operator * anOperator)
 {
 	switch( anOperator->getAvmOpCode() )
@@ -2095,7 +2227,7 @@ bool OperatorManager::isPropositional(const Operator * anOperator)
 		 * AVM PROPOSITIONAL EXPRESSION
 		 ***********************************************************************
 		 */
-		case AVM_OPCODE_EXIST:
+		case AVM_OPCODE_EXISTS:
 		case AVM_OPCODE_FORALL:
 
 		case AVM_OPCODE_NOT:
@@ -2110,6 +2242,8 @@ bool OperatorManager::isPropositional(const Operator * anOperator)
 
 		case AVM_OPCODE_XOR:
 		case AVM_OPCODE_XNOR:
+
+		case AVM_OPCODE_IMPLIES:
 		{
 			return( true );
 		}
@@ -2121,6 +2255,28 @@ bool OperatorManager::isPropositional(const Operator * anOperator)
 	}
 }
 
+
+bool OperatorManager::isQuantifier(const Operator * anOperator)
+{
+	switch( anOperator->getAvmOpCode() )
+	{
+		/*
+		 ***********************************************************************
+		 * AVM QUANTIFIED EXPRESSION
+		 ***********************************************************************
+		 */
+		case AVM_OPCODE_EXISTS:
+		case AVM_OPCODE_FORALL:
+		{
+			return( true );
+		}
+
+		default:
+		{
+			return( false );
+		}
+	}
+}
 
 
 
@@ -2201,6 +2357,11 @@ bool OperatorManager::isStatement(const Operator * anOperator)
 		 * AVM MACHINE ACTIVITY
 		 ***********************************************************************
 		 */
+		case AVM_OPCODE_CONTEXT_SWITCHER:
+
+		case AVM_OPCODE_PROCESS_STATE_GET:
+		case AVM_OPCODE_PROCESS_STATE_SET:
+
 		case AVM_OPCODE_INIT:
 		case AVM_OPCODE_FINAL:
 		case AVM_OPCODE_DESTROY:
@@ -2264,6 +2425,9 @@ bool OperatorManager::isStatement(const Operator * anOperator)
 
 		case AVM_OPCODE_INVOKE_NEW:
 
+		case AVM_OPCODE_SELF:
+		case AVM_OPCODE_SUPER:
+
 
 		/*
 		 ***********************************************************************
@@ -2285,6 +2449,7 @@ bool OperatorManager::isStatement(const Operator * anOperator)
 		case AVM_OPCODE_STRONG_SYNCHRONOUS:
 		case AVM_OPCODE_WEAK_SYNCHRONOUS:
 		case AVM_OPCODE_INTERLEAVING:
+		case AVM_OPCODE_PARTIAL_ORDER:
 		case AVM_OPCODE_PARALLEL:
 
 		case AVM_OPCODE_EXCLUSIVE:
@@ -2425,6 +2590,8 @@ bool OperatorManager::isAtomicStatement(const Operator * anOperator)
 
 		case AVM_OPCODE_CHECK_SAT:
 
+		case AVM_OPCODE_PROCESS_STATE_GET:
+//		case AVM_OPCODE_PROCESS_STATE_SET:
 
 		case AVM_OPCODE_IENABLE_INVOKE:
 		case AVM_OPCODE_ENABLE_INVOKE:
@@ -2444,6 +2611,10 @@ bool OperatorManager::isAtomicStatement(const Operator * anOperator)
 		case AVM_OPCODE_ABORT_SELF:
 		case AVM_OPCODE_ABORT_SELVES:
 
+// These statement is not atomic statement
+//		case AVM_OPCODE_INPUT:
+//		case AVM_OPCODE_INPUT_FROM:
+//		case AVM_OPCODE_INPUT_SAVE:
 
 		case AVM_OPCODE_INPUT_ENV:
 		case AVM_OPCODE_INPUT_VAR:
@@ -2451,12 +2622,23 @@ bool OperatorManager::isAtomicStatement(const Operator * anOperator)
 		case AVM_OPCODE_INPUT_BUFFER:
 		case AVM_OPCODE_INPUT_BROADCAST:
 
+// These statement is not atomic statement
+//		case AVM_OPCODE_INPUT_RDV:
+//		case AVM_OPCODE_INPUT_MULTI_RDV:
+//		case AVM_OPCODE_INPUT_DELEGATE:
+
+//		case AVM_OPCODE_OUTPUT:
+//		case AVM_OPCODE_OUTPUT_TO:
+
 		case AVM_OPCODE_OUTPUT_ENV:
 		case AVM_OPCODE_OUTPUT_VAR:
 		case AVM_OPCODE_OUTPUT_FLOW:
 		case AVM_OPCODE_OUTPUT_BUFFER:
 		case AVM_OPCODE_OUTPUT_BROADCAST:
 
+//		case AVM_OPCODE_OUTPUT_RDV:
+//		case AVM_OPCODE_OUTPUT_MULTI_RDV:
+//		case AVM_OPCODE_OUTPUT_DELEGATE:
 
 		case AVM_OPCODE_PRESENT:
 		case AVM_OPCODE_ABSENT:
@@ -2766,9 +2948,10 @@ Operator * OperatorManager::toOperator(
 	if( op == "OR"  )  return( OperatorManager::OPERATOR_OR  );
 	if( op == "XOR" )  return( OperatorManager::OPERATOR_XOR );
 
-	if( op == "|;|"  )  return( OperatorManager::OPERATOR_SEQUENCE );
+	if( op == "|;|"  )  return( OperatorManager::OPERATOR_SEQUENCE       );
 	if( op == "|;;|" )  return( OperatorManager::OPERATOR_SEQUENCE_WEAK  );
-	if( op == "|i|"  )  return( OperatorManager::OPERATOR_INTERLEAVING );
+	if( op == "|i|"  )  return( OperatorManager::OPERATOR_INTERLEAVING   );
+	if( op == "|~|"  )  return( OperatorManager::OPERATOR_PARTIAL_ORDER );
 
 	return( defaultOp );
 }

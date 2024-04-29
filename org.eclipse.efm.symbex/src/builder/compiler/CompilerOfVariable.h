@@ -64,47 +64,49 @@ public:
 	 ***************************************************************************
 	 */
 
-	void addPrecompileData(AvmProgram * aContainer, Symbol & aVariable,
+	void addPrecompileVariable(AvmProgram & aContainer, Symbol & aVariable,
 			TableOfInstanceOfData & tableOfVariable,
 			bool collectVarEnabled = false);
 
-	static avm_size_t nextOffset(TableOfInstanceOfData & tableOfVariable);
+	static std::size_t nextOffset(TableOfInstanceOfData & tableOfVariable);
 
 
-	void precompileTypeSpecifier(AvmProgram * aContainer, const BF & aDataType);
+	void precompileTypeSpecifier(AvmProgram & aContainer, const BF & aDataType);
 
-	void precompileData(AvmProgram * aContainer,
-			Variable * aVariable, TableOfInstanceOfData & tableOfVariable);
+	void precompileVariable(AvmProgram & aContainer,
+			const Variable & aVariable, TableOfInstanceOfData & tableOfVariable);
 
-	BF precompileData_initialValue(AvmProgram * aContainer,
-			BaseTypeSpecifier * aTypeSpecifier, const BF & aValue);
+	BF precompileVariable_initialValue(AvmProgram & aContainer,
+			const BaseTypeSpecifier & aTypeSpecifier, const BF & aValue);
 
-	void precompileData_initialValue(AvmProgram * aContainer,
-			InstanceOfData * aVarInstance);
+	void precompileVariable_initialValue(AvmProgram & aContainer,
+			InstanceOfData & aVarInstance);
 
 	/**
 	 ***************************************************************************
 	 * COMPILATION
 	 ***************************************************************************
 	 */
-	void compileData(ExecutableForm * anExecutable);
+	void compileVariable(ExecutableForm & anExecutable);
 
-	void compileDataOnCreate(ExecutableForm * anExecutable,
-			TableOfInstanceOfData::const_raw_iterator itData,
-			BFCode & onInitialize);
-
+	void compileVariableOnCreate(ExecutableForm & anExecutable,
+			TableOfInstanceOfData::ref_iterator itVar, BFCode & onInitialize);
 
 
-	void compileData(AvmProgram * aProgram);
 
-	void compileConstData(AvmProgram * aContainer, InstanceOfData * aVarInstance);
-	void compileData(AvmProgram * aContainer, InstanceOfData * aVarInstance);
+	void compileVariable(AvmProgram & aProgram);
 
-	void compileData_initialValue(
-			AvmProgram * aContainer, InstanceOfData * aVarInstance);
+	void compileConstVariable(
+			AvmProgram & aContainer, InstanceOfData & aVarInstance);
+
+	void compileVariable(
+			AvmProgram & aContainer, InstanceOfData & aVarInstance);
+
+	void compileVariable_initialValue(
+			AvmProgram & aContainer, InstanceOfData & aVarInstance);
 
 	void compileTypeConstraint(
-			AvmProgram * aContainer, InstanceOfData * aVarInstance);
+			AvmProgram & aContainer, InstanceOfData & aVarInstance);
 
 };
 

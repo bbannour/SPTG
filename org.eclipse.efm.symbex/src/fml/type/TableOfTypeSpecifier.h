@@ -37,7 +37,7 @@ class TableOfTypeSpecifier :
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( TableOfTypeSpecifier )
 {
 
-	AVM_DECLARE_CLONABLE_CLASS( TableOfTypeSpecifier )
+	AVM_DECLARE_CLONABLE_BASE_CLASS( TableOfTypeSpecifier )
 
 
 public:
@@ -63,7 +63,7 @@ public:
 		//!! NOTHING
 	}
 
-	TableOfTypeSpecifier(avm_size_t aSize)
+	TableOfTypeSpecifier(std::size_t aSize)
 	: AvmObject( ),
 	ContainerOfType( aSize )
 	{
@@ -101,7 +101,7 @@ public:
 	/**
 	 * GETTER
 	 */
-	inline const TypeSpecifier & get(avm_size_t offset) const
+	inline const TypeSpecifier & get(std::size_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_OFFSET_EXIT( offset, ContainerOfType::size() )
 				<< "Unbound TypeSpecifier offset !!!"
@@ -118,12 +118,12 @@ public:
 		ContainerOfType::const_iterator endIt = ContainerOfType::end();
 		for( ; it != endIt ; ++it )
 		{
-			if( (*it).rawType()->compareID(aQualifiedNameID, op) )
+			if( (*it).refType().isEqualsID(aQualifiedNameID, op) )
 			{
 				return( *it );
 			}
 		}
-		return( TypeSpecifier::REF_NULL );
+		return( TypeSpecifier::nullref() );
 	}
 
 
@@ -140,7 +140,7 @@ public:
 				return( *it );
 			}
 		}
-		return( TypeSpecifier::REF_NULL );
+		return( TypeSpecifier::nullref() );
 	}
 
 
@@ -151,12 +151,12 @@ public:
 		ContainerOfType::const_iterator endIt = ContainerOfType::end();
 		for( ; it != endIt ; ++it )
 		{
-			if( (*it).rawType()->fqnEndsWith(aQualifiedNameID) )
+			if( (*it).refType().fqnEndsWith(aQualifiedNameID) )
 			{
 				return( *it );
 			}
 		}
-		return( TypeSpecifier::REF_NULL );
+		return( TypeSpecifier::nullref() );
 	}
 
 
@@ -171,12 +171,12 @@ public:
 				return( *it );
 			}
 		}
-		return( TypeSpecifier::REF_NULL );
+		return( TypeSpecifier::nullref() );
 	}
 
 
 	inline const TypeSpecifier & getByAstElement(
-			const ObjectElement * astElement) const
+			const ObjectElement & astElement) const
 	{
 		ContainerOfType::const_iterator it = ContainerOfType::begin();
 		ContainerOfType::const_iterator endIt = ContainerOfType::end();
@@ -187,7 +187,7 @@ public:
 				return( *it );
 			}
 		}
-		return( TypeSpecifier::REF_NULL );
+		return( TypeSpecifier::nullref() );
 	}
 
 
@@ -202,7 +202,7 @@ public:
 		return( ContainerOfType::back() );
 	}
 
-	inline void append(const TypeSpecifier & aType)
+	inline void append(const TypeSpecifier & aType) override
 	{
 		ContainerOfType::append( aType );
 	}
@@ -249,7 +249,7 @@ public:
 	}
 
 
-	inline bool contains(const TypeSpecifier & aType) const
+	inline bool contains(const TypeSpecifier & aType) const override
 	{
 		return( ContainerOfType::contains( aType ) );
 	}
@@ -258,7 +258,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const
+	virtual void toStream(OutStream & os) const override
 	{
 		ContainerOfType::const_iterator it = ContainerOfType::begin();
 		ContainerOfType::const_iterator endIt = ContainerOfType::end();
@@ -295,7 +295,7 @@ public:
 	const Symbol & getSymbolDataByNameID(const std::string & aNameID) const;
 
 	const Symbol & getSymbolDataByAstElement(
-			const ObjectElement * objElement) const;
+			const ObjectElement & astElement) const;
 
 };
 

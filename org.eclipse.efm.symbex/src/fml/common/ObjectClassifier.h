@@ -17,9 +17,14 @@
 #define FML_COMMON_OBJECT_CLASSIFIER_H_
 
 #include <common/NamedElement.h>
+
 #include <fml/common/TraceableElement.h>
 
 #include <base/ClassKindInfo.h>
+
+#include <collection/BFContainer.h>
+
+#include <fml/common/ObjectElement.h>
 
 
 namespace sep
@@ -34,6 +39,18 @@ class ObjectClassifier :
 		public TraceableElement,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( ObjectClassifier )
 {
+
+public:
+	/**
+	 * TYPEDEF
+	 */
+	typedef TableOfBF_T< ObjectElement >  TableOfOwnedElement;
+
+	/**
+	 * ITERATORS
+	 */
+	typedef TableOfOwnedElement::const_raw_iterator  const_owned_iterator;
+
 
 protected:
 	/**
@@ -76,13 +93,16 @@ public:
 
 	inline bool hasContainer() const
 	{
-		return( mContainer != NULL );
+		return( mContainer != nullptr );
 	}
 
 	inline void setContainer(ObjectElement * aContainer)
 	{
 		mContainer = aContainer;
 	}
+
+
+	bool hasContainerMachine() const;
 
 	const Machine * getContainerMachine() const;
 

@@ -47,11 +47,13 @@ typedef Port  Signal;
 
 class Port :
 		public PropertyElement,
+		AVM_INJECT_STATIC_NULL_REFERENCE( Port ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( Port )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( Port )
 
+	AVM_TYPEDEF_TABLE_CLASS( Port )
 
 protected:
 	/**
@@ -63,7 +65,7 @@ protected:
 
 	bool mComposite;
 
-	PropertyPart * mContents;
+	PropertyPart * mParameterPart;
 
 	Channel * mRoutingChannel;
 
@@ -82,6 +84,31 @@ public:
 			const Modifier & aModifier, const BF & aPortPattern);
 
 	/**
+	 * CONSTRUCTOR
+	 * Binding
+	 */
+	Port(Machine * aContainer,
+			const std::string & aNameID, IComPoint::ENUM_IO_NATURE aNature,
+			const Modifier & aModifier = Modifier::PROPERTY_INOUT_DIRECTION);
+
+	/**
+	 * CONSTRUCTOR
+	 * Null
+	 */
+	Port(const std::string & aNameID, const Modifier & aModifier)
+	: PropertyElement(CLASS_KIND_T( Port ), nullptr, aModifier , aNameID),
+	mModel( ),
+	mComPointNature( IComPoint::IO_UNDEFINED_NATURE ),
+
+	mComposite( false ),
+
+	mParameterPart( nullptr ),
+	mRoutingChannel( nullptr )
+	{
+		//!! NOTHING
+	}
+
+	/**
 	 * DESTRUCTOR
 	 */
 	virtual ~Port()
@@ -92,23 +119,36 @@ public:
 
 	/**
 	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static Port & nullref()
+	{
+		static Port _NULL_("$null<Port>", Modifier::OBJECT_NULL_MODIFIER);
+		_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+
+		return( _NULL_ );
+	}
+
+
+	/**
+	 * GETTER
 	 * the container
 	 */
-	virtual Machine * getContainerMachine();
+	virtual Machine * getContainerMachine() const override;
 
 
 	/**
 	 * GETTER - SETTER
 	 * mModel
 	 */
-	inline Signal * getSignalModel() const
+	inline const Signal & getSignalModel() const
 	{
-		return( mModel.to_ptr< Port >() );
+		return( mModel.to< Signal >() );
 	}
 
 	inline bool hasSignalModel() const
 	{
-		return( mModel.is< Port >() );
+		return( mModel.is< Signal >() );
 	}
 
 
@@ -142,19 +182,9 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * mContents
+	 * mParameterPart
 	 */
-	inline PropertyPart * getContents() const
-	{
-		return( mContents );
-	}
-
-	bool hasContents() const;
-
-	inline void setContents(PropertyPart * aContents)
-	{
-		mContents = aContents;
-	}
+	PropertyPart & getParameterPart() const;
 
 
 	/**
@@ -163,7 +193,7 @@ public:
 	 */
 	const TableOfVariable & getParameters() const;
 
-	avm_size_t getParametersCount() const;
+	std::size_t getParametersCount() const;
 
 	avm_offset_t getParameterOffset(const std::string & label) const;
 
@@ -171,19 +201,35 @@ public:
 
 	void saveParameter(Variable * aParam);
 
+	void setParameters(const TableOfVariable & paramVars);
+
+	// Raw parameter
+	void appendParameter(const TypeSpecifier& aType,
+			const std::string paramNameID = "",
+			const BF & defaultValueL = BF::REF_NULL);
+
+
+	// Signature Comparison
+	bool sameSignature(const Port & aPort) const;
+
+	inline bool isConnectablebleWith(const Port & aPort) const
+	{
+		return( sameSignature(aPort) );
+	}
+
 
 	/**
 	 * GETTER - SETTER
 	 * mRoutingChannel
 	 */
-	inline Channel * getRoutingChannel() const
+	inline const Channel & getRoutingChannel() const
 	{
-		return( mRoutingChannel );
+		return( * mRoutingChannel );
 	}
 
 	inline bool hasRoutingChannel() const
 	{
-		return( mRoutingChannel != NULL );
+		return( mRoutingChannel != nullptr );
 	}
 
 	inline void setRoutingChannel(Channel * aRoutingChannel)
@@ -195,12 +241,12 @@ public:
 	/**
 	 * Serialization
 	 */
-	void strHeader(OutStream & out) const
+	virtual void strHeader(OutStream & out) const override
 	{
 		out << str_indent( this );
 	}
 
-	void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
 
 };
 

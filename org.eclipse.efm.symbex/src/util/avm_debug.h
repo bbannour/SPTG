@@ -17,6 +17,7 @@
 #define AVM_DEBUG_H_
 
 
+#include <cstdint>
 #include <string>
 
 
@@ -71,7 +72,7 @@ namespace sep {
  *******************************************************************************
  */
 
-extern unsigned short  _AVM_DEBUG_LEVEL_;
+extern std::uint16_t  _AVM_DEBUG_LEVEL_;
 
 enum AVM_DEBUG_LEVEL_T
 {
@@ -457,6 +458,9 @@ extern std::size_t  _AVM_DEBUG_FLAG_;
 
 #define AVM_ENDIF_DEBUG_FLAG( flag )  AVM_DEBUG_ENDIF
 
+#define VALUE_IF_DEBUG_FLAG( flag , value_1 , value_2 )  \
+	( (AVM_DEBUG_ENABLED && AVM_DEBUG_FLAG_ENABLED( flag )) ? value_1 : value_2)
+
 
 
 /**
@@ -817,12 +821,23 @@ enum AVM_DEBUG_FLAG_T
 	// Others: [Qualified]NameID, RefCount, ...
 	AVM_DEBUG_NAME_ID_FLAG                  = 0x0000100000000000,
 	AVM_DEBUG_QUALIFIED_NAME_ID_FLAG        = 0x0000200000000000,
-	AVM_DEBUG_FULLY_QUALIFIED_NAME_ID_FLAG  = 0x0000400000000000,
+	AVM_DEBUG_FULLY_QUALIFIED_NAME_ID_FLAG  = 0x0000400000000000
+	                                        | AVM_DEBUG_QUALIFIED_NAME_ID_FLAG,
+
+	AVM_DEBUG_ALL_NAME_ID_FLAG              = AVM_DEBUG_NAME_ID_FLAG
+	                                        | AVM_DEBUG_QUALIFIED_NAME_ID_FLAG
+	                                        | AVM_DEBUG_FULLY_QUALIFIED_NAME_ID_FLAG,
 
 	AVM_DEBUG_CAS_FLAG                      = 0x0001000000000000,
 	AVM_DEBUG_REDUNDANCE_FLAG               = 0x0002000000000000,
 
 	AVM_DEBUG_REFERENCE_COUNTING_FLAG       = 0x0010000000000000,
+	AVM_DEBUG_MEMORY_ALLOCATION_FLAG        = 0x0020000000000000,
+	AVM_DEBUG_MEMORY_DEALLOCATION_FLAG      = 0x0040000000000000,
+
+	AVM_DEBUG_MEMORY_MANAGEMENT_FLAG        = AVM_DEBUG_REFERENCE_COUNTING_FLAG
+	                                        | AVM_DEBUG_MEMORY_ALLOCATION_FLAG
+	                                        | AVM_DEBUG_MEMORY_DEALLOCATION_FLAG,
 
 	// God Mode
 	AVM_DEBUG_ALL_FLAG                      = 0xFFFFFFFFFFFFFFFF,

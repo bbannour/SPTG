@@ -37,9 +37,9 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	UnionTypeSpecifier(DataType * aCompiledType)
+	UnionTypeSpecifier(const DataType & astType)
 	: BaseSymbolTypeSpecifier(CLASS_KIND_T( UnionTypeSpecifier ),
-			TYPE_UNION_SPECIFIER, aCompiledType, 1, 1, 0)
+			TYPE_UNION_SPECIFIER, astType, 1, 1, 0)
 	{
 		//!!! NOTHING
 	}
@@ -57,7 +57,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & out) const;
+	void toStream(OutStream & out) const override;
 
 };
 

@@ -17,13 +17,16 @@
 
 #include <fml/common/BehavioralElement.h>
 
+#include <fml/expression/BuiltinArray.h>
+
 #include <fml/infrastructure/BehavioralPart.h>
 #include <fml/infrastructure/Machine.h>
 #include <fml/infrastructure/Variable.h>
 
-#include <fml/expression/BuiltinArray.h>
+#include <fml/lib/AvmOperationFactory.h>
 
 #include <fml/operator/OperatorManager.h>
+
 #include <fml/workflow/UniFormIdentifier.h>
 
 
@@ -35,17 +38,16 @@ namespace sep
  * CONSTRUCTOR
  * Default
  */
-Routine::Routine(Machine * aContainer,
+Routine::Routine(Machine & aContainer,
 		const std::string & aNameID, const Modifier & aModifier,
 		const Specifier & aSpecifier, const BF & aModel)
-: BehavioralElement( CLASS_KIND_T( Routine ) ,
-		aContainer, aModifier , aNameID ),
+: BehavioralElement( CLASS_KIND_T( Routine ), aContainer, aModifier, aNameID ),
 SpecifierImpl( aSpecifier ),
 
 mModel( aModel ),
 
-mParameters( ),
-mReturns( ),
+mPropertyDeclaration( this , "property" ),
+
 mCode( )
 {
 	//!! NOTHING
@@ -60,21 +62,21 @@ SpecifierImpl( aSpecifier ),
 
 mModel( BF::REF_NULL ),
 
-mParameters( ),
-mReturns( ),
+mPropertyDeclaration( this , "property" ),
+
 mCode( )
 {
 	//!! NOTHING
 }
 
 
-Routine * Routine::newDefine(Machine * aContainer, const std::string & aNameID)
+Routine * Routine::newDefine(Machine & aContainer, const std::string & aNameID)
 {
 	return( new Routine(aContainer, aNameID,
 			Specifier::DESIGN_MODEL_SPECIFIER) );
 }
 
-Routine * Routine::newInvoke(Machine * aContainer, const BF & aModel)
+Routine * Routine::newInvoke(Machine & aContainer, const BF & aModel)
 {
 	return( new Routine(aContainer,
 			aModel.as_ptr< Routine >()->getNameID(),
@@ -84,87 +86,15 @@ Routine * Routine::newInvoke(Machine * aContainer, const BF & aModel)
 
 /**
  * GETTER
- * from vector of parameters / returns
+ * Unique Null Reference
  */
-const BF & Routine::getByNameID(
-		const BFVector & params, const std::string & aNameID)
+Routine & Routine::nullref()
 {
-	BFVector::const_iterator it = params.begin();
-	BFVector::const_iterator endIt = params.end();
-	for( ; it != endIt ; ++it )
-	{
-		if( (*it).is< Variable >() &&
-				((*it).to_ptr< Variable >()->getNameID() == aNameID) )
-		{
-			return( *it );
-		}
-	}
+	static Routine _NULL_(Machine::nullref(), "$null<Routine>",
+			Specifier::OBJECT_NULL_SPECIFIER);
+	_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
 
-	return( BF::REF_NULL );
-}
-
-
-avm_offset_t Routine::getOffsetByNameID(
-		const BFVector & params, const std::string & label)
-{
-	BFVector::const_iterator it = params.begin();
-	BFVector::const_iterator endIt = params.end();
-	for( avm_offset_t offset ; it != endIt ; ++it , ++offset )
-	{
-		if( (*it).is< Variable >() &&
-				((*it).to_ptr< Variable >()->getNameID() == label) )
-		{
-			return( offset );
-		}
-	}
-
-	return( AVM_NO_OFFSET );
-}
-
-
-/**
- * TESTER
- * mParameters
- * mReturns
- */
-//!! Warning: Unused static function
-//static bool isContained(const BFVector & params, Variable * aParam)
-//{
-//	BFVector::const_iterator it = params.begin();
-//	BFVector::const_iterator endIt = params.end();
-//	for( avm_offset_t offset ; it != endIt ; ++it , ++offset )
-//	{
-//		if( (*it).isTEQ(aParam) )
-//		{
-//			return( true );
-//		}
-//	}
-//
-//	return( false );
-//}
-
-
-bool Routine::hasParameterOffset(Variable * aParameter) const
-{
-	return( (aParameter->getOffset() < mParameters.size()) &&
-		mParameters[ aParameter->getOffset() ].isTEQ(aParameter) );
-}
-
-void Routine::saveParameter(Variable * anInput)
-{
-	mParameters.append( BF(anInput) );
-}
-
-
-bool Routine::hasReturnOffset(Variable * aReturn) const
-{
-	return( (aReturn->getOffset() < mReturns.size()) &&
-		mReturns[ aReturn->getOffset() ].isTEQ(aReturn) );
-}
-
-void Routine::saveReturn(Variable * anOutput)
-{
-	mReturns.append( BF(anOutput) );
+	return( _NULL_ );
 }
 
 
@@ -183,11 +113,9 @@ BFCode Routine::inlineCode(const BFCode & aCode) const
 		BFCode newCode( aCode->getOperator() );
 		BF substArg;
 
-		AvmCode::const_iterator itArg = aCode->begin();
-		AvmCode::const_iterator itEndArg = aCode->end();
-		for( ; itArg != itEndArg ; ++itArg )
+		for( const auto & itOperand : aCode.getOperands() )
 		{
-			if( (substArg = inlineCode(*itArg)).valid() )
+			if( (substArg = inlineCode(itOperand)).valid() )
 			{
 				newCode->append( substArg );
 			}
@@ -215,12 +143,16 @@ BF Routine::inlineCode(const BF & aCode) const
 		{
 			Variable * aVar = aCode.to_ptr< Variable >();
 
-			if( getModel()->hasParameterOffset( aVar ) )
+			if( getModel()->getPropertyPart().
+					getVariableParameters().contains(aVar) )
 			{
-				if( (aVar->getOffset() < mParameters.size()) &&
-					mParameters[ aVar->getOffset() ].valid() )
+				if( (aVar->getRuntimeOffset() <
+						getPropertyPart().getVariableParametersCount())
+					&& getPropertyPart().getVariableParameter(
+							aVar->getRuntimeOffset() ).valid() )
 				{
-					return( mParameters[ aVar->getOffset() ] );
+					return( getPropertyPart().getVariableParameter(
+							aVar->getRuntimeOffset() ) );
 				}
 				else if( aVar->hasValue() )
 				{
@@ -234,12 +166,16 @@ BF Routine::inlineCode(const BF & aCode) const
 
 				return( BFCode::REF_NULL );
 			}
-			else if( getModel()->hasReturnOffset( aVar ) )
+			else if( getModel()->getPropertyPart().
+						getVariableReturns().contains(aVar) )
 			{
-				if( (aVar->getOffset() < mReturns.size()) &&
-						mReturns[ aVar->getOffset() ].valid() )
+				if( (aVar->getRuntimeOffset() <
+						getPropertyPart().getVariableReturnsCount())
+					&& getPropertyPart().getVariableReturn(
+							aVar->getRuntimeOffset() ).valid() )
 				{
-					return( mReturns[ aVar->getOffset() ] );
+					return( getPropertyPart().getVariableReturn(
+							aVar->getRuntimeOffset() ) );
 				}
 				else if( aVar->hasValue() )
 				{
@@ -272,7 +208,7 @@ BF Routine::inlineCode(const BF & aCode) const
 				if( substArg.is< UniFormIdentifier >() )
 				{
 					newCode = anUFI = new UniFormIdentifier(
-							substArg.to_ref< UniFormIdentifier >() );
+							substArg.to< UniFormIdentifier >() );
 				}
 				else
 				{
@@ -311,7 +247,7 @@ BF Routine::inlineCode(const BF & aCode) const
 			BF newCode( arrayOut );
 			BF substArg;
 
-			for( avm_size_t idx = 0 ; idx < arrayIn->size() ; ++idx )
+			for( std::size_t idx = 0 ; idx < arrayIn->size() ; ++idx )
 			{
 				if( (substArg = inlineCode(arrayIn->at(idx))).valid() )
 				{
@@ -336,168 +272,274 @@ BF Routine::inlineCode(const BF & aCode) const
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// ROUTINE INVOKATION
+BFCode Routine::invokeRoutine(Routine * aRoutineInstance)
+{
+	const PropertyPart & aPropertyPart = aRoutineInstance->getPropertyPart();
+	if( aPropertyPart.hasVariableParameter() )
+	{
+		BF bfOP;
+		if( aRoutineInstance->hasModelOperator() )
+		{
+			bfOP = aRoutineInstance->getType();
+		}
+		else
+		{
+			const Operator * op = AvmOperationFactory::get(
+					aPropertyPart.getVariableParameter(0),
+					aRoutineInstance->getType().str() );
+			if( op != nullptr )
+			{
+				bfOP = INCR_BF( const_cast< Operator * >(op) );
+			}
+		}
+
+		if( bfOP.valid() )
+		{
+			BFVector::const_iterator it =
+					aPropertyPart.getVariableParameters().begin();
+			BFVector::const_iterator endIt =
+					aPropertyPart.getVariableParameters().end();
+
+			BFCode invokeCode(
+					OperatorManager::OPERATOR_INVOKE_METHOD, (*it), bfOP );
+
+			for( ++it ; it != endIt ; ++it )
+			{
+				invokeCode->append(*it );
+			}
+
+			return( invokeCode );
+		}
+	}
+
+	return( StatementConstructor::newCode(
+			OperatorManager::OPERATOR_INVOKE_ROUTINE,
+			sep::BF(aRoutineInstance) ) );
+}
+
+
+BFCode Routine::invokeRoutineStatement(Routine * aRoutineInstance)
+{
+	if( aRoutineInstance->hasModel() )
+	{
+//		AVM_OS_COUT << str_header(aRoutineInstance) << std::endl;
+//		AVM_OS_COUT << str_header(aRoutineInstance->getModel()) << std::endl;
+		if( aRoutineInstance->isInlinableStatement() )
+		{
+			BFCode substCode = aRoutineInstance->inlineStatement();
+			if( substCode.valid() )
+			{
+				return( substCode );
+			}
+		}
+
+		return( StatementConstructor::newCode(
+				OperatorManager::OPERATOR_INVOKE_ROUTINE,
+				sep::BF(aRoutineInstance) ) );
+	}
+
+	return( invokeRoutine(aRoutineInstance) );
+}
+
+
+BF Routine::invokeRoutineExpression(Routine * aRoutineInstance)
+{
+	if( aRoutineInstance->hasModel() )
+	{
+		if( aRoutineInstance->isInlinableExpression() )
+		{
+			BF substCode = aRoutineInstance->inlineExpression();
+			if( substCode.valid() )
+			{
+				return( substCode );
+			}
+		}
+
+		return( StatementConstructor::newCode(
+				OperatorManager::OPERATOR_INVOKE_ROUTINE,
+				sep::BF(aRoutineInstance) ) );
+	}
+
+	return( invokeRoutine(aRoutineInstance) );
+}
+
+
+
 /**
  * Serialization
  */
-void Routine::strParameters(OutStream & os, const std::string & sep) const
+void Routine::strParameters(OutStream & out, const std::string & sep) const
 {
-	BFVector::const_iterator it = mParameters.begin();
-	BFVector::const_iterator endIt = mParameters.end();
+	BFVector::const_iterator itVarParam =
+			getPropertyPart().getVariableParameters().begin();
+	BFVector::const_iterator endVarParam =
+			getPropertyPart().getVariableParameters().end();
 
-	os << "(";
-	if( (*it).is< Variable >() )
+	out << "(";
+	if( (*itVarParam).is< Variable >() )
 	{
-		os << "$" << (*it).to_ptr< Variable >()->getOffset() << ": ";
-		(*it).to_ptr< Variable >()->strParameter(os);
+		out << "$" << (*itVarParam).to< Variable >().getRuntimeOffset()
+			<< ": ";
+		(*itVarParam).to< Variable >().strParameter(out);
 	}
 	else
 	{
-		os << (*it).str();
+		out << (*itVarParam).str();
 	}
-	for( ++it ; it != endIt ; ++it )
+	for( ++itVarParam ; itVarParam != endVarParam ; ++itVarParam )
 	{
-		os << ", ";
-		if( (*it).is< Variable >() )
+		out << ", ";
+		if( (*itVarParam).is< Variable >() )
 		{
-			os << "$" << (*it).to_ptr< Variable >()->getOffset() << ": ";
-			(*it).to_ptr< Variable >()->strParameter(os);
+			out << "$" << (*itVarParam).to< Variable >().getRuntimeOffset()
+				<< ": ";
+			(*itVarParam).to< Variable >().strParameter(out);
 		}
 		else
 		{
-			os << (*it).str();
+			out << (*itVarParam).str();
 		}
 	}
-	os << ")";
+	out << ")";
 }
 
-void Routine::strReturns(OutStream & os, const std::string & sep) const
+void Routine::strReturns(OutStream & out, const std::string & sep) const
 {
-	BFVector::const_iterator it = mReturns.begin();
-	BFVector::const_iterator endIt = mReturns.end();
+	BFVector::const_iterator itVarReturn =
+			getPropertyPart().getVariableReturns().begin();
+	BFVector::const_iterator endVarReturn =
+			getPropertyPart().getVariableReturns().end();
 
-	os << "(";
-	if( (*it).is< Variable >() )
+	out << "(";
+	if( (*itVarReturn).is< Variable >() )
 	{
-		os << "$" << (*it).to_ptr< Variable >()->getOffset() << ": ";
-		(*it).to_ptr< Variable >()->strReturn(os);
+		out << "$" << (*itVarReturn).to< Variable >().getRuntimeOffset()
+			<< ": ";
+		(*itVarReturn).to< Variable >().strReturn(out);
 	}
 	else
 	{
-		os << (*it).str();
+		out << (*itVarReturn).str();
 	}
-	for( ++it ; it != endIt ; ++it )
+	for( ++itVarReturn ; itVarReturn != endVarReturn ; ++itVarReturn )
 	{
-		os << ", ";
-		if( (*it).is< Variable >() )
+		out << ", ";
+		if( (*itVarReturn).is< Variable >() )
 		{
-			os << "$" << (*it).to_ptr< Variable >()->getOffset() << ": ";
-			(*it).to_ptr< Variable >()->strReturn(os);
+			out << "$" << (*itVarReturn).to< Variable >().getRuntimeOffset()
+				<< ": ";
+			(*itVarReturn).to< Variable >().strReturn(out);
 		}
 		else
 		{
-			os << (*it).str();
+			out << (*itVarReturn).str();
 		}
 	}
-	os << ")";
+	out << ")";
 }
 
 
-void Routine::strHeader(OutStream & os) const
+void Routine::strHeader(OutStream & out) const
 {
-	os << getModifier().toString();
+	out << getModifier().toString();
 
 	if( getSpecifier().isDesignPrototypeStatic() )
 	{
-		os << getSpecifier().toString_not(
+		out << getSpecifier().toString_not(
 				Specifier::DESIGN_PROTOTYPE_STATIC_KIND) << "@";
 	}
 	else
 	{
-		os << getSpecifier().toString() << "routine ";
+		out << getSpecifier().toString() << "routine ";
 	}
 
-	os << getNameID();
+	out << getNameID();
 
-	if( mParameters.nonempty() )
+	if( getPropertyPart().hasVariableParameter() )
 	{
-		strParameters(os);
+		strParameters(out);
 	}
-	if( mReturns.nonempty() )
+	if( getPropertyPart().hasVariableReturn() )
 	{
-		os << " --> ";
+		out << " --> ";
 
-		strReturns(os);
+		strReturns(out);
 	}
 }
 
 
-void Routine::toStream(OutStream & os) const
+void Routine::toStream(OutStream & out) const
 {
-	strHeader( os << TAB );
+	strHeader( out << TAB );
 
-	os << "{";
+	out << "{";
 	if( mCode.valid() )
 	{
-		mCode->toStreamRoutine( os << INCR_INDENT ) << DECR_INDENT_TAB;
+		mCode->toStreamRoutine( out << INCR_INDENT ) << DECR_INDENT_TAB;
 	}
-	os << "}" << EOL_FLUSH;
+	out << "}" << EOL_FLUSH;
 }
 
 
 
-void Routine::strInvokeParameters(OutStream & os, const std::string & sep) const
+void Routine::strInvokeParameters(
+		OutStream & out, const std::string & sep) const
 {
-	BFVector::const_iterator it = mParameters.begin();
-	BFVector::const_iterator endIt = mParameters.end();
+	BFVector::const_iterator it =
+			getPropertyPart().getVariableParameters().begin();
+	BFVector::const_iterator endIt =
+			getPropertyPart().getVariableParameters().end();
 
-	os << "(";
-	AvmCode::toStream(os, *it);
+	out << "(";
+	AvmCode::toStream(out, *it);
 	for( ++it ; it != endIt ; ++it )
 	{
-		os << ", ";
-		AvmCode::toStream(os, *it);
+		out << ", ";
+		AvmCode::toStream(out, *it);
 	}
-	os << ")";
+	out << ")";
 }
 
-void Routine::strInvokeReturns(OutStream & os, const std::string & sep) const
+void Routine::strInvokeReturns(OutStream & out, const std::string & sep) const
 {
-	BFVector::const_iterator it = mReturns.begin();
-	BFVector::const_iterator endIt = mReturns.end();
+	BFVector::const_iterator it = getPropertyPart().getVariableReturns().begin();
+	BFVector::const_iterator endIt = getPropertyPart().getVariableReturns().end();
 
-	os << "(";
-	AvmCode::toStream(os, *it);
+	out << "(";
+	AvmCode::toStream(out, *it);
 	for( ++it ; it != endIt ; ++it )
 	{
-		os << ", ";
-		AvmCode::toStream(os, *it);
+		out << ", ";
+		AvmCode::toStream(out, *it);
 	}
-	os << ")";
+	out << ")";
 }
 
 
-void Routine::toStreamInvoke(OutStream & os, const std::string & sep) const
+void Routine::toStreamInvoke(OutStream & out, const std::string & sep) const
 {
-	os << TAB << getNameID() << AVM_NO_INDENT;
+	out << TAB << getNameID() << AVM_NO_INDENT;
 
-	if( mParameters.nonempty() )
+	if( getPropertyPart().hasVariableParameter() )
 	{
-		strInvokeParameters(os, sep);
+		strInvokeParameters(out, sep);
 	}
 	else
 	{
-		os << "()";
+		out << "()";
 	}
 
-	if( mReturns.nonempty() )
+	if( getPropertyPart().hasVariableReturn() )
 	{
-		os << " --> ";
-		strInvokeReturns(os, sep);
+		out << " --> ";
+		strInvokeReturns(out, sep);
 	}
 
-	AVM_DEBUG_REF_COUNTER(os);
+	AVM_DEBUG_REF_COUNTER(out);
 
-	os << END_INDENT << EOL_FLUSH;
+	out << END_INDENT << EOL_FLUSH;
 }
 
 

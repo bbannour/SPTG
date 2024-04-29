@@ -21,10 +21,15 @@
 namespace sep
 {
 
+bool ObjectClassifier::hasContainerMachine() const
+{
+	return( (mContainer != nullptr) && mContainer->is< Machine >() );
+}
+
 
 const Machine * ObjectClassifier::getContainerMachine() const
 {
-	return( mContainer->as< Machine >() );
+	return( mContainer->as_ptr< Machine >() );
 }
 
 

@@ -20,6 +20,7 @@
 #include <computer/ExecutionEnvironment.h>
 #include <computer/primitive/AvmCommunicationFactory.h>
 
+#include <fml/executable/InstanceOfPort.h>
 #include <fml/executable/RoutingData.h>
 
 
@@ -33,47 +34,47 @@ namespace sep
  */
 bool AvmPrimitive_InputEnabled::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData outED = ENV.inED;
+	ExecutionData outED = ENV.inED;
 
-	ListOfInstanceOfPort * ieComs  = NULL;
-	ListOfInstanceOfPort * ieSaves = NULL;
+	const ListOfInstanceOfPort * ieComs  = nullptr;
+	const ListOfInstanceOfPort * ieSaves = nullptr;
 
-	ListOfInstanceOfPort  ieMutableComs;
-	ListOfInstanceOfPort  ieMutableSaves;
+	ListOfInstanceOfPort ieMutableComs;
+	ListOfInstanceOfPort ieMutableSaves;
 
 	// case of a composite machine
-	if( outED->mRID.getExecutable()->isMutableCommunication() )
+	if( outED.getRID().refExecutable().isMutableCommunication() )
 	{
-		CommunicationDependency::computeInputEnabledCom((* outED), outED->mRID,
-				ieMutableComs, ENV.inCODE->first().to_ptr< AvmCode >() );
+		CommunicationDependency::computeInputEnabledCom(outED, outED.getRID(),
+				ieMutableComs, ENV.inCODE->first().to< AvmCode >() );
 
 		if( ieMutableComs.empty() )
 		{
 			return( ENV.run(ENV.inCODE->first().bfCode()) );
 		}
 
-		CommunicationDependency::computeInputEnabledSave((* outED), outED->mRID,
-				ieMutableSaves, ENV.inCODE->first().to_ptr< AvmCode >() );
+		CommunicationDependency::computeInputEnabledSave(outED, outED.getRID(),
+				ieMutableSaves, ENV.inCODE->first().to< AvmCode >() );
 
 		ieComs  = & ieMutableComs;
 		ieSaves = & ieMutableSaves;
 
 //!!! DEBUG TRACE
 AVM_IF_DEBUG_FLAG( STATEMENT_SCHEDULING )
-	AVM_OS_TRACE << std::endl << "InputEnabled:mutable> " << outED->mRID.str()
+	AVM_OS_TRACE << std::endl << "InputEnabled:mutable> " << outED.getRID().str()
 			<< std::endl;
-	outED->mRID.getExecutable()->getOnRun()->toStream(AVM_OS_TRACE);
+	outED.getRID().refExecutable().getOnRun()->toStream(AVM_OS_TRACE);
 
-	outED->mRID.getExecutable()->toStreamStaticCom(AVM_OS_TRACE);
+	outED.getRID().refExecutable().toStreamStaticCom(AVM_OS_TRACE);
 
 	AVM_OS_TRACE << "com#input_enabled{" << std::endl;
-	BaseCompiledForm::toStreamStaticCom(AVM_OS_TRACE, ieMutableComs);
+	InstanceOfPort::toStream(AVM_OS_TRACE, ieMutableComs);
 	AVM_OS_TRACE << "}" << std::endl;
 
 	if( ieMutableSaves.nonempty() )
 	{
 		AVM_OS_TRACE << "com#input_enabled#save{" << std::endl;
-		BaseCompiledForm::toStreamStaticCom(AVM_OS_TRACE, ieMutableSaves);
+		InstanceOfPort::toStream(AVM_OS_TRACE, ieMutableSaves);
 		AVM_OS_TRACE << "}" << std::endl;
 	}
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
@@ -82,17 +83,17 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 	else
 	{
 		// the expected (input) communication element
-		ieComs = &(	outED->mRID.getExecutable()->getInputEnabledCom() );
+		ieComs = &(	outED.getRID().refExecutable().getInputEnabledCom() );
 
 		// the save (input) communication element
-		ieSaves = &( outED->mRID.getExecutable()->getInputEnabledSave() );
+		ieSaves = &( outED.getRID().refExecutable().getInputEnabledSave() );
 
 //!!! DEBUG TRACE
 AVM_IF_DEBUG_FLAG( STATEMENT_SCHEDULING )
-	AVM_OS_TRACE << std::endl << "InputEnabled:final> " << outED->mRID.str()
+	AVM_OS_TRACE << std::endl << "InputEnabled:final> " << outED.getRID().str()
 			<< std::endl;
-	outED->mRID.getExecutable()->getOnRun()->toStream(AVM_OS_TRACE);
-	outED->mRID.getExecutable()->toStreamStaticCom(AVM_OS_TRACE);
+	outED.getRID().refExecutable().getOnRun()->toStream(AVM_OS_TRACE);
+	outED.getRID().refExecutable().toStreamStaticCom(AVM_OS_TRACE);
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 //!!! END DEBUG TRACE
 	}
@@ -100,16 +101,15 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 	ListOfMessage saveMessages;
 
 	// the Buffer Instance
-	InstanceOfBuffer * ieBuffer =
-			outED->mRID.getExecutable()->getInputEnabledBuffer().front();
+	const InstanceOfBuffer * ieBuffer =
+			outED.getRID().refExecutable().getInputEnabledBuffer().front();
 
 	// the runtime buffer machine RID
-	RuntimeID tmpRID = outED->getRuntimeContainerRID(ieBuffer);
+	RuntimeID tmpRID = outED.getRuntimeContainerRID(ieBuffer);
 
 	// the runtime (reading) buffer
 	const BaseBufferForm & readableBuffer =
-			outED->getRuntime(tmpRID).getBuffer( ieBuffer );
-
+			outED.getRuntime(tmpRID).getBuffer( ieBuffer );
 
 //!!! DEBUG TRACE
 AVM_IF_DEBUG_FLAG( STATEMENT_SCHEDULING )
@@ -119,28 +119,26 @@ AVM_IF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 //!!! END DEBUG TRACE
 
-
 	if( readableBuffer.nonempty() )
 	{
 		// the runtime non-empty (writing) buffer
 		BaseBufferForm & writableBuffer = outED.getWritableRuntime(
 				tmpRID ).getWritableBuffer( ieBuffer );
 
-
 //!!! DEBUG TRACE
 AVM_IF_DEBUG_FLAG( STATEMENT_SCHEDULING )
-	AVM_OS_TRACE << std::endl << "InputEnabled:av> " << outED->mRID.str()
+	AVM_OS_TRACE << std::endl << "InputEnabled:av> " << outED.getRID().str()
 			<< std::endl;
-	outED->mRID.getExecutable()->getOnRun()->toStream(AVM_OS_TRACE);
+	outED.getRID().refExecutable().getOnRun()->toStream(AVM_OS_TRACE);
 
 	AVM_OS_TRACE << "com#input_enabled<mutable>{" << std::endl;
-	BaseCompiledForm::toStreamStaticCom(AVM_OS_TRACE, *ieComs);
+	InstanceOfPort::toStream(AVM_OS_TRACE, *ieComs);
 	AVM_OS_TRACE << "}" << std::endl;
 
 	if( ieSaves->nonempty() )
 	{
 		AVM_OS_TRACE << "com#input_enabled#save<mutable>{" << std::endl;
-		BaseCompiledForm::toStreamStaticCom(AVM_OS_TRACE, *ieSaves);
+		InstanceOfPort::toStream(AVM_OS_TRACE, *ieSaves);
 		AVM_OS_TRACE << "}" << std::endl;
 	}
 
@@ -150,25 +148,28 @@ AVM_IF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 //!!! END DEBUG TRACE
 
-
 		ListOfSizeT ieMidComs;
-		RuntimeID aRoutingRID = outED->mRID;
 
-		ListOfInstanceOfPort::const_iterator itPort = ieComs->begin();
-		ListOfInstanceOfPort::const_iterator enItPort = ieComs->end();
-		for( ; itPort != enItPort ; ++itPort )
+		for( const auto & itPort : (* ieComs) )
 		{
-			if( (*itPort)->hasInputRoutingData() )
+			RuntimeID aRoutingRID = outED.getRID();
+
+			const RoutingData & aRoutingData = ( itPort->hasInputRoutingData()
+					? itPort->getInputRoutingData()
+					: AvmCommunicationFactory::searchInputRoutingData(
+							outED, (* itPort), aRoutingRID ) );
+
+			if( aRoutingData.valid() )
 			{
-				ieMidComs.append( (*itPort)->getInputRoutingData().getMID() );
-			}
-			else
-			{
-				const RoutingData & aRoutingData = AvmCommunicationFactory::
-					searchInputRoutingData( outED, (*itPort), aRoutingRID );
-				if( aRoutingData.valid() )
+				ieMidComs.append( aRoutingData.getMID() );
+
+				if( aRoutingData.hasManyCastRoutingData() )
 				{
-					ieMidComs.append( aRoutingData.getMID() );
+					for( const auto & itRoutingData :
+							aRoutingData.getManyCastRoutingData() )
+					{
+						ieMidComs.append( itRoutingData.getMID() );
+					}
 				}
 			}
 		}
@@ -177,27 +178,39 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 		{
 			if( ieMidComs.nonempty() )
 			{
-				writableBuffer.popBefore( ieMidComs , outED->mRID);
+				writableBuffer.popBefore( ieMidComs , outED.getRID());
 			}
 			else if( (*ieComs).nonempty() )
 			{
-				writableBuffer.popBefore( *ieComs , outED->mRID);
+				writableBuffer.popBefore( *ieComs , outED.getRID());
 			}
 			else
 			{
-				writableBuffer.popBefore( outED->mRID);
+				writableBuffer.popBefore( outED.getRID());
 			}
 		}
 		else
 		{
 			ListOfSizeT ieMidSaves;
-			enItPort = ieSaves->end();
-			for( itPort = ieSaves->begin() ; itPort != enItPort ; ++itPort )
+			for( const auto & itPort : (* ieSaves) )
 			{
-				if( (*itPort)->hasInputRoutingData() )
+				if( itPort->hasInputRoutingData() )
 				{
-					ieMidSaves.append(
-							(*itPort)->getInputRoutingData().getMID() );
+					ieMidSaves.append( itPort->getInputRoutingData().getMID() );
+
+					const RoutingData & aRoutingData =
+							itPort->getInputRoutingData();
+
+					ieMidSaves.append( aRoutingData.getMID() );
+
+					if( aRoutingData.hasManyCastRoutingData() )
+					{
+						for( const auto & itRoutingData :
+								aRoutingData.getManyCastRoutingData() )
+						{
+							ieMidSaves.append( itRoutingData.getMID() );
+						}
+					}
 				}
 			}
 
@@ -210,7 +223,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 						break;
 					}
 				}
-				else if( ieComs->contains( writableBuffer.top().getPort() ) )
+				else if( ieComs->contains(writableBuffer.top().ptrPort()) )
 				{
 					break;
 				}
@@ -228,7 +241,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 				}
 				else
 				{
-					if( ieSaves->contains( writableBuffer.top().getPort() ) )
+					if( ieSaves->contains(writableBuffer.top().ptrPort()) )
 					{
 						saveMessages.push_back( writableBuffer.pop() );
 					}
@@ -240,10 +253,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 			}
 		}
 
-		if( writableBuffer.nonempty() )
-		{
 //!!! DEBUG TRACE
-AVM_IF_DEBUG_FLAG( STATEMENT_SCHEDULING )
+AVM_IF_DEBUG_FLAG_AND( STATEMENT_SCHEDULING , writableBuffer.nonempty() )
 	AVM_OS_TRACE << "InputEnabled:ap> FOUND COM !!!" << std::endl;
 
 	AVM_OS_TRACE << ieBuffer->getNameID() << ":>" << std::endl;
@@ -251,7 +262,6 @@ AVM_IF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 	AVM_OS_TRACE << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 //!!! END DEBUG TRACE
-		}
 
 		ExecutionEnvironment tmpENV(ENV, outED, ENV.inCODE->first().bfCode());
 		if( tmpENV.run() )
@@ -281,14 +291,12 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_SCHEDULING )
 
 
 void AvmPrimitive_InputEnabled::restoreMessage(
-		const RuntimeID & rieRID, InstanceOfBuffer * ieBuffer,
-		ListOfMessage & saveMessages, ListOfAPExecutionData EDS)
+		const RuntimeID & rieRID, const InstanceOfBuffer * ieBuffer,
+		ListOfMessage & saveMessages, ListOfExecutionData EDS)
 {
-	ListOfAPExecutionData::iterator itED = EDS.begin();
-	ListOfAPExecutionData::iterator endED = EDS.end();
-	for( ; itED != endED ; ++itED )
+	for( auto & itED : EDS )
 	{
-		(*itED).getWritableRuntime( rieRID ).getWritableBuffer(
+		itED.getWritableRuntime( rieRID ).getWritableBuffer(
 				ieBuffer ).restore( saveMessages );
 	}
 }

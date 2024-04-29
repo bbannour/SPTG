@@ -78,11 +78,23 @@ BF AvmcodeTraceExpressionCompiler::compileExpression(
 	return( AbstractAvmcodeCompiler::compileAvmcode(aCTX, aCode) );
 }
 
+BF AvmcodeTraceExpressionCompiler::optimizeExpression(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	return( AbstractAvmcodeCompiler::optimizeExpression(aCTX, aCode) );
+}
+
 
 BFCode AvmcodeTraceExpressionCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
 	return( AbstractAvmcodeCompiler::compileAvmcode(aCTX, aCode) );
+}
+
+BFCode AvmcodeTraceExpressionCompiler::optimizeStatement(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	return( AbstractAvmcodeCompiler::optimizeStatementCode(aCTX, aCode) );
 }
 
 
@@ -96,11 +108,23 @@ BF AvmcodeDebugExpressionCompiler::compileExpression(
 	return( AbstractAvmcodeCompiler::compileAvmcode(aCTX, aCode) );
 }
 
+BF AvmcodeDebugExpressionCompiler::optimizeExpression(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	return( AbstractAvmcodeCompiler::optimizeExpression(aCTX, aCode) );
+}
+
 
 BFCode AvmcodeDebugExpressionCompiler::compileStatement(
 		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
 {
 	return( AbstractAvmcodeCompiler::compileAvmcode(aCTX, aCode) );
+}
+
+BFCode AvmcodeDebugExpressionCompiler::optimizeStatement(
+		COMPILE_CONTEXT * aCTX, const BFCode & aCode)
+{
+	return( AbstractAvmcodeCompiler::optimizeStatementCode(aCTX, aCode) );
 }
 
 

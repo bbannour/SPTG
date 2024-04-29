@@ -26,7 +26,7 @@ namespace sep
  * CONSTRUCTOR
  * Default
  */
-RunnableElement::RunnableElement(WObject * wfParameterObject)
+RunnableElement::RunnableElement(const WObject * wfParameterObject)
 : NamedElement( CLASS_KIND_T( RunnableElement ) , wfParameterObject ),
 SerializerFeature( ),
 mParameterWObject( wfParameterObject ),
@@ -42,7 +42,7 @@ mDynamicLifecycleStatus( RUNNABLE_UNDEFINED_STATE )
 }
 
 RunnableElement::RunnableElement(
-		class_kind_t aClassKind, WObject * wfParameterObject)
+		class_kind_t aClassKind, const WObject * wfParameterObject)
 : NamedElement( aClassKind , wfParameterObject ),
 SerializerFeature( ),
 mParameterWObject( wfParameterObject ),
@@ -62,7 +62,7 @@ mDynamicLifecycleStatus( RUNNABLE_UNDEFINED_STATE )
  * SETTER
  * mParameterWObject
  */
-void RunnableElement::setParameterWObject(WObject * wfParameterObject)
+void RunnableElement::setParameterWObject(const WObject * wfParameterObject)
 {
 	mParameterWObject = wfParameterObject;
 
@@ -89,8 +89,9 @@ bool RunnableElement::configure()
 		mConfigFlag = SerializerFeature::configure( getParameterWObject() );
 
 		mReportPrintFlag = Query::getWPropertyBoolean(
-				Query::getWSequenceOrElse(
-						getParameterWObject(), "PROPERTY", "REPORT"),
+				Query::getRegexWSequenceOrElse(getParameterWObject(),
+						OR_WID2("report", "REPORT"),
+						OR_WID2("property", "PROPERTY")),
 				"reporting", true);
 	}
 
@@ -110,8 +111,9 @@ bool RunnableElement::configureLifecycleState()
 {
 	mStartupLifecycleStatus = RUNNABLE_IDLE_STATE;
 
-	WObject * theLIFECYCLE = Query::getRegexWSequence(getParameterWObject(),
-			OR_WID4("lifecycle", "LIFECYCLE", "scheduling", "SCHEDULING") );
+	const WObject * theLIFECYCLE =
+			Query::getRegexWSequence(getParameterWObject(),
+				OR_WID4("lifecycle", "LIFECYCLE", "scheduling", "SCHEDULING"));
 
 	if( theLIFECYCLE != WObject::_NULL_ )
 	{

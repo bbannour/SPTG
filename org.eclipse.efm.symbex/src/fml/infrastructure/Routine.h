@@ -25,6 +25,8 @@
 #include <fml/expression/StatementConstructor.h>
 #include <fml/expression/StatementTypeChecker.h>
 
+#include <fml/infrastructure/PropertyPart.h>
+
 #include <fml/operator/Operator.h>
 
 
@@ -43,11 +45,11 @@ class Variable;
 class Routine :
 		public BehavioralElement,
 		public SpecifierImpl,
+		AVM_INJECT_STATIC_NULL_REFERENCE( Routine ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( Routine )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( Routine )
-
 
 protected:
 	/**
@@ -55,34 +57,31 @@ protected:
 	*/
 	BF mModel;
 
-	BFVector mParameters;
-
-	BFVector mReturns;
+	PropertyPart mPropertyDeclaration;
 
 	BFCode mCode;
-
 
 public:
 	/**
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	Routine(Machine * aContainer, const std::string & aNameID,
+	Routine(Machine & aContainer, const std::string & aNameID,
 			const Modifier & aModifier, const Specifier & aSpecifier,
 			const BF & aModel = BF::REF_NULL);
 
 
-	Routine(BehavioralElement * aContainer, const std::string & aNameID,
+	Routine(BehavioralElement & aContainer, const std::string & aNameID,
 			const Specifier & aSpecifier =
 					Specifier::DESIGN_PROTOTYPE_STATIC_SPECIFIER,
 			const BF & aModel = BF::REF_NULL)
-	: BehavioralElement( CLASS_KIND_T( Routine ), aContainer, aNameID ),
+	: BehavioralElement( CLASS_KIND_T( Routine ), (& aContainer), aNameID ),
 	SpecifierImpl( aSpecifier ),
 
 	mModel( aModel ),
 
-	mParameters( ),
-	mReturns( ),
+	mPropertyDeclaration( this , "property" ),
+
 	mCode( )
 	{
 		//!! NOTHING
@@ -100,16 +99,15 @@ public:
 			Specifier aSpecifier, const std::string & aNameID)
 	{
 
-		return( new Routine(aContainer, aNameID, aModifier,
+		return( new Routine((* aContainer), aNameID, aModifier,
 				aSpecifier.setDesignModel()) );
 	}
 
 	static Routine * newDefine(
-			Machine * aContainer, const std::string & aNameID);
+			Machine & aContainer, const std::string & aNameID);
 
 	inline static Routine * newDefine(
-			const BehavioralPart & aBehavioralPart,
-			const std::string & aNameID)
+			const BehavioralPart & aBehavioralPart, const std::string & aNameID)
 	{
 
 		return( new Routine(aBehavioralPart, aNameID,
@@ -119,11 +117,11 @@ public:
 	inline static Routine * newInvoke(
 			BehavioralElement * aContainer, const std::string & aNameID)
 	{
-		return( new Routine(aContainer, aNameID,
+		return( new Routine((* aContainer), aNameID,
 				Specifier::DESIGN_INSTANCE_DYNAMIC_SPECIFIER) );
 	}
 
-	static Routine * newInvoke(Machine * aContainer, const BF & aModel);
+	static Routine * newInvoke(Machine & aContainer, const BF & aModel);
 
 
 	/**
@@ -136,6 +134,13 @@ public:
 
 
 	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	static Routine & nullref();
+
+
+	/**
 	 * GETTER - SETTER
 	 * the Type Specifier
 	 */
@@ -143,17 +148,6 @@ public:
 	{
 		return( mModel );
 	}
-
-//	inline bool hasType() const
-//    {
-//		return( mModel.valid() );
-//    }
-//
-//	inline void setType(const BF & aType)
-//	{
-//		mModel = aType;
-//	}
-//
 
 	/**
 	 * GETTER - SETTER
@@ -175,8 +169,7 @@ public:
 
 		if( aModel.is< Routine >() )
 		{
-			BehavioralElement::setNameID(
-					aModel.to_ptr< Routine >()->getNameID() );
+			BehavioralElement::setNameID( aModel.to< Routine >().getNameID() );
 		}
 		else
 		{
@@ -185,7 +178,7 @@ public:
 	}
 
 	// Model as Invokable Operator
-	inline Operator * getModelOperator() const
+	inline const Operator * getModelOperator() const
 	{
 		return( mModel.as_ptr< Operator >() );
 	}
@@ -198,14 +191,29 @@ public:
 
 	/**
 	 * GETTER - SETTER
+	 * mPropertyPart
+	 */
+	inline const PropertyPart & getPropertyPart() const
+	{
+		return( mPropertyDeclaration );
+	}
+
+	inline PropertyPart & getPropertyPart()
+	{
+		return( mPropertyDeclaration );
+	}
+
+
+	/**
+	 * GETTER - SETTER
 	 * mCode
 	 */
-	inline BFCode & getCode()
+	inline const BFCode & getCode() const
 	{
 		return( mCode );
 	}
 
-	inline const BFCode & getCode() const
+	inline BFCode & getCode()
 	{
 		return( mCode );
 	}
@@ -217,7 +225,7 @@ public:
 
 	inline bool doSomething() const
 	{
-		return( mCode.valid() && StatementTypeChecker::doSomething(mCode) );
+		return( mCode.valid() && StatementTypeChecker::doSomething(* mCode) );
 	}
 
 	inline void setCode(const BFCode & aCode)
@@ -240,117 +248,6 @@ public:
 
 
 	/**
-	 * GETTER - SETTER
-	 * mParameters
-	 */
-	inline BFVector & getParameters()
-	{
-		return( mParameters );
-	}
-
-	inline const BF & getParameter(avm_offset_t offset) const
-	{
-		return( mParameters[offset] );
-	}
-
-	inline const BF & getParameter(const std::string & aNameID) const
-	{
-		return( getByNameID(mParameters, aNameID) );
-	}
-
-	avm_offset_t getParameterOffset(const std::string & label) const
-	{
-		return( getOffsetByNameID(mParameters, label) );
-	}
-
-
-	inline bool hasParameters() const
-	{
-		return( mParameters.nonempty() );
-	}
-
-	bool hasParameterOffset(Variable * aParameter) const;
-
-
-	inline void appendParameter(const BF & anInput)
-	{
-		mParameters.append( anInput );
-	}
-
-	void saveParameter(Variable * anInput);
-
-	inline void appendParameter(const std::string & label, const BF & anInput)
-	{
-		mParameters.append( anInput );
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * mReturns
-	 */
-	inline BFVector & getReturns()
-	{
-		return( mReturns );
-	}
-
-	inline const BF & getReturn(avm_offset_t offset) const
-	{
-		return( mReturns[offset] );
-	}
-
-	inline const BF & getReturn(const std::string & aNameID) const
-	{
-		return( getByNameID(mReturns, aNameID) );
-	}
-
-	avm_offset_t getReturnOffset(const std::string & label) const
-	{
-		return( getOffsetByNameID(mReturns, label) );
-	}
-
-
-	inline bool hasReturns() const
-	{
-		return( mReturns.nonempty() );
-	}
-
-	bool hasReturnOffset(Variable * aReturn) const;
-
-
-	inline void appendReturn(const BF & anOutput)
-	{
-		mReturns.append( anOutput );
-	}
-
-	void saveReturn(Variable * anOutput);
-
-	inline void appendReturn(const std::string & label, const BF & anOutput)
-	{
-		mReturns.append( anOutput );
-	}
-
-
-	/**
-	 * GETTER
-	 * the parameters / returns
-	 */
-	inline const BF & getParamReturn(const std::string & aNameID) const
-	{
-		const BF & bfParam = getParameter(aNameID);
-
-		return( bfParam.valid() ? bfParam : getReturn(aNameID)  );
-
-	}
-
-	static const BF & getByNameID(
-			const BFVector & params, const std::string & aNameID);
-
-	static avm_offset_t getOffsetByNameID(
-			const BFVector & params, const std::string & label);
-
-
-	/**
 	 * MACRO
 	 * INLINING
 	 */
@@ -370,7 +267,7 @@ public:
 	{
 		return( getSpecifier().isDesignInstanceDynamic() && hasModel()
 				&& getModel()->getModifier().hasNatureMacro()
-				&& getModel()->getReturns().singleton()
+				&& getModel()->getPropertyPart().getVariableReturns().singleton()
 				&& getModel()->getCode()->isOpCode( AVM_OPCODE_RETURN ) );
 	}
 
@@ -385,23 +282,37 @@ public:
 	BF inlineCode(const BF & aCode) const;
 
 
+	////////////////////////////////////////////////////////////////////////////
+	// ROUTINE INVOKATION
+	static BFCode invokeRoutine(Routine * aRoutineInstance);
+
+	static BFCode invokeRoutineStatement(Routine * aRoutineInstance);
+
+	static BF invokeRoutineExpression(Routine * aRoutineInstance);
+
+
 	/**
 	 * Serialization
 	 */
-	void strParameters(OutStream & os, const std::string & sep = ", ") const;
+	void strParameters(OutStream & out, const std::string & sep = ", ") const;
 
-	void strReturns(OutStream & os, const std::string & sep = ", ") const;
+	void strReturns(OutStream & out, const std::string & sep = ", ") const;
 
-	void strHeader(OutStream & os) const;
+	virtual void strHeader(OutStream & out) const override;
 
-	void toStream(OutStream & os) const;
+	// Due to [-Woverloaded-virtual=]
+	using BehavioralElement::strHeader;
+
+	virtual void toStream(OutStream & out) const override;
 
 
-	void strInvokeParameters(OutStream & os, const std::string & sep = ", ") const;
+	void strInvokeParameters(
+			OutStream & out, const std::string & sep = ", ") const;
 
-	void strInvokeReturns(OutStream & os, const std::string & sep = ", ") const;
+	void strInvokeReturns(
+			OutStream & out, const std::string & sep = ", ") const;
 
-	void toStreamInvoke(OutStream & os, const std::string & sep = ", ") const;
+	void toStreamInvoke(OutStream & out, const std::string & sep = ", ") const;
 
 };
 

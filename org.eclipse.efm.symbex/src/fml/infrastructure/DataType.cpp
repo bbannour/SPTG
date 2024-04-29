@@ -23,6 +23,7 @@
 #include <fml/infrastructure/Machine.h>
 #include <fml/infrastructure/Routine.h>
 #include <fml/infrastructure/PropertyPart.h>
+#include <fml/infrastructure/Routine.h>
 
 
 namespace sep
@@ -42,13 +43,13 @@ DataType::DataType(Machine * aContainer, const std::string & aNameID,
 : ObjectElement(CLASS_KIND_T( DataType ), aContainer, aNameID),
 mSpecifierKind( TYPE_INTERVAL_SPECIFIER ),
 mTypeSpecifier( aTypeSpecifier ),
-mConstraintRoutine( NULL ),
+mConstraintRoutine( nullptr ),
 
 mMinimumSize( 1 ),
 mMaximumSize( 1 ),
 
-mPropertyPart( NULL ),
-mBehavioralSpecification( NULL ),
+mPropertyPart( nullptr ),
+mBehavioralSpecification( nullptr ),
 
 mIntervalKind( anIntervalKind ),
 mInfimum( anInfimum ),
@@ -69,13 +70,13 @@ DataType::DataType(ObjectElement * aContainer,
 : ObjectElement(CLASS_KIND_T( DataType ), aContainer, aNameID),
 mSpecifierKind( aSpecifierKind ),
 mTypeSpecifier( aTypeSpecifier ),
-mConstraintRoutine( NULL ),
+mConstraintRoutine( nullptr ),
 
 mMinimumSize( 0 ),
 mMaximumSize( maxSize ),
 
-mPropertyPart( NULL ),
-mBehavioralSpecification( NULL ),
+mPropertyPart( nullptr ),
+mBehavioralSpecification( nullptr ),
 
 mIntervalKind( IIntervalKind::CLOSED ),
 mInfimum( ),
@@ -90,19 +91,18 @@ mSupremum( )
  * Structure
  * Union
  */
-DataType::DataType(ObjectElement * aContainer,
-		const std::string & aNameID,
-		avm_type_specifier_kind_t aSpecifierKind)
+DataType::DataType(ObjectElement * aContainer, const std::string & aNameID,
+		avm_type_specifier_kind_t aSpecifierKind, const BF & aTypeSpecifier)
 : ObjectElement(CLASS_KIND_T( DataType ), aContainer, aNameID),
 mSpecifierKind( aSpecifierKind ),
-mTypeSpecifier( ),
-mConstraintRoutine( NULL ),
+mTypeSpecifier( aTypeSpecifier ),
+mConstraintRoutine( nullptr ),
 
 mMinimumSize( 1 ),
 mMaximumSize( 1 ),
 
-mPropertyPart( NULL ),
-mBehavioralSpecification( NULL ),
+mPropertyPart( nullptr ),
+mBehavioralSpecification( nullptr ),
 
 mIntervalKind( IIntervalKind::CLOSED ),
 mInfimum( ),
@@ -125,11 +125,11 @@ mConstraintRoutine( aDataType.mConstraintRoutine ),
 mMinimumSize( aDataType.mMinimumSize ),
 mMaximumSize( aDataType.mMaximumSize ),
 
-mPropertyPart( (aDataType.mPropertyPart == NULL) ?
-	NULL : new PropertyPart( *(aDataType.mPropertyPart) ) ),
+mPropertyPart( (aDataType.mPropertyPart == nullptr) ?
+	nullptr : new PropertyPart( *(aDataType.mPropertyPart) ) ),
 
-mBehavioralSpecification( (aDataType.mBehavioralSpecification == NULL) ?
-	NULL : new BehavioralPart( *(aDataType.mBehavioralSpecification) ) ),
+mBehavioralSpecification( (aDataType.mBehavioralSpecification == nullptr) ?
+	nullptr : new BehavioralPart( *(aDataType.mBehavioralSpecification) ) ),
 
 
 mIntervalKind( aDataType.mIntervalKind ),
@@ -148,6 +148,26 @@ DataType::~DataType()
 	delete( mPropertyPart );
 
 	delete( mBehavioralSpecification );
+}
+
+
+/**
+ * GETTER
+ * ITypeSpecifier API
+ */
+const BaseTypeSpecifier & DataType::thisTypeSpecifier() const
+{
+	return( BaseTypeSpecifier::nullref() );
+}
+
+
+/**
+ * GETTER - SETTER
+ * mConstraint
+ */
+const Routine & DataType::getConstraintRoutine() const
+{
+	return( * mConstraintRoutine );
 }
 
 
@@ -173,7 +193,7 @@ DataType * DataType::newInterval(
  * GETTER
  * Interval Length
  */
-avm_integer_t DataType::getIntervalLength()
+avm_integer_t DataType::getIntervalLength() const
 {
 	avm_integer_t infBound = AVM_NUMERIC_MIN_INTEGER;
 	avm_integer_t supBound = AVM_NUMERIC_MAX_INTEGER;
@@ -184,11 +204,11 @@ avm_integer_t DataType::getIntervalLength()
 	}
 	else if( mInfimum.is< Variable >() )
 	{
-		Variable * aVar = mInfimum.to_ptr< Variable >();
+		const Variable & aVar = mInfimum.to< Variable >();
 
-		if( aVar->hasValue() && aVar->getValue().isUInteger() )
+		if( aVar.hasValue() && aVar.getValue().isUInteger() )
 		{
-			infBound = aVar->getValue().toUInteger();
+			infBound = aVar.getValue().toUInteger();
 		}
 		else
 		{
@@ -232,19 +252,20 @@ avm_integer_t DataType::getIntervalLength()
 /**
  * Serialization
  */
-void DataType::toStreamInterval(OutStream & os) const
+void DataType::toStreamInterval(OutStream & out) const
 {
-	os << " interval< " << getTypeSpecifier().str() << strIso_Interval() << " >";
+	out << " interval< " << getTypeSpecifier().str()
+		<< strIso_Interval() << " >";
 
 	if( hasConstraintRoutine() )
 	{
-		os << " {" << EOL_INCR_INDENT;
-		getConstraintRoutine()->toStream(os);
-		os << DECR_INDENT_TAB << "}";
+		out << " {" << EOL_INCR_INDENT;
+		getConstraintRoutine().toStream(out);
+		out << DECR_INDENT_TAB << "}";
 	}
 	else
 	{
-		os << ";";
+		out << ";";
 	}
 }
 
@@ -275,6 +296,7 @@ DataType * DataType::newContainer(
 			aSpecifierKind, aTypeSpecifier, aSize) );
 }
 
+
 /**
  * Serialization
  */
@@ -296,15 +318,15 @@ std::string DataType::strContainerId(
 		}
 		else if( baseT.is< BaseTypeSpecifier >() )
 		{
-			oss << baseT.to_ptr< BaseTypeSpecifier >()->strT();
+			oss << baseT.to< BaseTypeSpecifier >().strT();
 		}
 		else if( baseT.is< DataType >() )
 		{
-			oss << baseT.to_ptr< DataType >()->strT();
+			oss << baseT.to< DataType >().strT();
 		}
 		else if( baseT.is< ObjectElement >() )
 		{
-			oss << baseT.to_ptr< ObjectElement >()->getNameID();
+			oss << baseT.to< ObjectElement >().getNameID();
 		}
 		else
 		{
@@ -324,7 +346,7 @@ std::string DataType::strContainerId(
 		}
 		else
 		{
-			oss << " , * >";
+			oss << " , *>";
 		}
 	}
 	else
@@ -339,20 +361,20 @@ std::string DataType::strContainerId(
 std::string DataType::strContainerId(
 		avm_type_specifier_kind_t aSpecifierKind, long aSize)
 {
-	std::ostringstream os;
+	std::ostringstream oss;
 
-	os << ContainerTypeSpecifier::strSpecifierKing(aSpecifierKind);
+	oss << ContainerTypeSpecifier::strSpecifierKing(aSpecifierKind);
 
 	if( aSize >= 0 )
 	{
-		os << "<" << aSize << ">";
+		oss << "<" << aSize << ">";
 	}
 	else
 	{
-		os << "<*>";
+		oss << "<*>";
 	}
 
-	return( os.str() );
+	return( oss.str() );
 }
 
 
@@ -364,11 +386,11 @@ std::string DataType::strContainerType() const
 	{
 		if( mTypeSpecifier.is< BaseTypeSpecifier >() )
 		{
-			oss << mTypeSpecifier.to_ptr< BaseTypeSpecifier >()->strT();
+			oss << mTypeSpecifier.to< BaseTypeSpecifier >().strT();
 		}
 		else if( mTypeSpecifier.is< DataType >() )
 		{
-			oss << mTypeSpecifier.to_ptr< DataType >()->strT();
+			oss << mTypeSpecifier.to< DataType >().strT();
 		}
 
 		oss << "[ " << mMaximumSize << " ]";
@@ -381,17 +403,17 @@ std::string DataType::strContainerType() const
 		{
 			if( mTypeSpecifier.is< BaseTypeSpecifier >() )
 			{
-				oss << "< " << mTypeSpecifier.to_ptr<
-						BaseTypeSpecifier >()->strT();
+				oss << "< " << mTypeSpecifier.to<
+						BaseTypeSpecifier >().strT();
 			}
 			else if( mTypeSpecifier.is< DataType >() )
 			{
-				oss << "< " << mTypeSpecifier.to_ptr< DataType >()->strT();
+				oss << "< " << mTypeSpecifier.to< DataType >().strT();
 			}
 			else if( mTypeSpecifier.is< ObjectElement >() )
 			{
 				oss << "< "
-					<< mTypeSpecifier.to_ptr< ObjectElement >()->getNameID();
+					<< mTypeSpecifier.to< ObjectElement >().getNameID();
 			}
 			else
 			{
@@ -400,7 +422,7 @@ std::string DataType::strContainerType() const
 		}
 		else
 		{
-			oss << "< null<type>";
+			oss << "< $null<type>";
 		}
 
 		if( mMaximumSize >= 0 )
@@ -415,19 +437,19 @@ std::string DataType::strContainerType() const
 }
 
 
-void DataType::toStreamContainer(OutStream & os) const
+void DataType::toStreamContainer(OutStream & out) const
 {
-	os << " " << strContainerType();
+	out << " " << strContainerType();
 
 	if( hasConstraintRoutine() )
 	{
-		os << " {" << EOL_INCR_INDENT;
-		getConstraintRoutine()->toStream(os);
-		os << DECR_INDENT_TAB << "}";
+		out << " {" << EOL_INCR_INDENT;
+		getConstraintRoutine().toStream(out);
+		out << DECR_INDENT_TAB << "}";
 	}
 	else
 	{
-		os << ";";
+		out << ";";
 	}
 }
 
@@ -443,7 +465,7 @@ void DataType::toStreamContainer(OutStream & os) const
  */
 bool DataType::hasProperty() const
 {
-	return( (mPropertyPart != NULL)
+	return( (mPropertyPart != nullptr)
 			&& mPropertyPart->nonempty() );
 }
 
@@ -453,7 +475,7 @@ bool DataType::hasProperty() const
  */
 BehavioralPart * DataType::getUniqBehaviorPart()
 {
-	if( mBehavioralSpecification == NULL )
+	if( mBehavioralSpecification == nullptr )
 	{
 		mBehavioralSpecification = new BehavioralPart(this, "moe");
 	}
@@ -471,25 +493,33 @@ BehavioralPart * DataType::getUniqBehaviorPart()
  * CONSTRUCTOR
  * Enum
  */
-DataType * DataType::newEnum(
-		const PropertyPart & aPropertyPart, const std::string & aNameID)
+DataType * DataType::newEnum(const PropertyPart & aPropertyPart,
+		const std::string & aNameID, const BF & superEnumerationType)
 {
-	DataType * newDataType = new DataType(
-			aPropertyPart.getContainer(), aNameID, TYPE_ENUM_SPECIFIER );
+	DataType * newDataType = new DataType(aPropertyPart.getContainer(),
+			aNameID, TYPE_ENUM_SPECIFIER, superEnumerationType );
 
 	newDataType->setPropertyPart( new PropertyPart(newDataType, "symbol") );
 
 	return( newDataType );
 }
 
+const BF & DataType::getEnumSymbol(const std::string & aNameID) const
+{
+	return (mPropertyPart != nullptr) ?
+			mPropertyPart->getVariable(aNameID) : BF::REF_NULL;
+}
+
+
 /**
  * GETTER
  * Enumeration Size
  * Interval Length
  */
-avm_size_t DataType::getEnumSize()
+std::size_t DataType::getEnumSize() const
 {
-	return( (mPropertyPart != NULL) ? mPropertyPart->getVariables().size() : 0 );
+	return( (mPropertyPart != nullptr) ?
+			mPropertyPart->getVariables().size() : 0 );
 }
 
 /**
@@ -510,9 +540,14 @@ void DataType::saveVariable(Variable * aVariable)
 /**
  * Serialization
  */
-void DataType::toStreamEnum(OutStream & os) const
+void DataType::toStreamEnum(OutStream & out) const
 {
-	os << " enum {" << EOL_FLUSH;
+	out << " enum";
+	if( hasSuperTypeSpecifier() )
+	{
+		out  << "< " << getTypeSpecifier().to< DataType >().strT() << " >";
+	}
+	out << " {" << EOL_FLUSH;
 
 	if( mPropertyPart->hasVariable() )
 	{
@@ -521,25 +556,33 @@ void DataType::toStreamEnum(OutStream & os) const
 		TableOfVariable::const_raw_iterator endIt =
 				mPropertyPart->getVariables().end();
 
-		os << TAB2 << (it)->getNameID();
+		out << TAB2 << (it)->getNameID();
+		if( (it)->hasReallyUnrestrictedName() )
+		{
+			out << " \"" << (it)->getUnrestrictedName() << "\"";
+		}
 		if( (it)->hasValue() )
 		{
-			os << " = " << (it)->strValue();
+			out << " = " << (it)->strValue();
 		}
 		for( ++it ; it != endIt ; ++it )
 		{
-			os << "," << EOL;
+			out << "," << EOL;
 
-			os << TAB2 << (it)->getNameID();
+			out << TAB2 << (it)->getNameID();
+			if( (it)->hasReallyUnrestrictedName() )
+			{
+				out << " \"" << (it)->getUnrestrictedName() << "\"";
+			}
 			if( (it)->hasValue() )
 			{
-				os << " = " << (it)->strValue();
+				out << " = " << (it)->strValue();
 			}
 		}
-		os << EOL;
+		out << EOL;
 	}
 
-	os << TAB << "}";
+	out << TAB << "}";
 }
 
 
@@ -564,21 +607,21 @@ DataType * DataType::newStructure(
 /**
  * Serialization
  */
-void DataType::toStreamStructure(OutStream & os) const
+void DataType::toStreamStructure(OutStream & out) const
 {
-	os << " struct {" << EOL_FLUSH;
+	out << " struct {" << EOL_FLUSH;
 
 	if( hasProperty() )
 	{
-		mPropertyPart->toStream(os);
+		mPropertyPart->toStream(out);
 	}
 
 	if( hasBehavior() && mBehavioralSpecification->hasAnyRoutine() )
 	{
-		mBehavioralSpecification->toStreamAnyRoutine( os << EOL );
+		mBehavioralSpecification->toStreamAnyRoutine( out << EOL );
 	}
 
-	os << TAB << "}";
+	out << TAB << "}";
 }
 
 
@@ -604,16 +647,16 @@ DataType * DataType::newChoice(
 /**
  * Serialization
  */
-void DataType::toStreamChoice(OutStream & os) const
+void DataType::toStreamChoice(OutStream & out) const
 {
-	os << " choice {" << EOL_FLUSH;
+	out << " choice {" << EOL_FLUSH;
 
 	if( hasProperty() )
 	{
-		mPropertyPart->toStream(os);
+		mPropertyPart->toStream(out);
 	}
 
-	os << TAB << "}";
+	out << TAB << "}";
 }
 
 
@@ -638,16 +681,16 @@ DataType * DataType::newUnion(
 /**
  * Serialization
  */
-void DataType::toStreamUnion(OutStream & os) const
+void DataType::toStreamUnion(OutStream & out) const
 {
-	os << " union {" << EOL_FLUSH;
+	out << " union {" << EOL_FLUSH;
 
 	if( hasProperty() )
 	{
-		mPropertyPart->toStream(os);
+		mPropertyPart->toStream(out);
 	}
 
-	os << TAB << "}";
+	out << TAB << "}";
 }
 
 
@@ -669,30 +712,30 @@ DataType * DataType::newAlias(const PropertyPart & aPropertyPart,
 /**
  * Serialization
  */
-void DataType::toStreamAlias(OutStream & os) const
+void DataType::toStreamAlias(OutStream & out) const
 {
 	if( mTypeSpecifier.is< BaseTypeSpecifier >() )
 	{
-		os << " " << mTypeSpecifier.to_ptr< BaseTypeSpecifier >()->strT();
+		out << " " << mTypeSpecifier.to< BaseTypeSpecifier >().strT();
 	}
 	else if( mTypeSpecifier.is< DataType >() )
 	{
-		os << " " << mTypeSpecifier.to_ptr< DataType >()->strT();
+		out << " " << mTypeSpecifier.to< DataType >().strT();
 	}
 	else
 	{
-		os << str_indent( mTypeSpecifier );
+		out << str_indent( mTypeSpecifier );
 	}
 
-	if( mConstraintRoutine!= NULL )
+	if( mConstraintRoutine!= nullptr )
 	{
-		os << " {" << EOL_INCR_INDENT;
-		mConstraintRoutine->toStream(os);
-		os << DECR_INDENT_TAB << "}";
+		out << " {" << EOL_INCR_INDENT;
+		mConstraintRoutine->toStream(out);
+		out << DECR_INDENT_TAB << "}";
 	}
 	else
 	{
-		os << ";";
+		out << ";";
 	}
 }
 
@@ -708,11 +751,11 @@ std::string DataType::strTypeSpecifier(const BF & aTypeSpecifier)
 	{
 		if( aTypeSpecifier.is< BaseTypeSpecifier >() )
 		{
-			return aTypeSpecifier.to_ptr< BaseTypeSpecifier >()->strT();
+			return aTypeSpecifier.to< BaseTypeSpecifier >().strT();
 		}
 		else if( aTypeSpecifier.is< DataType >() )
 		{
-			return aTypeSpecifier.to_ptr< DataType >()->strT();
+			return aTypeSpecifier.to< DataType >().strT();
 		}
 		else
 		{
@@ -726,66 +769,66 @@ std::string DataType::strTypeSpecifier(const BF & aTypeSpecifier)
 }
 
 
-void DataType::strHeader(OutStream & os) const
+void DataType::strHeader(OutStream & out) const
 {
-	os << getModifier().toString()
-			<< "type " << getFullyQualifiedNameID(); //<< getNameID();
+	out << getModifier().toString()
+		<< "type " << getFullyQualifiedNameID(); //<< getNameID();
 
 	if( hasUnrestrictedName() )
 	{
-		os << " \"" << getUnrestrictedName() << "\"";
+		out << " \"" << getUnrestrictedName() << "\"";
 	}
 }
 
 
-void DataType::toStream(OutStream & os) const
+void DataType::toStream(OutStream & out) const
 {
-	if( os.preferablyFQN() )
+	if( out.preferablyFQN() )
 	{
-		os << TAB << getFullyQualifiedNameID();
+		out << TAB << getFullyQualifiedNameID();
 
-		AVM_DEBUG_REF_COUNTER(os);
+		AVM_DEBUG_REF_COUNTER(out);
 
 		return;
 	}
 
-	os << TAB << getModifier().toString() << "type " << getNameID();
+	out << TAB << getModifier().toString() << "type " << getNameID();
 
 
 	if( hasTypeContainer() )
 	{
-		toStreamContainer(os);
+		toStreamContainer(out);
 	}
 	else if( isTypedInterval() )
 	{
-		toStreamInterval(os);
+		toStreamInterval(out);
 	}
 	else if( isTypedEnum() )
 	{
-		toStreamEnum(os);
+		toStreamEnum(out);
 	}
 	else if( isTypedStructure() )
 	{
-		toStreamStructure(os);
+		toStreamStructure(out);
 	}
 
 	else if( isTypedChoice() )
 	{
-		toStreamChoice(os);
+		toStreamChoice(out);
 	}
 
 	else if( isTypedUnion() )
 	{
-		toStreamUnion(os);
+		toStreamUnion(out);
 	}
 
-	else// if( isTypedAlias() )
+	else// if( isDataTypeAlias() )
 	{
-		toStreamAlias(os);
+		toStreamAlias(out);
 	}
 
 
-	os << EOL_FLUSH;
+	out << EOL_FLUSH;
 }
 
 

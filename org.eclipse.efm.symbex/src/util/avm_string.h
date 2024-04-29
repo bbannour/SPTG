@@ -41,6 +41,41 @@ namespace sep
 		s.find_last_not_of(SPACE_CHARS))
 
 
+/**
+ * REGEX
+ * CONSTRUCTORS
+ */
+#define WID_SEPARATOR              "[^a-zA-Z\\s0-9]?"
+
+#define CONS_WID2(w1, w2)          w1  WID_SEPARATOR  w2
+
+#define CONS_WID3(w1, w2, w3)      w1  WID_SEPARATOR  w2  WID_SEPARATOR  w3
+
+#define PLUS_WID3(w1, w2, w3)      \
+				(std::string(w1) + WID_SEPARATOR + w2 + WID_SEPARATOR + w3)
+
+#define CONS_WID4(w1, w2, w3, w4)  \
+				w1  WID_SEPARATOR  w2  WID_SEPARATOR  w3  WID_SEPARATOR  w4
+
+#define CONS_WID5(w1, w2, w3, w4, w5)  \
+				w1  WID_SEPARATOR  w2  WID_SEPARATOR  w3  WID_SEPARATOR  w4  WID_SEPARATOR  w5
+
+
+#define PREFIX_WID(w1, w2)          "(" w1  WID_SEPARATOR ")?(" w2 ")"
+
+#define SUFFIX_WID(w1, w2)          "(" w1 ")(" WID_SEPARATOR  w2 ")?"
+
+
+#define OP_OR 					 "|"
+
+#define OR_WID2(w1, w2)          w1  OP_OR  w2
+
+#define OR_WID3(w1, w2, w3)      w1  OP_OR  w2  OP_OR  w3
+
+#define OR_WID4(w1, w2, w3, w4)  w1  OP_OR  w2  OP_OR  w3  OP_OR  w4
+
+
+
 // Conversion
 template< typename T >
 T string_to(const std::string & strInput,
@@ -114,6 +149,16 @@ public:
 
 
 	////////////////////////////////////////////////////////////////////////////
+	// STRING SPLIT
+	////////////////////////////////////////////////////////////////////////////
+
+//	static std::vector<std::string> string_split(
+//			std::string s, const char delimiter);
+
+	static std::string string_split(
+			std::string s, const char delimiter, unsigned int occurence);
+
+	////////////////////////////////////////////////////////////////////////////
 	// REGEX MATCH TEXT
 	////////////////////////////////////////////////////////////////////////////
 
@@ -151,6 +196,8 @@ public:
 	static void replaceAll(std::string & mainStr, const std::string & patternA,
 			const std::string & patternB);
 
+	static void replaceAllEscapeSequences(std::string & mainStr);
+
 
 	static std::string regex_replace(const std::string & mainStr,
 			const std::string & regex_pattern, const std::string & pattern);
@@ -180,6 +227,15 @@ public:
 
 //		return( (strA.size() >= strB.size()) &&
 //				std::equal(strB.begin(), strB.end(), strA.begin()) );
+	}
+
+	inline static bool stricklyStartsWith(
+			const std::string & strA, const std::string & strB)
+	{
+		std::string::size_type sizeB = strB.size();
+
+		return( (strA.size() > sizeB)
+				&& (strA.compare(0, sizeB, strB) == 0) );
 	}
 
 	inline static bool endsWith(

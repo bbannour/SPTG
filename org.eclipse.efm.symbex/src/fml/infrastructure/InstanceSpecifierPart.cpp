@@ -43,8 +43,8 @@ mModifierAutoStart( true )
 }
 
 InstanceSpecifierPart::InstanceSpecifierPart(Machine * aContainer,
-		const BF & aModel, avm_size_t anInitialInstanceCount,
-		avm_size_t aMaximalInstanceCount, const std::string & aNameID)
+		const BF & aModel, std::size_t anInitialInstanceCount,
+		std::size_t aMaximalInstanceCount, const std::string & aNameID)
 : ObjectClassifier( CLASS_KIND_T( InstanceSpecifierPart ) ,
 		aContainer , aNameID),
 mModel( aModel ),
@@ -63,108 +63,110 @@ mModifierAutoStart( true )
 /**
  * Serialization
  */
-void InstanceSpecifierPart::strMultiplicity(OutStream & os,
-		avm_size_t anInitialCount, avm_size_t aMaximalCount,
+void InstanceSpecifierPart::strMultiplicity(OutStream & out,
+		std::size_t anInitialCount, std::size_t aMaximalCount,
 		const std::string & leftSeparator, const std::string & rightSeparator)
 {
 	if( aMaximalCount == AVM_NUMERIC_MAX_SIZE_T )
 	{
 		if( anInitialCount == 0 )
 		{
-			os << leftSeparator << "*" << rightSeparator;
+			out << leftSeparator << "*" << rightSeparator;
 		}
 		else if( anInitialCount == 1 )
 		{
-			os << leftSeparator << "+" << rightSeparator;
+			out << leftSeparator << "+" << rightSeparator;
 		}
 		else
 		{
-			os << leftSeparator << anInitialCount << ", +" << rightSeparator;
+			out << leftSeparator << anInitialCount << ", +" << rightSeparator;
 		}
 	}
 	else if( anInitialCount != aMaximalCount )
 	{
-		os << leftSeparator << anInitialCount
+		out << leftSeparator << anInitialCount
 				<< ", " << aMaximalCount << rightSeparator;
 	}
 	else
 	{
-		os << leftSeparator << anInitialCount << rightSeparator;
+		out << leftSeparator << anInitialCount << rightSeparator;
 	}
 }
 
 
 void InstanceSpecifierPart::strMultiplicity(
-		OutStream & os, avm_size_t anInitialCount,
-		avm_size_t aPossibleDynamicCount, avm_size_t aMaximalCount,
+		OutStream & out, std::size_t anInitialCount,
+		std::size_t aPossibleDynamicCount, std::size_t aMaximalCount,
 		const std::string & leftSeparator, const std::string & rightSeparator)
 {
 	if( aPossibleDynamicCount > 0 )
 	{
-		os << leftSeparator << anInitialCount
+		out << leftSeparator << anInitialCount
 				<< ", " << aPossibleDynamicCount << ", ";
 
 		if( aMaximalCount != AVM_NUMERIC_MAX_SIZE_T )
 		{
-			os << aMaximalCount << rightSeparator;
+			out << aMaximalCount << rightSeparator;
 		}
 		else
 		{
-			os << "+" << rightSeparator;
+			out << "+" << rightSeparator;
 		}
 	}
 	else
 	{
-		InstanceSpecifierPart::strMultiplicity(os, anInitialCount,
+		InstanceSpecifierPart::strMultiplicity(out, anInitialCount,
 				aMaximalCount, leftSeparator, rightSeparator);
 	}
 }
 
 
 inline static bool showMultiplicity(
-		const Machine * aMachine, avm_size_t anInitialCount,
-		avm_size_t aPossibleDynamicCount, avm_size_t aMaximalCount)
+		const Machine * aMachine, std::size_t anInitialCount,
+		std::size_t aPossibleDynamicCount, std::size_t aMaximalCount)
 {
-	return( ( aMachine->getSpecifier().isFamilyComponentState()
+	return( ( ( aMachine->getSpecifier().isFamilyComponentState()
+				|| aMachine->getSpecifier().isFamilyComponentStatemachine()
+				|| aMachine->getSpecifier().isComponentSystem() )
 			&& (anInitialCount == 1) && (aPossibleDynamicCount == 0)
 			&& (aMaximalCount == AVM_NUMERIC_MAX_SIZE_T) ) ? false : true );
 }
 
-void InstanceSpecifierPart::header(OutStream & os, bool & hasChevron) const
+void InstanceSpecifierPart::header(OutStream & out, bool & hasChevron) const
 {
 	if( hasModel() )
 	{
-		if( hasChevron ) { os << " , "; }
-		else { os << "< "; hasChevron = true; }
+		if( hasChevron ) { out << " , "; }
+		else { out << "< "; hasChevron = true; }
 
-		os << "model: " << ((getModel().is< Machine >()) ?
-				getModel().to_ptr< Machine >()->getNameID() : getModel().str());
+		out << "model: " << ((getModel().is< Machine >()) ?
+				getModel().to< Machine >().getNameID() : getModel().str());
 	}
 
 	if( showMultiplicity(getContainerMachine(), mInitialInstanceCount,
 			mPossibleDynamicInstanciationCount, mMaximalInstanceCount) )
 	{
-		if( hasChevron ) { os << " , "; }
-		else { os << "< "; hasChevron = true; }
+		if( hasChevron ) { out << " , "; }
+		else { out << "< "; hasChevron = true; }
 
 		InstanceSpecifierPart::strMultiplicity(
-				os, mInitialInstanceCount,
+				out, mInitialInstanceCount,
 				mPossibleDynamicInstanciationCount,
 				mMaximalInstanceCount, "instance: [ ", " ]");
 	}
 
 	if( not isAutoStart() )
 	{
-		if( hasChevron ) { os << " , "; }
-		else { os << "< "; hasChevron = true; }
-		os << "autostart = false";
+		if( hasChevron ) { out << " , "; }
+		else { out << "< "; hasChevron = true; }
+		out << "autostart = false";
 	}
 }
 
 
-void InstanceSpecifierPart::toStream(OutStream & os) const
+void InstanceSpecifierPart::toStream(OutStream & out) const
 {
-	os << TAB << "@" << getNameID() << ":" << EOL;
+	out << TAB << "@" << getNameID() << ":" << EOL;
 }
 
 

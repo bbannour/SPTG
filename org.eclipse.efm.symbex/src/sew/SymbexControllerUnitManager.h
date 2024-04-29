@@ -16,17 +16,17 @@
 #ifndef SEW_SYMBEX_CONTROLLER_UNIT_MANAGER_H_
 #define SEW_SYMBEX_CONTROLLER_UNIT_MANAGER_H_
 
-#include <fam/api/AbstractProcessorUnit.h>
+#include  <famcore/api/AbstractProcessorUnit.h>
 
 #include <collection/Typedef.h>
 
-#include <fam/api/CompositeControllerUnit.h>
-#include <fam/api/MainProcessorUnit.h>
-#include <fam/api/ProcessorUnitAutoRegistration.h>
+#include  <famcore/api/CompositeControllerUnit.h>
+#include  <famcore/api/MainProcessorUnit.h>
+#include  <famcore/api/ProcessorUnitAutoRegistration.h>
 
-#include <fam/queue/ExecutionQueue.h>
+#include  <famcore/queue/ExecutionQueue.h>
 
-#include <fam/redundancy/RedundancyFilter.h>
+#include  <famcore/redundancy/RedundancyFilter.h>
 
 
 namespace sep
@@ -92,7 +92,7 @@ public:
 	 * Default
 	 */
 	SymbexControllerUnitManager(
-			SymbexEngine & anEngine, WObject * wfParameterObject)
+			SymbexEngine & anEngine, const WObject * wfParameterObject)
 	: RunnableElement(
 			CLASS_KIND_T( SymbexControllerUnitManager ), wfParameterObject),
 
@@ -127,7 +127,7 @@ public:
 	 */
 	virtual ~SymbexControllerUnitManager()
 	{
-		AbstractProcessorUnit * itProcessor = NULL;
+		AbstractProcessorUnit * itProcessor = nullptr;
 
 		while( mControllerUnits.nonempty() )
 		{
@@ -258,7 +258,7 @@ public:
 	 * GETTER
 	 * mControllerUnits
 	 */
-	inline CompositeControllerUnit & getControllerUnits()
+	inline const CompositeControllerUnit & getControllerUnits() const
 	{
 		return( mControllerUnits );
 	}
@@ -290,7 +290,7 @@ public:
 	}
 
 	inline AbstractProcessorUnit * getControllerUnit(
-			WObject * wfProcessorObject)
+			const WObject * wfProcessorObject)
 	{
 		if( mMainProcessor.getParameterWObject() == wfProcessorObject )
 		{
@@ -445,7 +445,7 @@ public:
 
 	virtual bool preConfigure();
 
-	virtual bool configure();
+	virtual bool configure() override;
 
 	virtual bool configureImpl()
 	{
@@ -460,17 +460,17 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 	// INIT / EXIT  API
 	////////////////////////////////////////////////////////////////////////////
-	virtual bool initImpl();
+	virtual bool initImpl() override;
 
-	virtual bool exitImpl();
+	virtual bool exitImpl() override;
 
 	////////////////////////////////////////////////////////////////////////////
 	// ( PRE / POST ) PROCESS  API
 	////////////////////////////////////////////////////////////////////////////
 
-	virtual bool preprocess();
+	virtual bool preprocess() override;
 
-	virtual bool postprocess();
+	virtual bool postprocess() override;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -584,13 +584,25 @@ public:
 	// REPORT API
 	////////////////////////////////////////////////////////////////////////////
 
-	virtual void report(OutStream & os) const;
+	virtual void report(OutStream & os) const override;
+
+	// Due to [-Woverloaded-virtual=]
+	using RunnableElement::report;
 
 
 	/**
 	 * EVAL TRACE
 	 */
 	virtual void traceBoundEval(OutStream & os) const;
+
+
+	virtual void traceInitSpider(OutStream & os) const;
+
+	virtual void traceStepSpider(OutStream & os,
+			const ExecutionContext & anEC) const;
+
+	virtual void traceStopSpider(OutStream & os) const;
+
 
 	virtual void tracePreEval(OutStream & os,
 			const ExecutionContext & anEC) const;
@@ -619,7 +631,7 @@ public:
 	// SERIALIZATION API
 	////////////////////////////////////////////////////////////////////////////
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 };
 

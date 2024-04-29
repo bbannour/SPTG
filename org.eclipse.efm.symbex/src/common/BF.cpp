@@ -17,7 +17,6 @@
 
 #include <fml/common/ObjectElement.h>
 
-#include <fml/executable/BaseCompiledForm.h>
 #include <fml/executable/InstanceOfData.h>
 
 #include <fml/expression/AvmCode.h>
@@ -41,7 +40,7 @@ namespace sep
 /**
  * INSTANCE COUNTER
  */
-avm_uint64_t BF::INSTANCE_COUNTER_ASP = 0;
+std::uint64_t BF::INSTANCE_COUNTER_ASP = 0;
 
 
 /*
@@ -60,14 +59,14 @@ BF BF::REF_NULL;
  */
 void BF::finalize()
 {
-	if( (mPTR != NULL) && (mPTR->getRefCount() > 1) )
+	if( (mPTR != nullptr) && (mPTR->getRefCount() > 1) )
 	{
 AVM_IF_DEBUG_FLAG( REFERENCE_COUNTING )
 	Element * pbf = /*dynamic_cast< Element * >*/( mPTR );
-	if( pbf != NULL )
+	if( pbf != nullptr )
 	{
 		AVM_OS_LOG << "finalize< " << pbf->classKindName()
-				<< "> @ " << avm_address_t( pbf )
+				<< "> @ " << std::addressof( pbf )
 				<< " x " << pbf->getRefCount() << " : " << pbf->str()
 				<< std::endl;
 	}
@@ -76,7 +75,7 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 		mPTR->setRefCount( 1 );
 	}
 
-	release( NULL );
+	release( nullptr );
 }
 
 
@@ -129,13 +128,13 @@ bool BF::isNotEqualTrue() const
 bool BF::isEqualZero() const
 {
 	return( this->isTEQ( ExpressionConstant::INTEGER_ZERO ) ||
-			(this->is< Number >() && this->to_ptr< Number >()->isZero()) );
+			(this->is< Number >() && this->to< Number >().isZero()) );
 }
 
 bool BF::isEqualOne() const
 {
 	return( this->isTEQ( ExpressionConstant::INTEGER_ONE ) ||
-			(this->is< Number >() && this->to_ptr< Number >()->isOne()) );
+			(this->is< Number >() && this->to< Number >().isOne()) );
 }
 
 
@@ -162,7 +161,7 @@ bool BF::isInt32() const
 	return( ExpressionFactory::isInt32(*this) );
 }
 
-avm_int32_t BF::toInt32() const
+std::int32_t BF::toInt32() const
 {
 	return( ExpressionFactory::toInt32(*this) );
 }
@@ -173,7 +172,7 @@ bool BF::isInt64() const
 	return( ExpressionFactory::isInt64(*this) );
 }
 
-avm_int64_t BF::toInt64() const
+std::int64_t BF::toInt64() const
 {
 	return( ExpressionFactory::toInt64(*this) );
 }
@@ -325,54 +324,40 @@ bool BF::isConstValue() const
  * REFERENCE
  * CAST
  */
+BFCode & BF::bfCode()
+{
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( is< AvmCode >() )
+			<< "Invalid << BF< AvmCode > >> Type <"
+			<< classKindName() << ">( " << str() << " ) Cast !!!"
+			<< SEND_EXIT;
 
-#define STATIC_CAST_BF_TO_XBF_T(BFClassName, ClassName, methodName) \
-BFClassName & BF::methodName()   \
-{   \
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( is< ClassName >() )  \
-			<< "Invalid << BF<" #ClassName "> >> Type <"  \
-			<< classKindName() << ">( " << str() << " ) Cast !!!"  \
-			<< SEND_EXIT;  \
-	return( static_cast< BFClassName & >( *this ) );  \
+	return( static_cast< BFCode & >( *this ) );
+}
+const BFCode & BF::bfCode() const
+{
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( is< AvmCode >() )
+			<< "Invalid << BF< AvmCode > >> Type <"
+			<< classKindName() << ">( " << str() << " ) Cast !!!"
+			<< SEND_EXIT;
+
+	return( static_cast< const BFCode & >( *this ) );
 }
 
-#define STATIC_CAST_BF_TO_XBF2(ClassName, Name)   \
-		STATIC_CAST_BF_TO_XBF_T(BF##Name, ClassName, bf##Name)
+const RuntimeID & BF::bfRID() const
+{
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( is< RuntimeID::raw_value_t >() )
+			<< "Invalid << BF< RuntimeID > >> Type <"
+			<< classKindName() << ">( " << str() << " ) Cast !!!"
+			<< SEND_EXIT;
 
-#define STATIC_CAST_BF_TO_XBF(ClassName)   \
-		STATIC_CAST_BF_TO_XBF_T(BF##ClassName, ClassName, bf##ClassName)
-
-
-#define STATIC_CCAST_BF_TO_XBF_T(BFClassName, ClassName, methodName) \
-const BFClassName & BF::methodName() const   \
-{   \
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( is< ClassName >() ) \
-			<< "Invalid << BF<" #ClassName "> >> Type <"  \
-			<< classKindName() << ">( " << str() << " ) Cast !!!"  \
-			<< SEND_EXIT;  \
-	return( static_cast< const BFClassName & >( *this ) );  \
+	return( static_cast< const RuntimeID & >( *this ) );
 }
-
-#define STATIC_CCAST_BF_TO_XBF2(ClassName, Name)   \
-		STATIC_CCAST_BF_TO_XBF_T(BF##Name, ClassName, bf##Name)
-
-#define STATIC_CCAST_BF_TO_XBF(ClassName)   \
-		STATIC_CCAST_BF_TO_XBF_T(BF##ClassName, ClassName, bf##ClassName)
-
-
-STATIC_CAST_BF_TO_XBF2(AvmCode, Code)
-
-STATIC_CCAST_BF_TO_XBF2(AvmCode, Code)
-
-
-STATIC_CCAST_BF_TO_XBF_T( RuntimeID, RuntimeID, bfRID)
-
 
 
 /**
  * BUILD NEW EXPRESSION
  */
-BF & BF::opExpr(Operator * anOperator, const BF & arg)
+BF & BF::opExpr(const Operator * anOperator, const BF & arg)
 {
 	return( *this = ExpressionConstructor::newCode(anOperator, *this, arg) );
 }
@@ -549,7 +534,7 @@ void BF::strHeader(OutStream & os) const
 {
 	if( this->is< ObjectElement >() )
 	{
-		this->to_ptr< ObjectElement >()->strHeader( os );
+		this->to< ObjectElement >().strHeader( os );
 	}
 	else
 	{

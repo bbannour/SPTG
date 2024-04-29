@@ -31,7 +31,7 @@ namespace sep
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef avm_uint8_t         avm_uri_kind_t;
+typedef std::uint8_t         avm_uri_kind_t;
 
 enum {
 	AVM_URI_UNDEFINED_KIND         = 0x0000,
@@ -44,7 +44,7 @@ enum {
 
 	AVM_URI_FOLDER_KIND            = 0x0010,
 	AVM_URI_FILE_KIND              = 0x0020,
-	AVM_URI_FILENAME_KIND          = 0x0040,
+	AVM_URI_FILENAME_KIND          = 0x0040 | AVM_URI_FILE_KIND,
 
 	AVM_URI_SOCKET_KIND            = 0x0080
 };
@@ -72,13 +72,15 @@ public:
 	/**
 	 * ATTRIBUTES
 	 */
+	std::string    alias_id;
+
 	std::string    raw;
 
 	avm_uri_kind_t kind;
 
 	std::string    location;
 
-	avm_uint64_t   port;
+	std::uint64_t   port;
 
 	OutStream outStream;
 	std::ios_base::openmode mode;
@@ -91,25 +93,28 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	AvmUri( const std::string & rawLocation )
-	: raw( rawLocation ),
+	AvmUri( std::string id, const std::string & rawLocation )
+	: alias_id( id ),
+	raw( rawLocation ),
 	kind( AVM_URI_UNDEFINED_KIND ),
 	location( ),
 	port( 0 ),
 	outStream( ),
-	mode( std::ios_base::out ),
+	mode( std::fstream::out ),
 	isAllocated( false )
 	{
 		//!! NOTHING
 	}
 
-	AvmUri( avm_uri_kind_t aKind, const std::string & rawLocation )
-	: raw( rawLocation ),
+	AvmUri( std::string id, avm_uri_kind_t aKind,
+			const std::string & rawLocation )
+	: alias_id( id ),
+	raw( rawLocation ),
 	kind( aKind ),
 	location( ),
 	port( 0 ),
 	outStream( ),
-	mode( std::ios_base::out ),
+	mode( std::fstream::out ),
 	isAllocated( false )
 	{
 		//!! NOTHING

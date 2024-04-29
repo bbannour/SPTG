@@ -28,6 +28,20 @@
 namespace sep
 {
 
+/**
+ * GETTER
+ * Unique Null Reference
+ */
+InstanceOfMachine & InstanceOfMachine::nullref()
+{
+	static InstanceOfMachine _NULL_(ExecutableForm::nullref_ptr(),
+			Machine::nullref(), ExecutableForm::nullref(), nullptr, 0 );
+	_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+	_NULL_.setSpecifier( Specifier::OBJECT_NULL_SPECIFIER );
+
+	return( _NULL_ );
+}
+
 
 std::string InstanceOfMachine::THIS_FQN_SUFFIX = ".$this";
 std::string InstanceOfMachine::THIS_ID  = "$this";
@@ -38,18 +52,20 @@ std::string InstanceOfMachine::THIS_ID  = "$this";
  * Default
  */
 InstanceOfMachine::InstanceOfMachine(ExecutableForm * aContainer,
-		const Machine * astMachine, ExecutableForm * anExecutable,
+		const Machine & astMachine, ExecutableForm & anExecutable,
 		InstanceOfMachine * anInstanceModel, avm_offset_t anOffset)
 : BaseInstanceForm(CLASS_KIND_T( InstanceOfMachine ),
 		aContainer, astMachine, TypeManager::MACHINE, anOffset),
 SpecifierImpl( astMachine ),
 
-mExecutable( anExecutable ),
+mExecutable( & anExecutable ),
 
 mThisFlag( false ),
 
-onCreateRoutine ( Specifier::SCOPE_ROUTINE_KIND , anExecutable , "create"  , 0 ),
-onStartRoutine( Specifier::SCOPE_ROUTINE_KIND , anExecutable , "init" , 0 ),
+onCreateRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+		anExecutable , Routine::nullref() , "create"  , 0 ),
+onStartRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+		anExecutable , Routine::nullref() , "init" , 0 ),
 
 mPossibleDynamicInstanciationCount( 0 ),
 mMaximalInstanceCount( 1 ),
@@ -57,30 +73,28 @@ mParamReturnTable( ),
 mReturnOffset( 0 ),
 mInstanceModel( anInstanceModel ),
 mRuntimeRID( ),
-mModifierAutoStart( true ),
-
-mInputEnabledBuffer( ),
-mInputEnabledCom( ),
-mInputEnabledSave( )
+mModifierAutoStart( true )
 {
 	updateFullyQualifiedNameID();
 }
 
 
 InstanceOfMachine::InstanceOfMachine(ExecutableForm * aContainer,
-		const Machine * astMachine, ExecutableForm * anExecutable,
+		const Machine & astMachine, ExecutableForm & anExecutable,
 		InstanceOfMachine * anInstanceModel,
 		avm_offset_t anOffset, const Specifier & aSpecifier)
 : BaseInstanceForm(CLASS_KIND_T( InstanceOfMachine ),
 		aContainer, astMachine, TypeManager::MACHINE, anOffset),
 SpecifierImpl( aSpecifier ),
 
-mExecutable( anExecutable ),
+mExecutable( & anExecutable ),
 
 mThisFlag( false ),
 
-onCreateRoutine ( Specifier::SCOPE_ROUTINE_KIND , anExecutable , "create"  , 0 ),
-onStartRoutine( Specifier::SCOPE_ROUTINE_KIND , anExecutable , "init" , 0 ),
+onCreateRoutine ( Specifier::SCOPE_ROUTINE_KIND ,
+		anExecutable , Routine::nullref() , "create"  , 0 ),
+onStartRoutine( Specifier::SCOPE_ROUTINE_KIND ,
+		anExecutable , Routine::nullref() , "init" , 0 ),
 
 mPossibleDynamicInstanciationCount( 0 ),
 mMaximalInstanceCount( 1 ),
@@ -88,11 +102,7 @@ mParamReturnTable( ),
 mReturnOffset( 0 ),
 mInstanceModel( anInstanceModel ),
 mRuntimeRID( ),
-mModifierAutoStart( true ),
-
-mInputEnabledBuffer( ),
-mInputEnabledCom( ),
-mInputEnabledSave( )
+mModifierAutoStart( true )
 {
 	updateFullyQualifiedNameID();
 }
@@ -102,20 +112,18 @@ mInputEnabledSave( )
  * CONSTRUCTOR
  * for the instance << this >>
  */
-InstanceOfMachine * InstanceOfMachine::newThis(ExecutableForm * anExecutable,
+InstanceOfMachine * InstanceOfMachine::newThis(ExecutableForm & anExecutable,
 			InstanceOfMachine * anInstanceModel, avm_offset_t anOffset)
 {
 	AVM_OS_ASSERT_FATAL_ERROR_EXIT( anOffset == 0 )
 			<< "Unexpected a non-zero offset< " << anOffset
 			<< " > for the instance << this >> !!!" << std::endl
-			<< str_header( anExecutable->getInstanceStatic() )
+			<< str_header( anExecutable.getInstanceStatic() )
 			<< str_header( anInstanceModel )
 			<< SEND_EXIT;
 
-	InstanceOfMachine * thisInstance =
-			new InstanceOfMachine(anExecutable,
-					anExecutable->getAstMachine(),
-					anExecutable, anInstanceModel, 0);
+	InstanceOfMachine * thisInstance = new InstanceOfMachine((& anExecutable),
+			anExecutable.getAstMachine(), anExecutable, anInstanceModel, 0);
 
 	thisInstance->getwSpecifier().setDesignInstanceStatic();
 	thisInstance->setInstanciationCount(1);
@@ -133,19 +141,19 @@ InstanceOfMachine * InstanceOfMachine::newThis(ExecutableForm * anExecutable,
 
 
 InstanceOfMachine * InstanceOfMachine::newInstanceModelThis(
-		ExecutableForm * aContainer, Machine * aCompiled,
-		ExecutableForm * anExecutable, InstanceOfMachine * anInstanceModel,
+		ExecutableForm * aContainer, const Machine & astMachine,
+		ExecutableForm & anExecutable, InstanceOfMachine * anInstanceModel,
 		avm_offset_t anOffset, const Specifier & aSpecifier)
 {
 	AVM_OS_ASSERT_FATAL_ERROR_EXIT( anOffset == 0 )
 			<< "Unexpected a non-zero offset< " << anOffset
 			<< " > for the instance << this >> !!!" << std::endl
-			<< str_header( anExecutable->getInstanceStatic() )
+			<< str_header( anExecutable.getInstanceStatic() )
 			<< str_header( anInstanceModel )
 			<< SEND_EXIT;
 
 	InstanceOfMachine * thisInstance = new InstanceOfMachine(aContainer,
-			aCompiled, anExecutable, NULL, anOffset, aSpecifier );
+			astMachine, anExecutable, nullptr, anOffset, aSpecifier );
 
 	thisInstance->setAllNameID(
 			thisInstance->getFullyQualifiedNameID() + THIS_FQN_SUFFIX,
@@ -162,10 +170,11 @@ InstanceOfMachine * InstanceOfMachine::newInstanceModelThis(
  * mParamReturnTable
  * mReturnOffset
  */
-BaseTypeSpecifier * InstanceOfMachine::getParamType(avm_size_t offset) const
+const BaseTypeSpecifier & InstanceOfMachine::getParamType(std::size_t offset) const
 {
-	return( hasExecutable() ?
-			getExecutable()->rawParamData(offset)->getTypeSpecifier() : NULL );
+	return( hasExecutable()
+			? refExecutable().rawParamVariable(offset)->getTypeSpecifier()
+			: BaseTypeSpecifier::nullref() );
 }
 
 
@@ -187,12 +196,23 @@ void InstanceOfMachine::updateFullyQualifiedNameID()
 
 
 /**
+ * TESTER
+ * mExecutable
+ */
+bool InstanceOfMachine::hasnotNullExecutable() const
+{
+	return( (mExecutable != nullptr) && mExecutable->isnotNullref() );
+}
+
+
+
+/**
  * GETTER - SETTER
  * mPossibleDynamicInstanciationCount
  */
-void InstanceOfMachine::incrPossibleDynamicInstanciationCount(avm_size_t offset)
+void InstanceOfMachine::incrPossibleDynamicInstanciationCount(std::size_t offset)
 {
-	if( mInstanceModel != NULL )
+	if( mInstanceModel != nullptr )
 	{
 		mInstanceModel->mPossibleDynamicInstanciationCount += offset;
 	}
@@ -201,7 +221,7 @@ void InstanceOfMachine::incrPossibleDynamicInstanciationCount(avm_size_t offset)
 		mPossibleDynamicInstanciationCount += offset;
 	}
 
-	if( mExecutable != NULL )
+	if( mExecutable != nullptr )
 	{
 		mExecutable->incrPossibleDynamicInstanciationCount(offset);
 	}
@@ -249,7 +269,7 @@ void InstanceOfMachine::header(OutStream & out) const
 AVM_IF_DEBUG_FLAG_OR( COMPILING , getSpecifier().isDesignInstanceStatic() )
 
 	out << " &" << ( hasExecutable() ?
-		getExecutable()->getFullyQualifiedNameID() : "null< executable >" );
+		refExecutable().getFullyQualifiedNameID() : "null< executable >" );
 
 AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
@@ -321,7 +341,7 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	{
 		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
 		out << TAB2 << "target = "
-			<< str_header( getAliasTarget()->as< InstanceOfMachine >() )
+			<< str_header( getAliasTarget()->as_ptr< InstanceOfMachine >() )
 			<< ";" << EOL;
 	}
 
@@ -375,7 +395,7 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 				out << TAB2;
 				if( hasExecutable() )
 				{
-					out << str_header( getExecutable()->rawParamData(offset) );
+					out << str_header( refExecutable().rawParamVariable(offset) );
 				}
 				else
 				{
@@ -386,8 +406,8 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 				{
 					if( (*it).is< BaseInstanceForm >() )
 					{
-						out << " = &" << (*it).to_ptr<
-							BaseInstanceForm >()->getFullyQualifiedNameID();
+						out << " = &" << (*it).to<
+							BaseInstanceForm >().getFullyQualifiedNameID();
 					}
 					else
 					{
@@ -407,7 +427,7 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 				out << TAB2;
 				if( hasExecutable() )
 				{
-					out << str_header( getExecutable()->rawReturnData(offset) );
+					out << str_header( refExecutable().rawReturnVariable(offset) );
 				}
 				else
 				{
@@ -418,8 +438,8 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 				{
 					if( (*it).is< BaseInstanceForm >() )
 					{
-						out << " = &" << (*it).to_ptr<
-							BaseInstanceForm >()->getFullyQualifiedNameID();
+						out << " = &" << (*it).to<
+							BaseInstanceForm >().getFullyQualifiedNameID();
 					}
 					else
 					{
@@ -431,35 +451,6 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 		}
 	}
 
-//AVM_IF_DEBUG_FLAG( COMMUNICATION )
-	if ( hasInputEnabledBuffer() )
-	{
-		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
-
-		out << TAB << "buffer#input_enabled{" << EOL;
-		toStreamStaticCom(out, getInputEnabledBuffer());
-		out << TAB << "}" << EOL;
-	}
-
-	if ( hasInputEnabledCom() )
-	{
-		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
-
-		out << TAB << "com#input_enabled{" << EOL;
-		toStreamStaticCom(out, getInputEnabledCom());
-		out << TAB << "}" << EOL;
-	}
-
-	if ( hasInputEnabledSave() )
-	{
-		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
-
-		out << TAB << "com#input_enabled#save{" << EOL;
-		toStreamStaticCom(out, getInputEnabledSave());
-		out << TAB << "}" << EOL;
-	}
-//AVM_ENDIF_DEBUG_FLAG( COMMUNICATION )
-
 	if( hasParamReturn() && (hasOnCreate() || hasOnStart()) )
 	{
 		out << TAB << "moe:" << EOL;
@@ -467,6 +458,7 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 	}
 	if( hasOnCreate() )
 	{
+		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
 		out << TAB2 << "@create{" << INCR2_INDENT;
 		getOnCreate()->toStreamRoutine( out );
 		out << DECR2_INDENT_TAB2 << "}" << EOL;
@@ -474,6 +466,7 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 	if( hasOnStart() )
 	{
+		if( isEmpty ) { out << " {" << EOL; isEmpty = false; }
 		out << TAB2 << "@start{" << INCR2_INDENT;
 		getOnStart()->toStreamRoutine( out );
 		out << DECR2_INDENT_TAB2 << "}" << EOL;

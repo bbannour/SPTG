@@ -29,18 +29,15 @@
 
 #include <printer/OutStream.h>
 
+#include <vector>
 
 
 namespace sep
 {
 
-class APExecutionData;
-
-class ExecutableSystem;
+class ExecutionData;
 
 class SymbexEngine;
-
-class Workflow;
 
 
 /**
@@ -70,13 +67,19 @@ public:
 
 	static const std::string GRAPHVIZ_FILE_EXTENSION;
 
+	// CURRENT ACTIVE CONFIGURATION
+	static const Configuration * CURRENT;
+
 
 protected :
+	/**
+	 * CONFIGURATION ATTRIBUTES
+	 */
+
 	/**
 	 * ATTRIBUTES
 	 */
 	SymbexEngine & mSymbexEngine;
-	Workflow & mWorkflow;
 
 	WObjectManager mWObjectManager;
 
@@ -91,29 +94,76 @@ protected :
 	bool mOutputExecutableEnabledGenerationFlag;
 	std::string mOutputExecutableFileLocation;
 
+	bool mOutputInitializationEnabledGenerationFlag;
+	std::string mOutputInitializationFileLocation;
+
 	bool mOutputSymbexGraphEnabledGenerationFlag;
 	std::string mOutputSymbexGraphFileLocation;
 
 	bool mOutputSymbexScenariiEnabledGenerationFlag;
 	std::string mOutputSymbexScenariiFileLocation;
 
+
 	bool mDebugStageEnabledFlag;
-	bool mDebugParsingStageEnabledFlag;
-	bool mDebugCompilingStageEnabledFlag;
-	bool mDebugLoadingStageEnabledFlag;
-	bool mDebugComputingEnabledFlag;
+
+	bool mDebugParsingStageEnabledGenerationFlag;
+
+	bool mDebugCompilingStageEnabledGenerationFlag;
+
+	bool mDebugLoadingStageEnabledGenerationFlag;
+
+	bool mDebugComputingStageEnabledGenerationFlag;
+	std::string mDebugOutputSymbexGraphTextFileLocation;
+
+	// Symbex config
+	std::string mNameIdSeparator;
+
+	bool mNewfreshParameterExperimentalHeightBasedUID;
+
+	bool mNewfreshParameterNameBasedPID;
+	bool mExpressionPrettyPrinterBasedFQN;
+	bool mExpressionPrettyPrinterBasedNAME;
+
+	// Symbex $time options
+	std::string mTimeVariableNameID;
+	std::string mTimeInitialVariableNameID;
+	BF mTimeInitialVariableValue;
+
+	std::string mTimeDeltaVariableNameID;
+	std::string mTimeDeltaInitialVariableNameID;
+	BF mTimeDeltaInitialVariableValue;
+
+	// Symbex Predicate / Solver options
+	bool mCheckSatisfiabilityWithSatSolverEnabled;
+	bool mStronglyCheckSatisfiabilityWithSatSolverEnabled;
+	bool mNodeConditionComputationEnabled;
+	bool mPathConditionDisjonctionSeparationEnabled;
 
 	// Symbex Threading config
 	bool mMultitaskingFlag;
-	avm_uint8_t mThreadCount;
+	std::uint8_t mThreadCount;
+
+	// Console config
+	std::string mConsoleVerbosity;
+	std::size_t mConsoleVerbosityContextChildCount;
 
 	// Shell config
 	std::string mInconditionalStopMarkerLocation;
 
+	// TDD config
+	bool mTddRegressionTestingFlag;
+	bool mTddUnitTestingFlag;
+	std::string mTddReportLocation;
+
+	// MODELS
+	std::vector< System           > mSpecificationSystems;
+
+	std::vector< ExecutableSystem > mExecutableSystems;
 
 	AvmPointer< System           , DestroyElementPolicy > mSpecification;
 
 	AvmPointer< ExecutableSystem , DestroyElementPolicy > mExecutableSystem;
+
 
 	TableOfRuntimeID_T  mTableOfRID;
 
@@ -121,7 +171,7 @@ protected :
 
 	ListOfExecutionContext mInputContext;
 
-	ListOfExecutionContext mTrace;
+	ListOfExecutionContext mExecutionTrace;
 
 
 public :
@@ -129,7 +179,7 @@ public :
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	Configuration(SymbexEngine & aSymbexEngine, Workflow & aWorkflow);
+	Configuration(SymbexEngine & aSymbexEngine);
 
 	/**
 	 * DESTRUCTOR
@@ -161,21 +211,83 @@ public :
 	/**
 	 * CONFIGURE
 	 */
-	bool configure(WObject * wfConfiguration, Configuration * prevConfiguration);
+	bool configure(const WObject * wfConfiguration,
+			Configuration * prevConfiguration);
 
-	bool configure_shell_symbex(WObject * wfConfiguration);
+	// SYMBEX OPTIONS
+	bool configureSymbex(const WObject * wfConfiguration);
+	bool configureSymbexImpl(const WObject * wfSequenceSYMBEX);
 
-	bool configureFormatter(WObject * FORMAT,
+	// CONSOLE OPTIONS
+	bool configureConsole(const WObject * wfConfiguration);
+	bool configureConsoleImpl(const WObject * wfSequenceCONSOLE);
+
+	// SHELL OPTIONS
+	bool configureShell(const WObject * wfConfiguration);
+	bool configureShellImpl(const WObject * wfSequenceSHELL);
+
+	// TDD OPTIONS
+	bool configureTDD(const WObject * wfConfiguration);
+	bool configureTDDImpl(const WObject * wfSequenceTDD);
+
+	bool configureFormatter(const WObject * FORMAT,
 			std::string & formatPattern, const std::string & id);
 
 
-	/*
-	 * GETTER
-	 * mWorkflow
+	/**
+	 * GETTER -- SETTER
+	 * mNodeConditionComputationEnabled
 	 */
-	Workflow & getWorkflow()
+	inline bool isNodeConditionComputationEnabled() const
 	{
-		return( mWorkflow );
+		return mNodeConditionComputationEnabled;
+	}
+
+	inline void setNodeConditionComputationEnabled(bool enabled = true)
+	{
+		mNodeConditionComputationEnabled = enabled;
+	}
+
+
+	/**
+	 * SETTER
+	 * CURRENT ACTIVE CONFIGURATION
+	 */
+	void setActive() const;
+
+
+	/**
+	 * GETTER
+	 * Symbex config
+	 */
+	inline const std::string & getNameIdSeparator() const
+	{
+		return mNameIdSeparator;
+	}
+
+	inline bool isNewfreshParameterNameBasedPID() const
+	{
+		return mNewfreshParameterNameBasedPID;
+	}
+
+	inline bool isNewfreshParameterExperimentalHeightBasedUID() const
+	{
+		return mNewfreshParameterExperimentalHeightBasedUID;
+	}
+
+	inline void setNewfreshParameterExperimentalHeightBasedUID(bool enabled)
+	{
+		mNewfreshParameterExperimentalHeightBasedUID = enabled;
+	}
+
+	inline bool isExpressionPrettyPrinterBasedFQN() const
+	{
+		return mExpressionPrettyPrinterBasedFQN;
+	}
+
+	inline bool isExpressionPrettyPrinterBasedNAME() const
+	{
+		return mExpressionPrettyPrinterBasedNAME;
 	}
 
 
@@ -187,7 +299,7 @@ public :
 		return( mMultitaskingFlag );
 	}
 
-	inline avm_uint8_t getThreadCount() const
+	inline std::uint8_t getThreadCount() const
 	{
 		return( mThreadCount );
 	}
@@ -200,6 +312,59 @@ public :
 	{
 		return( mInconditionalStopMarkerLocation );
 	}
+
+
+	/**
+	 ***************************************************************************
+	// TEST DRIVEN DEVELOPMENT
+	section TDD
+		report = "reportName";
+
+		regression = true;
+		unit = true;
+	endsection TDD
+	 ***************************************************************************
+	 */
+	inline bool hasTddReport() const
+	{
+		return( not mTddReportLocation.empty() );
+	}
+
+//	inline std::string getTddReport(
+//			const std::string & aDefaultValue = "report.tdd") const
+//	{
+//		std::string aLocation =
+//				Query::getWPropertyString(getTDD(), "report", aDefaultValue);
+//
+//		std::string::size_type pos = aLocation.find_last_of('.');
+//		if( pos != std::string::npos )
+//		{
+//			aLocation.insert(pos, "_avm_" + mSEWBuildID);
+//		}
+//		else
+//		{
+//			aLocation = aLocation + "_avm_" + mSEWBuildID + ".tdd";
+//		}
+//
+//		return( VFS::native_path(aLocation) );
+//	}
+
+	inline std::string getTddReportLocation(
+			const std::string & aDefaultValue = "report.tdd") const
+	{
+		return( mTddReportLocation );
+	}
+
+	inline bool isTddRegressionTesting(bool aDefaultValue = false) const
+	{
+		return( mTddRegressionTestingFlag );
+	}
+
+	inline bool isTddUnitTesting(bool aDefaultValue = false) const
+	{
+		return( mTddUnitTestingFlag );
+	}
+
 
 
 	/**
@@ -216,6 +381,11 @@ public :
 	inline const std::string & getSpecificationFileLocation() const
 	{
 		return( mSpecificationFileLocation );
+	}
+
+	inline void setSpecificationFileLocation(const std::string & fileLocation)
+	{
+		mSpecificationFileLocation = fileLocation;
 	}
 
 	/**
@@ -252,10 +422,10 @@ public :
 	/**
 	 * GETTER
 	 * mDebugStageEnabledFlag
-	 * mDebugParsingStageEnabledFlag
-	 * mDebugCompilingStageEnabledFlag
+	 * mDebugParsingStageEnabledGenerationFlag
+	 * mDebugCompilingStageEnabledGenerationFlag
 	 * mDebugLoadingEnabledFlag
-	 * mDebugComputingEnabledFlag
+	 * mDebugComputingStageEnabledGenerationFlag
 	 */
 	inline bool isDebugStageEnabled() const
 	{
@@ -264,22 +434,43 @@ public :
 
 	inline bool isDebugParsingStageEnabled() const
 	{
-		return( mDebugParsingStageEnabledFlag );
+		return( mDebugParsingStageEnabledGenerationFlag );
 	}
 
 	inline bool isDebugCompilingStageEnabled() const
 	{
-		return( mDebugCompilingStageEnabledFlag );
+		return( mDebugCompilingStageEnabledGenerationFlag );
 	}
 
 	inline bool isDebugLoadingStageEnabled() const
 	{
-		return( mDebugLoadingStageEnabledFlag );
+		return( mDebugLoadingStageEnabledGenerationFlag );
 	}
 
 	inline bool isDebugComputingStageEnabled() const
 	{
-		return( mDebugComputingEnabledFlag );
+		return( mDebugComputingStageEnabledGenerationFlag );
+	}
+
+
+	/**
+	 * FACTORY - GETTER
+	 * mExecutableSystems
+	 */
+	template<typename... _Args>
+	System & newSpecificationSystem( _Args && ... __args )
+	{
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mSpecificationSystems.size() < 7 )
+				<< "Out Of Memory for Table of SpecificationSystem !!!";
+
+		mSpecificationSystems.emplace_back( __args ... ) ;
+
+		return( mSpecificationSystems.back() );
+	}
+
+	inline std::vector< System > & getSpecificationSystems()
+	{
+		return( mSpecificationSystems );
 	}
 
 
@@ -306,6 +497,28 @@ public :
 	{
 		mSpecification = aSpecification;
 	}
+
+
+	/**
+	 * FACTORY - GETTER
+	 * mExecutableSystems
+	 */
+	template<typename... _Args>
+	ExecutableSystem & newExecutableSystem( _Args && ... __args )
+	{
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mSpecificationSystems.size() < 7 )
+				<< "Out Of Memory for Table of ExecutableSystem !!!";
+
+		return( mExecutableSystems.emplace_back( __args ... ) );
+
+//		return( mExecutableSystems.back() );
+	}
+
+	inline std::vector< ExecutableSystem > & getExecutableSystems()
+	{
+		return( mExecutableSystems );
+	}
+
 
 
 	/*
@@ -366,7 +579,7 @@ public :
 
 	inline const ExecutionData & getMainExecutionData() const
 	{
-		return( mMainExecutionContext.refExecutionData() );
+		return( mMainExecutionContext.getExecutionData() );
 	}
 
 
@@ -382,7 +595,7 @@ public :
 		mMainExecutionContext.initialize( anExecutionContext );
 	}
 
-	inline void setMainExecutionData(const APExecutionData & anExecutionData)
+	inline void setMainExecutionData(const ExecutionData & anExecutionData)
 	{
 		mMainExecutionContext.initialize( anExecutionData , 0 , 1 );
 	}
@@ -402,6 +615,15 @@ public :
 		return( mInputContext );
 	}
 
+	inline ExecutionContext & getFirstInputContext()
+	{
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mInputContext.nonempty() )
+				<< "Expected a non-empty Symbex Input Execution Context List !!!"
+				<< SEND_EXIT;
+
+		return( *( mInputContext.first() ) );
+	}
+
 	inline bool hasInputContext() const
 	{
 		return( mInputContext.nonempty() );
@@ -414,49 +636,49 @@ public :
 
 	/*
 	 * GETTER - SETTER
-	 * mTrace
+	 * mExecutionTrace
 	 */
-	inline const ListOfExecutionContext & getTrace() const
+	inline const ListOfExecutionContext & getExecutionTrace() const
 	{
-		return( mTrace );
+		return( mExecutionTrace );
 	}
 
-	inline ExecutionContext * getFirstTrace() const
+	inline ExecutionContext & getFirstExecutionTrace()
 	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mTrace.nonempty() )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mExecutionTrace.nonempty() )
 				<< "Expected a non-empty Symbex Root Execution Context List !!!"
 				<< SEND_EXIT;
 
-		return( mTrace.first() );
+		return( *( mExecutionTrace.first() ) );
 	}
 
-	inline const ExecutionContext & refFirstTrace() const
+	inline const ExecutionContext & getFirstExecutionTrace() const
 	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mTrace.nonempty() )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( mExecutionTrace.nonempty() )
 				<< "Expected a non-empty Symbex Root Execution Context List !!!"
 				<< SEND_EXIT;
 
-		return( *( mTrace.first() ) );
+		return( *( mExecutionTrace.first() ) );
 	}
 
-	inline bool hasTrace() const
+	inline bool hasExecutionTrace() const
 	{
-		return( mTrace.nonempty() );
+		return( mExecutionTrace.nonempty() );
 	}
 
-	inline bool noTrace() const
+	inline bool noExecutionTrace() const
 	{
-		return( mTrace.empty() );
+		return( mExecutionTrace.empty() );
 	}
 
-	inline void appendTrace(ExecutionContext * aTrace)
+	inline void appendExecutionTrace(ExecutionContext * aTrace)
 	{
-		mTrace.append( aTrace );
+		mExecutionTrace.append( aTrace );
 	}
 
-	inline void appendTrace(const ListOfExecutionContext & aTrace)
+	inline void appendExecutionTrace(const ListOfExecutionContext & aTrace)
 	{
-		mTrace.append( aTrace );
+		mExecutionTrace.append( aTrace );
 	}
 
 
@@ -465,9 +687,9 @@ public :
 	 * mSpecification
 	 * mExecutableSystem
 	 * mMainExecutionContext
-	 * mTrace
+	 * mExecutionTrace
 	 */
-	void set(Configuration & aConfiguration)
+	inline void reset(Configuration & aConfiguration)
 	{
 		mSpecification = aConfiguration.mSpecification;
 
@@ -481,7 +703,7 @@ public :
 
 		mInputContext = aConfiguration.mInputContext;
 
-		mTrace = aConfiguration.mTrace;
+		mExecutionTrace = aConfiguration.mExecutionTrace;
 	}
 
 
@@ -510,7 +732,7 @@ public :
 				<< "Element !!!"
 				<< SEND_EXIT;
 
-		if( anElement != NULL )
+		if( anElement != nullptr )
 		{
 			saveElementTextualView(logger, (* anElement), saveFileURL);
 		}
@@ -525,27 +747,29 @@ public :
 	// SERIALIZATION API
 	////////////////////////////////////////////////////////////////////////////
 
-	void serializeDebugExecutable(const std::string & strID);
+	void serializeDebugExecutable(const std::string & strID) const;
 
-	void serializeTextualExecutable();
+	void serializeTextualExecutable() const;
 
-	void serializeGraphizExecutable();
-
-
-	void serializeTextualSymbexGraph();
-
-	void serializeGraphizSymbexGraph();
+	void serializeGraphizExecutable() const;
 
 
-	void serializeScenarii();
+	void serializeTextualSymbexGraph() const;
+
+	void serializeGraphizSymbexGraph() const;
 
 
-	void serializeBuildingResult();
-
-	void serializeComputingResult();
+	void serializeScenarii() const;
 
 
-	virtual void toStream(OutStream & os) const;
+	void serializeBuildingResult() const;
+
+	void serializeLoadingResult() const;
+
+	void serializeComputingResult() const;
+
+
+	virtual void toStream(OutStream & os) const override;
 
 };
 

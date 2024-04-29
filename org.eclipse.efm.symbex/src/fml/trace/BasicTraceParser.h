@@ -16,10 +16,10 @@
 #ifndef BASICTRACEPARSER_H_
 #define BASICTRACEPARSER_H_
 
-#include <util/avm_string.h>
 #include <common/BF.h>
 
-#include <fstream>
+#include <string>
+#include <iosfwd>
 
 
 namespace sep
@@ -60,7 +60,7 @@ public:
 	: mConfiguration( aConfiguration ),
 	bfVarTime( ),
 	bfTP( ),
-	aTracePoint( NULL )
+	aTracePoint( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -85,14 +85,14 @@ public:
 	bool parseBasicTraceDuration(TraceSequence & aTraceElement,
 			const std::string & inLine, const BF & aVarTime);
 
-	bool parseBasicTraceSignal(
-			TraceSequence & aTraceElement, const std::string & inLine);
+	bool parseBasicTraceSignal(TraceSequence & aTraceElement,
+			const std::string & inLine, std::size_t traceLine);
 
 	bool parseBasicTraceStructure(
 			TraceSequence & aTraceElement, const std::string & inLine);
 
 	bool parseBasicTraceSignalParameters(TracePoint * aTracePoint,
-			InstanceOfPort * port, const std::string & anExpr);
+			const InstanceOfPort * port, const std::string & anExpr);
 
 	BF parseBasicTraceSignalParameter(const ITypeSpecifier & aTypeSpecifier,
 			const std::string & anExpr);
@@ -104,8 +104,8 @@ public:
 	bool parseBasicXliaTraceDuration(TraceSequence & aTraceElement,
 			const std::string & inLine, const BF & aVarTime);
 
-	bool parseBasicXliaTraceSignal(
-			TraceSequence & aTraceElement, const std::string & inLine);
+	bool parseBasicXliaTraceSignal(TraceSequence & aTraceElement,
+			const std::string & inLine, std::size_t traceLine);
 };
 
 

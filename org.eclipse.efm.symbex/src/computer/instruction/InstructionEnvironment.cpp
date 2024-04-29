@@ -19,38 +19,43 @@
 
 #include <builder/Builder.h>
 
+#include <common/BF.h>
+
 #include <computer/BaseEnvironment.h>
 #include <computer/EvaluationEnvironment.h>
 #include <computer/ExecutionDataFactory.h>
 
-#include <computer/instruction/AvmInstruction.h>
+#include <computer/primitive/AvmCommunicationFactory.h>
 
 #include <fml/buffer/BaseBufferForm.h>
 
+#include <fml/builtin/Character.h>
+#include <fml/builtin/String.h>
+
+#include <fml/executable/AvmInstruction.h>
 #include <fml/executable/ExecutableLib.h>
 #include <fml/executable/InstanceOfBuffer.h>
-#include <fml/executable/InstanceOfConnect.h>
+#include <fml/executable/InstanceOfConnector.h>
 #include <fml/executable/InstanceOfData.h>
 #include <fml/executable/InstanceOfMachine.h>
 #include <fml/executable/InstanceOfPort.h>
 
-#include <fml/operator/Operator.h>
-
 #include <fml/expression/AvmCode.h>
 #include <fml/expression/BuiltinArray.h>
 #include <fml/expression/BuiltinQueue.h>
-#include <fml/builtin/Character.h>
 #include <fml/expression/ExpressionComparer.h>
 #include <fml/expression/ExpressionConstructor.h>
 #include <fml/expression/ExpressionConstructorImpl.h>
 #include <fml/expression/StatementFactory.h>
-#include <fml/builtin/String.h>
+
+#include <fml/operator/Operator.h>
 
 #include <fml/runtime/ExecutionConfiguration.h>
 #include <fml/runtime/LocalRuntime.h>
 #include <fml/runtime/RuntimeLib.h>
 
 #include <fml/type/ContainerTypeSpecifier.h>
+#include <fml/type/EnumTypeSpecifier.h>
 
 
 namespace sep
@@ -70,7 +75,7 @@ itARG( mARG )
 }
 
 InstructionEnvironment::InstructionEnvironment(
-		BaseEnvironment & ENV, avm_size_t count)
+		BaseEnvironment & ENV, std::size_t count)
 : AvmObject( ),
 mARG( newARGS(&ENV, ENV.inED, count) ),
 itARG( mARG )
@@ -88,10 +93,10 @@ List< ARGS_ENV * >  InstructionEnvironment::ARGS_ENV_CACHE;
 
 void InstructionEnvironment::initCache()
 {
-	for( avm_size_t offset = 0 ;
+	for( std::size_t offset = 0 ;
 			offset < ARGS_ENV_INITIAL_CACHE_COUNT ; ++offset )
 	{
-		ARGS_ENV_CACHE.append( new ARGS_ENV(NULL, APExecutionData::REF_NULL,
+		ARGS_ENV_CACHE.append( new ARGS_ENV(nullptr, ExecutionData::_NULL_,
 				ARGS_ENV_DEFAULT_CAPACITY, 0) );
 	}
 }
@@ -99,35 +104,33 @@ void InstructionEnvironment::initCache()
 
 void InstructionEnvironment::finalizeCache()
 {
-	avm_size_t finalCacheSize = 0;
+	std::size_t finalCacheSize = 0;
 
 	while( ARGS_ENV_CACHE.nonempty() )
 	{
 //AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 //		AVM_OS_TRACE << "ARGS_ENV::finalize:> @"
-//				<< avm_address_t( ARGS_ENV_CACHE.last() ) << std::endl;
+//				<< std::addressof( ARGS_ENV_CACHE.last() ) << std::endl;
 //AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 		++finalCacheSize;
 		delete( ARGS_ENV_CACHE.pop_last() );
 	}
 
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , STATEMENT )
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , STATEMENT , MEMORY_MANAGEMENT )
 	AVM_OS_TRACE << "ARGS_ENV::finalize#cache:> count = " << finalCacheSize
 			<< std::endl;
 
 	AVM_OS_TRACE << "ARGS_ENV::CALL:> count = "
-			<< ARGS_ENV::CALL_COUNT << std::endl
-			<< "ARGS_ENV::CALL<GiNaC:> count = "
-			<< ARGS_ENV::CALL_COUNT_GINAC << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , STATEMENT )
+			<< ARGS_ENV::CALL_COUNT << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , STATEMENT , MEMORY_MANAGEMENT )
 }
 
 
 ARGS_ENV * InstructionEnvironment::newARGS(BaseEnvironment * ENV,
-		const APExecutionData & anED, avm_size_t count)
+		const ExecutionData & anED, std::size_t count)
 {
-	ARGS_ENV * arg = NULL;
+	ARGS_ENV * arg = nullptr;
 
 	if( ARGS_ENV_CACHE.nonempty() &&
 		(ARGS_ENV_CACHE.last()->capacity > count) )
@@ -141,7 +144,7 @@ ARGS_ENV * InstructionEnvironment::newARGS(BaseEnvironment * ENV,
 		arg->values = & ( arg->table );
 
 		arg->idx = 0;
-		arg->NEXT = NULL;
+		arg->NEXT = nullptr;
 	}
 	else
 	{
@@ -152,10 +155,10 @@ ARGS_ENV * InstructionEnvironment::newARGS(BaseEnvironment * ENV,
 				<< SEND_EXIT;
 	}
 
-//AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
-//	AVM_OS_TRACE << "ARGS_ENV::new:> @" << avm_address_t( arg )
+//AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , MEMORY_MANAGEMENT )
+//	AVM_OS_TRACE << "ARGS_ENV::new:> @" << std::addressof( arg )
 //			<< std::endl;
-//AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
+//AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , MEMORY_MANAGEMENT )
 
 	return( arg );
 }
@@ -163,30 +166,30 @@ ARGS_ENV * InstructionEnvironment::newARGS(BaseEnvironment * ENV,
 
 void InstructionEnvironment::freeARGS(ARGS_ENV * & arg)
 {
-	if( arg->NEXT == NULL )
+	if( arg->NEXT == nullptr )
 	{
-AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
-		AVM_OS_TRACE << "ARGS_ENV::free:> @" << avm_address_t( arg )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , MEMORY_MANAGEMENT )
+		AVM_OS_TRACE << "ARGS_ENV::free:> @" << std::addressof( arg )
 				<< std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		ARGS_ENV_CACHE.append( arg );
 	}
 	else
 	{
-		for( ARGS_ENV * nextArg = arg ; arg != NULL ; arg = nextArg )
+		for( ARGS_ENV * nextArg = arg ; arg != nullptr ; arg = nextArg )
 		{
-AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
-			AVM_OS_TRACE << "ARGS_ENV::free:> @" << avm_address_t( arg )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , MEMORY_MANAGEMENT )
+			AVM_OS_TRACE << "ARGS_ENV::free:> @" << std::addressof( arg )
 					<< std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			nextArg = arg->NEXT;
-			arg->NEXT = NULL;
+			arg->NEXT = nullptr;
 			ARGS_ENV_CACHE.append( arg );
 		}
 	}
 
-	arg = NULL;
+	arg = nullptr;
 }
 
 
@@ -196,10 +199,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-avm_size_t  ARGS_ENV::CALL_COUNT = 0;
-
-avm_size_t  ARGS_ENV::CALL_COUNT_GINAC = 0;
-
+std::size_t  ARGS_ENV::CALL_COUNT = 0;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,23 +226,23 @@ bool ARGS_ENV::main_decode_eval(BFCode & inCODE)
 		argsBytecode = argsInstruction->getBytecode();
 
 		return( decode_eval_processor( argsInstruction->getMainBytecode(),
-				inCODE->to< AvmCode >() ) );
+				inCODE.to< AvmCode >() ) );
 	}
 }
 
 
-bool ARGS_ENV::main_decode_eval_args(AvmCode * inCODE)
+bool ARGS_ENV::main_decode_eval_args(AvmCode & inCODE)
 {
-	AVM_OS_ASSERT_FATAL_ERROR_EXIT( count == inCODE->size() )
+	AVM_OS_ASSERT_FATAL_ERROR_EXIT( count == inCODE.size() )
 			<< "Invalid statement ARGUMENTS initialization !!!\n"
-			<< inCODE->toString( AVM_TAB1_INDENT )
+			<< inCODE.toString( AVM_TAB1_INDENT )
 			<< SEND_EXIT;
 
-	argsInstruction = inCODE->getInstruction();
-	if( (argsInstruction == NULL) || argsInstruction->isNops() ||
-		(argsBytecode = argsInstruction->getBytecode())[0].isNopsOperation() )
+	argsInstruction = inCODE.getInstruction();
+	if( (argsInstruction == nullptr) || argsInstruction->isNops() ||
+		(argsBytecode = argsInstruction->getBytecode())[0].isNopAllOperation() )
 	{
-		values = &( inCODE->getArgs() );
+		values = &( inCODE.getOperands() );
 
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	AVM_OS_TRACE << "args[nops]:>>" << AVM_STR_INDENT;
@@ -279,18 +279,18 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 
 bool ARGS_ENV::decode_eval_args_context(
-		AvmBytecode & bytecode, AvmCode * inCODE)
+		AvmBytecode & bytecode, AvmCode & inCODE)
 {
-//	AVM_OS_ASSERT_FATAL_ERROR_EXIT( count == inCODE->size() )
+//	AVM_OS_ASSERT_FATAL_ERROR_EXIT( count == inCODE.size() )
 //			<< "Invalid statement ARGUMENTS initialization !!!\n"
-//			<< inCODE->toString( AVM_TAB1_INDENT )
+//			<< inCODE.toString( AVM_TAB1_INDENT )
 //			<< SEND_EXIT;
 //
-//	argsInstruction = inCODE->getInstruction();
-//	if( (argsInstruction == NULL) || argsInstruction->isNops() ||
+//	argsInstruction = inCODE.getInstruction();
+//	if( (argsInstruction == nullptr) || argsInstruction->isNops() ||
 //		(argsBytecode = argsInstruction->getBytecode())[0].isNops() )
 //	{
-//		values = &( inCODE->getArgs() );
+//		values = &( inCODE.getOperands() );
 //
 //		return( true );
 //	}
@@ -325,22 +325,22 @@ bool ARGS_ENV::decode_eval_args_context(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ARGS_ENV::decode_eval_args_processor(
-		AvmBytecode & bytecode, AvmCode * inCODE)
+		AvmBytecode & bytecode, AvmCode & inCODE)
 {
-	avm_size_t CURRENT_CALL_COUNT;
+	std::size_t CURRENT_CALL_COUNT;
 
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	CURRENT_CALL_COUNT = ++ARGS_ENV::CALL_COUNT;
 
 	AVM_OS_TRACE << "args[" << CURRENT_CALL_COUNT << "]:<< ";
-	inCODE->toDebug( AVM_OS_TRACE << AVM_SPC_INDENT ) << END_INDENT_EOL;
+	inCODE.toDebug( AVM_OS_TRACE << AVM_SPC_INDENT ) << END_INDENT_EOL;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
-	argsBytecode = (argsInstruction = inCODE->getInstruction())->getBytecode();
+	argsBytecode = (argsInstruction = inCODE.getInstruction())->getBytecode();
 
-	if( argsInstruction->isNops() || argsBytecode[0].isNopsOperation() )
+	if( argsInstruction->isNops() )
 	{
-		values = &( inCODE->getArgs() );
+		values = &( inCODE.getOperands() );
 
 AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 	AVM_OS_TRACE << "args[nops:" << CURRENT_CALL_COUNT << ">]:>>";
@@ -351,23 +351,27 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 		return( true );
 	}
 
-	AvmCode::iterator it = inCODE->begin();
-	for( begin() ; hasNext() ; ++it , next() )
+	AvmCode::iterator itOperand = inCODE.begin();
+	for( begin() ; hasNext() ; ++itOperand , next() )
 	{
-		switch( argsBytecode[idx].processor )
+		if( argsBytecode[idx].isNopOperation() )
+		{
+			current( *itOperand );
+		}
+		else switch( argsBytecode[idx].processor )
 		{
 			case AVM_ARG_NOP_CPU:
 			{
-				current( *it );
+				current( *itOperand );
 
 				break;
 			}
 			case AVM_ARG_NOPS_CPU:
 			{
-				current_next( *it );
-				for( ++it ; hasNext() ; ++it )
+				current_next( *itOperand );
+				for( ++itOperand ; hasNext() ; ++itOperand )
 				{
-					current_next( *it );
+					current_next( *itOperand );
 				}
 
 				break;
@@ -375,7 +379,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_MEMORY_LVALUE_CPU:
 			{
-				if( eval_processor_dma_lvalue(argsBytecode[idx], *it) )
+				if( eval_processor_dma_lvalue(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -387,7 +391,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_MEMORY_WVALUE_CPU:
 			{
-				if( eval_processor_dma_wvalue(argsBytecode[idx], *it) )
+				if( eval_processor_dma_wvalue(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -399,7 +403,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_MEMORY_RVALUE_CPU:
 			{
-				if( eval_processor_dma_rvalue(argsBytecode[idx], *it) )
+				if( eval_processor_dma_rvalue(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -411,7 +415,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_MEMORY_MACHINE_CPU:
 			{
-				if( eval_processor_dma_machine(argsBytecode[idx], *it) )
+				if( eval_processor_dma_machine(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -423,7 +427,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_ARITHMETIC_LOGIC_CPU:
 			{
-				if( eval_processor_alu(argsBytecode[idx], *it) )
+				if( eval_processor_alu(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -436,7 +440,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_CHARACTER_CPU:
 			{
-				if( eval_processor_character(argsBytecode[idx], *it) )
+				if( eval_processor_character(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -448,7 +452,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_STRING_CPU:
 			{
-				if( eval_processor_string(argsBytecode[idx], *it) )
+				if( eval_processor_string(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -460,7 +464,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_ARRAY_LVALUE_CPU:
 			{
-				if( eval_processor_array_lvalue(argsBytecode[idx], *it) )
+				if( eval_processor_array_lvalue(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -471,7 +475,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 			}
 			case AVM_ARG_ARRAY_RVALUE_CPU:
 			{
-				if( eval_processor_array_rvalue(argsBytecode[idx], *it) )
+				if( eval_processor_array_rvalue(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -483,7 +487,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_VECTOR_CPU:
 			{
-				if( eval_processor_vector(argsBytecode[idx], *it) )
+				if( eval_processor_vector(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -497,7 +501,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 			case AVM_ARG_LIST_CPU:
 			case AVM_ARG_COLLECTION_CPU:
 			{
-				if( eval_processor_collection(argsBytecode[idx], *it) )
+				if( eval_processor_collection(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -509,7 +513,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 			case AVM_ARG_BUFFER_CPU:
 			{
-				if( eval_processor_buffer(argsBytecode[idx], *it) )
+				if( eval_processor_buffer(argsBytecode[idx], *itOperand) )
 				{
 					break;
 				}
@@ -522,7 +526,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 			case AVM_ARG_STATEMENT_CPU:
 			{
 				if( eval_processor_statement(
-						argsBytecode[idx], (*it).to_ptr< AvmCode >()) )
+						argsBytecode[idx], (*itOperand).to< AvmCode >()) )
 				{
 					break;
 				}
@@ -539,7 +543,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 						<< "ARGS_ENV::decode_eval_processor :> "
 							"Unexpected bytecode<processor> << "
 						<< argsBytecode[idx].strCode()
-						<< " >> for : " << (*it).str() << " !!!"
+						<< " >> for : " << (*itOperand).str() << " !!!"
 						<< SEND_EXIT;
 
 				break;
@@ -558,7 +562,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPUTING , STATEMENT )
 
 
 bool ARGS_ENV::decode_eval_processor(
-		AvmBytecode & bytecode, AvmCode * inCODE)
+		AvmBytecode & bytecode, AvmCode & inCODE)
 {
 	switch( bytecode.processor )
 	{
@@ -643,7 +647,7 @@ bool ARGS_ENV::decode_eval_processor(
 					<< "ARGS_ENV::decode_eval_processor :> "
 						"Unexpected bytecode<processor> << "
 					<< bytecode.strCode() << " >> for : "
-					<< inCODE->strDebug() << " !!!"
+					<< inCODE.strDebug() << " !!!"
 					<< SEND_EXIT;
 
 			return( false );
@@ -729,7 +733,7 @@ bool ARGS_ENV::decode_eval_processor(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_STATEMENT_CPU:
 		{
 			return( eval_processor_statement(
-					bytecode, (arg).to_ptr< AvmCode >()) );
+					bytecode, (arg).to< AvmCode >()) );
 		}
 
 		case AVM_ARG_UNDEFINED_PROCESSOR:
@@ -753,6 +757,8 @@ BF ARGS_ENV::return_decode_eval_processor(AvmBytecode & bytecode, BF & arg)
 	InstructionEnvironment EVAL_ARG(ENV, outED, 1);
 	if( EVAL_ARG.mARG->decode_eval_processor(bytecode, arg) )
 	{
+		outED = EVAL_ARG.mARG->outED;
+
 		return( EVAL_ARG.mARG->at(0) );
 	}
 	else
@@ -766,7 +772,7 @@ bool ARGS_ENV::decode_eval_processor(BFCode & aCode)
 	if( not aCode->hasInstruction() )
 	{
 		if( not ENV->getBuilder().getAvmcodeCompiler().optimizeEvalExpression(
-				ENV->inED->getParametersRID().getExecutable(), aCode) )
+				ENV->inED.getParametersRID().refExecutable(), aCode) )
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::decode_eval_processor :> "
@@ -785,6 +791,8 @@ BF ARGS_ENV::return_decode_eval_processor(BFCode & aCode)
 	InstructionEnvironment EVAL_ARG(ENV, outED, 1);
 	if( EVAL_ARG.mARG->decode_eval_processor(aCode) )
 	{
+		outED = EVAL_ARG.mARG->outED;
+
 		return( EVAL_ARG.mARG->at(0) );
 	}
 	else
@@ -806,22 +814,22 @@ BF ARGS_ENV::return_decode_eval_processor(BFCode & aCode)
 bool ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer(
 		AvmBytecode & bytecode, BF & arg)
 {
-	InstanceOfData * lvalue = arg.to_ptr< InstanceOfData >();
+	const InstanceOfData & lvalue = arg.to< InstanceOfData >();
 
-	avm_size_t * aRelativeOffsetPath =
-			new avm_size_t[ lvalue->getDataPath()->size() + 1 ];
+	std::size_t * aRelativeOffsetPath =
+			new std::size_t[ lvalue.getDataPath()->size() + 1 ];
 
-	InstanceOfData * aRoot = lvalue;
-	if( lvalue->getModifier().hasNatureReference() )
+	const InstanceOfData * aRoot = (& lvalue);
+	if( lvalue.getModifier().hasNatureReference() )
 	{
-		aRoot = ENV->getRvalue(outED, lvalue->getAliasTarget()->to<
+		aRoot = ENV->getRvalue(outED, lvalue.getAliasTarget()->to<
 				InstanceOfData >()).as_ptr< InstanceOfData >();
 	}
 
 	aRelativeOffsetPath[0] = aRoot->getOffset();
 
 	InstanceOfData * ptrValue =
-			new InstanceOfData(lvalue, aRoot, aRelativeOffsetPath);
+			new InstanceOfData(lvalue, (* aRoot), aRelativeOffsetPath);
 
 	current( BF( ptrValue ) );
 
@@ -830,18 +838,18 @@ bool ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer(
 
 	if( ptrValue->hasRuntimeContainerRID() )
 	{
-		rvalue = outED->getRuntime( ptrValue->getRuntimeContainerRID() ).
+		rvalue = outED.getRuntime( ptrValue->getRuntimeContainerRID() ).
 				getData( ptrValue->getOffset() );
 	}
 	else
 	{
 		RuntimeID aDataRID;
 
-		if( ENV->getRuntimeForm(outED, outED->mRID, ptrValue, aDataRID) )
+		if( ENV->getRuntimeForm(outED, outED.getRID(), (* ptrValue), aDataRID) )
 		{
 			ptrValue->setRuntimeContainerRID( aDataRID );
 
-			rvalue = outED->getRuntime(aDataRID).getData( ptrValue->getOffset() );
+			rvalue = outED.getRuntime(aDataRID).getData( ptrValue->getOffset() );
 		}
 		else
 		{
@@ -866,20 +874,20 @@ bool ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer(
 		}
 	}
 
-	TableOfSymbol::iterator itPath = lvalue->getDataPath()->begin();
-	TableOfSymbol::iterator endPath = lvalue->getDataPath()->end();
-	for( avm_size_t k = 1 ; itPath != endPath ; ++k, ++itPath )
+	TableOfSymbol::iterator itPath = lvalue.getDataPath()->begin();
+	TableOfSymbol::iterator endPath = lvalue.getDataPath()->end();
+	for( std::size_t k = 1 ; itPath != endPath ; ++k, ++itPath )
 	{
 		switch( (*itPath).getPointerNature() )
 		{
-			case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-			case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+			case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+			case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 			{
 				aRelativeOffsetPath[k] = (*itPath).getOffset();
 
 				break;
 			}
-			case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+			case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 			{
 				BF bfOffset = return_decode_eval_rvalue( (*itPath).getValue() );
 				if( bfOffset.invalid() )
@@ -900,7 +908,7 @@ bool ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer(
 						static_cast< avm_integer_t >(rvalue.size()) )
 							<< "Failed to write in ARRAY with index << "
 							<< bfOffset.toInteger() << " >> in variable << "
-							<< lvalue->str() << " >> for writing in VVT !!!"
+							<< lvalue.str() << " >> for writing in VVT !!!"
 							<< SEND_EXIT;
 
 					aRelativeOffsetPath[k] = bfOffset.toInteger();
@@ -910,8 +918,8 @@ bool ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer(
 
 				else
 				{
-					avm_size_t offset = ENV->genNumericOffset(
-							outED, outED->mRID, (*itPath),
+					std::size_t offset = ENV->genNumericOffset(
+							outED, outED.getRID(), (*itPath),
 							bfOffset, 0, (rvalue.size() - 1) );
 
 					if( offset != AVM_NUMERIC_MAX_SIZE_T )
@@ -928,7 +936,7 @@ bool ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer(
 						<< "BaseEnvironment::setData:> "
 							"unexpected NON-INTEGER ARRAY INDEX << "
 						<< bfOffset.str() << " >> in instance FQN-ID :>\n"
-						<< lvalue->toString( AVM_TAB1_INDENT )
+						<< lvalue.toString( AVM_TAB1_INDENT )
 						<< SEND_EXIT;
 
 				return( false );
@@ -938,7 +946,7 @@ bool ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer(
 				AVM_OS_FATAL_ERROR_EXIT
 						<< "ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer:> "
 						"Unexpected POINTER NATURE for the instance of data :>\n"
-						<< lvalue->toString( AVM_TAB1_INDENT )
+						<< lvalue.toString( AVM_TAB1_INDENT )
 						<< SEND_EXIT;
 
 				return( false );
@@ -949,7 +957,7 @@ bool ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer(
 
 		if( (*itPath).getModifier().hasNatureReference() )
 		{
-			rvalue = ENV->getRvalue(outED, rvalue.as_ptr< InstanceOfData >() );
+			rvalue = ENV->getRvalue(outED, rvalue.as< InstanceOfData >() );
 		}
 	}
 
@@ -960,15 +968,15 @@ bool ARGS_ENV::eval_processor_dma_lvalue_ufi_pointer(
 bool ARGS_ENV::eval_processor_dma_wvalue_ufi_pointer(
 		AvmBytecode & bytecode, BF & arg)
 {
-	InstanceOfData * lvalue = arg.to_ptr< InstanceOfData >();
+	const InstanceOfData * lvalue = arg.to_ptr< InstanceOfData >();
 
 	TableOfSymbol::iterator itPath = lvalue->getDataPath()->begin();
 	TableOfSymbol::iterator endPath = lvalue->getDataPath()->end();
 
 	if( lvalue->getModifier().hasNatureReference() )
 	{
-		lvalue = ENV->getRvalue(outED, lvalue->getAliasTarget()->to<
-				InstanceOfData >()).as_ptr< InstanceOfData >();
+		lvalue = ENV->getRvalue(outED, lvalue->getAliasTarget()
+				->to< InstanceOfData >()).as_ptr< InstanceOfData >();
 	}
 
 	// For Array Value Size
@@ -984,7 +992,7 @@ bool ARGS_ENV::eval_processor_dma_wvalue_ufi_pointer(
 	{
 		RuntimeID aDataRID;
 
-		if( ENV->getRuntimeForm(outED, outED->mRID, lvalue, aDataRID) )
+		if( ENV->getRuntimeForm(outED, outED.getRID(), (* lvalue), aDataRID) )
 		{
 			rvalue = outED.getWritableRuntimeDataTable(aDataRID)->
 					getWritable( lvalue->getOffset() );
@@ -992,7 +1000,7 @@ bool ARGS_ENV::eval_processor_dma_wvalue_ufi_pointer(
 		else
 		{
 			LocalRuntime aLocalRuntime;
-			if( ENV->getRuntimeForm(outED, lvalue, aLocalRuntime) )
+			if( ENV->getRuntimeForm(outED, (* lvalue), aLocalRuntime) )
 			{
 				outED.makeModifiableLocalRuntime( aLocalRuntime );
 
@@ -1015,18 +1023,18 @@ bool ARGS_ENV::eval_processor_dma_wvalue_ufi_pointer(
 		}
 	}
 
-	for( avm_size_t offset = 0; itPath != endPath ; ++itPath )
+	for( std::size_t offset = 0 ; itPath != endPath ; ++itPath )
 	{
 		switch( (*itPath).getPointerNature() )
 		{
-			case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-			case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+			case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+			case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 			{
 				offset = (*itPath).getOffset();
 
 				break;
 			}
-			case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+			case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 			{
 				BF bfOffset = return_decode_eval_rvalue( (*itPath).getValue() );
 				if( bfOffset.invalid() )
@@ -1057,7 +1065,7 @@ bool ARGS_ENV::eval_processor_dma_wvalue_ufi_pointer(
 
 				else
 				{
-					offset = ENV->genNumericOffset( outED, outED->mRID,
+					offset = ENV->genNumericOffset( outED, outED.getRID(),
 							(*itPath), bfOffset, 0, (rvalue.size() - 1) );
 
 					if( offset != AVM_NUMERIC_MAX_SIZE_T )
@@ -1093,7 +1101,7 @@ bool ARGS_ENV::eval_processor_dma_wvalue_ufi_pointer(
 
 		if( (*itPath).getModifier().hasNatureReference() )
 		{
-			rvalue = ENV->getWvalue(outED, rvalue.as_ptr< InstanceOfData >() );
+			rvalue = ENV->getWvalue(outED, rvalue.as< InstanceOfData >() );
 		}
 	}
 
@@ -1113,8 +1121,8 @@ bool ARGS_ENV::eval_processor_dma_rvalue_ufi_pointer(
 
 	if( lvalue->getModifier().hasNatureReference() )
 	{
-		lvalue = ENV->getRvalue(outED, lvalue->getAliasTarget()->to<
-				InstanceOfData >()).as_ptr< InstanceOfData >();
+		lvalue = ENV->getRvalue(outED, lvalue->getAliasTarget()
+				->to< InstanceOfData >()).as_ptr< InstanceOfData >();
 	}
 
 	// For Array Value Size
@@ -1122,21 +1130,21 @@ bool ARGS_ENV::eval_processor_dma_rvalue_ufi_pointer(
 
 	if( lvalue->hasRuntimeContainerRID() )
 	{
-		rvalue = outED->getRuntime( lvalue->getRuntimeContainerRID() ).
+		rvalue = outED.getRuntime( lvalue->getRuntimeContainerRID() ).
 						getData( lvalue->getOffset() );
 	}
 	else
 	{
 		RuntimeID aDataRID;
 
-		if( ENV->getRuntimeForm(outED, outED->mRID, lvalue, aDataRID) )
+		if( ENV->getRuntimeForm(outED, outED.getRID(), (* lvalue), aDataRID) )
 		{
-			rvalue = outED->getRuntime(aDataRID).getData( lvalue->getOffset() );
+			rvalue = outED.getRuntime(aDataRID).getData( lvalue->getOffset() );
 		}
 		else
 		{
 			LocalRuntime aLocalRuntime;
-			if( ENV->getRuntimeForm(outED, lvalue, aLocalRuntime) )
+			if( ENV->getRuntimeForm(outED, (* lvalue), aLocalRuntime) )
 			{
 				rvalue = aLocalRuntime.getDataTable().at( lvalue->getOffset() );
 			}
@@ -1156,18 +1164,18 @@ bool ARGS_ENV::eval_processor_dma_rvalue_ufi_pointer(
 		}
 	}
 
-	for( avm_size_t offset = 0; itPath != endPath ; ++itPath )
+	for( std::size_t offset = 0 ; itPath != endPath ; ++itPath )
 	{
 		switch( (*itPath).getPointerNature() )
 		{
-			case IPointerDataNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
-			case IPointerDataNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
+			case IPointerVariableNature::POINTER_FIELD_CLASS_ATTRIBUTE_NATURE:
+			case IPointerVariableNature::POINTER_FIELD_ARRAY_OFFSET_NATURE:
 			{
 				offset = (*itPath).getOffset();
 
 				break;
 			}
-			case IPointerDataNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
+			case IPointerVariableNature::POINTER_FIELD_ARRAY_INDEX_NATURE:
 			{
 				BF bfOffset = return_decode_eval_rvalue( (*itPath).getValue() );
 				if( bfOffset.invalid() )
@@ -1198,7 +1206,7 @@ bool ARGS_ENV::eval_processor_dma_rvalue_ufi_pointer(
 
 				else
 				{
-					offset = ENV->genNumericOffset(outED, outED->mRID,
+					offset = ENV->genNumericOffset(outED, outED.getRID(),
 							(*itPath), bfOffset, 0, (rvalue.size() - 1) );
 
 					if( offset != AVM_NUMERIC_MAX_SIZE_T )
@@ -1234,7 +1242,7 @@ bool ARGS_ENV::eval_processor_dma_rvalue_ufi_pointer(
 
 		if( (*itPath).getModifier().hasNatureReference() )
 		{
-			rvalue = ENV->getRvalue(outED, rvalue.as_ptr< InstanceOfData >() );
+			rvalue = ENV->getRvalue(outED, rvalue.as< InstanceOfData >() );
 		}
 	}
 
@@ -1266,7 +1274,7 @@ bool ARGS_ENV::eval_processor_dma_lvalue(AvmBytecode & bytecode, BF & arg)
 
 		case AVM_ARG_DATA_REF_KIND:
 		{
-			current( ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >()) );
+			current( ENV->getRvalue(outED, arg.to< InstanceOfData >()) );
 
 			return( true );
 		}
@@ -1274,7 +1282,7 @@ bool ARGS_ENV::eval_processor_dma_lvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_DATA_MACRO_KIND:
 		{
 			const BF & lvalue =
-					ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >());
+					ENV->getRvalue(outED, arg.to< InstanceOfData >());
 
 			if( lvalue.is< InstanceOfData >() )
 			{
@@ -1329,7 +1337,7 @@ bool ARGS_ENV::eval_processor_dma_wvalue(AvmBytecode & bytecode, BF & arg)
 	{
 		case AVM_ARG_DATA_KIND:
 		{
-			current( ENV->getWvalue(outED, arg.to_ptr< InstanceOfData >()) );
+			current( ENV->getWvalue(outED, arg.to< InstanceOfData >()) );
 
 			return( true );
 		}
@@ -1337,8 +1345,8 @@ bool ARGS_ENV::eval_processor_dma_wvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_DATA_REF_KIND:
 		{
 			current( ENV->getWvalue(outED,
-					ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >()).
-					as_ptr< InstanceOfData >() ));
+					ENV->getRvalue(outED, arg.to< InstanceOfData >()).
+					as< InstanceOfData >() ));
 
 			return( true );
 		}
@@ -1346,12 +1354,12 @@ bool ARGS_ENV::eval_processor_dma_wvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_DATA_MACRO_KIND:
 		{
 			const BF & lvalue = ENV->getRvalue(outED,
-					arg.to_ptr< InstanceOfData >());
+					arg.to< InstanceOfData >());
 
 			if( lvalue.is< InstanceOfData >() )
 			{
 				current( ENV->getWvalue(outED,
-						lvalue.to_ptr< InstanceOfData >() ));
+						lvalue.to< InstanceOfData >() ));
 
 				return( true );
 			}
@@ -1374,12 +1382,12 @@ bool ARGS_ENV::eval_processor_dma_wvalue(AvmBytecode & bytecode, BF & arg)
 
 		case AVM_ARG_BUFFER_KIND:
 		{
-			const RuntimeID & aRID = outED->getRuntimeContainerRID(
+			const RuntimeID & aRID = outED.getRuntimeContainerRID(
 					arg.to_ptr< InstanceOfBuffer >());
 
 			AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( aRID )
 					<< "RID container for the buffer< "
-					<< arg.to_ptr< InstanceOfBuffer >()->str() << " > !!!"
+					<< arg.to< InstanceOfBuffer >().str() << " > !!!"
 					<< SEND_EXIT;
 
 			current( outED.getWritableRuntime( aRID ).bfWritableBuffer(
@@ -1428,7 +1436,7 @@ bool ARGS_ENV::eval_processor_dma_rvalue(AvmBytecode & bytecode, BF & arg)
 	{
 		case AVM_ARG_DATA_KIND:
 		{
-			current( ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >()) );
+			current( ENV->getRvalue(outED, arg.to< InstanceOfData >()) );
 
 			return( true );
 		}
@@ -1443,8 +1451,8 @@ bool ARGS_ENV::eval_processor_dma_rvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_DATA_REF_KIND:
 		{
 			current( ENV->getRvalue(outED,
-					ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >()).
-					as_ptr< InstanceOfData >()) );
+					ENV->getRvalue(outED, arg.to< InstanceOfData >()).
+					as< InstanceOfData >()) );
 
 			return( true );
 		}
@@ -1452,12 +1460,12 @@ bool ARGS_ENV::eval_processor_dma_rvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_DATA_MACRO_KIND:
 		{
 			BF & rvalue  = ENV->getRvalue(outED,
-					arg.to_ptr< InstanceOfData >());
+					arg.to< InstanceOfData >());
 
 			if( rvalue.is< InstanceOfData >() )
 			{
 				current( ENV->getRvalue(outED,
-						rvalue.to_ptr< InstanceOfData >() ));
+						rvalue.to< InstanceOfData >() ));
 
 				return( true );
 			}
@@ -1475,7 +1483,7 @@ bool ARGS_ENV::eval_processor_dma_rvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_EXPRESSION_KIND:
 		{
 			return( eval_processor_dma_rvalue(
-					bytecode, arg.to_ptr< AvmCode >()) );
+					bytecode, arg.to< AvmCode >()) );
 		}
 
 		case AVM_ARG_BUILTIN_CONTAINER_KIND:
@@ -1501,9 +1509,9 @@ bool ARGS_ENV::eval_processor_dma_rvalue(AvmBytecode & bytecode, BF & arg)
 }
 
 
-bool ARGS_ENV::eval_processor_dma_rvalue(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_dma_rvalue(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->decode_eval_args_processor(bytecode, aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
@@ -1513,7 +1521,7 @@ bool ARGS_ENV::eval_processor_dma_rvalue(AvmBytecode & bytecode, AvmCode * aCode
 		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_ASSIGN:
 		{
@@ -1521,25 +1529,25 @@ bool ARGS_ENV::eval_processor_dma_rvalue(AvmBytecode & bytecode, AvmCode * aCode
 
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 AVM_OS_TRACE << "dma:lvalue:> "
-		<< str_header( EVAL_ARG.mARG->at(0).to_ptr< InstanceOfData >() )
+		<< str_header( EVAL_ARG.mARG->at(0).to< InstanceOfData >() )
 		<< std::endl
 		<< "dma:rvalue:> " << EVAL_ARG.mARG->at(1).str()
 		<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 			return( ENV->setRvalue( outED,
-					EVAL_ARG.mARG->at(0).to_ptr< InstanceOfData >(),
+					EVAL_ARG.mARG->at(0).to< InstanceOfData >(),
 					EVAL_ARG.mARG->at(1) ));
 		}
 
 		case AVM_OPCODE_ASSIGN_AFTER:
 		{
 			current( ENV->getRvalue( outED,
-					EVAL_ARG.mARG->at(0).to_ptr< InstanceOfData >() ));
+					EVAL_ARG.mARG->at(0).to< InstanceOfData >() ));
 
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 AVM_OS_TRACE << "dma:lvalue:> "
-		<< str_header( EVAL_ARG.mARG->at(0).to_ptr< InstanceOfData >() )
+		<< str_header( EVAL_ARG.mARG->at(0).to< InstanceOfData >() )
 		<< std::endl
 		<< "dma:rvalue:> " << EVAL_ARG.mARG->at(1).str()
 		<< std::endl;
@@ -1548,7 +1556,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 			current( EVAL_ARG.mARG->at(1) );
 
 			return( ENV->setRvalue( outED,
-					EVAL_ARG.mARG->at(0).to_ptr< InstanceOfData >(),
+					EVAL_ARG.mARG->at(0).to< InstanceOfData >(),
 					EVAL_ARG.mARG->at(2) ));
 		}
 
@@ -1556,27 +1564,27 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 		case AVM_OPCODE_ASSIGN_NEWFRESH:
 		{
 			BFList paramList;
-			BF aNewSymbolicConstant = ENV->createNewFreshParam(outED->mRID,
-					EVAL_ARG.mARG->at(0).to_ptr< InstanceOfData >(), paramList );
-
-			current( aNewSymbolicConstant );
+			BF aNewSymbolicConstant = ENV->createNewFreshParam(outED.getRID(),
+					EVAL_ARG.mARG->at(0).to< InstanceOfData >(), paramList );
 
 AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 AVM_OS_TRACE << "dma:lvalue:> "
-		<< str_header( EVAL_ARG.mARG->at(0).to_ptr< InstanceOfData >() )
+		<< str_header( EVAL_ARG.mARG->at(0).to< InstanceOfData >() )
 		<< std::endl
 		<< "dma:rvalue:> " << aNewSymbolicConstant.str()
 		<< std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 			if( ENV->setRvalue(outED, EVAL_ARG.mARG->at(0).
-					to_ptr< InstanceOfData >(), aNewSymbolicConstant) )
+					to< InstanceOfData >(), aNewSymbolicConstant) )
 			{
 				ExecutionDataFactory::appendIOElementTrace(outED,
-					BF(new ExecutionConfiguration(outED->mRID,
+					BF(new ExecutionConfiguration(outED.getRID(),
 						StatementConstructor::newCode(
 							OperatorManager::OPERATOR_ASSIGN_NEWFRESH,
 							EVAL_ARG.mARG->at(0), aNewSymbolicConstant))));
+
+				current( aNewSymbolicConstant );
 
 				outED.appendParameters( paramList );
 
@@ -1601,7 +1609,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::eval_processor_dma_rvalue :> "
-					"Unexpected opcode << " << aCode->strDebug() << " >> !!!"
+					"Unexpected opcode << " << aCode.strDebug() << " >> !!!"
 					<< SEND_EXIT;
 
 			return( false );
@@ -1616,25 +1624,25 @@ bool ARGS_ENV::decode_eval_rvalue(BF & arg)
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			return( decode_eval_processor( arg.to_ptr< AvmCode >()
-					->getInstruction()->getMainBytecode(),
-					arg.to_ptr< AvmCode >()) );
+			return( decode_eval_processor( arg.to< AvmCode >()
+					.getInstruction()->getMainBytecode(),
+					arg.to< AvmCode >()) );
 		}
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			InstanceOfData * anInstance = arg.to_ptr< InstanceOfData >();
+			const InstanceOfData & anInstance = arg.to< InstanceOfData >();
 
-			if( anInstance->getModifier().hasNatureReference() )
+			if( anInstance.getModifier().hasNatureReference() )
 			{
 				current( ENV->getRvalue(outED, ENV->getRvalue(outED,
-						anInstance).to_ptr< InstanceOfData >() ));
+						anInstance).to< InstanceOfData >() ));
 			}
-			else if( anInstance->getModifier().hasNatureMacro() )
+			else if( anInstance.getModifier().hasNatureMacro() )
 			{
 				return( decode_eval_rvalue( ENV->getRvalue(outED, anInstance) ));
 			}
-			else if( anInstance->getModifier().hasFeatureMutable() )
+			else if( anInstance.getModifier().hasFeatureMutable() )
 			{
 				current( ENV->getRvalue(outED, anInstance) );
 			}
@@ -1707,19 +1715,19 @@ BF ARGS_ENV::return_decode_eval_rvalue(BF & arg)
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			InstanceOfData * anInstance = arg.to_ptr< InstanceOfData >();
+			const InstanceOfData & anInstance = arg.to< InstanceOfData >();
 
-			if( anInstance->getModifier().hasNatureReference() )
+			if( anInstance.getModifier().hasNatureReference() )
 			{
 				return( ENV->getRvalue(outED, ENV->getRvalue(outED,
-						anInstance).to_ptr< InstanceOfData >() ));
+						anInstance).to< InstanceOfData >() ));
 			}
-			else if( anInstance->getModifier().hasNatureMacro() )
+			else if( anInstance.getModifier().hasNatureMacro() )
 			{
 				return( return_decode_eval_rvalue(
 						ENV->getRvalue(outED, anInstance) ));
 			}
-			else if( anInstance->getModifier().hasFeatureMutable() )
+			else if( anInstance.getModifier().hasFeatureMutable() )
 			{
 				return( ENV->getRvalue(outED, anInstance) );
 			}
@@ -1790,27 +1798,27 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg)
 {
 	switch( bytecode.operand )
 	{
-		case AVM_ARG_SELF_RID:
+		case AVM_ARG_THIS_RID:
 		{
-			current( outED->mRID );
+			current( outED.getRID() );
 
 			return( true );
 		}
 		case AVM_ARG_PARENT_RID:
 		{
-			current( outED->mRID.getPRID() );
+			current( outED.getRID().getPRID() );
 
 			return( true );
 		}
 		case AVM_ARG_COMMUNICATOR_RID:
 		{
-			current( outED->mRID.getCommunicator() );
+			current( outED.getRID().getCommunicator() );
 
 			return( true );
 		}
 		case AVM_ARG_SYSTEM_RID:
 		{
-			current( outED->getSystemRID() );
+			current( outED.getSystemRID() );
 
 			return( true );
 		}
@@ -1824,28 +1832,29 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg)
 
 		case AVM_ARG_COMPONENT_SELF_RID:
 		{
-			current( outED->mRID.getComponentSelf() );
+			current( outED.getRID().getComponentSelf() );
 
 			return( true );
 		}
 		case AVM_ARG_COMPONENT_PARENT_RID:
 		{
-			current( outED->mRID.getComponentParent() );
+			current( outED.getRID().getComponentParent() );
 
 			return( true );
 		}
 		case AVM_ARG_COMPONENT_COMMUNICATOR_RID:
 		{
-			current( outED->mRID.getComponentCommunicator() );
+			current( outED.getRID().getComponentCommunicator() );
 
 			return( true );
 		}
 
 		case AVM_ARG_MACHINE_RID:
 		{
-			InstanceOfMachine * aMachine = arg.to_ptr< InstanceOfMachine >();
+			const InstanceOfMachine & aMachine =
+					arg.to< InstanceOfMachine >();
 
-			if( aMachine->getExecutable()->hasSingleRuntimeInstance() )
+			if( aMachine.refExecutable().hasSingleRuntimeInstance() )
 			{
 				bytecode.setNopCpu();
 				if( (count == 1) && (idx == 0) )
@@ -1853,11 +1862,11 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg)
 					bytecode.setNopsOperation();
 				}
 
-				current( arg = outED->getRuntimeID( aMachine ) );
+				current( arg = outED.getRuntimeID( aMachine ) );
 			}
 			else
 			{
-				current( outED->getRuntimeID( aMachine ) );
+				current( outED.getRuntimeID( aMachine ) );
 			}
 
 			return( true );
@@ -1865,7 +1874,7 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg)
 
 		case AVM_ARG_DATA_KIND:
 		{
-			current( ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >()) );
+			current( ENV->getRvalue(outED, arg.to< InstanceOfData >()) );
 
 			return( true );
 		}
@@ -1873,15 +1882,15 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_DATA_REF_KIND:
 		{
 			current( ENV->getRvalue( outED,
-					ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >()).
-					as_ptr< InstanceOfData >() ));
+					ENV->getRvalue(outED, arg.to< InstanceOfData >()).
+					as< InstanceOfData >() ));
 
 			return( true );
 		}
 		case AVM_ARG_DATA_MACRO_KIND:
 		{
 			current( return_decode_eval_machine(
-					ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >()) ));
+					ENV->getRvalue(outED, arg.to< InstanceOfData >()) ));
 
 			return( true );
 		}
@@ -1898,10 +1907,10 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg)
 			}
 			else if( current().is< InstanceOfMachine >() )
 			{
-				InstanceOfMachine * aMachine =
-						current().to_ptr< InstanceOfMachine >();
+				const InstanceOfMachine & aMachine =
+						current().to< InstanceOfMachine >();
 
-				if( aMachine->getExecutable()->hasSingleRuntimeInstance() )
+				if( aMachine.refExecutable().hasSingleRuntimeInstance() )
 				{
 					bytecode.setNopCpu();
 					if( (count == 1) && (idx == 0) )
@@ -1909,11 +1918,11 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg)
 						bytecode.setNopsOperation();
 					}
 
-					current( arg = outED->getRuntimeID( aMachine ) );
+					current( arg = outED.getRuntimeID( aMachine ) );
 				}
 				else
 				{
-					current( outED->getRuntimeID( aMachine ) );
+					current( outED.getRuntimeID( aMachine ) );
 				}
 
 				return( true );
@@ -1932,7 +1941,7 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_EXPRESSION_KIND:
 		{
 			return( eval_processor_dma_machine(
-					bytecode, arg.to_ptr< AvmCode >() ));
+					bytecode, arg.to< AvmCode >() ));
 		}
 
 		default:
@@ -1951,9 +1960,9 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, BF & arg)
 }
 
 
-bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->decode_eval_args_processor(bytecode, aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
@@ -1963,17 +1972,36 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, AvmCode * aCod
 		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_SCHEDULE_IN:
 		{
-			const BFCode & scheduleCode = outED->getRuntimeFormOnSchedule(
+			const BFCode & scheduleCode = outED.getRuntimeFormOnSchedule(
 					EVAL_ARG.mARG->at(1).bfRID() );
 
 			current( ExpressionConstructor::newBoolean(
 					StatementFactory::containsOperationOnRID(
-							scheduleCode, AVM_OPCODE_RUN,
+							(* scheduleCode), AVM_OPCODE_RUN,
 							EVAL_ARG.mARG->at(0).bfRID())) );
+
+			return( true );
+		}
+
+		case AVM_OPCODE_SELF:
+		{
+			current( ( EVAL_ARG.mARG->count == 0 ) ? outED.getRID()
+					: outED.getRID().getAncestor(
+						EVAL_ARG.mARG->at(0).to< InstanceOfMachine >()) );
+
+			return( true );
+		}
+
+		case AVM_OPCODE_SUPER:
+		{
+			current( ( EVAL_ARG.mARG->count == 0 ) ? outED.getRID().getParent()
+					: outED.getRID().getAncestor(
+						EVAL_ARG.mARG->at(0).to< InstanceOfMachine >()).
+						getParent() );
 
 			return( true );
 		}
@@ -1985,7 +2013,7 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, AvmCode * aCod
 
 		case AVM_OPCODE_INVOKE_NEW:
 		{
-			EvaluationEnvironment eENV(*ENV, outED, INCR_BF(aCode).bfCode());
+			EvaluationEnvironment eENV(*ENV, outED, INCR_BF(& aCode).bfCode());
 			if( eENV.seval(EVAL_ARG.mARG) )
 			{
 				outED = eENV.outED;
@@ -2002,7 +2030,7 @@ bool ARGS_ENV::eval_processor_dma_machine(AvmBytecode & bytecode, AvmCode * aCod
 		{
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::eval_processor_dma_machine :> "
-					"Unexpected opcode << " << aCode->strDebug() << " >> !!!"
+					"Unexpected opcode << " << aCode.strDebug() << " >> !!!"
 					<< SEND_EXIT;
 
 			return( false );
@@ -2022,16 +2050,16 @@ const RuntimeID & ARGS_ENV::return_decode_eval_machine(const BF & anElement)
 
 		case FORM_INSTANCE_MACHINE_KIND:
 		{
-			return( outED->getRuntimeID(anElement.to_ptr< InstanceOfMachine >()) );
+			return( outED.getRuntimeID(anElement.to< InstanceOfMachine >()) );
 		}
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			InstanceOfData * anInstance = anElement.to_ptr< InstanceOfData >();
+			const InstanceOfData & anInstance = anElement.to< InstanceOfData >();
 
-			if( anInstance->isTypedMachine() )
+			if( anInstance.isTypedMachine() )
 			{
-				if( anInstance->getModifier().hasFeatureMutable() )
+				if( anInstance.getModifier().hasFeatureMutable() )
 				{
 					const BF & bfInstance = ENV->getRvalue(outED, anInstance);
 
@@ -2041,15 +2069,15 @@ const RuntimeID & ARGS_ENV::return_decode_eval_machine(const BF & anElement)
 					}
 					else if( bfInstance.is< InstanceOfMachine >() )
 					{
-						return( outED->getRuntimeID(
-								bfInstance.to_ptr< InstanceOfMachine >()) );
+						return( outED.getRuntimeID(
+								bfInstance.to< InstanceOfMachine >()) );
 					}
-					else if( anInstance->getModifier().anyNatureReferenceMacro()
+					else if( anInstance.getModifier().anyNatureReferenceMacro()
 							&& bfInstance.is< InstanceOfData >()
 							&& (bfInstance != anInstance) )
 					{
 						return( return_decode_eval_machine(ENV->getRvalue(outED,
-								bfInstance.to_ptr< InstanceOfData >())) );
+								bfInstance.to< InstanceOfData >())) );
 					}
 					else
 					{
@@ -2057,7 +2085,7 @@ const RuntimeID & ARGS_ENV::return_decode_eval_machine(const BF & anElement)
 							<< " as RuntimeID argument !!!" << std::endl;
 					}
 				}
-				else if( anInstance->getModifier().
+				else if( anInstance.getModifier().
 							hasModifierPublicFinalStatic() )
 				{
 					AVM_OS_WARN << "Unexpected " << str_header( anInstance )
@@ -2129,7 +2157,7 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, BF & arg)
 	{
 		case AVM_ARG_EXPRESSION_KIND:
 		{
-			return( eval_processor_alu(bytecode, arg.to_ptr< AvmCode >()) );
+			return( eval_processor_alu(bytecode, arg.to< AvmCode >()) );
 		}
 
 		case AVM_ARG_STATEMENT_KIND:
@@ -2160,6 +2188,7 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_BUILTIN_ARRAY_KIND:
 		case AVM_ARG_CHARACTER_KIND:
 		case AVM_ARG_STRING_KIND:
+		case AVM_ARG_ENUM_LITERAL_KIND:
 
 		case AVM_ARG_PORT_KIND:
 		case AVM_ARG_BUFFER_KIND:
@@ -2186,9 +2215,9 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, BF & arg)
 }
 
 
-bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->decode_eval_args_processor(bytecode, aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
@@ -2198,7 +2227,7 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode)
 		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_PLUS:
 		{
@@ -2209,8 +2238,11 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode)
 		}
 		case AVM_OPCODE_MINUS:
 		{
+//			current( ExpressionConstructorNative::minusExpr(
+//					EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+
 			current( ExpressionConstructorNative::minusExpr(
-					EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+					*(EVAL_ARG.mARG->values)) );
 
 			return( true );
 		}
@@ -2245,7 +2277,14 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode)
 			return( true );
 		}
 
-//		case AVM_OPCODE_MOD:
+		case AVM_OPCODE_MOD:
+		{
+			current( ExpressionConstructorNative::modExpr(
+					EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+
+			return( true );
+		}
+
 //		case AVM_OPCODE_MIN:
 //		case AVM_OPCODE_MAX:
 
@@ -2309,7 +2348,6 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode)
 		}
 
 
-
 		case AVM_OPCODE_NOT:
 		{
 			current( ExpressionConstructorNative::notExpr(
@@ -2358,6 +2396,32 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode)
 //		case AVM_OPCODE_XOR:
 //		case AVM_OPCODE_XNOR:
 
+		case AVM_OPCODE_IMPLIES:
+		{
+			current( ExpressionConstructorNative::impliesExpr(
+					EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+
+			return( true );
+		}
+
+
+		case AVM_OPCODE_FORALL:
+		{
+			current( ExpressionConstructorNative::forallExpr(
+					*(EVAL_ARG.mARG->values)) );
+
+			return( true );
+		}
+
+		case AVM_OPCODE_EXISTS:
+		{
+			current( ExpressionConstructorNative::existsExpr(
+					*(EVAL_ARG.mARG->values)) );
+
+			return( true );
+		}
+
+
 		// RANDOM
 		case AVM_OPCODE_RANDOM:
 		{
@@ -2402,15 +2466,17 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode)
 
 		case AVM_OPCODE_CTOR:
 		{
-			switch( aCode->getInstruction()->getMainOperand() )
+			switch( aCode.getInstruction()->getMainOperand() )
 			{
 				case AVM_ARG_STRING_KIND:
+				case AVM_ARG_ENUM_LITERAL_KIND:
 				{
 					current( ExpressionConstructor::newString(
 							EVAL_ARG.mARG->at(1).str()) );
 
 					return( true );
 				}
+
 				case AVM_ARG_CHARACTER_KIND:
 				case AVM_ARG_BOOLEAN_KIND:
 				case AVM_ARG_INTEGER_KIND:
@@ -2428,17 +2494,34 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode)
 			return( true );
 		}
 
+		case AVM_OPCODE_PRESENT:
+		{
+			current( ExpressionConstructor::newBoolean(
+					AvmCommunicationFactory::computePresence(EVAL_ARG.mARG->outED,
+							EVAL_ARG.mARG->at(0).to< InstanceOfPort >()) ) );
+
+			return( true );
+		}
+		case AVM_OPCODE_ABSENT:
+		{
+			current( ExpressionConstructor::newBoolean(
+					AvmCommunicationFactory::computeAbsence(EVAL_ARG.mARG->outED,
+							EVAL_ARG.mARG->at(0).to< InstanceOfPort >()) ) );
+
+			return( true );
+		}
+
 		default:
 		{
 			current( ExpressionConstructorNative::newExpr(
-					aCode->getOperator(), *(EVAL_ARG.mARG->values)) );
+					aCode.getOperator(), *(EVAL_ARG.mARG->values)) );
 
 			return( true );
 
 //			AVM_OS_FATAL_ERROR_EXIT
 //					<< "ARGS_ENV::eval_processor_alu :> "
-//						"Unexpected opcode << " << aCode->strDebug()
-//					<< " >> for : " << aCode->strDebug() << " !!!"
+//						"Unexpected opcode << " << aCode.strDebug()
+//					<< " >> for : " << aCode.strDebug() << " !!!"
 //					<< SEND_EXIT;
 //
 //			return( false );
@@ -2456,19 +2539,19 @@ bool ARGS_ENV::eval_processor_alu(AvmBytecode & bytecode, AvmCode * aCode)
 /**
  * EVAL PROCESSOR < AVM_ARG_STATEMENT_CPU >
  */
-bool ARGS_ENV::eval_processor_statement(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_statement(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->main_decode_eval_args(aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
 	}
 	else
 	{
-		return( aCode );
+		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_OBS:
 		{
@@ -2481,19 +2564,33 @@ bool ARGS_ENV::eval_processor_statement(AvmBytecode & bytecode, AvmCode * aCode)
 		case AVM_OPCODE_INPUT:
 		case AVM_OPCODE_OUTPUT:
 		{
-			BFCode ioTrace = ENV->searchTraceIO(outED->getIOElementTrace(), aCode);
+			BFCode traceIO = ENV->searchTraceIO(
+					outED.getIOElementTrace(), aCode);
 
-			if( ioTrace.valid() )
+			if( traceIO.valid() )
 			{
-				current( ioTrace );
+				current( traceIO );
 
-				AvmCode::iterator traceArg = ioTrace->begin();
+				auto itOperandTraceIO = traceIO->begin();
+				auto endOperandTraceIO = traceIO->end();
 				EVAL_ARG.mARG->begin(1);
-				for( ++traceArg ; EVAL_ARG.mARG->hasNext() ;
-						EVAL_ARG.mARG->next() , ++traceArg )
+				for( ++itOperandTraceIO ; (itOperandTraceIO != endOperandTraceIO)
+						&& EVAL_ARG.mARG->hasNext() ;
+						EVAL_ARG.mARG->next() , ++itOperandTraceIO )
 				{
-					if( not ENV->setRvalue( outED, EVAL_ARG.mARG->current().
-							as_ptr< InstanceOfData >(), (*traceArg)) )
+					if( ENV->setRvalue( outED,
+						EVAL_ARG.mARG->current().as< InstanceOfData >(),
+						(*itOperandTraceIO) ) )
+					{
+AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
+	AVM_OS_TRACE << "@observe:lvalue:> "
+			<< str_header( EVAL_ARG.mARG->current().to< InstanceOfData >() )
+			<< std::endl
+			<< "@observe:rvalue:> " << (*itOperandTraceIO).str()
+			<< std::endl;
+AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
+					}
+					else
 					{
 						return( false );
 					}
@@ -2501,6 +2598,12 @@ bool ARGS_ENV::eval_processor_statement(AvmBytecode & bytecode, AvmCode * aCode)
 
 				return( true );
 			}
+
+AVM_IF_DEBUG_FLAG( STATEMENT)
+	AVM_OS_TRACE << "THROW UNSATISFIED << OBS >> : "
+			<< outED.getRID().strUniqId() << " |=> "
+			<< aCode.str() << std::endl;
+AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 
 			return( false );
 		}
@@ -2510,7 +2613,7 @@ bool ARGS_ENV::eval_processor_statement(AvmBytecode & bytecode, AvmCode * aCode)
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::eval_processor_statement :> "
 						"Unexpected bytecode << " << bytecode.strCode()
-					<< " >> for : " << aCode->strDebug() << " !!!"
+					<< " >> for : " << aCode.strDebug() << " !!!"
 					<< SEND_EXIT;
 
 			return( false );
@@ -2536,7 +2639,7 @@ bool ARGS_ENV::eval_processor_character(AvmBytecode & bytecode, BF & arg)
 	{
 		case AVM_ARG_EXPRESSION_KIND:
 		{
-			return( eval_processor_character( bytecode, arg.to_ptr< AvmCode >() ) );
+			return( eval_processor_character( bytecode, arg.to< AvmCode >() ) );
 		}
 
 		case AVM_ARG_CHARACTER_KIND:
@@ -2562,31 +2665,32 @@ bool ARGS_ENV::eval_processor_character(AvmBytecode & bytecode, BF & arg)
 }
 
 
-bool ARGS_ENV::eval_processor_character(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_character(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->main_decode_eval_args(aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
 	}
 	else
 	{
-		return( aCode );
+		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_CTOR:
 		{
-			switch( aCode->getInstruction()->getMainOperand() )
+			switch( aCode.getInstruction()->getMainOperand() )
 			{
 				case AVM_ARG_STRING_KIND:
+				case AVM_ARG_ENUM_LITERAL_KIND:
 				{
 					if( EVAL_ARG.mARG->at(1).is< Character >() )
 					{
 						current( ExpressionConstructor::newString(
-								to_string(EVAL_ARG.mARG->at(1).to_ptr<
-										Character >()->getValue())) );
+								to_string(EVAL_ARG.mARG->at(1).to<
+										Character >().getValue())) );
 					}
 					else
 					{
@@ -2659,8 +2763,8 @@ bool ARGS_ENV::eval_processor_character(AvmBytecode & bytecode, AvmCode * aCode)
 		case AVM_OPCODE_SEQ:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< Character >()->getValue() ==
-					EVAL_ARG.mARG->at(1).to_ptr< Character >()->getValue() ));
+					EVAL_ARG.mARG->at(0).to< Character >().getValue() ==
+					EVAL_ARG.mARG->at(1).to< Character >().getValue() ));
 
 			return( true );
 		}
@@ -2668,8 +2772,8 @@ bool ARGS_ENV::eval_processor_character(AvmBytecode & bytecode, AvmCode * aCode)
 		case AVM_OPCODE_NSEQ:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< Character >()->getValue() !=
-					EVAL_ARG.mARG->at(1).to_ptr< Character >()->getValue() ));
+					EVAL_ARG.mARG->at(0).to< Character >().getValue() !=
+					EVAL_ARG.mARG->at(1).to< Character >().getValue() ));
 
 			return( true );
 		}
@@ -2677,32 +2781,32 @@ bool ARGS_ENV::eval_processor_character(AvmBytecode & bytecode, AvmCode * aCode)
 		case AVM_OPCODE_LT:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< Character >()->getValue() <
-					EVAL_ARG.mARG->at(1).to_ptr< Character >()->getValue() ));
+					EVAL_ARG.mARG->at(0).to< Character >().getValue() <
+					EVAL_ARG.mARG->at(1).to< Character >().getValue() ));
 
 			return( true );
 		}
 		case AVM_OPCODE_LTE:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< Character >()->getValue() <=
-					EVAL_ARG.mARG->at(1).to_ptr< Character >()->getValue() ));
+					EVAL_ARG.mARG->at(0).to< Character >().getValue() <=
+					EVAL_ARG.mARG->at(1).to< Character >().getValue() ));
 
 			return( true );
 		}
 		case AVM_OPCODE_GT:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< Character >()->getValue() >
-					EVAL_ARG.mARG->at(1).to_ptr< Character >()->getValue() ));
+					EVAL_ARG.mARG->at(0).to< Character >().getValue() >
+					EVAL_ARG.mARG->at(1).to< Character >().getValue() ));
 
 			return( true );
 		}
 		case AVM_OPCODE_GTE:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< Character >()->getValue() >=
-					EVAL_ARG.mARG->at(1).to_ptr< Character >()->getValue() ));
+					EVAL_ARG.mARG->at(0).to< Character >().getValue() >=
+					EVAL_ARG.mARG->at(1).to< Character >().getValue() ));
 
 			return( true );
 		}
@@ -2713,7 +2817,7 @@ bool ARGS_ENV::eval_processor_character(AvmBytecode & bytecode, AvmCode * aCode)
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::eval_processor_character :> "
 						"Unexpected bytecode << " << bytecode.strCode()
-					<< " >> for : " << aCode->strDebug() << " !!!"
+					<< " >> for : " << aCode.strDebug() << " !!!"
 					<< SEND_EXIT;
 
 			return( false );
@@ -2737,10 +2841,11 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, BF & arg)
 	{
 		case AVM_ARG_EXPRESSION_KIND:
 		{
-			return( eval_processor_string( bytecode, arg.to_ptr< AvmCode >() ) );
+			return( eval_processor_string( bytecode, arg.to< AvmCode >() ) );
 		}
 
 		case AVM_ARG_STRING_KIND:
+		case AVM_ARG_ENUM_LITERAL_KIND:
 		{
 			current( arg );
 
@@ -2750,7 +2855,7 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_CHARACTER_KIND:
 		{
 			current( ExpressionConstructor::newString(
-					to_string(arg.to_ptr< Character >()->getValue())) );
+					to_string(arg.to< Character >().getValue())) );
 
 			return( true );
 		}
@@ -2784,19 +2889,19 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, BF & arg)
 }
 
 
-bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->main_decode_eval_args(aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
 	}
 	else
 	{
-		return( aCode );
+		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_PLUS:
 		case AVM_OPCODE_CONCAT:
@@ -2805,7 +2910,14 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode)
 			for( EVAL_ARG.mARG->begin() ; EVAL_ARG.mARG->hasNext() ;
 					EVAL_ARG.mARG->next() )
 			{
-				oss << EVAL_ARG.mARG->current().to_ptr< String >()->getValue();
+				if( EVAL_ARG.mARG->current().is< String >() )
+				{
+					oss << EVAL_ARG.mARG->current().to< String >().getValue();
+				}
+				else
+				{
+					oss << EVAL_ARG.mARG->current().str();
+				}
 			}
 
 			current( ExpressionConstructor::newString(oss.str()) );
@@ -2813,12 +2925,13 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode)
 			return( true );
 		}
 
+		case AVM_OPCODE_MINUS:
 		case AVM_OPCODE_REMOVE:
 		{
-			std::string val = EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue();
+			std::string val = EVAL_ARG.mARG->at(0).to< String >().getValue();
 
 			StringTools::replaceAll(val,
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue(), "");
+					EVAL_ARG.mARG->at(1).to< String >().getValue(), "");
 
 			current( ExpressionConstructor::newString( val ) );
 
@@ -2827,7 +2940,7 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode)
 
 		case AVM_OPCODE_CTOR:
 		{
-			switch( aCode->getInstruction()->getMainOperand() )
+			switch( aCode.getInstruction()->getMainOperand() )
 			{
 				case AVM_ARG_STRING_KIND:
 				{
@@ -2836,16 +2949,40 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode)
 
 					return( true );
 				}
+				case AVM_ARG_ENUM_LITERAL_KIND:
+				{
+					const EnumTypeSpecifier & enumT =
+							EVAL_ARG.mARG->at(0).to< EnumTypeSpecifier >();
+
+					const Symbol &  foundSymbol =
+							enumT.getSymbolDataByValue( EVAL_ARG.mARG->at(1) );
+
+					if( foundSymbol.valid() )
+					{
+						current( ExpressionConstructor::newString(
+								foundSymbol.getNameID() ));
+					}
+					else
+					{
+						current( BFCode(OperatorManager::OPERATOR_CTOR,
+								EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+
+//						current( ExpressionConstructor::newString(
+//								EVAL_ARG.mARG->at(1).str() ));
+					}
+
+					return( true );
+				}
 				case AVM_ARG_CHARACTER_KIND:
 				{
-					if( EVAL_ARG.mARG->at(1).to_ptr< String >()
-							->getValue().empty() )
+					if( EVAL_ARG.mARG->at(1).to< String >()
+							.getValue().empty() )
 					{
 						return( false );
 					}
 
 					current( ExpressionConstructor::newChar( EVAL_ARG.mARG
-							->at(1).to_ptr< String >()->getValue().at(0)) );
+							->at(1).to< String >().getValue().at(0)) );
 
 					return( true );
 				}
@@ -2853,28 +2990,28 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode)
 				case AVM_ARG_BOOLEAN_KIND:
 				{
 					current( ExpressionConstructor::newBoolean( EVAL_ARG.mARG
-							->at(1).to_ptr< String >()->getValue()) );
+							->at(1).to< String >().getValue()) );
 
 					return( true );
 				}
 				case AVM_ARG_INTEGER_KIND:
 				{
 					current( ExpressionConstructor::newInteger( EVAL_ARG.mARG
-							->at(1).to_ptr< String >()->getValue()) );
+							->at(1).to< String >().getValue()) );
 
 					return( true );
 				}
 				case AVM_ARG_RATIONAL_KIND:
 				{
 					current( ExpressionConstructor::newRational( EVAL_ARG.mARG
-							->at(1).to_ptr< String >()->getValue()) );
+							->at(1).to< String >().getValue()) );
 
 					return( true );
 				}
 				case AVM_ARG_FLOAT_KIND:
 				{
 					current( ExpressionConstructor::newFloat( EVAL_ARG.mARG
-							->at(1).to_ptr< String >()->getValue()) );
+							->at(1).to< String >().getValue()) );
 
 					return( true );
 				}
@@ -2893,89 +3030,175 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode)
 
 		case AVM_OPCODE_CONTAINS:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue().find(
-							EVAL_ARG.mARG->at(1).to_ptr< String >()
-									->getValue() ) != std::string::npos  ));
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).to< String >().getValue().find(
+							EVAL_ARG.mARG->at(1).to< String >()
+									.getValue() ) != std::string::npos  ));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 
 		case AVM_OPCODE_IN:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue().find(
-							EVAL_ARG.mARG->at(0).to_ptr< String >()
-									->getValue() ) != std::string::npos  ));
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+						EVAL_ARG.mARG->at(1).to< String >().getValue().find(
+								EVAL_ARG.mARG->at(0).to< String >()
+										.getValue() ) != std::string::npos  ));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 		case AVM_OPCODE_NOTIN:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue().find(
-							EVAL_ARG.mARG->at(0).to_ptr< String >()
-									->getValue() ) == std::string::npos  ));
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+						EVAL_ARG.mARG->at(1).to< String >().getValue().find(
+								EVAL_ARG.mARG->at(0).to< String >()
+										.getValue() ) == std::string::npos  ));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 
 		case AVM_OPCODE_STARTS_WITH:
 		{
-			current( ExpressionConstructor::newBoolean( StringTools::startsWith(
-					EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue(),
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue() )));
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean( StringTools::startsWith(
+						EVAL_ARG.mARG->at(0).to< String >().getValue(),
+						EVAL_ARG.mARG->at(1).to< String >().getValue() )));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 		case AVM_OPCODE_ENDS_WITH:
 		{
-			current( ExpressionConstructor::newBoolean( StringTools::endsWith(
-					EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue(),
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue() )));
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean( StringTools::endsWith(
+						EVAL_ARG.mARG->at(0).to< String >().getValue(),
+						EVAL_ARG.mARG->at(1).to< String >().getValue() )));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 
 		case AVM_OPCODE_EMPTY:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0)
-						.to_ptr< String >()->getValue().empty() ) );
+			if( EVAL_ARG.mARG->at(0).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+						EVAL_ARG.mARG->at(0)
+							.to< String >().getValue().empty() ) );
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(
+						aCode.getOperator(), EVAL_ARG.mARG->at(0)) );
+			}
 
 			return( true );
 		}
 
 		case AVM_OPCODE_NONEMPTY:
 		{
-			current( ExpressionConstructor::newBoolean(
-					not EVAL_ARG.mARG->at(0)
-						.to_ptr< String >()->getValue().empty() ) );
+			if( EVAL_ARG.mARG->at(0).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+						not EVAL_ARG.mARG->at(0)
+							.to< String >().getValue().empty() ) );
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(
+						aCode.getOperator(), EVAL_ARG.mARG->at(0)) );
+			}
 
 			return( true );
 		}
 		case AVM_OPCODE_SINGLETON:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0)
-						.to_ptr< String >()->getValue().size() == 1 ) );
+
+			if( EVAL_ARG.mARG->at(0).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+						EVAL_ARG.mARG->at(0)
+							.to< String >().getValue().size() == 1 ) );
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(
+						aCode.getOperator(), EVAL_ARG.mARG->at(0)) );
+			}
 
 			return( true );
 		}
 		case AVM_OPCODE_POPULATED:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0)
-						.to_ptr< String >()->getValue().size() > 1 ) );
+			if( EVAL_ARG.mARG->at(0).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+						EVAL_ARG.mARG->at(0)
+							.to< String >().getValue().size() > 1 ) );
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(
+						aCode.getOperator(), EVAL_ARG.mARG->at(0)) );
+			}
 
 			return( true );
 		}
 
 		case AVM_OPCODE_SIZE:
 		{
-			current( ExpressionConstructor::newUInteger(
-					EVAL_ARG.mARG->at(0)
-						.to_ptr< String >()->getValue().size() ) );
+			if( EVAL_ARG.mARG->at(0).is< String >() )
+			{
+				current( ExpressionConstructor::newUInteger(
+						EVAL_ARG.mARG->at(0)
+							.to< String >().getValue().size() ) );
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(
+						aCode.getOperator(), EVAL_ARG.mARG->at(0)) );
+			}
 
 			return( true );
 		}
@@ -2983,51 +3206,106 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode)
 		case AVM_OPCODE_EQ:
 		case AVM_OPCODE_SEQ:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue().compare(
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue()) == 0 ));
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).to< String >().getValue().compare(
+					EVAL_ARG.mARG->at(1).to< String >().getValue()) == 0 ));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 		case AVM_OPCODE_NEQ:
 		case AVM_OPCODE_NSEQ:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue().compare(
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue()) != 0 ) );
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).to< String >().getValue().compare(
+					EVAL_ARG.mARG->at(1).to< String >().getValue()) != 0 ));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 
 		case AVM_OPCODE_LT:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue().compare(
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue()) < 0 ) );
+
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).to< String >().getValue().compare(
+					EVAL_ARG.mARG->at(1).to< String >().getValue()) < 0 ));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 		case AVM_OPCODE_LTE:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue().compare(
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue()) <= 0 ) );
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).to< String >().getValue().compare(
+					EVAL_ARG.mARG->at(1).to< String >().getValue()) <= 0 ));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 		case AVM_OPCODE_GT:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue().compare(
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue()) > 0 ) );
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).to< String >().getValue().compare(
+					EVAL_ARG.mARG->at(1).to< String >().getValue()) > 0 ));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
 		case AVM_OPCODE_GTE:
 		{
-			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< String >()->getValue().compare(
-					EVAL_ARG.mARG->at(1).to_ptr< String >()->getValue()) >= 0 ) );
+			if( EVAL_ARG.mARG->at(0).is< String >()
+				&& EVAL_ARG.mARG->at(1).is< String >() )
+			{
+				current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).to< String >().getValue().compare(
+					EVAL_ARG.mARG->at(1).to< String >().getValue()) >= 0 ));
+			}
+			else
+			{
+				current( ExpressionConstructor::newExpr(aCode.getOperator(),
+						EVAL_ARG.mARG->at(0), EVAL_ARG.mARG->at(1)) );
+			}
 
 			return( true );
 		}
@@ -3038,7 +3316,7 @@ bool ARGS_ENV::eval_processor_string(AvmBytecode & bytecode, AvmCode * aCode)
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::eval_processor_string :> "
 						"Unexpected bytecode << " << bytecode.strCode()
-					<< " >> for : " << aCode->strDebug() << " !!!"
+					<< " >> for : " << aCode.strDebug() << " !!!"
 					<< SEND_EXIT;
 
 			return( false );
@@ -3062,7 +3340,7 @@ bool ARGS_ENV::eval_processor_array_lvalue(AvmBytecode & bytecode, BF & arg)
 	{
 		case AVM_ARG_ARRAY_KIND:
 		{
-			ArrayBF & argArray = arg.as_ref< ArrayBF >();
+			ArrayBF & argArray = arg.as< ArrayBF >();
 
 			ArrayBF * outArray = new ArrayBF(
 					argArray.getTypeSpecifier(), argArray.size());
@@ -3070,7 +3348,7 @@ bool ARGS_ENV::eval_processor_array_lvalue(AvmBytecode & bytecode, BF & arg)
 			if( argArray.hasInstruction() )
 			{
 				AvmInstruction * instruction = argArray.getInstruction();
-				for( avm_size_t offset = 0 ; offset < argArray.size() ; ++offset )
+				for( std::size_t offset = 0 ; offset < argArray.size() ; ++offset )
 				{
 					outArray->set(offset, return_decode_eval_processor(
 							instruction->at(offset), argArray[offset]));
@@ -3103,8 +3381,8 @@ bool ARGS_ENV::eval_processor_array_lvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_EXPRESSION_KIND:
 		{
 			BF value = return_decode_eval_processor(
-					arg.to_ptr< AvmCode >()
-						->getInstruction()->getMainBytecode(), arg);
+					arg.to< AvmCode >()
+						.getInstruction()->getMainBytecode(), arg);
 
 			current( genArray(
 					bytecode.dtype->as< ContainerTypeSpecifier >(), value) );
@@ -3135,7 +3413,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg)
 	{
 		case AVM_ARG_ARRAY_KIND:
 		{
-			ArrayBF & argArray = arg.as_ref< ArrayBF >();
+			ArrayBF & argArray = arg.as< ArrayBF >();
 
 			ArrayBF * outArray = new ArrayBF(
 					argArray.getTypeSpecifier(), argArray.size());
@@ -3143,7 +3421,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg)
 			if( argArray.hasInstruction() )
 			{
 				AvmInstruction * instruction = argArray.getInstruction();
-				for( avm_size_t offset = 0 ; offset < argArray.size() ; ++offset )
+				for( std::size_t offset = 0 ; offset < argArray.size() ; ++offset )
 				{
 					outArray->set(offset, return_decode_eval_processor(
 							instruction->at(offset), argArray[offset]));
@@ -3181,6 +3459,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_BUILTIN_KIND:
 		case AVM_ARG_CHARACTER_KIND:
 		case AVM_ARG_STRING_KIND:
+		case AVM_ARG_ENUM_LITERAL_KIND:
 
 		case AVM_ARG_PORT_KIND:
 		case AVM_ARG_BUFFER_KIND:
@@ -3189,7 +3468,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_DATA_CST_KIND:
 		{
 			current( genArray(
-					bytecode.dtype->as< ContainerTypeSpecifier >(), arg) );
+					bytecode.dtype->as< ContainerTypeSpecifier >(), arg ));
 
 
 			return( true );
@@ -3197,28 +3476,28 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg)
 
 		case AVM_ARG_DATA_KIND:
 		{
-			current( genArray( bytecode.dtype->as< ContainerTypeSpecifier >(),
-					ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >()) ));
+			current( genArray(bytecode.dtype->as< ContainerTypeSpecifier >(),
+					ENV->getRvalue(outED, arg.to< InstanceOfData >()) ));
 
 			return( true );
 		}
 
 		case AVM_ARG_DATA_REF_KIND:
 		{
-			current( genArray( bytecode.dtype->as< ContainerTypeSpecifier >(),
-					ENV->getRvalue(outED, ENV->getRvalue(outED, arg.to_ptr<
-							InstanceOfData >()).to_ptr< InstanceOfData >()) ));
+			current( genArray(bytecode.dtype->as< ContainerTypeSpecifier >(),
+					ENV->getRvalue(outED, ENV->getRvalue(outED, arg.to<
+							InstanceOfData >()).to< InstanceOfData >()) ));
 
 			return( true );
 		}
 
 		case AVM_ARG_DATA_MACRO_KIND:
 		{
-			BF rvalue  = ENV->getRvalue(outED, arg.to_ptr< InstanceOfData >());
+			BF rvalue  = ENV->getRvalue(outED, arg.to< InstanceOfData >());
 
 			if( rvalue.is< InstanceOfData >() )
 			{
-				rvalue = ENV->getRvalue(outED, rvalue.to_ptr< InstanceOfData >());
+				rvalue = ENV->getRvalue(outED, rvalue.to< InstanceOfData >());
 			}
 			else
 			{
@@ -3242,8 +3521,9 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg)
 		{
 			if( eval_processor_dma_rvalue_ufi_pointer(bytecode, arg) )
 			{
-				current( genArray( bytecode.dtype->as<
-						ContainerTypeSpecifier >(), current() ) );
+				current( genArray(
+						bytecode.dtype->as< ContainerTypeSpecifier >(),
+						current() ));
 
 				return( true );
 			}
@@ -3253,7 +3533,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg)
 
 		case AVM_ARG_MACHINE_RID:
 		case AVM_ARG_EXPRESSION_RID:
-		case AVM_ARG_SELF_RID:
+		case AVM_ARG_THIS_RID:
 		case AVM_ARG_PARENT_RID:
 		case AVM_ARG_COMMUNICATOR_RID:
 		case AVM_ARG_SYSTEM_RID:
@@ -3273,7 +3553,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_EXPRESSION_KIND:
 		{
 			return( eval_processor_array_rvalue(
-					bytecode, arg.to_ptr< AvmCode >() ) );
+					bytecode, arg.to< AvmCode >() ) );
 		}
 
 
@@ -3294,10 +3574,10 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, BF & arg)
 }
 
 
-BF ARGS_ENV::genArray(ContainerTypeSpecifier * arrayT, const BF & arg)
+BF ARGS_ENV::genArray(const ContainerTypeSpecifier & arrayT, const BF & arg)
 {
-	BF value = ( arrayT->getContentsTypeSpecifier().isTypedArray() )?
-			genArray( arrayT->getContentsTypeSpecifier().rawContainer(), arg )
+	BF value = ( arrayT.getContentsTypeSpecifier().isTypedArray() )?
+			genArray( arrayT.getContentsTypeSpecifier().container(), arg )
 			: arg;
 
 	return( BF( new ArrayBF(arrayT, value) ) );
@@ -3305,35 +3585,35 @@ BF ARGS_ENV::genArray(ContainerTypeSpecifier * arrayT, const BF & arg)
 
 
 
-bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->main_decode_eval_args(aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
 	}
 	else
 	{
-		return( aCode );
+		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_CONCAT:
 		{
-			const ArrayBF & arg1Array = EVAL_ARG.mARG->at(0).as_ref< ArrayBF >();
-			const ArrayBF & arg2Array = EVAL_ARG.mARG->at(1).as_ref< ArrayBF >();
+			const ArrayBF & arg1Array = EVAL_ARG.mARG->at(0).as< ArrayBF >();
+			const ArrayBF & arg2Array = EVAL_ARG.mARG->at(1).as< ArrayBF >();
 
 			ArrayBF * outArray = new ArrayBF( arg1Array.getTypeSpecifier(),
 					arg1Array.size() + arg2Array.size() );
 
-			avm_size_t offset = 0;
+			std::size_t offset = 0;
 			for( ; offset < arg1Array.size() ; ++offset )
 			{
 				outArray->set(offset, arg1Array[offset]);
 			}
 
-			for( avm_size_t pos = 0 ; pos < arg2Array.size() ; ++pos , ++offset )
+			for( std::size_t pos = 0 ; pos < arg2Array.size() ; ++pos , ++offset )
 			{
 				outArray->set(offset, arg2Array[pos]);
 			}
@@ -3345,13 +3625,13 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 
 		case AVM_OPCODE_REMOVE:
 		{
-			const ArrayBF & arg1Array = EVAL_ARG.mARG->at(0).as_ref< ArrayBF >();
+			const ArrayBF & arg1Array = EVAL_ARG.mARG->at(0).as< ArrayBF >();
 
 			ArrayBF * outArray = new ArrayBF(
 					arg1Array.getTypeSpecifier(), arg1Array.size() );
 
-			avm_size_t offset = 0;
-			for( avm_size_t pos = 0 ; pos < arg1Array.size() ; ++pos )
+			std::size_t offset = 0;
+			for( std::size_t pos = 0 ; pos < arg1Array.size() ; ++pos )
 			{
 				if( arg1Array[pos] == EVAL_ARG.mARG->at(1) )
 				{
@@ -3369,10 +3649,10 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 //		case AVM_OPCODE_CTOR:
 //		{
 //			BF value = return_decode_eval_processor(
-//					aCode->getInstruction()->getMainBytecode(), arg);
+//					aCode.getInstruction()->getMainBytecode(), arg);
 //
 //			current( genArray(
-//					bytecode.dtype->as< ContainerTypeSpecifier >(), value) );
+//					bytecode.dtype->as_ptr< ContainerTypeSpecifier >(), value) );
 //
 //			return( true );
 //		}
@@ -3380,7 +3660,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 		case AVM_OPCODE_CONTAINS:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().contains(
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().contains(
 							EVAL_ARG.mARG->at(1)) ));
 
 			return( true );
@@ -3389,7 +3669,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 		case AVM_OPCODE_IN:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >().contains(
+					EVAL_ARG.mARG->at(1).as< ArrayBF >().contains(
 							EVAL_ARG.mARG->at(0)) ));
 
 			return( true );
@@ -3397,7 +3677,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 		case AVM_OPCODE_NOTIN:
 		{
 			current( ExpressionConstructor::newBoolean( not
-					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >().contains(
+					EVAL_ARG.mARG->at(1).as< ArrayBF >().contains(
 							EVAL_ARG.mARG->at(0)) ));
 
 			return( true );
@@ -3406,16 +3686,16 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 		case AVM_OPCODE_STARTS_WITH:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().startsWith(
-					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().startsWith(
+					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 
 			return( true );
 		}
 		case AVM_OPCODE_ENDS_WITH:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().endsWith(
-					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().endsWith(
+					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 
 			return( true );
 		}
@@ -3423,7 +3703,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 		case AVM_OPCODE_EMPTY:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().empty() ) );
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().empty() ) );
 
 			return( true );
 		}
@@ -3431,21 +3711,21 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 		case AVM_OPCODE_NONEMPTY:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().nonempty() ) );
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().nonempty() ) );
 
 			return( true );
 		}
 		case AVM_OPCODE_SINGLETON:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().singleton() ) );
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().singleton() ) );
 
 			return( true );
 		}
 		case AVM_OPCODE_POPULATED:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().populated() ) );
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().populated() ) );
 
 			return( true );
 		}
@@ -3453,7 +3733,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 		case AVM_OPCODE_SIZE:
 		{
 			current( ExpressionConstructor::newUInteger(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().size() ) );
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().size() ) );
 
 			return( true );
 		}
@@ -3462,16 +3742,16 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 		case AVM_OPCODE_EQ:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().isEQ(
-					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().isEQ(
+					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 
 			return( true );
 		}
 		case AVM_OPCODE_SEQ:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().isSEQ(
-					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().isSEQ(
+					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 
 			return( true );
 		}
@@ -3480,16 +3760,16 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 		case AVM_OPCODE_NEQ:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().isNEQ(
-					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().isNEQ(
+					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 
 			return( true );
 		}
 		case AVM_OPCODE_NSEQ:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().isNSEQ(
-					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+					EVAL_ARG.mARG->at(0).as< ArrayBF >().isNSEQ(
+					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 
 			return( true );
 		}
@@ -3497,16 +3777,16 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 //		case AVM_OPCODE_LT:
 //		{
 //			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().isLT(
-//					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+//					EVAL_ARG.mARG->at(0).as< ArrayBF >().isLT(
+//					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 //
 //			return( true );
 //		}
 //		case AVM_OPCODE_LTE:
 //		{
 //			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().isLTE(
-//					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+//					EVAL_ARG.mARG->at(0).as< ArrayBF >().isLTE(
+//					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 //
 //			return( true );
 //		}
@@ -3514,16 +3794,16 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 //		case AVM_OPCODE_GT:
 //		{
 //			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().isGT(
-//					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+//					EVAL_ARG.mARG->at(0).as< ArrayBF >().isGT(
+//					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 //
 //			return( true );
 //		}
 //		case AVM_OPCODE_GTE:
 //		{
 //			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0).as_ref< ArrayBF >().isGTE(
-//					EVAL_ARG.mARG->at(1).as_ref< ArrayBF >()) ));
+//					EVAL_ARG.mARG->at(0).as< ArrayBF >().isGTE(
+//					EVAL_ARG.mARG->at(1).as< ArrayBF >()) ));
 //
 //			return( true );
 //		}
@@ -3534,7 +3814,7 @@ bool ARGS_ENV::eval_processor_array_rvalue(AvmBytecode & bytecode, AvmCode * aCo
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::eval_processor_string :> "
 						"Unexpected bytecode << " << bytecode.strCode()
-					<< " >> for : " << aCode->strDebug() << " !!!"
+					<< " >> for : " << aCode.strDebug() << " !!!"
 					<< SEND_EXIT;
 
 			return( false );
@@ -3560,7 +3840,7 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_EXPRESSION_KIND:
 		{
 			return( eval_processor_vector(
-					bytecode, arg.to_ptr< AvmCode >() ));
+					bytecode, arg.to< AvmCode >() ));
 		}
 
 		default:
@@ -3579,25 +3859,25 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, BF & arg)
 }
 
 
-bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->main_decode_eval_args(aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
 	}
 	else
 	{
-		return( aCode );
+		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_CONTAINS:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< BuiltinVector >()
-					->contains( EVAL_ARG.mARG->at(1) ) ));
+					EVAL_ARG.mARG->at(0).to< BuiltinVector >()
+					.contains( EVAL_ARG.mARG->at(1) ) ));
 
 			return( true );
 		}
@@ -3605,42 +3885,44 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
 		case AVM_OPCODE_IN:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(1).to_ptr< BuiltinVector >()
-					->contains( EVAL_ARG.mARG->at(0) ) ));
+					EVAL_ARG.mARG->at(1).to< BuiltinVector >()
+					.contains( EVAL_ARG.mARG->at(0) ) ));
 
 			return( true );
 		}
 		case AVM_OPCODE_NOTIN:
 		{
 			current( ExpressionConstructor::newBoolean( not
-					EVAL_ARG.mARG->at(1).to_ptr< BuiltinVector >()
-					->contains( EVAL_ARG.mARG->at(0) ) ));
+					EVAL_ARG.mARG->at(1).to< BuiltinVector >()
+					.contains( EVAL_ARG.mARG->at(0) ) ));
 
 			return( true );
 		}
 
-//		case AVM_OPCODE_STARTS_WITH:
-//		{
-//			current( ExpressionConstructor::newBoolean( StringTools::startsWith(
-//					EVAL_ARG.mARG->at(0).to_ptr< BuiltinVector >()->getValue(),
-//					EVAL_ARG.mARG->at(1).to_ptr< BuiltinVector >()->getValue() )));
-//
-//			return( true );
-//		}
-//		case AVM_OPCODE_ENDS_WITH:
-//		{
-//			current( ExpressionConstructor::newBoolean( StringTools::endsWith(
-//					EVAL_ARG.mARG->at(0).to_ptr< BuiltinVector >()->getValue(),
-//					EVAL_ARG.mARG->at(1).to_ptr< BuiltinVector >()->getValue() )));
-//
-//			return( true );
-//		}
+		case AVM_OPCODE_STARTS_WITH:
+		{
+			current( ExpressionConstructor::newExpr(
+					OperatorManager::OPERATOR_EQ,
+					EVAL_ARG.mARG->at(0).to< BuiltinVector >().first(),
+					EVAL_ARG.mARG->at(1) ));
+
+			return( true );
+		}
+		case AVM_OPCODE_ENDS_WITH:
+		{
+			current( ExpressionConstructor::newExpr(
+					OperatorManager::OPERATOR_EQ,
+					EVAL_ARG.mARG->at(0).to< BuiltinVector >().last(),
+					EVAL_ARG.mARG->at(1) ));
+
+			return( true );
+		}
 
 		case AVM_OPCODE_EMPTY:
 		{
 			current( ExpressionConstructor::newBoolean(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinVector >()->empty() ) );
+						.to< BuiltinVector >().empty() ) );
 
 			return( true );
 		}
@@ -3649,7 +3931,7 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
 		{
 			current( ExpressionConstructor::newBoolean(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinVector >()->nonempty() ) );
+						.to< BuiltinVector >().nonempty() ) );
 
 			return( true );
 		}
@@ -3657,7 +3939,7 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
 		{
 			current( ExpressionConstructor::newBoolean(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinVector >()->singleton() ) );
+						.to< BuiltinVector >().singleton() ) );
 
 			return( true );
 		}
@@ -3665,7 +3947,7 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
 		{
 			current( ExpressionConstructor::newBoolean(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinVector >()->populated() ) );
+						.to< BuiltinVector >().populated() ) );
 
 			return( true );
 		}
@@ -3674,7 +3956,7 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
 		{
 			current( ExpressionConstructor::newUInteger(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinVector >()->size() ) );
+						.to< BuiltinVector >().size() ) );
 
 			return( true );
 		}
@@ -3683,8 +3965,8 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
 //		case AVM_OPCODE_SEQ:
 //		{
 //			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0).to_ptr< BuiltinVector >()->getValue().compare(
-//					EVAL_ARG.mARG->at(1).to_ptr< BuiltinVector >()->getValue()) == 0 ));
+//					EVAL_ARG.mARG->at(0).to< BuiltinVector >().getValue().compare(
+//					EVAL_ARG.mARG->at(1).to< BuiltinVector >().getValue()) == 0 ));
 //
 //			return( true );
 //		}
@@ -3692,20 +3974,19 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
 //		case AVM_OPCODE_NSEQ:
 //		{
 //			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0).to_ptr< BuiltinVector >()->getValue().compare(
-//					EVAL_ARG.mARG->at(1).to_ptr< BuiltinVector >()->getValue()) != 0 ) );
+//					EVAL_ARG.mARG->at(0).to< BuiltinVector >().getValue().compare(
+//					EVAL_ARG.mARG->at(1).to< BuiltinVector >().getValue()) != 0 ) );
 //
 //			return( true );
 //		}
 //
 //		case AVM_OPCODE_POP:
-//		case AVM_OPCODE_PUSH:
 //		case AVM_OPCODE_ASSIGN_TOP:
 //		{
 //			std::ostringstream oss;
 //			for( begin() ; hasNext() ; next() )
 //			{
-//				oss << current().to_ptr< BuiltinVector >()->getValue();
+//				oss << current().to< BuiltinVector >().getValue();
 //			}
 //
 //			current( ExpressionConstructor::newString(oss.str()) );
@@ -3713,6 +3994,37 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
 //			return( true );
 //		}
 
+
+		case AVM_OPCODE_PUSH:
+		{
+			BuiltinVector * bVector =
+					EVAL_ARG.mARG->at(0).to_ptr< BuiltinVector >();
+			for( EVAL_ARG.mARG->begin(1) ; EVAL_ARG.mARG->hasNext() ;
+					EVAL_ARG.mARG->next() )
+			{
+				if( not bVector->push( EVAL_ARG.mARG->current() ) )
+				{
+AVM_IF_DEBUG_FLAG( STATEMENT)
+	AVM_OS_TRACE << "THROW UNSATISFIED << PUSH >> : "
+			<<  outED.getRID().strUniqId() << " |=> "
+			<< aCode.str() << std::endl;
+	AVM_OS_TRACE << "\t" << "<capacity:" << bVector->capacity()
+			<< "> " << bVector->str() << " <=< "
+			<< EVAL_ARG.mARG->current().str() << std::endl;
+AVM_ENDIF_DEBUG_FLAG( STATEMENT)
+
+					return( false );
+				}
+			}
+
+			current( EVAL_ARG.mARG->at(0) );
+
+AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
+	AVM_OS_TRACE << "rvalue:> " << bVector->str() << std::endl;
+AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
+
+			return( true );
+		}
 
 		case AVM_OPCODE_APPEND:
 		{
@@ -3725,12 +4037,16 @@ bool ARGS_ENV::eval_processor_vector(AvmBytecode & bytecode, AvmCode * aCode)
 				{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << APPEND >> : "
-			<<  outED->mRID.strUniqId() << " |=> "
-			<< aCode->str() << std::endl;
+			<<  outED.getRID().strUniqId() << " |=> "
+			<< aCode.str() << std::endl;
 	AVM_OS_TRACE << "\t" << "<capacity:" << bVector->capacity()
 			<< "> " << bVector->str() << " <=< "
 			<< EVAL_ARG.mARG->current().str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
+
+AVM_IF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
+	AVM_OS_TRACE << "rvalue:> " << bVector->str() << std::endl;
+AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 
 					return( false );
 				}
@@ -3768,12 +4084,12 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 		case AVM_OPCODE_CTOR:
 		{
 			BuiltinContainer * containerValue = BuiltinContainer::create(
-					EVAL_ARG.mARG->at(0).as_ptr< ContainerTypeSpecifier >() );
+					EVAL_ARG.mARG->at(0).as< ContainerTypeSpecifier >() );
 
-			ArrayBF * arrayValue = EVAL_ARG.mARG->at(1).as_ptr< ArrayBF >();
+			const ArrayBF & arrayValue = EVAL_ARG.mARG->at(1).as< ArrayBF >();
 
 			containerValue->copy( arrayValue, std::min(
-					containerValue->capacity(), arrayValue->size()) );
+					containerValue->capacity(), arrayValue.size()) );
 
 			current( BF( containerValue ) );
 
@@ -3785,7 +4101,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::eval_processor_queue :> "
 						"Unexpected bytecode << " << bytecode.strCode()
-					<< " >> for : " << aCode->strDebug() << " !!!"
+					<< " >> for : " << aCode.strDebug() << " !!!"
 					<< SEND_EXIT;
 
 			return( false );
@@ -3810,7 +4126,7 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_EXPRESSION_KIND:
 		{
 			return( eval_processor_collection(
-					bytecode, arg.to_ptr< AvmCode >() ));
+					bytecode, arg.to< AvmCode >() ));
 		}
 
 		case AVM_ARG_BUILTIN_CONTAINER_KIND:
@@ -3836,19 +4152,19 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, BF & arg)
 }
 
 
-bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->main_decode_eval_args(aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
 	}
 	else
 	{
-		return( aCode );
+		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 		case AVM_OPCODE_CONTAINS:
 		{
@@ -3959,34 +4275,36 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode
 		case AVM_OPCODE_INTERSECT:
 		{
 			current( ExpressionConstructor::newBoolean(
-					EVAL_ARG.mARG->at(0).to_ptr< BuiltinList >()->intersect(
-							EVAL_ARG.mARG->at(1).as_ref< BuiltinList >() )));
+					EVAL_ARG.mARG->at(0).to< BuiltinList >().intersect(
+							EVAL_ARG.mARG->at(1).as< BuiltinList >() )));
 
 			return( true );
 		}
 
-//		case AVM_OPCODE_STARTS_WITH:
-//		{
-//			current( ExpressionConstructor::newBoolean( StringTools::startsWith(
-//					EVAL_ARG.mARG->at(0).to_ptr< BuiltinCollection >()->getValue(),
-//					EVAL_ARG.mARG->at(1).to_ptr< BuiltinCollection >()->getValue() )));
-//
-//			return( true );
-//		}
-//		case AVM_OPCODE_ENDS_WITH:
-//		{
-//			current( ExpressionConstructor::newBoolean( StringTools::endsWith(
-//					EVAL_ARG.mARG->at(0).to_ptr< BuiltinCollection >()->getValue(),
-//					EVAL_ARG.mARG->at(1).to_ptr< BuiltinCollection >()->getValue() )));
-//
-//			return( true );
-//		}
+		case AVM_OPCODE_STARTS_WITH:
+		{
+			current( ExpressionConstructor::newExpr(
+					OperatorManager::OPERATOR_EQ,
+					EVAL_ARG.mARG->at(0).to< BuiltinContainer >().first(),
+					EVAL_ARG.mARG->at(1) ));
+
+			return( true );
+		}
+		case AVM_OPCODE_ENDS_WITH:
+		{
+			current( ExpressionConstructor::newExpr(
+					OperatorManager::OPERATOR_EQ,
+					EVAL_ARG.mARG->at(0).to< BuiltinContainer >().last(),
+					EVAL_ARG.mARG->at(1) ));
+
+			return( true );
+		}
 
 		case AVM_OPCODE_EMPTY:
 		{
 			current( ExpressionConstructor::newBoolean(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinCollection >()->empty() ) );
+						.to< BuiltinCollection >().empty() ) );
 
 			return( true );
 		}
@@ -3995,7 +4313,7 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode
 		{
 			current( ExpressionConstructor::newBoolean(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinCollection >()->nonempty() ) );
+						.to< BuiltinCollection >().nonempty() ) );
 
 			return( true );
 		}
@@ -4003,7 +4321,7 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode
 		{
 			current( ExpressionConstructor::newBoolean(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinCollection >()->singleton() ));
+						.to< BuiltinCollection >().singleton() ));
 
 			return( true );
 		}
@@ -4011,7 +4329,7 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode
 		{
 			current( ExpressionConstructor::newBoolean(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinCollection >()->populated()) );
+						.to< BuiltinCollection >().populated()) );
 
 			return( true );
 		}
@@ -4019,7 +4337,7 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode
 		{
 			current( ExpressionConstructor::newBoolean(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinCollection >()->full() ) );
+						.to< BuiltinCollection >().full() ) );
 
 			return( true );
 		}
@@ -4028,29 +4346,44 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode
 		{
 			current( ExpressionConstructor::newUInteger(
 					EVAL_ARG.mARG->at(0)
-						.to_ptr< BuiltinCollection >()->size() ) );
+						.to< BuiltinCollection >().size() ) );
 
 			return( true );
 		}
 
-//		case AVM_OPCODE_EQ:
-//		case AVM_OPCODE_SEQ:
-//		{
-//			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0).to_ptr< BuiltinCollection >()->getValue().compare(
-//					EVAL_ARG.mARG->at(1).to_ptr< BuiltinCollection >()->getValue()) == 0 ));
-//
-//			return( true );
-//		}
-//		case AVM_OPCODE_NEQ:
-//		case AVM_OPCODE_NSEQ:
-//		{
-//			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0).to_ptr< BuiltinCollection >()->getValue().compare(
-//					EVAL_ARG.mARG->at(1).to_ptr< BuiltinCollection >()->getValue()) != 0 ) );
-//
-//			return( true );
-//		}
+		case AVM_OPCODE_EQ:
+		{
+			current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).as< BuiltinContainer >().isEQ(
+					EVAL_ARG.mARG->at(1).as< BuiltinContainer >()) ));
+
+			return( true );
+		}
+		case AVM_OPCODE_SEQ:
+		{
+			current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).as< BuiltinContainer >().isSEQ(
+					EVAL_ARG.mARG->at(1).as< BuiltinContainer >()) ));
+
+			return( true );
+		}
+
+		case AVM_OPCODE_NEQ:
+		{
+			current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).as< BuiltinContainer >().isNEQ(
+					EVAL_ARG.mARG->at(1).as< BuiltinContainer >()) ));
+
+			return( true );
+		}
+		case AVM_OPCODE_NSEQ:
+		{
+			current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0).as< BuiltinContainer >().isNSEQ(
+					EVAL_ARG.mARG->at(1).as< BuiltinContainer >()) ));
+
+			return( true );
+		}
 
 
 		case AVM_OPCODE_TOP:
@@ -4070,7 +4403,7 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode
 		case AVM_OPCODE_POP_FROM:
 		{
 			current( EVAL_ARG.mARG->at(0).as_ptr< BuiltinQueue >()->pop_from(
-					EVAL_ARG.mARG->at(1).as_ref< BuiltinList >()) );
+					EVAL_ARG.mARG->at(1).as< BuiltinList >()) );
 
 			return( true );
 		}
@@ -4086,8 +4419,8 @@ bool ARGS_ENV::eval_processor_collection(AvmBytecode & bytecode, AvmCode * aCode
 				{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << PUSH >> : "
-			<<  outED->mRID.strUniqId() << " |=> "
-			<< aCode->str() << std::endl;
+			<<  outED.getRID().strUniqId() << " |=> "
+			<< aCode.str() << std::endl;
 	AVM_OS_TRACE << "\t" << "<capacity:" << queue->capacity()
 			<< "> " << queue->str() << " <=< "
 			<< EVAL_ARG.mARG->current().str() << std::endl;
@@ -4117,8 +4450,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 				{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << APPEND >> : "
-			<<  outED->mRID.strUniqId() << " |=> "
-			<< aCode->str() << std::endl;
+			<<  outED.getRID().strUniqId() << " |=> "
+			<< aCode.str() << std::endl;
 	AVM_OS_TRACE << "\t" << "<capacity:" << queue->capacity()
 			<< "> " << queue->str() << " <=< "
 			<< EVAL_ARG.mARG->current().str() << std::endl;
@@ -4180,8 +4513,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 				{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << ASSING#TOP >> : "
-			<<  outED->mRID.strUniqId() << " |=> "
-			<< aCode->str() << std::endl;
+			<<  outED.getRID().strUniqId() << " |=> "
+			<< aCode.str() << std::endl;
 	AVM_OS_TRACE << "\t" << "assign#top in queue << "
 			<< EVAL_ARG.mARG->at(0).str() << " >> failed !!!"
 			<< std::endl;
@@ -4194,8 +4527,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 			{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << ASSING#TOP >> : "
-			<<  outED->mRID.strUniqId() << " |=> "
-			<< aCode->str() << std::endl;
+			<<  outED.getRID().strUniqId() << " |=> "
+			<< aCode.str() << std::endl;
 	AVM_OS_TRACE << "\t" << "Unexpected an empty queue << "
 			<< EVAL_ARG.mARG->at(0).str() << " >>" << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT)
@@ -4207,12 +4540,12 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 		case AVM_OPCODE_CTOR:
 		{
 			BuiltinContainer * containerValue = BuiltinContainer::create(
-					EVAL_ARG.mARG->at(0).as_ptr< ContainerTypeSpecifier >() );
+					EVAL_ARG.mARG->at(0).as< ContainerTypeSpecifier >() );
 
-			ArrayBF * arrayValue = EVAL_ARG.mARG->at(1).as_ptr< ArrayBF >();
+			const ArrayBF & arrayValue = EVAL_ARG.mARG->at(1).as< ArrayBF >();
 
 			containerValue->copy( arrayValue, std::min(
-					containerValue->capacity(), arrayValue->size()) );
+					containerValue->capacity(), arrayValue.size()) );
 
 			current( BF( containerValue ) );
 
@@ -4224,7 +4557,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::eval_processor_collection :> "
 						"Unexpected bytecode << " << bytecode.strCode()
-					<< " >> for : " << aCode->strDebug() << " !!!"
+					<< " >> for : " << aCode.strDebug() << " !!!"
 					<< SEND_EXIT;
 
 			return( false );
@@ -4249,7 +4582,23 @@ bool ARGS_ENV::eval_processor_buffer(AvmBytecode & bytecode, BF & arg)
 		case AVM_ARG_EXPRESSION_KIND:
 		{
 			return( eval_processor_buffer(
-					bytecode, arg.to_ptr< AvmCode >() ));
+					bytecode, arg.to< AvmCode >() ));
+		}
+
+		case AVM_ARG_BUFFER_KIND:
+		{
+			const RuntimeID & aRID = outED.getRuntimeContainerRID(
+					arg.to_ptr< InstanceOfBuffer >());
+
+			AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( aRID )
+					<< "RID container for the buffer< "
+					<< arg.to< InstanceOfBuffer >().str() << " > !!!"
+					<< SEND_EXIT;
+
+			current( outED.getWritableRuntime( aRID ).bfWritableBuffer(
+					arg.to_ptr< InstanceOfBuffer >() ) );
+
+			return( true );
 		}
 
 		default:
@@ -4268,19 +4617,19 @@ bool ARGS_ENV::eval_processor_buffer(AvmBytecode & bytecode, BF & arg)
 }
 
 
-bool ARGS_ENV::eval_processor_buffer(AvmBytecode & bytecode, AvmCode * aCode)
+bool ARGS_ENV::eval_processor_buffer(AvmBytecode & bytecode, AvmCode & aCode)
 {
-	InstructionEnvironment EVAL_ARG(ENV, outED, aCode->size());
+	InstructionEnvironment EVAL_ARG(ENV, outED, aCode.size());
 	if( EVAL_ARG.mARG->main_decode_eval_args(aCode) )
 	{
 		outED = EVAL_ARG.mARG->outED;
 	}
 	else
 	{
-		return( aCode );
+		return( false );
 	}
 
-	switch( aCode->getAvmOpCode() )
+	switch( aCode.getAvmOpCode() )
 	{
 //		case AVM_OPCODE_CONTAINS:
 //		{
@@ -4311,77 +4660,77 @@ bool ARGS_ENV::eval_processor_buffer(AvmBytecode & bytecode, AvmCode * aCode)
 ////		case AVM_OPCODE_STARTS_WITH:
 ////		{
 ////			current( ExpressionConstructor::newBoolean( StringTools::startsWith(
-////				EVAL_ARG.mARG->at(0).to_ptr< BaseBufferForm >()->getValue(),
-////				EVAL_ARG.mARG->at(1).to_ptr< BaseBufferForm >()->getValue() )));
+////				EVAL_ARG.mARG->at(0).to< BaseBufferForm >().getValue(),
+////				EVAL_ARG.mARG->at(1).to< BaseBufferForm >().getValue() )));
 ////
 ////			return( true );
 ////		}
 ////		case AVM_OPCODE_ENDS_WITH:
 ////		{
 ////			current( ExpressionConstructor::newBoolean( StringTools::endsWith(
-////				EVAL_ARG.mARG->at(0).to_ptr< BaseBufferForm >()->getValue(),
-////				EVAL_ARG.mARG->at(1).to_ptr< BaseBufferForm >()->getValue() )));
+////				EVAL_ARG.mARG->at(0).to< BaseBufferForm >().getValue(),
+////				EVAL_ARG.mARG->at(1).to< BaseBufferForm >().getValue() )));
 ////
 ////			return( true );
 ////		}
 //
-//		case AVM_OPCODE_EMPTY:
-//		{
-//			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0)
-//						.to_ptr< BaseBufferForm >()->empty() ) );
-//
-//			return( true );
-//		}
-//
-//		case AVM_OPCODE_NONEMPTY:
-//		{
-//			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0)
-//						.to_ptr< BaseBufferForm >()->nonempty() ) );
-//
-//			return( true );
-//		}
-//		case AVM_OPCODE_SINGLETON:
-//		{
-//			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0)
-//						.to_ptr< BaseBufferForm >()->singleton() ) );
-//
-//			return( true );
-//		}
-//		case AVM_OPCODE_POPULATED:
-//		{
-//			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0)
-//						.to_ptr< BaseBufferForm >()->populated() ) );
-//
-//			return( true );
-//		}
-//		case AVM_OPCODE_FULL:
-//		{
-//			current( ExpressionConstructor::newBoolean(
-//					EVAL_ARG.mARG->at(0)
-//						.to_ptr< BaseBufferForm >()->full() ) );
-//
-//			return( true );
-//		}
-//
-//		case AVM_OPCODE_SIZE:
-//		{
-//			current( ExpressionConstructor::newUInteger(
-//					EVAL_ARG.mARG->at(0)
-//						.to_ptr< BaseBufferForm >()->size() ) );
-//
-//			return( true );
-//		}
-//
+		case AVM_OPCODE_EMPTY:
+		{
+			current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0)
+						.to< BaseBufferForm >().empty() ) );
+
+			return( true );
+		}
+
+		case AVM_OPCODE_NONEMPTY:
+		{
+			current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0)
+						.to< BaseBufferForm >().nonempty() ) );
+
+			return( true );
+		}
+		case AVM_OPCODE_SINGLETON:
+		{
+			current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0)
+						.to< BaseBufferForm >().singleton() ) );
+
+			return( true );
+		}
+		case AVM_OPCODE_POPULATED:
+		{
+			current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0)
+						.to< BaseBufferForm >().populated() ) );
+
+			return( true );
+		}
+		case AVM_OPCODE_FULL:
+		{
+			current( ExpressionConstructor::newBoolean(
+					EVAL_ARG.mARG->at(0)
+						.to< BaseBufferForm >().full() ) );
+
+			return( true );
+		}
+
+		case AVM_OPCODE_SIZE:
+		{
+			current( ExpressionConstructor::newUInteger(
+					EVAL_ARG.mARG->at(0)
+						.to< BaseBufferForm >().size() ) );
+
+			return( true );
+		}
+
 ////		case AVM_OPCODE_EQ:
 ////		case AVM_OPCODE_SEQ:
 ////		{
 ////			current( ExpressionConstructor::newBoolean(
-////				EVAL_ARG.mARG->at(0).to_ptr< BaseBufferForm >()->getValue().compare(
-////				EVAL_ARG.mARG->at(1).to_ptr< BaseBufferForm >()->getValue()) == 0 ));
+////				EVAL_ARG.mARG->at(0).to< BaseBufferForm >().getValue().compare(
+////				EVAL_ARG.mARG->at(1).to< BaseBufferForm >().getValue()) == 0 ));
 ////
 ////			return( true );
 ////		}
@@ -4389,8 +4738,8 @@ bool ARGS_ENV::eval_processor_buffer(AvmBytecode & bytecode, AvmCode * aCode)
 ////		case AVM_OPCODE_NSEQ:
 ////		{
 ////			current( ExpressionConstructor::newBoolean(
-////				EVAL_ARG.mARG->at(0).to_ptr< BaseBufferForm >()->getValue().compare(
-////				EVAL_ARG.mARG->at(1).to_ptr< BaseBufferForm >()->getValue()) != 0 ) );
+////				EVAL_ARG.mARG->at(0).to< BaseBufferForm >().getValue().compare(
+////				EVAL_ARG.mARG->at(1).to< BaseBufferForm >().getValue()) != 0 ) );
 ////
 ////			return( true );
 ////		}
@@ -4398,13 +4747,13 @@ bool ARGS_ENV::eval_processor_buffer(AvmBytecode & bytecode, AvmCode * aCode)
 //
 //		case AVM_OPCODE_TOP:
 //		{
-//			current( EVAL_ARG.mARG->at(0).to_ptr< BaseBufferForm >()->top() );
+//			current( EVAL_ARG.mARG->at(0).to< BaseBufferForm >().top() );
 //
 //			return( true );
 //		}
 //		case AVM_OPCODE_POP:
 //		{
-//			current( EVAL_ARG.mARG->at(0).to_ptr< BaseBufferForm >()->pop() );
+//			current( EVAL_ARG.mARG->at(0).to< BaseBufferForm >().pop() );
 //
 //			return( true );
 //		}
@@ -4418,8 +4767,8 @@ bool ARGS_ENV::eval_processor_buffer(AvmBytecode & bytecode, AvmCode * aCode)
 //				{
 //AVM_IF_DEBUG_FLAG( STATEMENT)
 //	AVM_OS_TRACE << "THROW UNSATISFIED << PUSH >> : "
-//			<<  outED->mRID.strUniqId() << " |=> "
-//			<< aCode->str() << std::endl;
+//			<<  outED.getRID().strUniqId() << " |=> "
+//			<< aCode.str() << std::endl;
 //	AVM_OS_TRACE << "\t" << "<capacity:" << queue->capacity()
 //			<< "> " << queue->str() << " <=< "
 //			<< EVAL_ARG.mARG->current().str() << std::endl;
@@ -4444,8 +4793,8 @@ bool ARGS_ENV::eval_processor_buffer(AvmBytecode & bytecode, AvmCode * aCode)
 //				{
 //AVM_IF_DEBUG_FLAG( STATEMENT)
 //	AVM_OS_TRACE << "THROW UNSATISFIED << APPEND >> : "
-//			<<  outED->mRID.strUniqId() << " |=> "
-//			<< aCode->str() << std::endl;
+//			<<  outED.getRID().strUniqId() << " |=> "
+//			<< aCode.str() << std::endl;
 //	AVM_OS_TRACE << "\t" << "<capacity:" << queue->capacity()
 //			<< "> " << queue->str() << " <=< "
 //			<< EVAL_ARG.mARG->current().str() << std::endl;
@@ -4502,8 +4851,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 //				{
 //AVM_IF_DEBUG_FLAG( STATEMENT)
 //	AVM_OS_TRACE << "THROW UNSATISFIED << ASSING#TOP >> : "
-//			<<  outED->mRID.strUniqId() << " |=> "
-//			<< aCode->str() << std::endl;
+//			<<  outED.getRID().strUniqId() << " |=> "
+//			<< aCode.str() << std::endl;
 //	AVM_OS_TRACE << "\t" << "assign#top in queue << "
 //			<< EVAL_ARG.mARG->at(0).str() << " >> failed !!!"
 //			<< std::endl;
@@ -4516,8 +4865,8 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 //			{
 //AVM_IF_DEBUG_FLAG( STATEMENT)
 //	AVM_OS_TRACE << "THROW UNSATISFIED << ASSING#TOP >> : "
-//			<<  outED->mRID.strUniqId() << " |=> "
-//			<< aCode->str() << std::endl;
+//			<<  outED.getRID().strUniqId() << " |=> "
+//			<< aCode.str() << std::endl;
 //	AVM_OS_TRACE << "\t" << "Unexpected an empty queue << "
 //			<< EVAL_ARG.mARG->at(0).str() << " >>" << std::endl;
 //AVM_ENDIF_DEBUG_FLAG( STATEMENT)
@@ -4531,7 +4880,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_ASSIGNMENT )
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "ARGS_ENV::eval_processor_collection :> "
 						"Unexpected bytecode << " << bytecode.strCode()
-					<< " >> for : " << aCode->strDebug() << " !!!"
+					<< " >> for : " << aCode.strDebug() << " !!!"
 					<< SEND_EXIT;
 
 			return( false );

@@ -40,7 +40,7 @@ protected:
 	 * ATTRIBUTES
 	 */
 	// the Type Specifier
-	TypeSpecifier mTargetSpecifierType;
+	const TypeSpecifier mTargetSpecifierType;
 
 
 public:
@@ -48,10 +48,10 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	TypeAliasSpecifier(DataType * aCompiledType,
+	TypeAliasSpecifier(const DataType & astType,
 			const TypeSpecifier & aTypeSpecifier)
 	: BaseTypeSpecifier(CLASS_KIND_T( TypeAliasSpecifier ),
-			TYPE_ALIAS_SPECIFIER, aCompiledType, aTypeSpecifier),
+			TYPE_ALIAS_SPECIFIER, astType, aTypeSpecifier),
 	mTargetSpecifierType( aTypeSpecifier )
 	{
 		//!!! NOTHING
@@ -71,26 +71,30 @@ public:
 	 * GETTER - SETTER
 	 * mTargetSpecifierType
 	 */
-	inline const TypeSpecifier & getTargetTypeSpecifier()
+	inline const TypeSpecifier & getTargetTypeSpecifier() const
 	{
 		return( mTargetSpecifierType );
 	}
 
-	inline BaseTypeSpecifier * targetTypeSpecifier()
+	inline const BaseTypeSpecifier & targetTypeSpecifier() const
 	{
 		return( mTargetSpecifierType.is< TypeAliasSpecifier >() ?
 				mTargetSpecifierType.alias().targetTypeSpecifier()
 				: mTargetSpecifierType );
 	}
 
-	inline bool hasTargetTypeSpecifier() const
+	inline virtual bool isTypeAlias() const override
 	{
-		return( mTargetSpecifierType.valid() );
+		return( true );
 	}
 
-	inline void setTargetTypeSpecifier(const TypeSpecifier & aTypeSpecifier)
+	/**
+	 * GETTER - SETTER
+	 * mSpecifierKind
+	 */
+	inline virtual avm_type_specifier_kind_t getTypeSpecifierKind() const override
 	{
-		mTargetSpecifierType = aTypeSpecifier;
+		return( mTargetSpecifierType.getTypeSpecifierKind() );
 	}
 
 
@@ -98,7 +102,7 @@ public:
 	 * CONSTRAINT generation
 	 * for a given parameter
 	 */
-	inline BF genConstraint(const BF & aParam) const
+	inline virtual BF genConstraint(const BF & aParam) const override
 	{
 		if( hasConstraint() )
 		{
@@ -116,13 +120,14 @@ public:
 	/**
 	 * Format a value w.r.t. its type
 	 */
-	inline virtual void formatStream(OutStream & os, const BF & bfValue) const
+	inline virtual void formatStream(
+			OutStream & os, const BF & bfValue) const override
 	{
 		mTargetSpecifierType.formatStream(os, bfValue);
 	}
 
 	inline virtual void formatStream(
-			OutStream & os, const ArrayBF & arrayValue) const
+			OutStream & os, const ArrayBF & arrayValue) const override
 	{
 		mTargetSpecifierType.formatStream(os, arrayValue);
 	}
@@ -130,12 +135,12 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual std::string strT() const
+	virtual std::string strT() const override
 	{
 		return( getNameID() );
 	}
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 };
 

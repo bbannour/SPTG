@@ -34,6 +34,8 @@ class EvaluationEnvironment;
 
 class InstanceOfData;
 
+class OutStream;
+
 class SatSolver;
 
 
@@ -52,7 +54,7 @@ public:
 
 	////////////////////////////////////////////////////////////////////////////
 	// Pour pouvoir reutiliser tout l'outillage de Diverity
-	static APExecutionData     theSymbolicED;
+	static ExecutionData theSymbolicED;
 
 
 public:
@@ -152,7 +154,7 @@ public:
 	// EXECUTION CONTEXT SOLVING
 	////////////////////////////////////////////////////////////////////////////
 
-	inline static APExecutionData solve(
+	inline static ExecutionData solve(
 			EvaluationEnvironment & ENV, const ExecutionContext & anEC)
 	{
 //		return( SolverFactory::solve(
@@ -162,34 +164,34 @@ public:
 				(*theDefaultSolver4ModelsProduction), ENV, anEC) );
 	}
 
-	inline static APExecutionData solve(SolverDef::SOLVER_KIND aSolverKind,
+	inline static ExecutionData solve(SolverDef::SOLVER_KIND aSolverKind,
 			EvaluationEnvironment & ENV, const ExecutionContext & anEC)
 	{
 		return( SolverFactory::solve(aSolverKind, ENV, anEC,
-				anEC.refExecutionData().getAllPathCondition()) );
+				anEC.getExecutionData().getAllPathCondition()) );
 	}
 
-	static APExecutionData solve(SolverDef::SOLVER_KIND aSolverKind,
+	static ExecutionData solve(SolverDef::SOLVER_KIND aSolverKind,
 			EvaluationEnvironment & ENV, const ExecutionContext & anEC,
 			const BF & aCondition);
 
 
-	inline static APExecutionData solve(SatSolver & aSolver,
+	inline static ExecutionData solve(SatSolver & aSolver,
 			EvaluationEnvironment & ENV, const ExecutionContext & anEC)
 	{
-		APExecutionData anED = anEC.getAPExecutionData();
+		ExecutionData anED = anEC.getExecutionData();
 		return( SolverFactory::solve(aSolver, ENV, anED) ?
-				anED : APExecutionData::REF_NULL);
+				anED : ExecutionData::_NULL_);
 	}
 
-	inline static APExecutionData solve(SatSolver & aSolver,
+	inline static ExecutionData solve(SatSolver & aSolver,
 			EvaluationEnvironment & ENV, const ExecutionContext & anEC,
 			const BF & aCondition)
 	{
-		APExecutionData anED = anEC.getAPExecutionData();
+		ExecutionData anED = anEC.getExecutionData();
 
 		return( SolverFactory::solve(aSolver, ENV, anED, aCondition) ?
-				anED : APExecutionData::REF_NULL);
+				anED : ExecutionData::_NULL_);
 	}
 
 
@@ -198,21 +200,21 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 
 	inline static bool solve(
-			EvaluationEnvironment & ENV, APExecutionData & anED)
+			EvaluationEnvironment & ENV, ExecutionData & anED)
 	{
 		return( SolverFactory::solve(
 				(*theDefaultSolver4ModelsProduction), ENV, anED) );
 	}
 
 	inline static bool solve(SatSolver & aSolver,
-			EvaluationEnvironment & ENV, APExecutionData & anED)
+			EvaluationEnvironment & ENV, ExecutionData & anED)
 	{
 		return( SolverFactory::solve(aSolver, ENV, anED,
-				anED->getAllPathCondition()) );
+				anED.getAllPathCondition()) );
 	}
 
 	static bool solve(SatSolver & aSolver, EvaluationEnvironment & ENV,
-			APExecutionData & anED, const BF & aCondition);
+			ExecutionData & anED, const BF & aCondition);
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -229,7 +231,7 @@ public:
 	inline static ExecutionContext * numerize(SatSolver & aSolver,
 			EvaluationEnvironment & ENV, const ExecutionContext & anEC)
 	{
-		APExecutionData newED = SolverFactory::solve(aSolver, ENV, anEC);
+		ExecutionData newED = SolverFactory::solve(aSolver, ENV, anEC);
 
 		// ATTENTION : Hauteur à modifier !!!
 		return( new ExecutionContext(anEC, newED, anEC.getHeight() + 1, 0) );
@@ -241,22 +243,22 @@ public:
 	// EXECUTION CONTEXT PARAMETERS NUMERIZATION
 	////////////////////////////////////////////////////////////////////////////
 
-	inline static bool solveParameters(APExecutionData & anED)
+	inline static bool solveParameters(ExecutionData & anED)
 	{
-		return( solveParameters(anED, anED->getAllPathCondition()) );
+		return( solveParameters(anED, anED.getAllPathCondition()) );
 	}
 
-	static bool solveParameters(APExecutionData & anED, const BF & aCondition);
+	static bool solveParameters(ExecutionData & anED, const BF & aCondition);
 
 
 	////////////////////////////////////////////////////////////////////////////
 	// Pour pouvoir reutiliser tout l'outillage de DIVERSITY
 	////////////////////////////////////////////////////////////////////////////
 
-	static void setModel(EvaluationEnvironment & ENV, APExecutionData & anED);
-	static void resetModel(APExecutionData & anED);
+	static void setModel(EvaluationEnvironment & ENV, ExecutionData & anED);
+	static void resetModel(ExecutionData & anED);
 
-	static void setRuntimeParametersSolvingValues(APExecutionData & anED);
+	static void setRuntimeParametersSolvingValues(ExecutionData & anED);
 	static void updateRuntimeParametersValues(const BF & aValue);
 
 	static void finalizeRuntimeParameters();
@@ -266,9 +268,19 @@ public:
 	// EXECUTION DATA NEWFRESH
 	////////////////////////////////////////////////////////////////////////////
 
-	static APExecutionData solveNewfresh(SolverDef::SOLVER_KIND aSolverKind,
+	static ExecutionData solveNewfresh(SolverDef::SOLVER_KIND aSolverKind,
 			EvaluationEnvironment & ENV, const ExecutionContext & anEC,
 			const BF & aCondition);
+
+
+	////////////////////////////////////////////////////////////////////////////
+	// TO_SMT
+	////////////////////////////////////////////////////////////////////////////
+
+	static bool to_smt(OutStream & os, const BF & aCondition,
+			SolverDef::SOLVER_KIND aSolverKind = SolverDef::SOLVER_Z3_KIND);
+
+
 
 };
 

@@ -27,26 +27,43 @@ namespace sep
 
 
 /*ATTRIBUTES*/
-avm_size_t ExecutionData::PARAM_MACHINE_RUNTIME_OFFSET = 0;
-avm_size_t ExecutionData::SYSTEM_RUNTIME_OFFSET        = 1;
+std::size_t ExecutionData::PARAM_MACHINE_RUNTIME_OFFSET = 0;
+std::size_t ExecutionData::SYSTEM_RUNTIME_OFFSET        = 1;
 
+/*
+ * DEFAULT NULL REFERENCE
+ */
+ExecutionData ExecutionData::_NULL_;
+
+
+/**
+ * GETTER - SETTER
+ * mExecutionContext
+ * Previous ExecutionData
+ */
+ExecutionData & ExecutionData::getPrevious()
+{
+	return( mSmartPtr->mExecutionContext->getwExecutionData() );
+}
+
+const ExecutionData & ExecutionData::getPrevious() const
+{
+	return( mSmartPtr->mExecutionContext->getExecutionData() );
+}
 
 
 /**
  * GETTER
  * mTableOfRuntimeForm
  */
-
 const RuntimeID & ExecutionData::getRuntimeID(
-		const ExecutableForm * anExecutable) const
+		const ExecutableForm & anExecutable) const
 {
-	TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-	TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 	{
-		if( (*it)->getRID().getExecutable() == anExecutable )
+		if( itRF->getRID().getExecutable() == (& anExecutable) )
 		{
-			return( (*it)->getRID() );
+			return( itRF->getRID() );
 		}
 	}
 
@@ -55,37 +72,37 @@ const RuntimeID & ExecutionData::getRuntimeID(
 
 
 const RuntimeID & ExecutionData::getRuntimeID(
-		InstanceOfMachine * anInstance) const
+		const InstanceOfMachine & anInstance) const
 {
-	if( anInstance->hasRuntimeRID() )
+	if( anInstance.hasRuntimeRID() )
 	{
-		return( anInstance->getRuntimeRID() );
+		return( anInstance.getRuntimeRID() );
 	}
-	else if( anInstance->isAlias() )
+	else if( anInstance.isAlias() )
 	{
-		if( anInstance->hasAliasTarget() &&
-				anInstance->getAliasTarget()->as< InstanceOfMachine >()->
+		if( anInstance.hasAliasTarget() &&
+				anInstance.getAliasTarget()->as_ptr< InstanceOfMachine >()->
 						hasRuntimeRID() )
 		{
 			const RuntimeID & tmpRID =
-					anInstance->getAliasTarget()->getRuntimeContainerRID();
+					anInstance.getAliasTarget()->getRuntimeContainerRID();
 
-			anInstance->setRuntimeRID( tmpRID );
+			const_cast< InstanceOfMachine & >(anInstance).setRuntimeRID( tmpRID );
 
 			return( tmpRID );
 		}
 
 		ArrayOfInstanceOfMachine::iterator it =
-				anInstance->getMachinePath()->begin();
+				anInstance.getMachinePath()->begin();
 
-		RuntimeID tmpRID = mRID;
+		RuntimeID tmpRID = mSmartPtr->mRID;
 
 		// SEARCH of the LCA(RID) of the current RID an the ALIAS container
-		tmpRID = tmpRID.getAncestorContaining( *it );
+		tmpRID = tmpRID.getAncestorContaining( *( *it ) );
 		if( tmpRID.valid() )
 		{
 			ArrayOfInstanceOfMachine::iterator itEnd =
-					anInstance->getMachinePath()->end();
+					anInstance.getMachinePath()->end();
 
 			// Use of Alias PATH to find the INSTANCE of variable
 			for( ; it != itEnd ; ++it )
@@ -94,39 +111,39 @@ const RuntimeID & ExecutionData::getRuntimeID(
 			}
 
 			AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-				tmpRID.getExecutable()->getBuffer().at( anInstance
-				->getOffset() ).isAstElement( anInstance->getAstElement() ) )
-					<< "Assign error " << tmpRID.getExecutable()->getBuffer().at(
-							anInstance->getOffset()).getFullyQualifiedNameID()
-					<< " != " << anInstance->getFullyQualifiedNameID()
+				tmpRID.refExecutable().getBuffer().at(
+						anInstance.getOffset() ).isAstElement(
+								anInstance.getAstElement() ) )
+					<< "Assign error " << tmpRID.refExecutable().getBuffer().at(
+							anInstance.getOffset()).getFullyQualifiedNameID()
+					<< " != " << anInstance.getFullyQualifiedNameID()
 					<< SEND_EXIT;
 
-			return( getRuntime(tmpRID).getChild(anInstance->getOffset()) );
+			return( getRuntime(tmpRID).getChild(anInstance.getOffset()) );
 		}
 	}
 
-//	if( anInstance->getSpecifier().isDesignInstanceStatic() )
+//	if( anInstance.getSpecifier().isDesignInstanceStatic() )
 	{
-		for( RuntimeID aRID = mRID ; aRID.valid() ; aRID = aRID.getPRID() )
+		RuntimeID aRID = mSmartPtr->mRID;
+		for( ; aRID.valid() ; aRID = aRID.getPRID() )
 		{
-			if( anInstance->getContainer() == aRID.getExecutable() )
+			if( anInstance.getContainer() == aRID.getExecutable() )
 			{
-				return( getRuntime(aRID).getChild(anInstance->getOffset()) );
+				return( getRuntime(aRID).getChild(anInstance.getOffset()) );
 			}
 		}
 	}
-//	else if( anInstance->getSpecifier().isDesignModel() )
+//	else if( anInstance.getSpecifier().isDesignModel() )
 //	{
-//		return( mTableOfRuntimeForm->getRID(anInstance->getExecutable()) );
+//		return( mTableOfRuntimeForm->getRID(anInstance.getExecutable()) );
 //	}
 
-	TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-	TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 	{
-		if( (*it)->getRID().getInstance() == anInstance )
+		if( itRF->getRID().getInstance() == (& anInstance) )
 		{
-			return( (*it)->getRID() );
+			return( itRF->getRID() );
 		}
 	}
 
@@ -137,14 +154,11 @@ const RuntimeID & ExecutionData::getRuntimeID(
 const RuntimeID & ExecutionData::getRuntimeID(
 		const std::string & aFullyQualifiedNameID) const
 {
-	TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-	TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 	{
-		if( NamedElement::compareLocation(
-				(*it)->getFullyQualifiedNameID(), aFullyQualifiedNameID) )
+		if( itRF->isLocationID(aFullyQualifiedNameID) )
 		{
-			return( (*it)->getRID() );
+			return( itRF->getRID() );
 		}
 	}
 
@@ -154,13 +168,25 @@ const RuntimeID & ExecutionData::getRuntimeID(
 const RuntimeID & ExecutionData::getRuntimeIDByNameID(
 		const std::string & aNameID) const
 {
-	TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-	TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 	{
-		if( (*it)->getNameID() == aNameID )
+		if( itRF->getNameID() == aNameID )
 		{
-			return( (*it)->getRID() );
+			return( itRF->getRID() );
+		}
+	}
+
+	return( RuntimeID::REF_NULL );
+}
+
+const RuntimeID & ExecutionData::getRuntimeIDByQualifiedNameID(
+		const std::string & aQualifiedNameID) const
+{
+	for( const auto & itRF : mSmartPtr->mTableOfRuntime )
+	{
+		if( itRF->fqnEndsWith(aQualifiedNameID) )
+		{
+			return( itRF->getRID() );
 		}
 	}
 
@@ -169,7 +195,7 @@ const RuntimeID & ExecutionData::getRuntimeIDByNameID(
 
 
 RuntimeID ExecutionData::getRuntimeContainerRID(
-		const RuntimeID & aRID, BaseInstanceForm * anInstance) const
+		const RuntimeID & aRID, const BaseInstanceForm * anInstance) const
 {
 	if( anInstance->hasRuntimeContainerRID() )
 	{
@@ -182,8 +208,10 @@ RuntimeID ExecutionData::getRuntimeContainerRID(
 		if( anInstance->hasAliasTarget() &&
 				anInstance->getAliasTarget()->hasRuntimeContainerRID() )
 		{
-			anInstance->setRuntimeContainerRID( tmpRID =
-					anInstance->getAliasTarget()->getRuntimeContainerRID() );
+			tmpRID = anInstance->getAliasTarget()->getRuntimeContainerRID();
+
+			const_cast< BaseInstanceForm * >(
+					anInstance )->setRuntimeContainerRID( tmpRID );
 
 			return( tmpRID );
 		}
@@ -192,7 +220,7 @@ RuntimeID ExecutionData::getRuntimeContainerRID(
 				anInstance->getMachinePath()->begin();
 
 		// SEARCH of the LCA(RID) of the current RID an the ALIAS container
-		tmpRID = tmpRID.getAncestorContaining( *it );
+		tmpRID = tmpRID.getAncestorContaining( *( *it ) );
 		if( tmpRID.valid() )
 		{
 			ArrayOfInstanceOfMachine::iterator itEnd =
@@ -205,9 +233,9 @@ RuntimeID ExecutionData::getRuntimeContainerRID(
 			}
 
 			AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-				tmpRID.getExecutable()->getBuffer().at( anInstance
+				tmpRID.refExecutable().getBuffer().at( anInstance
 				->getOffset() ).isAstElement( anInstance->getAstElement() ) )
-					<< "Assign error " << tmpRID.getExecutable()->getBuffer().
+					<< "Assign error " << tmpRID.refExecutable().getBuffer().
 						at(anInstance->getOffset()).getFullyQualifiedNameID()
 					<< " != " << anInstance->getFullyQualifiedNameID()
 					<< SEND_EXIT;
@@ -219,10 +247,71 @@ RuntimeID ExecutionData::getRuntimeContainerRID(
 	{
 		// SEARCH of the RUNTIME FORM container
 		// where this INSTANCE of variable was declared
-		return( aRID.getAncestorContaining( anInstance ) );
+		return( aRID.getAncestorContaining( * anInstance ) );
 	}
 
 	return( RuntimeID::REF_NULL );
+}
+
+
+/**
+ * GETTER
+ * Timestamp
+ */
+const BF & ExecutionData::getTimeValue(const RuntimeID & aRID) const
+{
+	RuntimeID timedRID = aRID;
+	while( timedRID.valid() && timedRID.getSpecifier().noFeatureTimed() )
+	{
+		timedRID = timedRID.getPRID();
+	}
+
+	if( timedRID.valid() )
+	{
+		return( getRuntime(timedRID).getTimeValue() );
+	}
+	else
+	{
+		return( BF::REF_NULL );
+	}
+}
+
+const BF & ExecutionData::getDeltaTimeValue(const RuntimeID & aRID) const
+{
+	RuntimeID timedRID = aRID;
+	while( timedRID.valid() && timedRID.getSpecifier().noFeatureTimed() )
+	{
+		timedRID = timedRID.getPRID();
+	}
+
+	if( timedRID.valid() )
+	{
+		return( getRuntime(timedRID).getDeltaTimeValue() );
+	}
+	else
+	{
+		return( BF::REF_NULL );
+	}
+}
+
+
+/**
+ * SYNC-SETTER
+ * Synchronization of Time Values
+ */
+void ExecutionData::syncTimeValues(
+		const RuntimeID & aRID, const ExecutionData & refED)
+{
+	RuntimeID timedRID = aRID;
+	while( timedRID.valid() && timedRID.getSpecifier().noFeatureTimed() )
+	{
+		timedRID = timedRID.getPRID();
+	}
+
+	if( timedRID.valid() )
+	{
+		getWritableRuntime(timedRID).syncTimeValues(refED);
+	}
 }
 
 
@@ -249,12 +338,10 @@ RuntimeID ExecutionData::getRuntimeContainerRID(
 const BF & ExecutionData::getDataByQualifiedNameID(
 		const std::string & aQualifiedNameID, InstanceOfData * & var) const
 {
-	TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-	TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 	{
 		const BF & foundData =
-				 (*it)->getDataByQualifiedNameID(aQualifiedNameID, var);
+				itRF->getDataByQualifiedNameID(aQualifiedNameID, var);
 		if( foundData.valid() )
 		{
 			return( foundData );
@@ -266,11 +353,9 @@ const BF & ExecutionData::getDataByQualifiedNameID(
 
 const BF & ExecutionData::getDataByNameID(const std::string & aNameID) const
 {
-	TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-	TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-	for( ; it != itEnd ; ++it )
+	for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 	{
-		const BF & foundData = (*it)->getDataByNameID(aNameID);
+		const BF & foundData = itRF->getDataByNameID(aNameID);
 		if( foundData.valid() )
 		{
 			return( foundData );
@@ -283,38 +368,25 @@ const BF & ExecutionData::getDataByNameID(const std::string & aNameID) const
 
 /**
  * GETTER
- * mSaveTableOfAssignedFlag
- */
-TableOfRuntimeFormState::TableOfAssignedFlag
-ExecutionData::getSaveTableOfAssignedFlag() const
-{
-	return( mExecutionContext->getTableOfAssignedFlag() );
-}
-
-
-
-/**
- * GETTER
  * tableOfRuntimeFormState
  */
-bool ExecutionData::checkRunningForm(const BF & aRunnableElementTrace,
-		const RuntimeID & aRID)
+bool ExecutionData::checkRunningForm(
+		const BF & aRunnableElementTrace, const RuntimeID & aRID) const
 {
 	if( aRunnableElementTrace.is< ExecutionConfiguration >() )
 	{
-		ExecutionConfiguration * anExecConf =
-				aRunnableElementTrace.to_ptr< ExecutionConfiguration >();
+		const ExecutionConfiguration & anExecConf =
+				aRunnableElementTrace.to< ExecutionConfiguration >();
 
-		return( anExecConf->getRuntimeID() == aRID );
+		return( anExecConf.getRuntimeID() == aRID );
 	}
 
 	else if( aRunnableElementTrace.is< AvmCode >() )
 	{
-		AvmCode * aCode = aRunnableElementTrace.to_ptr< AvmCode >();
-
-		for( AvmCode::iterator it = aCode->begin() ; it != aCode->end() ; ++it )
+		const AvmCode & aCode = aRunnableElementTrace.to< AvmCode >();
+		for( const auto & itArg : aCode.getOperands() )
 		{
-			if( checkRunningForm(*it, aRID) )
+			if( checkRunningForm(itArg, aRID) )
 			{
 				return( true );
 			}
@@ -334,21 +406,15 @@ bool ExecutionData::couldBeInstanciated(InstanceOfMachine * anInstance) const
 
 	if( anExecutable->hasMaximalInstance() )
 	{
-		avm_size_t anInstanciationCount = 0;
+		std::size_t anInstanciationCount = 0;
 
-		TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-		TableOfRuntimeT::const_iterator endIt = mTableOfRuntime.end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 		{
-			if( (*it)->getExecutable() == anExecutable )
+			if( itRF->getExecutable() == anExecutable )
 			{
 				++anInstanciationCount;
 			}
 		}
-
-//!![TRACE]: to delete
-//AVM_OS_DEBUG << "Instanciation Count: " << anInstanciationCount
-//		<< " ?<=? max: " << anExecutable->getMaximalInstanceCount() << std::endl;
 
 		return( anInstanciationCount <= anExecutable->getMaximalInstanceCount() );
 	}
@@ -363,26 +429,26 @@ bool ExecutionData::couldBeInstanciated(InstanceOfMachine * anInstance) const
  * string of a state configuration of an ExecutionData
  */
 void ExecutionData::toStreamStateIdleOrRunning(
-		OutStream & os, const RuntimeForm & aRF) const
+		OutStream & out, const RuntimeForm & aRF) const
 {
 	if( aRF.hasOnSchedule()
-		&& aRF.getOnSchedule()->singleton()
+		&& aRF.getOnSchedule()->hasOneOperand()
 		&& aRF.getOnSchedule()->first().is< RuntimeID >()
 		/*&& (aRF.getRID() != aRF.getOnSchedule()->first().bfRID())*/ )
 	{
-		if( aRF.getExecutable()->hasTransition() )
+		if( aRF.refExecutable().hasTransition() )
 		{
-			os << aRF.getRID().strUniqId() << " ( ";
+			out << aRF.getRID().strUniqId() << " ( ";
 		}
 
 		if( isIdleOrRunning(aRF.getOnSchedule()->first().bfRID()) )
 		{
-			toStreamStateIdleOrRunning(os,
+			toStreamStateIdleOrRunning(out,
 					getRuntime(aRF.getOnSchedule()->first().bfRID()) );
 
-			if( aRF.getExecutable()->hasTransition() )
+			if( aRF.refExecutable().hasTransition() )
 			{
-				os << " )";
+				out << " )";
 			}
 		}
 	}
@@ -392,9 +458,9 @@ void ExecutionData::toStreamStateIdleOrRunning(
 		TableOfRuntimeID::const_iterator itRID = aRF.beginChild();
 		TableOfRuntimeID::const_iterator itRIDEnd = aRF.endChild();
 
-		if( aRF.getExecutable()->hasTransition() )
+		if( aRF.refExecutable().hasTransition() )
 		{
-			os << aRF.getRID().strUniqId() << " ";
+			out << aRF.getRID().strUniqId() << " ";
 		}
 
 		bool needComa = false;
@@ -404,24 +470,24 @@ void ExecutionData::toStreamStateIdleOrRunning(
 			{
 				if( needComa )
 				{
-					os << " , ";
+					out << " , ";
 				}
 				else
 				{
-					os << "( ";
+					out << "( ";
 					needComa = true;
 				}
-				toStreamStateIdleOrRunning(os, getRuntime(*itRID));
+				toStreamStateIdleOrRunning(out, getRuntime(*itRID));
 			}
 		}
 		if( needComa )
 		{
-			os << " )";
+			out << " )";
 		}
 	}
 	else
 	{
-		os << aRF.getRID().strUniqId();
+		out << aRF.getRID().strUniqId();
 	}
 }
 
@@ -436,7 +502,7 @@ void ExecutionData::toStreamStateIdleOrRunning(
  * %4% --> state identifier
  */
 OutStream & ExecutionData::toStreamLifelineStateFormat(
-		OutStream & os, const RuntimeForm & aRF,
+		OutStream & out, const RuntimeForm & aRF,
 		const std::string & formatLifelineStatePattern) const
 {
 	boost::format formatter(formatLifelineStatePattern);
@@ -444,39 +510,51 @@ OutStream & ExecutionData::toStreamLifelineStateFormat(
 
 	RuntimeID ridLifeline = aRF.getRID().getLifeline();
 
-	os << formatter
-			% ridLifeline.strPid()
-			% ridLifeline.getInstance()->getNameID()
-			% aRF.getRID().strPid()
-			% aRF.getRID().getNameID();
+	if( ridLifeline.valid() )
+	{
+		out << formatter
+				% ridLifeline.strPid()
+				% ridLifeline.getInstance()->getNameID()
+				% aRF.getRID().strPid()
+				% aRF.getRID().getNameID();
+	}
+	else
+	{
+		out << formatter
+				% ""
+				% ""
+				% aRF.getRID().strPid()
+				% aRF.getRID().getNameID();
 
-	return( os );
+	}
+
+	return( out );
 }
 
 
 void ExecutionData::toStreamStateConf(
-		OutStream & os, const RuntimeForm & aRF,
+		OutStream & out, const RuntimeForm & aRF,
 		const std::string & formatLifelineStatePattern) const
 {
 	if ( aRF.hasOnSchedule() )
 	{
-		if( aRF.getOnSchedule()->singleton()
+		if( aRF.getOnSchedule()->hasOneOperand()
 			&& aRF.getOnSchedule()->first().is< RuntimeID >()
 			&& (aRF.getRID() != aRF.getOnSchedule()->first().bfRID()) )
 		{
-			if( aRF.getExecutable()->hasTransition() )
+			if( aRF.refExecutable().hasTransition() )
 			{
-				toStreamLifelineStateFormat(os, aRF, formatLifelineStatePattern)
+				toStreamLifelineStateFormat(out, aRF, formatLifelineStatePattern)
 						<< " ( ";
 			}
 
-			toStreamStateConf(os,
+			toStreamStateConf(out,
 					getRuntime( aRF.getOnSchedule()->first().bfRID() ),
 					formatLifelineStatePattern );
 
-			if( aRF.getExecutable()->hasTransition() )
+			if( aRF.refExecutable().hasTransition() )
 			{
-				os << " )";
+				out << " )";
 			}
 
 			return;
@@ -488,46 +566,46 @@ void ExecutionData::toStreamStateConf(
 		TableOfRuntimeID::const_iterator itRID = aRF.beginChild();
 		TableOfRuntimeID::const_iterator itRIDEnd = aRF.endChild();
 
-		if( aRF.getExecutable()->hasTransition() )
+		if( aRF.refExecutable().hasTransition() )
 		{
-			toStreamLifelineStateFormat(os, aRF, formatLifelineStatePattern)
+			toStreamLifelineStateFormat(out, aRF, formatLifelineStatePattern)
 					<< " ";
 		}
 
-		os << "( ";
+		out << "( ";
 		for( bool needComa = false ; itRID != itRIDEnd ; ++itRID )
 		{
-			if( (*itRID).getExecutable()->hasOnInitOrEnableOrRun() )
+			if( (*itRID).refExecutable().hasOnInitOrEnableOrRun() )
 			{
 				if( isRunnable( *itRID ) || isFinalizedOrDestroyed( *itRID ) )
 				{
 					if( needComa )
 					{
-						os << " , ";
+						out << " , ";
 					}
 					else
 					{
 						needComa = true;
 					}
-					toStreamStateConf(os, getRuntime(*itRID),
+					toStreamStateConf(out, getRuntime(*itRID),
 							formatLifelineStatePattern );
 				}
 			}
 		}
-		os << " )";
+		out << " )";
 	}
 	else
 	{
 		if( isFinalized( aRF.getRID() ) )
 		{
-			os << "<final>";
+			out << "<final>";
 		}
 		else if( isDestroyed( aRF.getRID() ) )
 		{
-			os << "<destroy>";
+			out << "<destroy>";
 		}
 
-		toStreamLifelineStateFormat(os, aRF, formatLifelineStatePattern);
+		toStreamLifelineStateFormat(out, aRF, formatLifelineStatePattern);
 	}
 }
 
@@ -536,15 +614,15 @@ void ExecutionData::toStreamStateConf(
  * string of a state configuration of an ExecutionData to Fscn
  */
 void ExecutionData::toStreamStateConfToFscn(
-		OutStream & os, const RuntimeForm & aRF) const
+		OutStream & out, const RuntimeForm & aRF) const
 {
 	if ( aRF.hasOnSchedule() )
 	{
-		if( aRF.getOnSchedule()->singleton()
+		if( aRF.getOnSchedule()->hasOneOperand()
 			&& aRF.getOnSchedule()->first().is< RuntimeID >()
 			&& getRuntime(aRF.getOnSchedule()->first().bfRID()).isInstanciated() )
 		{
-			toStreamStateConfToFscn(os,
+			toStreamStateConfToFscn(out,
 					getRuntime( aRF.getOnSchedule()->first().bfRID() ) );
 
 			return;
@@ -556,28 +634,28 @@ void ExecutionData::toStreamStateConfToFscn(
 		TableOfRuntimeID::const_iterator itRID = aRF.beginChild();
 		TableOfRuntimeID::const_iterator itRIDEnd = aRF.endChild();
 
-		os << "( " ;
+		out << "( " ;
 		for( bool needComa = false ; itRID != itRIDEnd ; ++itRID )
 		{
-			if( (*itRID).getExecutable()->hasOnInitOrEnableOrRun()
+			if( (*itRID).refExecutable().hasOnInitOrEnableOrRun()
 				&& getRuntime(*itRID).isInstanciated() )
 			{
 				if( needComa )
 				{
-					os << " , ";
+					out << " , ";
 				}
 				else
 				{
 					needComa = true;
 				}
-				toStreamStateConfToFscn(os, getRuntime((*itRID)) );
+				toStreamStateConfToFscn(out, getRuntime((*itRID)) );
 			}
 		}
-		os << " )";
+		out << " )";
 	}
 	else
 	{
-		os << aRF.getRID().strUniqId();
+		out << aRF.getRID().strUniqId();
 	}
 }
 
@@ -585,309 +663,305 @@ void ExecutionData::toStreamStateConfToFscn(
 /**
  * Serialization
  */
-void ExecutionData::toStream(OutStream & os) const
+void ExecutionData::toStream(OutStream & out) const
 {
-	os << TAB << "ed";
+	out << TAB << "ed";
 
 	const std::string conf = strStateConf();
 	if( conf[0] == '(' )
 	{
-		os << conf;
+		out << conf;
 	}
 	else
 	{
-		os << '(' << conf << ')';
+		out << '(' << conf << ')';
 	}
 
-	AVM_DEBUG_REF_COUNTER(os);
-	os << " {" << EOL_FLUSH;
+	mSmartPtr->AVM_DEBUG_REF_COUNTER(out);
+	out << " {" << EOL_FLUSH;
 
-//	os << TAB2 << "name = \"" << strStateConf() << "\";" << EOL_FLUSH;
+//	out << TAB2 << "name = \"" << strStateConf() << "\";" << EOL_FLUSH;
 
 	if ( hasRunnableElementTrace() )
 	{
-		os << TAB2 << "fired = " << getRunnableElementTrace().str()
-				<< ";" << EOL_FLUSH;
+		out << TAB2 << "fired = " << getRunnableElementTrace().str()
+			<< ";" << EOL_FLUSH;
 	}
 
 	if ( hasIOElementTrace() )
 	{
-		os << TAB2 << "trace = " << getIOElementTrace().str() << ";" << EOL_FLUSH;
+		out << TAB2 << "trace = " << getIOElementTrace().str() << ";"
+			<< EOL_FLUSH;
 	}
 
-	os << TAB2 << "exec_status = "
-			<< RuntimeDef::strAEES( getAEES() ) << ";" << EOL_FLUSH;
+	out << TAB2 << "exec_status = "
+		<< RuntimeDef::strAEES( getAEES() ) << ";" << EOL_FLUSH;
 
 	if ( hasNodeCondition() && getNodeCondition().isNotEqualTrue() )
 	{
-		os << TAB2 << "firedcondition = "
-				<< getNodeCondition().wrapStr( os.INDENT.tab2Size(18) )
-				<< ";" << EOL;
+		out << TAB2 << "firedcondition = "
+			<< getNodeCondition().wrapStr( out.INDENT.tab2Size(18) )
+			<< ";" << EOL;
 	}
 
 	if ( hasNodeTimedCondition() &&
 		getNodeTimedCondition().isNotEqualTrue() )
 	{
-		os << TAB2 << "firedtimedcondition = "
-				<< getNodeTimedCondition().wrapStr( os.INDENT.tab2Size(23) )
-				<< ";" << EOL;
+		out << TAB2 << "firedtimedcondition = "
+			<< getNodeTimedCondition().wrapStr( out.INDENT.tab2Size(23) )
+			<< ";" << EOL;
 	}
 
 	if( hasPathCondition() && getPathCondition().isNotEqualTrue() )
 	{
-		os << TAB2 << "pathcondition = "
-				<< getPathCondition().wrapStr( os.INDENT.tab2Size(17) )
-				<< ";";
-		getPathCondition().AVM_DEBUG_REF_COUNTER(os);
-		os << EOL_FLUSH;
+		out << TAB2 << "pathcondition = "
+			<< getPathCondition().wrapStr( out.INDENT.tab2Size(17) )
+			<< ";";
+		getPathCondition().AVM_DEBUG_REF_COUNTER(out);
+		out << EOL_FLUSH;
 	}
 	else if( not hasPathCondition() )
 	{
-		os << TAB2 << "pathcondition = NULL;" << EOL;
+		out << TAB2 << "pathcondition = nullptr;" << EOL;
 	}
 
 	if( hasPathTimedCondition() && getPathTimedCondition().isNotEqualTrue() )
 	{
-		os << TAB2 << "pathtimedcondition = "
-				<< getPathTimedCondition().wrapStr( os.INDENT.tab2Size(22) )
-				<< ";";
-		getPathTimedCondition().AVM_DEBUG_REF_COUNTER(os);
-		os << EOL_FLUSH;
+		out << TAB2 << "pathtimedcondition = "
+			<< getPathTimedCondition().wrapStr( out.INDENT.tab2Size(22) )
+			<< ";";
+		getPathTimedCondition().AVM_DEBUG_REF_COUNTER(out);
+		out << EOL_FLUSH;
 	}
 	else if( not hasPathTimedCondition() )
 	{
-		os << TAB2 << "pathtimedcondition = NULL;" << EOL;
+		out << TAB2 << "pathtimedcondition = nullptr;" << EOL;
 	}
 
-	os << TAB2 << "@init{" << INCR2_INDENT;
-	getOnInit()->toStreamRoutine( os );
-	os << DECR2_INDENT_TAB2 << "}" << EOL_FLUSH;
+	out << TAB2 << "@init{" << INCR2_INDENT;
+	getOnInit()->toStreamRoutine( out );
+	out << DECR2_INDENT_TAB2 << "}" << EOL_FLUSH;
 
-	os << TAB2 << "@schedule{" << INCR2_INDENT;
-	getOnSchedule()->toStreamRoutine( os );
-	os << DECR2_INDENT_TAB2 << "}" << EOL_FLUSH;
+	out << TAB2 << "@schedule{" << INCR2_INDENT;
+	getOnSchedule()->toStreamRoutine( out );
+	out << DECR2_INDENT_TAB2 << "}" << EOL_FLUSH;
 
-	os << TAB2 << "rid = " << getRID().str() << ";" << EOL_FLUSH;
+	out << TAB2 << "rid = " << getRID().str() << ";" << EOL_FLUSH;
 
 
 //	if( hasParam() )
 //	{
-//		os << EOL;
-//		os << TAB << "parameter:";
-//		tableOfParam->AVM_DEBUG_REF_COUNTER(os);
-//		os << EOL;
+//		out << EOL
+//			<< TAB << "parameter:";
+//		tableOfParam->AVM_DEBUG_REF_COUNTER(out);
+//		out << EOL;
 //
-//		tableOfParam->toStream(os);
+//		tableOfParam->toStream(out);
 //	}
 
 
 //AVM_IF_DEBUG_ENABLED_AND( hasTableOfRID() )
-//	os << EOL;
+//	out << EOL;
 //
 //	AVM_IF_DEBUG_LEVEL_GT_MEDIUM
-//		os << TAB << "rid:" << EOL_INCR_INDENT;
+//		out << TAB << "rid:" << EOL_INCR_INDENT;
 //		TableOfRuntimeID::const_iterator it = mTableOfRID->begin();
 //		TableOfRuntimeID::const_iterator itEnd = mTableOfRID->end();
 //		for( ; it != itEnd ; ++it )
 //		{
-//			(*it).toStream(os);
+//			(*it).toStream(out);
 //		}
-//		os << DECR_INDENT;
+//		out << DECR_INDENT;
 //	AVM_ELSEIF_DEBUG_LEVEL_GT_LOW
-//		os << TAB2 << "rid = [| ";
+//		out << TAB2 << "rid = [| ";
 //		TableOfRuntimeID::const_iterator it = mTableOfRID->begin();
 //		TableOfRuntimeID::const_iterator itEnd = mTableOfRID->end();
 //		for( ; it != itEnd ; ++it )
 //		{
-//			os << (*it).getOffset() << " ";
+//			out << (*it).getOffset() << " ";
 //		}
-//		os << "|];" << EOL_FLUSH;
+//		out << "|];" << EOL_FLUSH;
 //	AVM_ENDIF_DEBUG_LEVEL_GT_LOW
 //AVM_ENDIF_DEBUG_ENABLED_AND
 
 
 	if( hasLocalRuntimeStack() )
 	{
-		os << EOL_TAB << "local: ";
-		getLocalRuntimes()->AVM_DEBUG_REF_COUNTER(os);
+		out << EOL_TAB << "local: ";
+		getLocalRuntimes()->AVM_DEBUG_REF_COUNTER(out);
 
-		os << EOL_INCR_INDENT;
-		getLocalRuntimes()->toStream(os);
-		os << DECR_INDENT;
+		out << EOL_INCR_INDENT;
+		getLocalRuntimes()->toStream(out);
+		out << DECR_INDENT;
 	}
 
 	if ( getTableOfRuntime().nonempty() )
 	{
-		os << EOL_TAB << "runtime#state:" << EOL_INCR_INDENT;
-		mTableOfRFStateFlags->toStream(*this, os);
+		out << EOL_TAB << "runtime#state:" << EOL_INCR_INDENT;
+		mSmartPtr->mTableOfRFStateFlags->toStream(*this, out);
 
-		os << EOL_DECR_INDENT << TAB << "runtime:" << EOL_INCR_INDENT;
+		out << EOL_DECR_INDENT << TAB << "runtime:" << EOL_INCR_INDENT;
 
-AVM_IF_DEBUG_LEVEL_GTE_MEDIUM
-		TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-		TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-		for( ; it != itEnd ; ++it )
+AVM_IF_DEBUG_LEVEL_GTE_LOW
+		for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 		{
-			(*it)->toStream(this, os);
+			itRF->toStream(*this, out);
 		}
-AVM_ENDIF_DEBUG_LEVEL_GTE_MEDIUM
+AVM_ENDIF_DEBUG_LEVEL_GTE_LOW
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
-	if( mSTATEMENT_QUEUE.nonempty() )
+	if( mSmartPtr->mSTATEMENT_QUEUE.nonempty() )
 	{
-		os << EOL_INCR_INDENT;
-		mSTATEMENT_QUEUE.toStream(os);
-		os << DECR_INDENT;
+		out << EOL_INCR_INDENT;
+		mSmartPtr->mSTATEMENT_QUEUE.toStream(out);
+		out << DECR_INDENT;
 	}
 
-	if( mEXEC_SYNC_POINT != NULL )
+	if( mSmartPtr->mEXEC_SYNC_POINT != nullptr )
 	{
-		os << EOL_INCR_INDENT;
-		mEXEC_SYNC_POINT->toStream(os);
-		os << DECR_INDENT;
+		out << EOL_INCR_INDENT;
+		mSmartPtr->mEXEC_SYNC_POINT->toStream(out);
+		out << DECR_INDENT;
 	}
 
-	os << TAB << "}" << EOL_FLUSH;
+	out << TAB << "}" << EOL_FLUSH;
 }
 
-void ExecutionData::toStreamData(OutStream & os) const
+void ExecutionData::toStreamData(OutStream & out) const
 {
 
-	os << TAB << "ed<data>";
-	AVM_DEBUG_REF_COUNTER(os);
-	os << " {" << EOL;
+	out << TAB << "ed<data>";
+	mSmartPtr->AVM_DEBUG_REF_COUNTER(out);
+	out << " {" << EOL;
 
-	os << TAB2 << "name = \"" << strStateConf() << "\";" << EOL_FLUSH;
+	out << TAB2 << "name = \"" << strStateConf() << "\";" << EOL_FLUSH;
 
 
 	if ( hasRunnableElementTrace() )
 	{
-		os << TAB2 << "fired = " << getRunnableElementTrace().str()
-					<< ";" << EOL_FLUSH;
+		out << TAB2 << "fired = " << getRunnableElementTrace().str()
+			<< ";" << EOL_FLUSH;
 	}
 
 	if ( hasIOElementTrace() )
 	{
-		os << TAB2 << "trace = " << getIOElementTrace().str() << ";" << EOL_FLUSH;
+		out << TAB2 << "trace = " << getIOElementTrace().str() << ";"
+			<< EOL_FLUSH;
 	}
 
-	os << TAB2 << "exec_status = "
-			<< RuntimeDef::strAEES( getAEES() ) << ";" << EOL_FLUSH;
+	out << TAB2 << "exec_status = "
+		<< RuntimeDef::strAEES( getAEES() ) << ";" << EOL_FLUSH;
 
 	if ( hasNodeCondition() && getNodeCondition().isNotEqualTrue() )
 	{
-		os << TAB2 << "nodecondition = "
-				<< getNodeCondition().wrapStr( os.INDENT.tab2Size(18) )
-				<< ";" << EOL_FLUSH;
+		out << TAB2 << "nodecondition = "
+			<< getNodeCondition().wrapStr( out.INDENT.tab2Size(18) )
+			<< ";" << EOL_FLUSH;
 	}
 
 	if ( hasPathCondition() && getPathCondition().isNotEqualTrue() )
 	{
-		os << TAB2 << "pathcondition = "
-				<< getPathCondition().wrapStr( os.INDENT.tab2Size(17) )
-				<< ";" << EOL_FLUSH;
+		out << TAB2 << "pathcondition = "
+			<< getPathCondition().wrapStr( out.INDENT.tab2Size(17) )
+			<< ";" << EOL_FLUSH;
 	}
 
 	if( hasOnInit() )
 	{
-		os << TAB2 << "@init{" << INCR2_INDENT;
-		getOnInit()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL_FLUSH;
+		out << TAB2 << "@init{" << INCR2_INDENT;
+		getOnInit()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL_FLUSH;
 	}
 
 	if( hasOnSchedule() )
 	{
-		os << TAB2 << "@schedule{" << INCR2_INDENT;
-		getOnSchedule()->toStreamRoutine( os );
-		os << DECR2_INDENT_TAB2 << "}" << EOL_FLUSH;
+		out << TAB2 << "@schedule{" << INCR2_INDENT;
+		getOnSchedule()->toStreamRoutine( out );
+		out << DECR2_INDENT_TAB2 << "}" << EOL_FLUSH;
 	}
 
 //	if( hasParam() )
 //	{
-//		os << EOL;
-//		os << TAB << "parameter:" << EOL;
-//		tableOfParam->toStream(os, TAB2, CHAR, EOL);
+//		out << EOL
+//			<< TAB << "parameter:" << EOL;
+//		tableOfParam->toStream(out, TAB2, CHAR, EOL);
 //	}
 
 	if ( getTableOfRuntime().nonempty() )
 	{
-		os << EOL_TAB << "runtime:" << EOL_INCR_INDENT;
+		out << EOL_TAB << "runtime:" << EOL_INCR_INDENT;
 
-		TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-		TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 		{
-			if( (*it)->hasDataTable() )
+			if( itRF->hasDataTable() )
 			{
-				(*it)->toStreamData(this, os);
+				itRF->toStreamData(*this, out);
 			}
 		}
 
-		os << DECR_INDENT;
+		out << DECR_INDENT;
 	}
 
-	if( mSTATEMENT_QUEUE.nonempty() )
+	if( mSmartPtr->mSTATEMENT_QUEUE.nonempty() )
 	{
-		os << EOL_INCR_INDENT;
-		mSTATEMENT_QUEUE.toStream(os);
-		os << DECR_INDENT;
+		out << EOL_INCR_INDENT;
+		mSmartPtr->mSTATEMENT_QUEUE.toStream(out);
+		out << DECR_INDENT;
 	}
 
-	if( mEXEC_SYNC_POINT != NULL )
+	if( mSmartPtr->mEXEC_SYNC_POINT != nullptr )
 	{
-		os << EOL_INCR_INDENT;
-		mEXEC_SYNC_POINT->toStream(os);
-		os << DECR_INDENT;
+		out << EOL_INCR_INDENT;
+		mSmartPtr->mEXEC_SYNC_POINT->toStream(out);
+		out << DECR_INDENT;
 	}
 
-	os << TAB << "}" << EOL_FLUSH;
+	out << TAB << "}" << EOL_FLUSH;
 }
 
-void ExecutionData::toFscn(OutStream & os,
-		const ExecutionData * aPreviousExecData) const
+void ExecutionData::toFscn(OutStream & out,
+		const ExecutionData & aPreviousExecData) const
 {
-//	os << TAB << "SC: " << strStateConfToFscn() << EOL;
+//	out << TAB << "SC: " << strStateConfToFscn() << EOL;
 
-	if( (aPreviousExecData == NULL)
-		|| (aPreviousExecData->getPathCondition()
-			!= getPathCondition()) )
+	if( aPreviousExecData.isNull() ||
+		(aPreviousExecData.getPathCondition() != getPathCondition()) )
 	{
-		os << TAB << "PC: "
-				<< getPathCondition().wrapStr( os.INDENT.tab2Size(4) )
-				<< EOL;
+		out << TAB << "PC: "
+			<< getPathCondition().wrapStr( out.INDENT.tab2Size(4) )
+			<< EOL;
 	}
 
-	if( (aPreviousExecData == NULL)
-		|| (aPreviousExecData->getPathTimedCondition()
-			!= getPathTimedCondition()) )
+	if( aPreviousExecData.isNull() ||
+		(aPreviousExecData.getPathTimedCondition() != getPathTimedCondition()) )
 	{
-		os << TAB << "PtC: "
-				<< getPathTimedCondition().wrapStr( os.INDENT.tab2Size(5) )
-				<< EOL;
+		out << TAB << "PtC: "
+			<< getPathTimedCondition().wrapStr( out.INDENT.tab2Size(5) )
+			<< EOL;
 	}
 
 	// DATA
-	StringOutStream oss( os.INDENT );
+	StringOutStream oss( out.INDENT );
 	oss << INCR_INDENT;
 
-	TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-	TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
+	TableOfRuntimeT::const_iterator it = mSmartPtr->mTableOfRuntime.begin();
+	TableOfRuntimeT::const_iterator itEnd = mSmartPtr->mTableOfRuntime.end();
 
-	if( aPreviousExecData != NULL )
+	if( aPreviousExecData.isnotNull() )
 	{
 		TableOfRuntimeT::const_iterator itPrev =
-				aPreviousExecData->mTableOfRuntime.begin();
+				aPreviousExecData.mSmartPtr->mTableOfRuntime.begin();
 		TableOfRuntimeT::const_iterator itPrevEnd =
-				aPreviousExecData->mTableOfRuntime.end();
-		TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-		TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
+				aPreviousExecData.mSmartPtr->mTableOfRuntime.end();
+		TableOfRuntimeT::const_iterator it = mSmartPtr->mTableOfRuntime.begin();
+		TableOfRuntimeT::const_iterator itEnd = mSmartPtr->mTableOfRuntime.end();
 		for( ; (it != itEnd) && (itPrev != itPrevEnd) ; ++it , ++itPrev )
 		{
 			if( (*it)->hasDataTable() && (*it)->isNTEQ(*itPrev) )
 			{
-				(*it)->toFscnData(oss, this, *itPrev);
+				(*it)->toFscnData(oss, *this, *(*itPrev));
 			}
 		}
 
@@ -895,49 +969,47 @@ void ExecutionData::toFscn(OutStream & os,
 		{
 			if( (*it)->hasDataTable() )
 			{
-				(*it)->toFscnData(oss, this, NULL);
+				(*it)->toFscnData(oss, *this, RuntimeForm::nullref());
 			}
 		}
 	}
 	else
 	{
-		TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-		TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 		{
-			if( (*it)->hasDataTable() )
+			if( itRF->hasDataTable() )
 			{
-				(*it)->toFscnData(oss, this, NULL);
+				itRF->toFscnData(oss, *this, RuntimeForm::nullref());
 			}
 		}
 	}
 
 	if( not oss.str().empty() )
 	{
-		os << TAB << "DATA{" << EOL;
-		os << oss.str();
-		os << TAB << "}" << EOL;
+		out << TAB << "DATA{" << EOL
+			<< oss.str()
+			<< TAB << "}" << EOL;
 	}
 	// END DATA
 
 	// BUFFER
-	StringOutStream osb( os.INDENT );
+	StringOutStream osb( out.INDENT );
 	osb << INCR_INDENT;
 
 	it = getTableOfRuntime().begin();
 	itEnd = getTableOfRuntime().end();
 
-	if( aPreviousExecData != NULL )
+	if( aPreviousExecData.isnotNull() )
 	{
 		TableOfRuntimeT::const_iterator itPrev =
-				aPreviousExecData->getTableOfRuntime().begin();
+				aPreviousExecData.getTableOfRuntime().begin();
 		TableOfRuntimeT::const_iterator itPrevEnd =
-				aPreviousExecData->getTableOfRuntime().end();
+				aPreviousExecData.getTableOfRuntime().end();
 		for( ; (it != itEnd) && (itPrev != itPrevEnd) ; ++it , ++itPrev )
 		{
 			if( (*it)->hasBufferTable() && (*it)->isNTEQ(*itPrev) )
 			{
-				(*it)->toFscnBuffer(osb, this, (*itPrev));
+				(*it)->toFscnBuffer(osb, *this, *(*itPrev));
 			}
 		}
 
@@ -945,83 +1017,44 @@ void ExecutionData::toFscn(OutStream & os,
 		{
 			if( (*it)->hasBufferTable() )
 			{
-				(*it)->toFscnBuffer(osb, this, NULL);
+				(*it)->toFscnBuffer(osb, *this, RuntimeForm::nullref());
 			}
 		}
 	}
 	else
 	{
-		TableOfRuntimeT::const_iterator it = mTableOfRuntime.begin();
-		TableOfRuntimeT::const_iterator itEnd = mTableOfRuntime.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itRF : mSmartPtr->mTableOfRuntime )
 		{
-			if( (*it)->hasBufferTable() )
+			if( itRF->hasBufferTable() )
 			{
-				(*it)->toFscnBuffer(osb, this, NULL);
+				itRF->toFscnBuffer(osb, *this, RuntimeForm::nullref());
 			}
 		}
 	}
 
 	if( not osb.str().empty() )
 	{
-		os << TAB << "BUFFER{" << EOL;
-		os << osb.str();
-		os << TAB << "}" << EOL;
+		out << TAB << "BUFFER{" << EOL
+			<< osb.str()
+			<< TAB << "}" << EOL;
 	}
 	// END BUFFER
 
 
-	if( mSTATEMENT_QUEUE.nonempty() )
+	if( mSmartPtr->mSTATEMENT_QUEUE.nonempty() )
 	{
-		os << TAB << "/*" << EOL;
-		mSTATEMENT_QUEUE.toStream(os);
-		os << TAB << "*/" << EOL;
+		out << TAB << "/*" << EOL;
+		mSmartPtr->mSTATEMENT_QUEUE.toStream(out);
+		out << TAB << "*/" << EOL;
 	}
 
-	if( mEXEC_SYNC_POINT != NULL )
+	if( mSmartPtr->mEXEC_SYNC_POINT != nullptr )
 	{
-		os << TAB << "/*" << EOL;
-		mEXEC_SYNC_POINT->toStream(os);
-		os << TAB << "*/" << EOL;
+		out << TAB << "/*" << EOL;
+		mSmartPtr->mEXEC_SYNC_POINT->toStream(out);
+		out << TAB << "*/" << EOL;
 	}
 }
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-/**
- * DEFAULT NULL
- */
-APExecutionData APExecutionData::REF_NULL;
-
-
-
-/**
- * GETTER - SETTER
- * the Previous ExecutionData
- */
-
-APExecutionData & APExecutionData::getPrevious()
-{
-	return( raw_pointer()->getExecutionContext()->getPreviousExecutionData() );
-}
-
-const APExecutionData & APExecutionData::getPrevious() const
-{
-	return( raw_pointer()->getExecutionContext()->getPreviousExecutionData() );
-}
-
-bool APExecutionData::hasPrevious() const
-{
-	return( raw_pointer()->hasExecutionContext() &&
-			raw_pointer()->getExecutionContext()->hasPrevious() );
-}
-
 
 
 }

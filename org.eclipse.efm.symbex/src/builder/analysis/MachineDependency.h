@@ -35,15 +35,15 @@ class MachineDependency
 
 public:
 
-	static bool computeVariableDependency(ExecutableSystem * anExecSystem);
+	static bool computeVariableDependency(const ExecutableSystem & anExecSystem);
 
 
-	static bool computeVariableDependency(ExecutableForm * anExecutable);
+	static bool computeVariableDependency(const ExecutableForm & anExecutable);
 
 	static bool isVariableDependency(
-			ExecutableForm * anExecutable, AvmCode * aCode);
+			const ExecutableForm & anExecutable, AvmCode * aCode);
 	static bool isVariableDependency(
-			ExecutableForm * anExecutable, const BF & aVar);
+			const ExecutableForm & anExecutable, const BF & aVar);
 
 
 	static bool computeVariableDependency(AvmProgram * aProgram);

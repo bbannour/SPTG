@@ -34,14 +34,14 @@ const BF & BaseAvmProgram::getSymbol(
 		avm_type_specifier_kind_t typeFamily) const
 {
 	const BF & foundSymbol =
-			getAllData().getByFQNameID( aFullyQualifiedNameID );
+			getAllVariables().getByFQNameID( aFullyQualifiedNameID );
 
 	if( foundSymbol.valid() )
 	{
 		return( foundSymbol );
 	}
 
-	return( getDataAlias().getByFQNameID( aFullyQualifiedNameID ) );
+	return( getVariableAlias().getByFQNameID( aFullyQualifiedNameID ) );
 }
 
 
@@ -50,43 +50,43 @@ const BF & BaseAvmProgram::getSymbolByQualifiedNameID(
 		avm_type_specifier_kind_t typeFamily) const
 {
 	const BF & foundSymbol =
-			getAllData().getByQualifiedNameID( aQualifiedNameID );
+			getAllVariables().getByQualifiedNameID( aQualifiedNameID );
 
 	if( foundSymbol.valid() )
 	{
 		return( foundSymbol );
 	}
 
-	return( getDataAlias().getByQualifiedNameID( aQualifiedNameID ) );
+	return( getVariableAlias().getByQualifiedNameID( aQualifiedNameID ) );
 }
 
 
 const BF & BaseAvmProgram::getSymbolByNameID(
 		const std::string & aNameID, avm_type_specifier_kind_t typeFamily) const
 {
-	const BF & foundSymbol = getAllData().getByNameID( aNameID );
+	const BF & foundSymbol = getAllVariables().getByNameID( aNameID );
 
 	if( foundSymbol.valid() )
 	{
 		return( foundSymbol );
 	}
 
-	return( getDataAlias().getByNameID(aNameID) );
+	return( getVariableAlias().getByNameID(aNameID) );
 }
 
 
 const BF & BaseAvmProgram::getSymbolByAstElement(
-		const ObjectElement * astElement,
+		const ObjectElement & astElement,
 		avm_type_specifier_kind_t typeFamily) const
 {
-	const BF & foundSymbol = getAllData().getByAstElement( astElement );
+	const BF & foundSymbol = getAllVariables().getByAstElement( astElement );
 
 	if( foundSymbol.valid() )
 	{
 		return( foundSymbol );
 	}
 
-	return( getDataAlias().getByAstElement( astElement ) );
+	return( getVariableAlias().getByAstElement( astElement ) );
 }
 
 
@@ -98,7 +98,7 @@ const AvmProgram * BaseAvmProgram::getAvmProgramContainer() const
 {
 	BaseAvmProgram * aContainer = getContainer();
 
-	while( (aContainer != NULL) && (not aContainer->is< AvmProgram >()) )
+	while( (aContainer != nullptr) && (not aContainer->is< AvmProgram >()) )
 	{
 		aContainer = aContainer->getContainer();
 	}
@@ -122,7 +122,7 @@ ExecutableForm * BaseAvmProgram::getExecutableContainer() const
 {
 	BaseAvmProgram * aContainer = getContainer();
 
-	while( (aContainer != NULL) && aContainer->isnot< ExecutableForm >() )
+	while( (aContainer != nullptr) && aContainer->isnot< ExecutableForm >() )
 	{
 		aContainer = aContainer->getContainer();
 	}
@@ -142,105 +142,115 @@ ExecutableForm * BaseAvmProgram::getExecutable() const
 }
 
 
+ExecutableForm & BaseAvmProgram::refExecutable() const
+{
+	ExecutableForm * anExecutable = getExecutable();
+
+	return( (anExecutable != nullptr)
+			? (*anExecutable) :ExecutableForm::nullref());
+}
+
+
 /**
  * UPDATE DATA TABLE
- * mBasicData
- * mallData
+ * mBasicVariables
+ * mallVariables
  */
 
-void BaseAvmProgram::updateDataTable()
+void BaseAvmProgram::updateVariableTable()
 {
-	if( getData().empty() )
+	if( getVariables().empty() )
 	{
 		return;
 	}
 
-	TableOfInstanceOfData::raw_iterator itData = mData.begin();
-	TableOfInstanceOfData::raw_iterator endData = mData.end();
-	for( ; itData != endData ; ++itData )
+	TableOfInstanceOfData::raw_iterator itVariable = mVariables.begin();
+	TableOfInstanceOfData::raw_iterator endVariable = mVariables.end();
+	for( ; itVariable != endVariable ; ++itVariable )
 	{
-		if( (itData)->getTypeSpecifier()->hasTypeArrayOrStructure() &&
-			(not (itData)->getModifier().hasNatureReference()) )
+		if( (itVariable)->getTypeSpecifier().hasTypeArrayOrStructure()
+			&& (not (itVariable)->getModifier().hasNatureReference()) )
 		{
 			break;
 		}
 	}
 
-	if( itData == endData )
+	if( itVariable == endVariable )
 	{
-		mBasicData = &mData;
-		mAllData = &mData;
+		mBasicVariables = &mVariables;
+		mAllVariables = &mVariables;
 
 		return;
 	}
 
 
-	if( mBasicData != &mData )
+	if( mBasicVariables != (& mVariables) )
 	{
-		sep::destroy( mBasicData );
+		sep::destroy( mBasicVariables );
 	}
-	if( mAllData != &mData )
+	if( mAllVariables != (& mVariables) )
 	{
-		sep::destroy( mAllData );
+		sep::destroy( mAllVariables );
 	}
 
-//	InstanceOfData * anInstance = getData().last();
+//	InstanceOfData * aVariable = getVariables().last();
 
-	TableOfInstanceOfData tableofAllData;
-	TableOfInstanceOfData tableofBasicData;
-	TableOfSymbol relativeDataPath;
+	TableOfInstanceOfData tableofAllVariables;
+	TableOfInstanceOfData tableofBasicVariables;
+	TableOfSymbol relativeVariablePath;
 
 	// begin() --> it  is typed simple
-	TableOfInstanceOfData::const_iterator it2 = mData.begin();
-	for( ; it2 != itData ; ++it2 )
+	TableOfInstanceOfData::const_iterator it2 = mVariables.begin();
+	for( ; it2 != itVariable ; ++it2 )
 	{
-		tableofAllData.append( (*it2) );
-		tableofBasicData.append( (*it2) );
+		tableofAllVariables.append( (*it2) );
+		tableofBasicVariables.append( (*it2) );
 	}
 
-	BaseTypeSpecifier * aTypeSpecifier = NULL;
-
 	// Analyse for it --> end()
-	for( ; itData != endData ; ++itData )
+	for( ; itVariable != endVariable ; ++itVariable )
 	{
-		tableofAllData.append( (*itData) );
+		tableofAllVariables.append( (*itVariable) );
 
-		aTypeSpecifier = (itData)->referedTypeSpecifier();
+		const BaseTypeSpecifier & aTypeSpecifier =
+				itVariable->referedTypeSpecifier();
 
-		if( (itData)->getModifier().hasNatureReference() )
+		if( (itVariable)->getModifier().hasNatureReference() )
 		{
-			tableofBasicData.append( (*itData) );
+			tableofBasicVariables.append( (*itVariable) );
 		}
-		else if( aTypeSpecifier->hasTypeArrayOrStructure() )
+		else if( aTypeSpecifier.hasTypeArrayOrStructure() )
 		{
-			collectAllData(tableofAllData, tableofBasicData,
-					(itData), relativeDataPath, (itData) );
+			collectAllVariables(tableofAllVariables, tableofBasicVariables,
+					(itVariable), relativeVariablePath, (itVariable) );
 		}
 		else
 		{
-			tableofBasicData.append( (*itData) );
+			tableofBasicVariables.append( (*itVariable) );
 		}
 	}
 
-	mAllData   = new TableOfInstanceOfData(tableofAllData);
-	mBasicData = new TableOfInstanceOfData(tableofBasicData);
+	mAllVariables   = new TableOfInstanceOfData(tableofAllVariables);
+	mBasicVariables = new TableOfInstanceOfData(tableofBasicVariables);
 }
 
 
-void BaseAvmProgram::collectAllData(TableOfInstanceOfData & tableofAllData,
-		TableOfInstanceOfData & tableofBasicData, InstanceOfData * mainInstance,
-		TableOfSymbol & relativeDataPath, InstanceOfData * anInstance)
+void BaseAvmProgram::collectAllVariables(
+		TableOfInstanceOfData & tableofAllVariables,
+		TableOfInstanceOfData & tableofBasicVariables,
+		InstanceOfData * mainVariableInstance,
+		TableOfSymbol & relativeDataPath, InstanceOfData * aVariable)
 {
-	std::string pefixID = anInstance->getNameID();
+	std::string pefixID = aVariable->getNameID();
 	std::ostringstream ossID;
 
-	if( anInstance->getTypeSpecifier()->hasTypeStructureOrChoiceOrUnion() )
+	if( aVariable->getTypeSpecifier().hasTypeStructureOrChoiceOrUnion() )
 	{
-		TableOfSymbol::iterator itField = anInstance->getTypeSpecifier()->
-				to< BaseSymbolTypeSpecifier >()->getSymbolData().begin();
+		TableOfSymbol::const_iterator itField = aVariable->getTypeSpecifier().
+				to< BaseSymbolTypeSpecifier >().getSymbolData().begin();
 
-		TableOfSymbol::iterator it = anInstance->getAttribute()->begin();
-		TableOfSymbol::iterator itEnd = anInstance->getAttribute()->end();
+		TableOfSymbol::iterator it = aVariable->getAttribute()->begin();
+		TableOfSymbol::iterator itEnd = aVariable->getAttribute()->end();
 		for( ; it != itEnd ; ++it , ++itField )
 		{
 			ossID.str( "" );
@@ -249,56 +259,57 @@ void BaseAvmProgram::collectAllData(TableOfInstanceOfData & tableofAllData,
 							(*it).getFullyQualifiedNameID() );
 
 			InstanceOfData * newInstance = new InstanceOfData(
-					IPointerDataNature::POINTER_UFI_OFFSET_NATURE,
-					mainInstance->getContainer(), (*it).rawData());
-			newInstance->setSharedData( mainInstance );
+					IPointerVariableNature::POINTER_UFI_OFFSET_NATURE,
+					mainVariableInstance->getContainer(), (*it).variable());
+			newInstance->setSharedVariable( mainVariableInstance );
 			newInstance->setNameID( ossID.str() );
 			relativeDataPath.append( *itField );
 			newInstance->setDataPath( relativeDataPath );
 
-			newInstance->setAliasTarget( (*it).rawData() );
-			(*it).setAliasTarget( newInstance );
+			newInstance->setAliasTarget( (*it).variable() );
+			(*it).setAliasTarget( * newInstance );
 
-			const BF & saveInstance = tableofAllData.save( newInstance );
-			if( newInstance->getTypeSpecifier()->hasTypeSimpleOrCollection() )
+			const BF & saveInstance = tableofAllVariables.save( newInstance );
+			if( newInstance->getTypeSpecifier().hasTypeSimpleOrCollection() )
 			{
-				tableofBasicData.append( saveInstance );
+				tableofBasicVariables.append( saveInstance );
 			}
 
-			collectAllData(tableofAllData, tableofBasicData , mainInstance,
-					relativeDataPath, (*it).rawData());
+			collectAllVariables(tableofAllVariables,
+					tableofBasicVariables , mainVariableInstance,
+					relativeDataPath, (*it).rawVariable());
 
 			relativeDataPath.pop_last();
 		}
 	}
 
-	else if( anInstance->getTypeSpecifier()->isTypedArray() )
+	else if( aVariable->getTypeSpecifier().isTypedArray() )
 	{
-		TableOfSymbol::iterator it = anInstance->getAttribute()->begin();
-		TableOfSymbol::iterator itEnd = anInstance->getAttribute()->end();
+		TableOfSymbol::iterator it = aVariable->getAttribute()->begin();
+		TableOfSymbol::iterator itEnd = aVariable->getAttribute()->end();
 		for( ; it != itEnd ; ++it )
 		{
 			ossID.str( "" );
 			ossID << pefixID << "[" << (*it).getOffset() << "]";
 
 			InstanceOfData * newInstance = new InstanceOfData(
-					IPointerDataNature::POINTER_UFI_OFFSET_NATURE,
-					mainInstance->getContainer(), (*it).rawData());
-			newInstance->setSharedData( mainInstance );
+					IPointerVariableNature::POINTER_UFI_OFFSET_NATURE,
+					mainVariableInstance->getContainer(), (*it).variable());
+			newInstance->setSharedVariable( mainVariableInstance );
 			newInstance->setNameID( ossID.str() );
 			relativeDataPath.append( *it );
 			newInstance->setDataPath( relativeDataPath );
 
-			(*it).setAliasTarget( newInstance );
+			(*it).setAliasTarget( * newInstance );
 
-			const BF & saveInstance = tableofAllData.save( newInstance );
-			if( newInstance->getTypeSpecifier()->hasTypeSimpleOrCollection() )
+			const BF & saveInstance = tableofAllVariables.save( newInstance );
+			if( newInstance->getTypeSpecifier().hasTypeSimpleOrCollection() )
 			{
-				tableofBasicData.append( saveInstance );
+				tableofBasicVariables.append( saveInstance );
 			}
 
-			collectAllData(tableofAllData, tableofBasicData ,
-					mainInstance, relativeDataPath, (*it).rawData());
+			collectAllVariables(tableofAllVariables, tableofBasicVariables ,
+					mainVariableInstance, relativeDataPath, (*it).rawVariable());
 
 			relativeDataPath.pop_last();
 		}
@@ -316,45 +327,45 @@ void BaseAvmProgram::toStream(OutStream & os) const
 	AVM_DEBUG_REF_COUNTER(os);
 	os << " {" << EOL;
 
-	if( hasDataAlias() )
+	if( hasVariableAlias() )
 	{
 		os << EOL << TAB << "alias:" << EOL_INCR_INDENT;
 
-		getDataAlias().toStream(os);
+		getVariableAlias().toStream(os);
 
 		os << DECR_INDENT;
 	}
 
-	if( hasData() )
+	if( hasVariable() )
 	{
 		os << EOL << TAB << "variable:" << EOL_INCR_INDENT;
 
-		getData().toStream(os);
+		getVariables().toStream(os);
 
 		os << DECR_INDENT;
 
 AVM_IF_DEBUG_FLAG( DATA )
-		if( mAllData != &mData )
+		if( mAllVariables != (& mVariables) )
 		{
 			os << EOL;
 			os << TAB << "variable#all:" << EOL_INCR_INDENT;
 
-			getAllData().toStream(os);
+			getAllVariables().toStream(os);
 
 			os << DECR_INDENT;
 		}
-		if( mBasicData != &mData )
+		if( mBasicVariables != (& mVariables) )
 		{
 			os << EOL;
 			os << TAB << "variable#basic:" << EOL;
 
-			TableOfInstanceOfData::const_raw_iterator itData =
-					getBasicData().begin();
-			TableOfInstanceOfData::const_raw_iterator endData =
-					getBasicData().end();
-			for( ; itData != endData ; ++itData )
+			TableOfInstanceOfData::const_raw_iterator itVariable =
+					getBasicVariables().begin();
+			TableOfInstanceOfData::const_raw_iterator endVariable =
+					getBasicVariables().end();
+			for( ; itVariable != endVariable ; ++itVariable )
 			{
-				os << TAB2 << str_header( *itData ) << ";" << EOL;
+				os << TAB2 << str_header( *itVariable ) << ";" << EOL;
 			}
 		}
 AVM_ENDIF_DEBUG_FLAG( DATA )

@@ -72,25 +72,25 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
 		os << TAB << mQuoteChar << mValue << mQuoteChar;
 		AVM_DEBUG_REF_COUNTER(os);
 		os << EOL_FLUSH;
 	}
 
-	virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		return( OSS() << mQuoteChar << mValue << mQuoteChar );
 	}
 
-	std::string strChar(char aQuote = '\'') const
+	inline std::string strChar(char aQuote = '\'') const
 	{
 		return( OSS() << aQuote << mValue << aQuote );
 	}
 
 	inline virtual std::string strNum(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const override
 	{
 		return( OSS() << mQuoteChar << mValue << mQuoteChar );
 	}

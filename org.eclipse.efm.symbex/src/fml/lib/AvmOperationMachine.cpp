@@ -26,11 +26,11 @@ namespace sep
 {
 
 
-std::map< std::string , Operator * > AvmOperationMachine::theActivityMap;
+std::map< std::string , const Operator * > AvmOperationMachine::theActivityMap;
 
-std::map< std::string , Operator * > AvmOperationMachine::theStatusMap;
+std::map< std::string , const Operator * > AvmOperationMachine::theStatusMap;
 
-std::map< std::string , Operator * > AvmOperationMachine::theOtherMap;
+std::map< std::string , const Operator * > AvmOperationMachine::theOtherMap;
 
 
 
@@ -116,16 +116,16 @@ void AvmOperationMachine::dispose()
 /**
  * GETTER - SETTER
  */
-Operator * AvmOperationMachine::get(const std::string & method)
+const Operator * AvmOperationMachine::get(const std::string & method)
 {
-	Operator * op = NULL;
+	const Operator * op = nullptr;
 
-	if( (op = getActivity(method)) != NULL )
+	if( (op = getActivity(method)) != nullptr )
 	{
 		return( op );
 	}
 
-	if( (op = getStatus(method)) != NULL )
+	if( (op = getStatus(method)) != nullptr )
 	{
 		return( op );
 	}
@@ -134,7 +134,7 @@ Operator * AvmOperationMachine::get(const std::string & method)
 }
 
 
-Operator * AvmOperationMachine::get(const BF & aReceiver,
+const Operator * AvmOperationMachine::get(const BF & aReceiver,
 		const std::string & method)
 {
 	if( aReceiver.is_exactly< Machine >() )

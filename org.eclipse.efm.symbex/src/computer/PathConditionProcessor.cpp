@@ -35,11 +35,16 @@ namespace sep
  * ATTRIBUTE
  */
 // true:> Utilise les SAT-SOLVER pour checker les conditions
-bool PathConditionProcessor::checkPathcondSat = false;
+bool PathConditionProcessor::CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED = false;
+
+bool PathConditionProcessor::STRONGLY_CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED = false;
 
 // false:> Pas de separation sur les OR dans les PCs
-bool PathConditionProcessor::separationOfPcDisjunction = false;
+bool PathConditionProcessor::PATH_CONDIDITON_DISJONCTION_SEPARATION_ENABLED = false;
 
+
+// false:> Pas de separation sur les OR dans les PCs
+bool PathConditionProcessor::NODE_CONDITION_COMPUTATION_ENABLED = false;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +54,7 @@ bool PathConditionProcessor::separationOfPcDisjunction = false;
 bool PathConditionProcessor::isWeakSatisfiable(const BF & aCondition)
 {
 	return( SolverFactory::isWeakSatisfiable(aCondition,
-			PathConditionProcessor::checkPathcondSat) );
+			PathConditionProcessor::CHECK_SATISFIABILITY_WITH_SATSOLVER_ENABLED) );
 }
 
 
@@ -60,13 +65,13 @@ bool PathConditionProcessor::isWeakSatisfiable(const BF & aCondition)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool PathConditionProcessor::setNodeCondition(
-		APExecutionData & apED, const BF & theCondition)
+		ExecutionData & apED, const BF & theCondition)
 {
 	apED.makeWritable();
 
-//	RuntimeForm * aRF = apED.makeWritableRuntimeForm( apED->mRID );
+//	RuntimeForm * aRF = apED.makeWritableRuntimeForm( apED.getRID() );
 
-	apED->setNodeCondition( theCondition );
+	apED.setNodeCondition( theCondition );
 
 //	aRF->setNodeCondition( theCondition );
 
@@ -80,12 +85,12 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 
 bool PathConditionProcessor::addNodeCondition(
-		APExecutionData & apED, const BF & theCondition)
+		ExecutionData & apED, const BF & theCondition)
 {
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "ADD FIRED CONDITION :begin>"
 			<< str_indent( theCondition ) << " with FC:"
-			<< str_indent( apED->getNodeCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getNodeCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 	if( theCondition.isEqualTrue() )
@@ -93,7 +98,7 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 		//!!! NOTHING
 	}
 	else if( theCondition.isEqualFalse() ||
-			apED->getNodeCondition().isEqualFalse() )
+			apED.getNodeCondition().isEqualFalse() )
 	{
 		return( false );
 	}
@@ -101,13 +106,13 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 	{
 		apED.makeWritable();
 
-//		RuntimeForm * aRF = apED.makeWritableRuntimeForm( apED->mRID );
+//		RuntimeForm * aRF = apED.makeWritableRuntimeForm( apED.getRID() );
 
-		if( apED->getNodeCondition().isEqualTrue() )
+		if( apED.getNodeCondition().isEqualTrue() )
 		{
 //			aRF->setNodeCondition( theCondition );
 
-			apED->setNodeCondition( theCondition );
+			apED.setNodeCondition( theCondition );
 
 		}
 		else
@@ -116,15 +121,15 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 //					ExpressionSimplifier::simplif_and(
 //							aRF->getNodeCondition(), theCondition) );
 
-			apED->setNodeCondition(
+			apED.setNodeCondition(
 					ExpressionSimplifier::simplif_and(
-							apED->getNodeCondition(), theCondition) );
+							apED.getNodeCondition(), theCondition) );
 		}
 	}
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "ADD FIRED CONDITION :end>"
-			<< str_indent( apED->getNodeCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getNodeCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 	return( true );
@@ -138,13 +143,13 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 ////////////////////////////////////////////////////////////////////////////////
 
 bool PathConditionProcessor::setNodeTimedCondition(
-		APExecutionData & apED, const BF & theTimedCondition)
+		ExecutionData & apED, const BF & theTimedCondition)
 {
 	apED.makeWritable();
 
-//	RuntimeForm * aRF = apED.makeWritableRuntimeForm( apED->mRID );
+//	RuntimeForm * aRF = apED.makeWritableRuntimeForm( apED.getRID() );
 
-	apED->setNodeTimedCondition( theTimedCondition );
+	apED.setNodeTimedCondition( theTimedCondition );
 
 //	aRF->setNodeTimedCondition( theTimedCondition );
 
@@ -158,12 +163,12 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 
 bool PathConditionProcessor::addNodeTimedCondition(
-		APExecutionData & apED, const BF & theTimedCondition)
+		ExecutionData & apED, const BF & theTimedCondition)
 {
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "ADD FIRED TIMED CONDITION :begin>"
 			<< str_indent( theTimedCondition ) << " with FtC:"
-			<< str_indent( apED->getNodeTimedCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getNodeTimedCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 	if( theTimedCondition.isEqualTrue() )
@@ -171,7 +176,7 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 		//!!! NOTHING
 	}
 	else if( theTimedCondition.isEqualFalse() ||
-			apED->getNodeTimedCondition().isEqualFalse() )
+			apED.getNodeTimedCondition().isEqualFalse() )
 	{
 		return( false );
 	}
@@ -179,13 +184,13 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 	{
 		apED.makeWritable();
 
-//		RuntimeForm * aRF = apED.makeWritableRuntimeForm( apED->mRID );
+//		RuntimeForm * aRF = apED.makeWritableRuntimeForm( apED.getRID() );
 
-		if( apED->getNodeCondition().isEqualTrue() )
+		if( apED.getNodeTimedCondition().isEqualTrue() )
 		{
 //			aRF->setNodeTimedCondition( theTimedCondition );
 
-			apED->setNodeTimedCondition( theTimedCondition );
+			apED.setNodeTimedCondition( theTimedCondition );
 
 		}
 		else
@@ -194,15 +199,15 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 //					ExpressionSimplifier::simplif_and(
 //							aRF->getNodeTimedCondition(), theTimedCondition) );
 
-			apED->setNodeTimedCondition(
+			apED.setNodeTimedCondition(
 					ExpressionSimplifier::simplif_and(
-							apED->getNodeCondition(), theTimedCondition) );
+							apED.getNodeTimedCondition(), theTimedCondition) );
 		}
 	}
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "ADD FIRED TIMED CONDITION :end>"
-			<< str_indent( apED->getNodeTimedCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getNodeTimedCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 	return( true );
@@ -215,17 +220,17 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-bool PathConditionProcessor::addPathCondition(APExecutionData & apED,
+bool PathConditionProcessor::addPathCondition(ExecutionData & apED,
 		const BF & theCondition, bool considerFiredConditon)
 {
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "ADD PATH CONDITION :begin>"
 			<< str_indent( theCondition ) << " with PC:"
-			<< str_indent( apED->getPathCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getPathCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 
-	if( theCondition.isEqualFalse() || apED->getPathCondition().isEqualFalse() )
+	if( theCondition.isEqualFalse() || apED.getPathCondition().isEqualFalse() )
 	{
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << "ADD PATH CONDITION :end> false" << std::endl;
@@ -236,9 +241,9 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 	else if( not theCondition.isEqualTrue() )
 	{
-		BF thePathCondition = ( apED->getPathCondition().isEqualTrue() ) ?
+		BF thePathCondition = ( apED.getPathCondition().isEqualTrue() ) ?
 				theCondition : ExpressionSimplifier::simplif_and(
-						apED->getPathCondition(), theCondition);
+						apED.getPathCondition(), theCondition);
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "ADD PATH CONDITION :isSat?>"
@@ -249,7 +254,9 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 		{
 			apED.makeWritable();
 
-			if( considerFiredConditon && apED->isEnabledNodeCondition() )
+			if( considerFiredConditon
+				&& ( NODE_CONDITION_COMPUTATION_ENABLED
+					|| apED.isEnabledNodeCondition() ) )
 			{
 				if( not addNodeCondition(apED, theCondition) )
 				{
@@ -257,11 +264,11 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 				}
 			}
 
-			apED->setPathCondition( thePathCondition );
+			apED.setPathCondition( thePathCondition );
 		}
 		else
 		{
-//			apED->setPathCondition( ExpressionConstant::BOOLEAN_FALSE );
+//			apED.setPathCondition( ExpressionConstant::BOOLEAN_FALSE );
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << "ADD PATH CONDITION :end> false" << std::endl;
@@ -273,7 +280,7 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "ADD PATH CONDITION :end>"
-			<< str_indent( apED->getPathCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getPathCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 	return( true );
@@ -281,17 +288,17 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 
 bool PathConditionProcessor::appendPathCondition(
-		APExecutionData & apED, BF & theCondition,
-		CollectionOfAPExecutionData & listOfOutputED)
+		ExecutionData & apED, BF & theCondition,
+		CollectionOfExecutionData & listOfOutputED)
 {
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "APPEND PATH CONDITION :begin>"
 			<< str_indent( theCondition ) << " with PC:"
-			<< str_indent( apED->getPathCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getPathCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 
-	if( theCondition.isEqualFalse() || apED->getPathCondition().isEqualFalse() )
+	if( theCondition.isEqualFalse() || apED.getPathCondition().isEqualFalse() )
 	{
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << "APPEND PATH CONDITION : false" << std::endl;
@@ -306,30 +313,28 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "APPEND PATH CONDITION :end>"
-			<< str_indent( apED->getPathCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getPathCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 		return( true );
 	}
 
-	else if( PathConditionProcessor::separationOfPcDisjunction &&
+	else if( PATH_CONDIDITON_DISJONCTION_SEPARATION_ENABLED &&
 			theCondition.is< AvmCode >() &&
-			theCondition.to_ptr< AvmCode >()->isOpCode( AVM_OPCODE_OR ) )
+			theCondition.to< AvmCode >().isOpCode( AVM_OPCODE_OR ) )
 	{
-		APExecutionData newED;
-		avm_size_t count = 0;
+		ExecutionData newED;
+		std::size_t count = 0;
 
-		AvmCode::iterator itEnd = theCondition.to_ptr< AvmCode >()->end();
-		AvmCode::iterator it = theCondition.to_ptr< AvmCode >()->begin();
-
-		if( apED->getPathCondition().isEqualTrue() )
+		if( apED.getPathCondition().isEqualTrue() )
 		{
-			for( ; it != itEnd ; ++it )
+			for( const auto & itOperand :
+				theCondition.to< AvmCode >().getOperands() )
 			{
 				newED = apED;
 				newED.makeWritable();
 
-				if( setCondition(newED, (*it), (*it)) )
+				if( setCondition(newED, itOperand, itOperand) )
 				{
 					listOfOutputED.append( newED );
 					++count;
@@ -341,14 +346,15 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 		{
 			BF thePathCondition;
 
-			for( ; it != itEnd ; ++it )
+			for( const auto & itOperand :
+				theCondition.to< AvmCode >().getOperands() )
 			{
 				newED = apED;
 				newED.makeWritable();
 
 				thePathCondition = ExpressionSimplifier::simplif_and(
-						newED->getPathCondition(), (*it));
-				if( setCondition(newED, (*it), thePathCondition) )
+						newED.getPathCondition(), itOperand);
+				if( setCondition(newED, itOperand, thePathCondition) )
 				{
 					listOfOutputED.append( newED );
 				}
@@ -360,14 +366,14 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 	else
 	{
 		BF thePathCondition;
-		if( apED->getPathCondition().isEqualTrue() )
+		if( apED.getPathCondition().isEqualTrue() )
 		{
 			thePathCondition = theCondition;
 		}
 		else
 		{
 			thePathCondition = ExpressionSimplifier::simplif_and(
-					apED->getPathCondition(), theCondition);
+					apED.getPathCondition(), theCondition);
 		}
 
 		if( setCondition(apED, theCondition, thePathCondition) )
@@ -383,7 +389,7 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 
 bool PathConditionProcessor::setCondition(
-		APExecutionData & apED, const BF & theNodeCondition,
+		ExecutionData & apED, const BF & theNodeCondition,
 		const BF & thePathCondition, bool considerFiredConditon)
 {
 	// Verification de la satisfiabilite des gardes
@@ -392,7 +398,9 @@ bool PathConditionProcessor::setCondition(
 	{
 		apED.makeWritable();
 
-		if( considerFiredConditon && apED->isEnabledNodeCondition() )
+		if( considerFiredConditon
+			&&  ( NODE_CONDITION_COMPUTATION_ENABLED
+				|| apED.isEnabledNodeCondition() ) )
 		{
 			if( not addNodeCondition(apED, theNodeCondition) )
 			{
@@ -400,7 +408,7 @@ bool PathConditionProcessor::setCondition(
 			}
 		}
 
-		apED->setPathCondition( thePathCondition );
+		apED.setPathCondition( thePathCondition );
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "SET PATH CONDITION :end>"
@@ -427,17 +435,17 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 ////////////////////////////////////////////////////////////////////////////////
 
 bool PathConditionProcessor::addPathTimedCondition(
-		APExecutionData & apED, const BF & theTimedCondition)
+		ExecutionData & apED, const BF & theTimedCondition)
 {
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "APPEND PATH TIMED CONDITION :begin>"
 			<< str_indent( theTimedCondition ) << " with PC: "
-			<< str_indent( apED->getPathTimedCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getPathTimedCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 
 	if( theTimedCondition.isEqualFalse() ||
-		apED->getPathTimedCondition().isEqualFalse() )
+		apED.getPathTimedCondition().isEqualFalse() )
 	{
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << "APPEND PATH TIMED CONDITION :end> false" << std::endl;
@@ -450,7 +458,8 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 	{
 		apED.makeWritable();
 
-		if( apED->isEnabledNodeCondition() )
+		if( NODE_CONDITION_COMPUTATION_ENABLED
+			|| apED.isEnabledNodeCondition() )
 		{
 			if( not addNodeTimedCondition(apED, theTimedCondition) )
 			{
@@ -458,19 +467,19 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 			}
 		}
 
-		if( apED->getPathTimedCondition().isEqualTrue() )
+		if( apED.getPathTimedCondition().isEqualTrue() )
 		{
-			apED->setPathTimedCondition( theTimedCondition );
+			apED.setPathTimedCondition( theTimedCondition );
 		}
 		else
 		{
-			apED->setPathTimedCondition( ExpressionSimplifier::simplif_and(
-					apED->getPathTimedCondition(), theTimedCondition) );
+			apED.setPathTimedCondition( ExpressionSimplifier::simplif_and(
+					apED.getPathTimedCondition(), theTimedCondition) );
 		}
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "APPEND PATH TIMED CONDITION :end>"
-			<< str_indent( apED->getPathTimedCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getPathTimedCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 	}
 
@@ -479,11 +488,11 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 
 bool PathConditionProcessor::appendPathTimedCondition(
-		APExecutionData & apED, BF & theTimedCondition,
-		CollectionOfAPExecutionData & listOfOutputED)
+		ExecutionData & apED, BF & theTimedCondition,
+		CollectionOfExecutionData & listOfOutputED)
 {
 	if( theTimedCondition.isEqualFalse() ||
-			apED->getPathTimedCondition().isEqualFalse() )
+			apED.getPathTimedCondition().isEqualFalse() )
 	{
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << "APPEND PATH TIMED CONDITION : false" << std::endl;
@@ -498,30 +507,28 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "APPEND PATH TIMED CONDITION :"
-			<< str_indent( apED->getPathTimedCondition() ) << END_WRAP_EOL;
+			<< str_indent( apED.getPathTimedCondition() ) << END_WRAP_EOL;
 AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 
 		return( true );
 	}
 
-	else if( PathConditionProcessor::separationOfPcDisjunction &&
+	else if( PATH_CONDIDITON_DISJONCTION_SEPARATION_ENABLED &&
 			theTimedCondition.is< AvmCode >() &&
-			theTimedCondition.to_ptr< AvmCode >()->isOpCode( AVM_OPCODE_OR ) )
+			theTimedCondition.to< AvmCode >().isOpCode( AVM_OPCODE_OR ) )
 	{
-		APExecutionData newED;
-		avm_size_t count = 0;
+		ExecutionData newED;
+		std::size_t count = 0;
 
-		AvmCode::iterator itEnd = theTimedCondition.to_ptr< AvmCode >()->end();
-		AvmCode::iterator it = theTimedCondition.to_ptr< AvmCode >()->begin();
-
-		if( apED->getPathTimedCondition().isEqualTrue() )
+		if( apED.getPathTimedCondition().isEqualTrue() )
 		{
-			for( ; it != itEnd ; ++it )
+			for( const auto & itOperand :
+				theTimedCondition.to< AvmCode >().getOperands() )
 			{
 				newED = apED;
 				newED.makeWritable();
 
-				if( setTimedCondition(newED, (*it), (*it)) )
+				if( setTimedCondition(newED, itOperand, itOperand) )
 				{
 					listOfOutputED.append( newED );
 					++count;
@@ -533,14 +540,15 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 		{
 			BF thePathTimedCondition;
 
-			for( ; it != itEnd ; ++it )
+			for( const auto & itOperand :
+				theTimedCondition.to< AvmCode >().getOperands() )
 			{
 				newED = apED;
 				newED.makeWritable();
 
 				thePathTimedCondition = ExpressionSimplifier::simplif_and(
-						newED->getPathTimedCondition(), (*it));
-				if( setTimedCondition(newED, (*it), thePathTimedCondition) )
+						newED.getPathTimedCondition(), itOperand);
+				if( setTimedCondition(newED, itOperand, thePathTimedCondition) )
 				{
 					listOfOutputED.append( newED );
 				}
@@ -552,14 +560,14 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 	else
 	{
 		BF thePathTimedCondition;
-		if( apED->getPathTimedCondition().isEqualTrue() )
+		if( apED.getPathTimedCondition().isEqualTrue() )
 		{
 			thePathTimedCondition = theTimedCondition;
 		}
 		else
 		{
 			thePathTimedCondition = ExpressionSimplifier::simplif_and(
-					apED->getPathTimedCondition(), theTimedCondition);
+					apED.getPathTimedCondition(), theTimedCondition);
 		}
 
 		if( setTimedCondition(apED, theTimedCondition, thePathTimedCondition) )
@@ -574,17 +582,18 @@ AVM_ENDIF_DEBUG_FLAG( TEST_DECISION )
 }
 
 
-bool PathConditionProcessor::setTimedCondition(APExecutionData & apED,
+bool PathConditionProcessor::setTimedCondition(ExecutionData & apED,
 		const BF & theNodeTimedCondition, const BF & thePathTimedCondition)
 {
 	// Verification de la satisfiabilite des gardes
 	// compte tenu du parametrage dans favm
 	if( PathConditionProcessor::isWeakSatisfiable(
-			apED->andPathTimedCondition(thePathTimedCondition)) )
+			apED.andPathTimedCondition(thePathTimedCondition)) )
 	{
 		apED.makeWritable();
 
-		if( apED->isEnabledNodeCondition() )
+		if( NODE_CONDITION_COMPUTATION_ENABLED
+			|| apED.isEnabledNodeCondition() )
 		{
 			if( not addNodeTimedCondition(apED, theNodeTimedCondition) )
 			{
@@ -592,7 +601,7 @@ bool PathConditionProcessor::setTimedCondition(APExecutionData & apED,
 			}
 		}
 
-		apED->setPathTimedCondition( thePathTimedCondition );
+		apED.setPathTimedCondition( thePathTimedCondition );
 
 AVM_IF_DEBUG_FLAG( TEST_DECISION )
 	AVM_OS_TRACE << DEFAULT_WRAP_DATA << "SET PATH TIMED CONDITION :"

@@ -21,7 +21,6 @@
 #include <fml/common/BehavioralElement.h>
 #include <fml/common/SpecifierElement.h>
 
-#include <common/AvmPointer.h>
 #include <common/BF.h>
 
 #include <collection/BFContainer.h>
@@ -40,11 +39,17 @@ namespace sep
 {
 
 class BehavioralPart;
+
 class CompositePart;
+
 class InstanceSpecifierPart;
 class InteractionPart;
+
 class ModelOfComputationPart;
+
 class PropertyPart;
+
+class Transition;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,19 +65,11 @@ class Machine :
 		public MachineQuery,
 		public BehavioralElement,
 		public SpecifierImpl,
+		AVM_INJECT_STATIC_NULL_REFERENCE( Machine ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( Machine )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( Machine )
-
-
-public:
-	/**
-	 * TYPEDEF
-	 */
-	typedef TableOfBF_T< ObjectElement >  TableOfOwnedElement;
-
-	typedef TableOfOwnedElement::const_raw_iterator  const_owned_iterator;
 
 protected:
 	/**
@@ -80,9 +77,7 @@ protected:
 	 */
 	ListOfString mGroupId;
 
-	TableOfOwnedElement mOwnedElements;
 	Specifier mOwnedElementsSpecifier;
-
 
 	BF mModel;
 
@@ -110,10 +105,10 @@ public:
 	 * CONSTRUCTOR
 	 * Instance
 	 */
-	Machine(Machine * aContainer, const std::string & aNameID,
+	Machine(Machine & aContainer, const std::string & aNameID,
 			const Specifier & aMocSpecifier, const BF & model,
-			avm_size_t anInitialInstanceCount = 1,
-			avm_size_t aMaximalInstanceCount = AVM_NUMERIC_MAX_SIZE_T);
+			std::size_t anInitialInstanceCount = 1,
+			std::size_t aMaximalInstanceCount = AVM_NUMERIC_MAX_SIZE_T);
 
 	/**
 	 * CONSTRUCTOR
@@ -130,11 +125,27 @@ public:
 	 */
 	virtual ~Machine();
 
+
+	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static Machine & nullref()
+	{
+		static Machine _NULL_(nullptr, "$null<Machine>",
+				Specifier::OBJECT_NULL_SPECIFIER );
+		_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+		_NULL_.setSpecifier( Specifier::OBJECT_NULL_SPECIFIER );
+
+		return( _NULL_ );
+	}
+
+
 	/**
 	 * API
 	 * MachineQuery
 	 */
-	inline virtual const Machine * thisMachine() const
+	inline virtual const Machine * thisMachine() const override
 	{
 		return( this );
 	}
@@ -179,7 +190,7 @@ public:
 		return( new Machine(aContainer, aNameID, aMocSpecifier) );
 	}
 
-	inline static Machine * newPseudotate(Machine * aContainer,
+	inline static Machine * newPseudostate(Machine * aContainer,
 			const std::string & aNameID, Specifier aMocSpecifier)
 	{
 		if( aMocSpecifier.noneDesignKind() )
@@ -202,6 +213,7 @@ public:
 		return( new Machine(aContainer, aNameID,
 				aMocSpecifier.setComponentStatemachine() ) );
 	}
+  
 
 
 	/**
@@ -210,14 +222,14 @@ public:
 	 */
 	static Machine * newInstance(Machine * aContainer,
 			const std::string & aNameID, const BF & aModel,
-			avm_size_t anInitialInstanceCount = 1,
-			avm_size_t aMaximalInstanceCount = AVM_NUMERIC_MAX_SIZE_T)
+			std::size_t anInitialInstanceCount = 1,
+			std::size_t aMaximalInstanceCount = AVM_NUMERIC_MAX_SIZE_T)
 	{
 		Specifier aSpecifier(
 				Specifier::COMPONENT_EXECUTABLE_KIND,
 				Specifier::DESIGN_INSTANCE_STATIC_KIND);
 
-		return( new Machine(aContainer, aNameID, aSpecifier, aModel,
+		return( new Machine((* aContainer), aNameID, aSpecifier, aModel,
 				anInitialInstanceCount, aMaximalInstanceCount) );
 	}
 
@@ -241,7 +253,7 @@ public:
 	inline static Machine * newProcedureInstance(Machine * aContainer,
 			const std::string & aNameID, const BF & aModel)
 	{
-		return( new Machine(aContainer, aNameID,
+		return( new Machine((* aContainer), aNameID,
 				Specifier::EXECUTABLE_PROCEDURE_INSTANCE_STATIC_SPECIFIER,
 				aModel) );
 	}
@@ -249,20 +261,26 @@ public:
 
 	/**
 	 * GETTER
+	 * EXECUTABLE MACHINE COUNT
+	 */
+	std::size_t getExecutableMachineCount() const;
+
+
+	/**
+	 * GETTER
 	 * the machine container
 	 * LC[R]A
 	 */
-	inline virtual Machine * getContainerMachine() const
+	inline virtual Machine * getContainerMachine() const override
 	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-			hasContainer() && getContainer()->is< Machine >() )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( isContainerMachine() )
 				<< "Invalid << Machine Container >> Type <"
 				<< (hasContainer() ?
-						getContainer()->classKindName() : "null<container>")
+						getContainer()->classKindName() : "$null<container>")
 				<< "> Cast !!!"
 				<< SEND_EXIT;
 
-		return( getContainer()->to< Machine >() );
+		return( getContainer()->to_ptr< Machine >() );
 	}
 
 	const Machine * LCA(const Machine * aMachine) const;
@@ -275,43 +293,15 @@ public:
 
 	/**
 	 * GETTER - DISPATCH - SAVE
-	 * mOwnedElements
 	 */
-	inline const TableOfOwnedElement & getOwnedElements() const
+	inline const BF & saveOwnedElement(PropertyElement * ptrElement)
 	{
-		return( mOwnedElements );
+		return( mPropertyDeclaration.saveOwnedElement( ptrElement ) );
 	}
 
-	void dispatchOwnedElement(const BF & anElement);
+	const BF & saveOwnedElement(Machine * ptrElement);
 
-	inline const BF & saveOwnedElement(ObjectElement * ptrElement)
-	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( ptrElement )
-				<< "Executable Machine owned element !!!"
-				<< SEND_EXIT;
-
-		ptrElement->setOffset( mOwnedElements.size() );
-
-		mOwnedElements.append( INCR_BF( ptrElement ) );
-
-		dispatchOwnedElement( mOwnedElements.last() );
-
-		return( mOwnedElements.last() );
-	}
-
-
-	/**
-	 * [ CONST ] ITERATOR
-	 */
-	inline const_owned_iterator owned_begin() const
-	{
-		return( mOwnedElements.begin() );
-	}
-
-	inline const_owned_iterator owned_end() const
-	{
-		return( mOwnedElements.end() );
-	}
+	const BF & saveOwnedElement(BehavioralElement * ptrElement);
 
 
 	/**
@@ -343,6 +333,11 @@ public:
 		return( mModel );
 	}
 
+	inline BF & getType()
+	{
+		return( mModel );
+	}
+
 	inline bool hasType() const
 	{
 		return( mModel.valid() );
@@ -351,7 +346,7 @@ public:
 	inline std::string strType() const
 	{
 		return( mModel.is< Machine >() ?
-				mModel.to_ptr< Machine >()->getFullyQualifiedNameID() :
+				mModel.to< Machine >().getFullyQualifiedNameID() :
 				mModel.str() );
 	}
 
@@ -369,7 +364,7 @@ public:
 		else //if( isDesignInstance() )
 		{
 			return( mModel.is< Machine >() ?
-					mModel.to_ptr< Machine >() : NULL );
+					mModel.to_ptr< Machine >() : nullptr );
 		}
 	}
 
@@ -385,11 +380,11 @@ public:
 	  * GETTER - TEST
 	 * MachineMocKindImpl
 	 */
-	inline bool isFamilyMachineComposite() const
+	inline bool isFamilyComponentComposite() const
 	{
 		return( getSpecifier().isFamilyComponentComposite()
-				|| ( mModel.valid() && mModel.is_exactly< Machine >()
-					&& mModel.to_ptr< Machine >()->isFamilyMachineComposite() ) );
+				|| (mModel.valid() && mModel.is_exactly< Machine >()
+					&& mModel.to< Machine >().isFamilyComponentComposite()) );
 	}
 
 
@@ -399,9 +394,11 @@ public:
 	 */
 	const TableOfVariable & getVariableParameters() const;
 
-	const BF & getVariableParameter(avm_size_t offset) const;
+	TableOfVariable & getVariableParameters();
 
-	avm_size_t getVariableParametersCount() const;
+	const BF & getVariableParameter(std::size_t offset) const;
+
+	std::size_t getVariableParametersCount() const;
 
 	avm_offset_t getVariableParameterOffset(const std::string & aNameID) const;
 
@@ -417,7 +414,9 @@ public:
 	 */
 	const TableOfVariable & getVariableReturns() const;
 
-	const BF & getVariableReturn(avm_size_t offset) const;
+	TableOfVariable & getVariableReturns();
+
+	const BF & getVariableReturn(std::size_t offset) const;
 
 	avm_offset_t getVariableReturnsCount() const;
 
@@ -448,7 +447,7 @@ public:
 	 * GETTER - SETTER
 	 * mPropertyPart
 	 */
-	inline virtual const PropertyPart & getPropertyPart() const
+	inline virtual const PropertyPart & getPropertyPart() const override
 	{
 		return( mPropertyDeclaration );
 	}
@@ -462,6 +461,72 @@ public:
 	bool hasProperty() const;
 
 	bool hasPortSignal() const;
+
+	/**
+	 * GETTER
+	 * Time Variable
+	 */
+	inline Variable * getTimeVariable() const
+	{
+		for( const Machine * machine = this ; (machine != nullptr) ;
+				machine = machine->getContainerMachine() )
+		{
+			if( machine->mPropertyDeclaration.hasTimeVariable() )
+			{
+				return( machine->mPropertyDeclaration.getTimeVariable() );
+			}
+		}
+
+		return( nullptr );
+	}
+
+	inline const BF & exprTimeVariable() const
+	{
+		for( const Machine * machine = this ; (machine != nullptr) ;
+				machine = machine->getContainerMachine() )
+		{
+			if( machine->getPropertyPart().hasTimeVariable() )
+			{
+				return( machine->mPropertyDeclaration.exprTimeVariable() );
+			}
+		}
+
+		return( BF::REF_NULL );
+	}
+
+
+	/**
+	 * GETTER
+	 * Delta Time Variable
+	 */
+	inline Variable * getDeltaTimeVariable() const
+	{
+		for( const Machine * machine = this ; (machine != nullptr) ;
+				machine = machine->getContainerMachine() )
+		{
+			if( machine->mPropertyDeclaration.hasDeltaTimeVariable() )
+			{
+				return( machine->mPropertyDeclaration.getDeltaTimeVariable() );
+			}
+		}
+
+		return( nullptr );
+	}
+
+
+	inline const BF & exprDeltaTimeVariable() const
+	{
+		for( const Machine * machine = this ; (machine != nullptr) ;
+				machine = machine->getContainerMachine() )
+		{
+			if( machine->mPropertyDeclaration.hasDeltaTimeVariable() )
+			{
+				return( machine->mPropertyDeclaration.exprDeltaTimeVariable() );
+			}
+		}
+
+		return( BF::REF_NULL );
+	}
 
 
 	/**
@@ -501,7 +566,7 @@ public:
 
 	inline bool hasModelOfComputation() const
 	{
-		return( mModelOfComputation != NULL );
+		return( mModelOfComputation != nullptr );
 	}
 
 
@@ -509,7 +574,7 @@ public:
 	 * GETTER - SETTER
 	 * mCompositeSpecification
 	 */
-	inline virtual const CompositePart * getCompositePart() const
+	inline virtual const CompositePart * getCompositePart() const override
 	{
 		return( mCompositeSpecification );
 	}
@@ -521,9 +586,9 @@ public:
 
 	CompositePart * getUniqCompositePart();
 
-	inline bool hasCompositePart() const
+	inline bool hasCompositePart() const override
 	{
-		return( mCompositeSpecification != NULL );
+		return( mCompositeSpecification != nullptr );
 	}
 
 	/**
@@ -531,8 +596,6 @@ public:
 	 * mCompositeSpecification->mProcedures
 	 */
 	bool hasProcedure() const;
-
-	void saveProcedure(Machine * aProcedure);
 
 	/**
 	 * GETTER - SETTER
@@ -545,9 +608,6 @@ public:
 	 * mCompositeSpecification->mMachines
 	 */
 	bool hasMachine() const;
-
-	void saveMachine(Machine * aMachine);
-
 
 	/**
 	 * GETTER - SETTER
@@ -562,7 +622,7 @@ public:
 
 	inline bool hasInteraction() const
 	{
-		return( mInteractionSpecification != NULL );
+		return( mInteractionSpecification != nullptr );
 	}
 
 
@@ -572,16 +632,15 @@ public:
 	 */
 	BehavioralPart * getUniqBehaviorPart();
 
-	inline virtual BehavioralPart * getBehaviorPart() const
+	inline virtual BehavioralPart * getBehaviorPart() const override
 	{
 		return( mBehavioralSpecification );
 	}
 
-	inline virtual bool hasBehaviorPart() const
+	inline virtual bool hasBehaviorPart() const override
 	{
-		return( mBehavioralSpecification != NULL );
+		return( mBehavioralSpecification != nullptr );
 	}
-
 
 	inline BehavioralPart * getBehavior() const
 	{
@@ -590,18 +649,22 @@ public:
 
 	inline bool hasBehavior() const
 	{
-		return( (mBehavioralSpecification != NULL)
+		return( (mBehavioralSpecification != nullptr)
 				/*&& mBehavioralSpecification->nonempty()*/ );
 	}
 
 	inline bool noBehavior() const
 	{
-		return( (mBehavioralSpecification == NULL)
+		return( (mBehavioralSpecification == nullptr)
 				/*|| mBehavioralSpecification->empty()*/ );
 	}
 
 
+	bool hasOwnedBehavior() const;
+
 	bool hasRunnableBehavior() const;
+
+	bool hasOnInitMachine() const;
 
 	bool hasOnEnable() const;
 
@@ -635,7 +698,7 @@ public:
 
 	inline bool hasInstanceSpecifier() const
 	{
-		return( mInstanceSpecifier != NULL );
+		return( mInstanceSpecifier != nullptr );
 	}
 
 	/**
@@ -650,13 +713,16 @@ public:
 	/**
 	 * Serialization
 	 */
-	void header(OutStream & os) const;
+	void header(OutStream & out) const;
 
-	virtual void strHeader(OutStream & os) const;
+	virtual void strHeader(OutStream & out) const override;
 
-	virtual void toStream(OutStream & os) const;
+	void headerDebug(OutStream & out) const;
+
+	virtual void toStream(OutStream & out) const override;
 
 };
+
 
 
 }

@@ -14,7 +14,6 @@
 #define FML_EXPRESSION_BUILTIN_H_
 
 #include <common/Element.h>
-#include <common/AvmPointer.h>
 
 
 namespace sep
@@ -71,7 +70,7 @@ public:
 	/**
 	 * SERIALIZATION
 	 */
-	virtual void toStream(OutStream & os) const = 0;
+	virtual void toStream(OutStream & os) const override = 0;
 
 protected:
 	/**

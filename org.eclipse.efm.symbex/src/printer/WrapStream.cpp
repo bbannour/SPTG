@@ -30,27 +30,23 @@ namespace sep {
 WrapData DEFAULT_WRAP_DATA( 80, 0, 4, "\n\t" );
 
 
-bool WrapData::configure(WObject * wfParameterObject)
+bool WrapData::configure(const WObject * wfParameterObject)
 {
 	if( wfParameterObject != WObject::_NULL_ )
 	{
-		DEFAULT_WRAP_DATA.TAB_WIDTH =
-				Query::getRegexWPropertyPosSizeT(wfParameterObject,
-					CONS_WID3("char", "tab", "width"),
-					DEFAULT_WRAP_DATA.TAB_WIDTH);
+		TAB_WIDTH = Query::getRegexWPropertyPosSizeT(wfParameterObject,
+				CONS_WID3("char", "tab", "width"),
+				DEFAULT_WRAP_DATA.TAB_WIDTH);
 
-		DEFAULT_WRAP_DATA.LINE_WIDTH =
-				Query::getRegexWPropertyPosSizeT(wfParameterObject,
-					CONS_WID3("line", "wrap", "width"),
-					DEFAULT_WRAP_DATA.LINE_WIDTH);
+		LINE_WIDTH = Query::getRegexWPropertyPosSizeT(wfParameterObject,
+				CONS_WID3("line", "wrap", "width"),
+				DEFAULT_WRAP_DATA.LINE_WIDTH);
 
-		DEFAULT_WRAP_DATA.SEPARATOR =
-				Query::getRegexWPropertyString(wfParameterObject,
-					CONS_WID3("line", "wrap", "separator"),
-					DEFAULT_WRAP_DATA.SEPARATOR);
+		SEPARATOR = Query::getRegexWPropertyString(wfParameterObject,
+				CONS_WID3("line", "wrap", "separator"),
+				DEFAULT_WRAP_DATA.SEPARATOR);
 
-		StringTools::replaceAll(DEFAULT_WRAP_DATA.SEPARATOR, "\\t" , "\t");
-		StringTools::replaceAll(DEFAULT_WRAP_DATA.SEPARATOR, "\\n" , "\n");
+		StringTools::replaceAllEscapeSequences(DEFAULT_WRAP_DATA.SEPARATOR);
 	}
 
 	return( true );

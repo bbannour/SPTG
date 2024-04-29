@@ -20,7 +20,8 @@
 
 #include <common/BF.h>
 
-#include <collection/Typedef.h>
+#include <collection/Bitset.h>
+#include <collection/Vector.h>
 
 #include <fml/executable/InstanceOfData.h>
 
@@ -38,7 +39,11 @@ namespace sep
 
 class Configuration;
 
-
+/**
+ * if 'array_else_vector' is true
+ *  then using ARRAY   for element of cache
+ *  else using VECTOR  for element of cache
+ */
 template< class VarDecl_T , class Sort_T , class Expr_T , bool array_else_vector >
 class SmtSolverTraits  :  public SatSolver
 {
@@ -49,7 +54,11 @@ protected:
 	 **/
 	TableOfInstanceOfData  mTableOfParameterInstance;
 	Vector< VarDecl_T >    mTableOfParameterDecl;
+
 	Vector< Expr_T    >    mTableOfParameterExpr;
+	Bitset                 mBitsetOfConstrainedParameter;
+	Bitset                 mBitsetOfPositiveParameter;
+	Bitset                 mBitsetOfStrictlyPositiveParameter;
 
 	Vector< VarDecl_T >    mTableOfVariableDecl;
 	Vector< Expr_T    >    mTableOfVariableExpr;
@@ -67,7 +76,11 @@ public:
 	: SatSolver(),
 	mTableOfParameterInstance( ),
 	mTableOfParameterDecl( ),
+
 	mTableOfParameterExpr( ),
+	mBitsetOfConstrainedParameter( ),
+	mBitsetOfPositiveParameter( ),
+	mBitsetOfStrictlyPositiveParameter( ),
 
 	mTableOfVariableDecl( ),
 	mTableOfVariableExpr( ),
@@ -128,10 +141,16 @@ public:
 		return( true );
 	}
 
+
 };
 
 
-
+/**
+ * if 'need_type_cst_decl' is true
+ *  then declare Types for BOOL, INT, RAT, REAL, ...
+ *   and Constants for TRUE, FALE, ZERO, ONE, ...
+ *  else using nop
+ */
 template< class VarDecl_T , class Sort_T , class Expr_T ,
 		bool array_else_vector , bool need_type_cst_decl >
 class SmtSolver;
@@ -151,6 +170,36 @@ protected:
 			array_else_vector , true >  base_this_type;
 
 
+protected:
+	/**
+	 * ATTRIBUTES
+	 **/
+	Sort_T SMT_TYPE_BOOL;
+
+	Sort_T SMT_TYPE_ENUM;
+
+	Sort_T SMT_TYPE_UINTEGER;
+	Sort_T SMT_TYPE_INTEGER;
+
+	Sort_T SMT_TYPE_BV32;
+	Sort_T SMT_TYPE_BV64;
+
+	Sort_T SMT_TYPE_URATIONAL;
+	Sort_T SMT_TYPE_RATIONAL;
+
+	Sort_T SMT_TYPE_UREAL;
+	Sort_T SMT_TYPE_REAL;
+
+	Sort_T SMT_TYPE_NUMBER;
+
+	Sort_T SMT_TYPE_STRING;
+
+	Expr_T SMT_CST_BOOL_TRUE;
+	Expr_T SMT_CST_BOOL_FALSE;
+
+	Expr_T SMT_CST_INT_ZERO;
+	Expr_T SMT_CST_INT_ONE;
+
 public:
 	/**
 	* CONSTRUCTOR
@@ -160,11 +209,18 @@ public:
 	: SmtSolverTraits< VarDecl_T , Sort_T , Expr_T , array_else_vector >( ),
 
 	SMT_TYPE_BOOL( nullSort ),
-	SMT_TYPE_NAT ( nullSort ),
-	SMT_TYPE_INT ( nullSort ),
+
+	SMT_TYPE_UINTEGER( nullSort ),
+	SMT_TYPE_INTEGER ( nullSort ),
+
 	SMT_TYPE_BV32( nullSort ),
 	SMT_TYPE_BV64( nullSort ),
-	SMT_TYPE_REAL( nullSort ),
+
+	SMT_TYPE_URATIONAL( nullSort ),
+	SMT_TYPE_RATIONAL ( nullSort ),
+
+	SMT_TYPE_UREAL( nullSort ),
+	SMT_TYPE_REAL ( nullSort ),
 
 	SMT_TYPE_NUMBER( nullSort ),
 
@@ -187,28 +243,6 @@ public:
 	{
 		//!!! NOTHING
 	}
-
-
-protected:
-	/**
-	 * ATTRIBUTES
-	 **/
-	Sort_T SMT_TYPE_BOOL;
-	Sort_T SMT_TYPE_NAT;
-	Sort_T SMT_TYPE_INT;
-	Sort_T SMT_TYPE_BV32;
-	Sort_T SMT_TYPE_BV64;
-	Sort_T SMT_TYPE_REAL;
-
-	Sort_T SMT_TYPE_NUMBER;
-
-	Sort_T SMT_TYPE_STRING;
-
-	Expr_T SMT_CST_BOOL_TRUE;
-	Expr_T SMT_CST_BOOL_FALSE;
-
-	Expr_T SMT_CST_INT_ZERO;
-	Expr_T SMT_CST_INT_ONE;
 
 
 protected:
@@ -238,12 +272,12 @@ protected:
 		count( aCount ),
 		idx( 0 )
 		{
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 			AVM_OS_TRACE << "new _ARGS_DATA_ as array  :>"
 					<< " capacity = " << std::setw(4) << capacity
 					<< " : count = " << std::setw(4) << count
-					<< " @" << avm_address_t( this ) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+					<< " @" << std::intptr_t( this ) << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 		}
 
 		virtual ~_ARGS_DATA_TRAITS_()
@@ -261,7 +295,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 		{
 //			for( idx = 0 ; idx < count ; ++idx )
 //			{
-//				table[ idx ] = NULL;
+//				table[ idx ] = nullptr;
 //			}
 			//!!! NOTHING
 		}
@@ -291,12 +325,12 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 		count( aCount ),
 		idx( 0 )
 		{
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 			AVM_OS_TRACE << "new _ARGS_DATA_ as array  :>"
 					<< " capacity = " << std::setw(4) << capacity
 					<< " : count = " << std::setw(4) << count
-					<< " @" << avm_address_t( this ) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+					<< " @" << std::intptr_t( this ) << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 		}
 
 		virtual ~_ARGS_DATA_TRAITS_()
@@ -316,7 +350,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 						<< " capacity = " << capacity
 						<< " vector<" << table.capacity()
 						<< "> : count = " << count
-						<< " @" << avm_address_t( this ) << std::endl;
+						<< " @" << std::intptr_t( this ) << std::endl;
 			}
 //AVM_ENDIF_DEBUG_LEVEL_FLAG_AND( HIGH , SMT_SOLVING )
 		}
@@ -337,11 +371,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 
 	inline static ARGS_DATA * newARGS( std::size_t count )
 	{
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 		AVM_OS_TRACE << "newARGS :> count = " << std::setw(4) << count;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 
-		ARGS_DATA * arg = NULL;
+		ARGS_DATA * arg = nullptr;
 //		if( ARG_CACHE.populated() )
 //		{
 //			if( ARG_CACHE.nonempty() &&
@@ -368,16 +402,16 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 			arg->count = count;
 			arg->idx = 0;
 
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
-			AVM_OS_TRACE << " @" << avm_address_t( arg )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
+			AVM_OS_TRACE << " @" << std::intptr_t( arg )
 					<< " with capacity = " << arg->capacity << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 		}
 		else
 		{
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 			AVM_OS_TRACE << " ==> " << std::flush;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 
 			arg = new ARGS_DATA(count + SMT_ARGS_DATA_INCR_CAPACITY, count);
 		}
@@ -388,11 +422,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
 
 	inline static void freeARGS( ARGS_DATA * & arg )
 	{
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 		AVM_OS_TRACE << "freeARGS:> count = " << std::setw(4) << arg->count
-				<< " @" << avm_address_t( arg )
+				<< " @" << std::intptr_t( arg )
 				<< " with capacity = " << arg->capacity << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 
 		ARG_CACHE.append( arg );
 	}
@@ -422,10 +456,10 @@ public:
 			delete( ARG_CACHE.pop_last() );
 		}
 
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 		AVM_OS_TRACE << "Solver::finalize#cache:> count = " << args_count
 				<< std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , SMT_SOLVING )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , SMT_SOLVING , MEMORY_MANAGEMENT )
 	}
 
 

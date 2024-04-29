@@ -43,12 +43,6 @@ class RuntimeForm;
 class Loader
 {
 
-public:
-	/**
-	 * TYPEDEF
-	 */
-	typedef List< RuntimeID >::const_iterator  const_rid_iterator;
-
 protected:
 	/**
 	 * ATTRIBUTE
@@ -83,9 +77,16 @@ public:
 	 */
 	bool configure();
 
+
 	/**
+	 * GETTER - TESTER
 	 * mOnCreateRoutime
 	 */
+	inline List< RuntimeID > getOnCreateRoutime() const
+	{
+		return( mOnCreateRoutime );
+	}
+
 	inline bool hasOnCreateRoutime() const
 	{
 		return( mOnCreateRoutime.nonempty() );
@@ -96,80 +97,70 @@ public:
 		mOnCreateRoutime.clear();
 	}
 
-	/**
-	 * [ CONST ] ITERATOR
-	 */
-	inline const_rid_iterator on_create_begin() const
-	{
-		return( mOnCreateRoutime.begin() );
-	}
-
-	inline const_rid_iterator on_create_end() const
-	{
-		return( mOnCreateRoutime.end() );
-	}
-
 
 	/**
 	 * RUNNING onCREATE
 	 * mOnCreateRoutime
 	 */
 	bool finalizeRunningOnCreate(
-			const BaseEnvironment & ENV, APExecutionData & anED);
+			const BaseEnvironment & ENV, ExecutionData & anED);
 
 	/**
 	 * UTILS
 	 */
 	BFCode loadSchedulerCode(
-			APExecutionData & anED, const RuntimeForm & aRF,
+			ExecutionData & anED, const RuntimeForm & aRF,
 			const BFCode & aSchedulerCode, bool isStaticLoading);
 
-	void loadSchedulerCode(APExecutionData & anED,
+	void loadSchedulerCode(ExecutionData & anED,
 			const RuntimeForm & aRF, const BFCode & aSchedulerCode,
 			BFCode & loadCode, bool isStaticLoading);
 
+	void setRuntimeSchedulerCode(ExecutionData & anED, RuntimeForm & aRF,
+			const ExecutableForm & anExecutable, bool isStaticLoading);
 
-	RuntimeForm * loadSystemInstance(APExecutionData & anED,
+
+	RuntimeForm * loadSystemInstance(ExecutionData & anED,
 			const RuntimeID & aParentRID, InstanceOfMachine * aMachine,
 			int & thePid, avm_offset_t & theOffset);
 
-	RuntimeForm * loadMachineInstance(APExecutionData & anED,
+	RuntimeForm * loadMachineInstance(ExecutionData & anED,
 			const RuntimeID & aParentRID, InstanceOfMachine * aMachine,
 			int & thePid, avm_offset_t & theOffset);
 
 
-	void loadMachine(APExecutionData & anED, const RuntimeID & aRID,
+	void loadMachine(ExecutionData & anED, const RuntimeID & aRID,
 			const RuntimeID & loadMachineRID, int & thePid,
 			avm_offset_t & theOffset);
 
-	RuntimeForm * dynamicLoadMachine(APExecutionData & anED,
+	RuntimeForm * dynamicLoadMachine(ExecutionData & anED,
 			const RuntimeID & aRID, RuntimeForm * aModelRF,
-			const RuntimeID & aParentRID, Operator * aScheduleOp);
+			const RuntimeID & aParentRID, const Operator * aScheduleOp);
 
-	RuntimeForm * dynamicLoadMachine(APExecutionData & anED,
+	RuntimeForm * dynamicLoadMachine(ExecutionData & anED,
 			const RuntimeID & aRID, InstanceOfMachine * anInstanceDynamic,
-			const RuntimeID & aParentRID, Operator * aScheduleOp);
+			const RuntimeID & aParentRID, const Operator * aScheduleOp);
 
 
 //	void loadInitialMonitorData(
-//			APExecutionData & anED, const RuntimeID & aRID,
+//			ExecutionData & anED, const RuntimeID & aRID,
 //			InstanceOfMachine * anInstanceMachine, bool isRecursive);
 
 
-	bool loadData(APExecutionData & anED, const RuntimeID & aRID,
+	bool loadData(ExecutionData & anED, const RuntimeID & aRID,
 			const RuntimeID & aDataRID);
 
-	bool loadBuffer(APExecutionData & anED, const RuntimeID & aRID,
+	bool loadBuffer(ExecutionData & anED, const RuntimeID & aRID,
 			const RuntimeID & loadMachineRID);
 
 
 	const Router & getRouter4Model(
-			APExecutionData & anED, RuntimeID & aRoutingRID);
+			ExecutionData & anED, RuntimeID & aRoutingRID);
 
-	bool loadRouter(APExecutionData & anED, const RuntimeID & aRID,
+	bool loadRouter(ExecutionData & anED, const RuntimeID & aRID,
 			const RuntimeID & loadMachineRID);
 
-	bool dynamicLoadRouter(APExecutionData & anED,
+	bool dynamicLoadRouter(ExecutionData & anED,
 			const RuntimeID & loadMachineRID);
 
 };

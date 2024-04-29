@@ -91,6 +91,7 @@ public:
 	AbstractAvmcodeCompiler * UNARY_PREDICATE_EXPRESSION_COMPILER;
 	AbstractAvmcodeCompiler * BINARY_PREDICATE_EXPRESSION_COMPILER;
 	AbstractAvmcodeCompiler * ASSOCIATIVE_PREDICATE_EXPRESSION_COMPILER;
+	AbstractAvmcodeCompiler * QUANTIFIED_PREDICATE_EXPRESSION_COMPILER;
 
 	AbstractAvmcodeCompiler * RELATIONAL_EXPRESSION_COMPILER;
 
@@ -127,47 +128,48 @@ public:
 	mConfiguration( aConfiguration ),
 	mCompilerTable( aCompilerTable ),
 
-	UFI_EXPRESSION_COMPILER( NULL ),
+	UFI_EXPRESSION_COMPILER( nullptr ),
 
 	AVMCODE_COMPILER_TABLE( ),
 	AVMCODE_COMPILER_TABLE_FOR_DESTROY( ),
 
-	DEFAULT_AVMCODE_COMPILER( NULL ),
-	NOTHING_AVMCODE_COMPILER( NULL ),
+	DEFAULT_AVMCODE_COMPILER( nullptr ),
+	NOTHING_AVMCODE_COMPILER( nullptr ),
 
-	UNARY_ARITHMETIC_EXPRESSION_COMPILER( NULL ),
-	BINARY_ARITHMETIC_EXPRESSION_COMPILER( NULL ),
-	ASSOCIATIVE_ARITHMETIC_EXPRESSION_COMPILER( NULL ),
+	UNARY_ARITHMETIC_EXPRESSION_COMPILER( nullptr ),
+	BINARY_ARITHMETIC_EXPRESSION_COMPILER( nullptr ),
+	ASSOCIATIVE_ARITHMETIC_EXPRESSION_COMPILER( nullptr ),
 
-	UNARY_BITWISE_EXPRESSION_COMPILER( NULL ),
-	BINARY_BITWISE_EXPRESSION_COMPILER( NULL ),
-	ASSOCIATIVE_BITWISE_EXPRESSION_COMPILER( NULL ),
+	UNARY_BITWISE_EXPRESSION_COMPILER( nullptr ),
+	BINARY_BITWISE_EXPRESSION_COMPILER( nullptr ),
+	ASSOCIATIVE_BITWISE_EXPRESSION_COMPILER( nullptr ),
 
-	UNARY_PREDICATE_EXPRESSION_COMPILER( NULL ),
-	BINARY_PREDICATE_EXPRESSION_COMPILER( NULL ),
-	ASSOCIATIVE_PREDICATE_EXPRESSION_COMPILER( NULL ),
+	UNARY_PREDICATE_EXPRESSION_COMPILER( nullptr ),
+	BINARY_PREDICATE_EXPRESSION_COMPILER( nullptr ),
+	ASSOCIATIVE_PREDICATE_EXPRESSION_COMPILER( nullptr ),
+	QUANTIFIED_PREDICATE_EXPRESSION_COMPILER( nullptr ),
 
-	RELATIONAL_EXPRESSION_COMPILER( NULL ),
+	RELATIONAL_EXPRESSION_COMPILER( nullptr ),
 
-	UNARY_STRING_EXPRESSION_COMPILER( NULL ),
-	BINARY_STRING_EXPRESSION_COMPILER( NULL ),
-	ASSOCIATIVE_STRING_EXPRESSION_COMPILER( NULL ),
+	UNARY_STRING_EXPRESSION_COMPILER( nullptr ),
+	BINARY_STRING_EXPRESSION_COMPILER( nullptr ),
+	ASSOCIATIVE_STRING_EXPRESSION_COMPILER( nullptr ),
 
-	LOOKUP_EXPRESSION_COMPILER( NULL ),
-	MACHINE_STATUS_EXPRESSION_COMPILER( NULL ),
-	MATH_FUNCTION_COMPILER( NULL ),
-	VARIABLE_STATUS_EXPRESSION_COMPILER( NULL ),
+	LOOKUP_EXPRESSION_COMPILER( nullptr ),
+	MACHINE_STATUS_EXPRESSION_COMPILER( nullptr ),
+	MATH_FUNCTION_COMPILER( nullptr ),
+	VARIABLE_STATUS_EXPRESSION_COMPILER( nullptr ),
 
-	ACTIVITY_STATEMENT_COMPILER( NULL ),
-	SCHEDULING_STATEMENT_COMPILER( NULL ),
-	SEQUENCE_STATEMENT_COMPILER( NULL ),
-	ITE_STATEMENT_COMPILER( NULL ),
+	ACTIVITY_STATEMENT_COMPILER( nullptr ),
+	SCHEDULING_STATEMENT_COMPILER( nullptr ),
+	SEQUENCE_STATEMENT_COMPILER( nullptr ),
+	ITE_STATEMENT_COMPILER( nullptr ),
 
-	UNARY_CONTAINER_STATEMENT( NULL ),
-	UNARY_WRITE_CONTAINER_STATEMENT( NULL ),
+	UNARY_CONTAINER_STATEMENT( nullptr ),
+	UNARY_WRITE_CONTAINER_STATEMENT( nullptr ),
 
-	BINARY_CONTAINER_STATEMENT( NULL ),
-	BINARY_WRITE_CONTAINER_STATEMENT( NULL )
+	BINARY_CONTAINER_STATEMENT( nullptr ),
+	BINARY_WRITE_CONTAINER_STATEMENT( nullptr )
 	{
 			//!! NOTHING
 	}
@@ -284,7 +286,7 @@ public:
 	 */
 	BF decode_compileExpression(COMPILE_CONTEXT * aCTX, const BF & aCode);
 
-	BF decode_compileExpression(AvmProgram * aCompileCtx, const BF & aCode)
+	inline BF decode_compileExpression(AvmProgram & aCompileCtx, const BF & aCode)
 	{
 		CompilationEnvironment compilENV(aCompileCtx);
 
@@ -307,7 +309,7 @@ public:
 
 	BF optimizeExpression(COMPILE_CONTEXT * aCTX, const BFCode & aCode);
 
-	BF optimizeExpression(AvmProgram * aCompileCtx, const BFCode & aCode)
+	BF optimizeExpression(AvmProgram & aCompileCtx, const BFCode & aCode)
 	{
 		CompilationEnvironment compilENV(aCompileCtx);
 
@@ -327,7 +329,7 @@ public:
 	 */
 	bool optimizeEvalExpression(COMPILE_CONTEXT * aCTX, BFCode & aCode);
 
-	bool optimizeEvalExpression(AvmProgram * aCompileCtx, BFCode & aCode)
+	bool optimizeEvalExpression(AvmProgram & aCompileCtx, BFCode & aCode)
 	{
 		CompilationEnvironment compilENV(aCompileCtx);
 
@@ -340,7 +342,7 @@ public:
 	 */
 	BF decode_compileStatement(COMPILE_CONTEXT * aCTX, const BF & aCode);
 
-	BF decode_compileStatement(AvmProgram * aCompileCtx, const BF & aCode)
+	BF decode_compileStatement(AvmProgram & aCompileCtx, const BF & aCode)
 	{
 		CompilationEnvironment compilENV(aCompileCtx);
 
@@ -350,7 +352,7 @@ public:
 
 	BFCode compileStatement(COMPILE_CONTEXT * aCTX, const BFCode & aCode);
 
-	BFCode compileStatement(AvmProgram * aCompileCtx, const BFCode & aCode)
+	BFCode compileStatement(AvmProgram & aCompileCtx, const BFCode & aCode)
 	{
 		CompilationEnvironment compilENV(aCompileCtx);
 
@@ -360,7 +362,7 @@ public:
 
 	BF decode_optimizeStatement(COMPILE_CONTEXT * aCTX, const BF & aCode);
 
-	BF decode_optimizeStatement(AvmProgram * aCompileCtx, const BF & aCode)
+	BF decode_optimizeStatement(AvmProgram & aCompileCtx, const BF & aCode)
 	{
 		CompilationEnvironment compilENV(aCompileCtx);
 
@@ -370,7 +372,7 @@ public:
 
 	BFCode optimizeStatement(COMPILE_CONTEXT * aCTX, const BFCode & aCode);
 
-	BFCode optimizeStatement(AvmProgram * aCompileCtx, const BFCode & aCode)
+	BFCode optimizeStatement(AvmProgram & aCompileCtx, const BFCode & aCode)
 	{
 		CompilationEnvironment compilENV(aCompileCtx);
 
@@ -378,35 +380,35 @@ public:
 	}
 
 
-	AvmProgram * compileRoutineStructure(BaseCompiler * aCompiler,
-			AvmProgram * aProgramCtx, Routine * aRoutine);
+	AvmProgram * compileRoutineStructure(const BaseCompiler & aCompiler,
+			AvmProgram & aProgramCtx, const Routine & aRoutine);
 
-	AvmProgram * compileRoutine(BaseCompiler * aCompiler,
-			AvmProgram * aProgramCtx, Routine * aRoutine);
-
-	AvmProgram * compileRoutine(
-			BaseCompiler * aCompiler, AvmProgram * aProgramCtx,
-			InstanceOfData * aVarInstanceCtx, Routine * aRoutine);
+	AvmProgram * compileRoutine(const BaseCompiler & aCompiler,
+			AvmProgram & aProgramCtx, const Routine & aRoutine);
 
 	AvmProgram * compileRoutine(
-			BaseCompiler * aCompiler, AvmProgram * aProgramCtx,
-			const TypeSpecifier & aTypeSpecifierCtx, Routine * aRoutine);
+			const BaseCompiler & aCompiler, AvmProgram & aProgramCtx,
+			InstanceOfData * aVarInstanceCtx, const Routine & aRoutine);
+
+	AvmProgram * compileRoutine(
+			const BaseCompiler & aCompiler, AvmProgram & aProgramCtx,
+			const TypeSpecifier & aTypeSpecifierCtx, const Routine & aRoutine);
 
 
-	BF substituteUfiByInstance(ExecutableForm * theExecutable,
+	BF substituteUfiByInstance(ExecutableForm & theExecutable,
 			const BF & anElement, ListOfSymbol & usingInstance);
 
 
 	/*
 	 * OPTIMIZE PROGRAM from EXECUTABLE or DATA
 	 */
-	void optimizeProgramRoutine(AvmProgram * aProgram);
+	void optimizeProgramRoutine(AvmProgram & aProgram);
 
-	void optimizeDataRoutine(AvmProgram * aProgram);
+	void optimizeDataRoutine(AvmProgram & aProgram);
 
-	void optimizeDataRoutine(ExecutableForm * theExecutable);
+	void optimizeDataRoutine(ExecutableForm & theExecutable);
 
-	void optimizeInstance(ExecutableForm * theExecutableContainer,
+	void optimizeInstance(ExecutableForm & theExecutableContainer,
 			InstanceOfMachine * aMachine);
 
 };

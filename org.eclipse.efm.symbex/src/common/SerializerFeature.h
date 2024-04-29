@@ -24,9 +24,6 @@
 
 #include <printer/OutStream.h>
 
-#include <map>
-
-
 namespace sep
 {
 
@@ -36,7 +33,7 @@ namespace sep
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef avm_uint16_t            avm_period_kind_t;
+typedef std::uint16_t            avm_period_kind_t;
 
 enum {
 	AVM_PERIOD_UNDEFINED_KIND    = 0x0000,
@@ -99,7 +96,7 @@ protected:
 	AvmUri lastFile;
 	AvmUri lastFilename;
 
-	std::map< std::string , AvmUri * > mUriMap;
+	AvmUri newIndexFile;
 
 	VectorOfAvmUri::iterator itURI;
 	VectorOfAvmUri::iterator endURI;
@@ -121,6 +118,9 @@ protected:
 	avm_delay_value_t mTimePreviousValue;
 
 
+	// Auto Open File
+	bool mAutoOpenFileFlag;
+
 	// DETAILS REPORTING
 	bool mReportDetailsFlag;
 
@@ -132,13 +132,13 @@ public:
 	 */
 	SerializerFeature()
 	: mTableOfURI( ),
-	lastFolder( AVM_URI_FOLDER_KIND , "." ),
-	lastFile( AVM_URI_FILE_KIND , "_" ),
-	lastFilename( AVM_URI_FILENAME_KIND , "_" ),
-	mUriMap( ),
+	lastFolder( "last#folder" , AVM_URI_FOLDER_KIND , "." ),
+	lastFile( "last#file" , AVM_URI_FILE_KIND , "_" ),
+	lastFilename( "last#filename" , AVM_URI_FILENAME_KIND , "_" ),
+	newIndexFile( "new#index#file" , AVM_URI_FILENAME_KIND , "newFile.txt" ),
 	itURI( ),
 	endURI( ),
-	currentURI( NULL ),
+	currentURI( nullptr ),
 
 	mPeriodKind( AVM_PERIOD_EXIT_KIND ),
 
@@ -154,7 +154,9 @@ public:
 	mTimeInitValue( 0 ),
 	mTimePreviousValue( 0 ),
 
-	mReportDetailsFlag( true )
+	mAutoOpenFileFlag( true ),
+
+	mReportDetailsFlag( false )
 
 	{
 		//!! NOTHING
@@ -173,18 +175,18 @@ public:
 	/**
 	 * CONFIGURE
 	 */
-	bool configure(WObject * wfParameterObject);
+	bool configure(const WObject * wfParameterObject);
 
-	bool configureStream(WObject * theVFS, AvmUri & uri);
+	bool configureStream(const WObject * theVFS, AvmUri & uri);
 
-	bool configureFolder(WObject * theVFS, AvmUri & uri);
+	bool configureFolder(const WObject * theVFS, AvmUri & uri);
 
-	bool configureFile(WObject * theVFS, AvmUri & uri);
-	bool configureFilename(WObject * theVFS, AvmUri & uri);
+	bool configureFile(const WObject * theVFS, AvmUri & uri);
+	bool configureFilename(const WObject * theVFS, AvmUri & uri);
 
-	bool configureSocket(WObject * theVFS, AvmUri & uri);
+	bool configureSocket(const WObject * theVFS, AvmUri & uri);
 
-	bool configurePeriod(WObject * theVFS, const std::string & strPeriod);
+	bool configurePeriod(const WObject * theVFS, const std::string & strPeriod);
 
 
 	/**
@@ -200,11 +202,9 @@ public:
 	 * GETTER -- SETTER
 	 * mTableOfURI
 	 */
-	inline AvmUri & appendUri( const std::string & rawLocation )
+	inline AvmUri & appendUri( std::string id, const std::string & rawLocation )
 	{
-		mTableOfURI.push_back( rawLocation );
-
-		return( mTableOfURI.back() );
+		return mTableOfURI.emplace_back( id , rawLocation );
 	}
 
 	inline void destroyLastUri()
@@ -234,15 +234,15 @@ public:
 		return( lastFolder );
 	}
 
-	inline const AvmUri & getLastFile() const
-	{
-		return( lastFile );
-	}
-
-	inline const AvmUri & getLastFilename() const
-	{
-		return( lastFilename );
-	}
+//	inline const AvmUri & getLastFile() const
+//	{
+//		return( lastFile );
+//	}
+//
+//	inline const AvmUri & getLastFilename() const
+//	{
+//		return( lastFilename );
+//	}
 
 
 	inline bool openStream()
@@ -267,6 +267,8 @@ public:
 		{
 			(*itURI).close();
 		}
+
+		newIndexFile.close();
 	}
 
 
@@ -300,10 +302,57 @@ public:
 	 * GETTER -- SETTER
 	 * mTableOfURI
 	 */
-	inline void mapUri(const std::string & key, AvmUri & anUri)
+	inline OutStream & getStream(const std::string & key)
 	{
-		mUriMap[ key ] = & anUri;
+		for( auto & anUri : mTableOfURI )
+		{
+			if( (anUri.alias_id == key) && anUri.outStream.good() )
+			{
+				return( anUri.outStream );
+			}
+		}
+
+		return( newFileStream(key) );
 	}
+
+	inline OutStream & getFileStream()
+	{
+		for( auto & anUri : mTableOfURI )
+		{
+			if( ((anUri.kind & AVM_URI_FILE_KIND) != 0)
+				&& anUri.outStream.good() )
+			{
+				return( anUri.outStream );
+			}
+		}
+
+		return( AVM_OS_COUT );
+	}
+
+	inline OutStream & getLastFileStream()
+	{
+		const auto & endIt = mTableOfURI.rend();
+		for( auto it = mTableOfURI.rbegin() ; it != endIt ; ++it )
+		{
+			if( (((*it).kind & AVM_URI_FILE_KIND) != 0)
+				&& (*it).outStream.good() )
+			{
+				return( (*it).outStream );
+			}
+		}
+
+		return( AVM_OS_COUT );
+	}
+
+
+	/**
+	 * GETTER
+	 * Generate new outStream for a given index
+	 */
+	OutStream & newFileStream(std::size_t index);
+
+	OutStream & newFileStream(const std::string & filename = "");
+
 
 	/**
 	 * GETTER

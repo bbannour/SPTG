@@ -47,6 +47,22 @@ class WObject;
 class CompilerOfTransition  :  public BaseCompiler
 {
 
+protected:
+	/**
+	 * ATTRIBUTE
+	 */
+	Compiler & mCompiler;
+
+	CompilerOfVariable & mVariableCompiler;
+
+
+	// MOC:> Model of Compilation
+	List< TransitionMoc * >  mMocStack;
+
+	TransitionMoc * mCurrentMoc;
+
+	TransitionMoc mDefaultMoc;
+
 public:
 	/**
 	 * CONSTRUCTOR
@@ -66,7 +82,7 @@ public:
 	void setDefaultMoc();
 
 
-	void pushMoc(WObject * mocTransition);
+	void pushMoc(const WObject * mocTransition);
 
 	void popMoc();
 
@@ -77,7 +93,7 @@ public:
 	 ***************************************************************************
 	 */
 	void precompileTransition(
-			ExecutableForm * aContainer, Transition * aTransition);
+			ExecutableForm & aContainer, Transition & aTransition);
 
 
 	/**
@@ -85,41 +101,27 @@ public:
 	 * COMPILATION
 	 ***************************************************************************
 	 */
-	void compileTransition(AvmTransition * anAvmTransition);
+	void compileTransition(AvmTransition & anAvmTransition);
 
 	BFCode scheduleListOfTransition(
-			ExecutableForm * anExecutableForm, BFList & listOfTransition);
+			ExecutableForm & anExecutableForm, const BFList & listOfTransition);
+
+	BFCode scheduleListOfTransition(ExecutableForm & anExecutableForm,
+		const BFList & listOfTransition, const BFList & listOfElseTransition);
 
 	Machine * getTransitionTarget(
-			Transition * aTransition, const BF & smTarget);
+			const Transition & aTransition, const BF & smTarget);
 
 	BF compileTransitionTarget(
-			AvmTransition * anAvmTransition, const BF & smTarget);
+			AvmTransition & anAvmTransition, const BF & smTarget);
 
-	void compileStatemachineTransition(ExecutableForm * anExecutableForm,
+	void compileStatemachineTransition(ExecutableForm & anExecutableForm,
 			const BFCode & runRoutine);
 
-	void compileStateForkOutputTransition(ExecutableForm * anExecutableForm,
+	void compileStateForkOutputTransition(ExecutableForm & anExecutableForm,
 			const BFCode & runRoutine);
 
-	void compileStateJoinInputTransition(ExecutableForm * anExecutableForm);
-
-
-protected:
-	/**
-	 * ATTRIBUTE
-	 */
-	Compiler & mCompiler;
-
-	CompilerOfVariable & mDataCompiler;
-
-
-	// MOC:> Model of Compilation
-	List< TransitionMoc * >  mMocStack;
-
-	TransitionMoc * mCurrentMoc;
-
-	TransitionMoc mDefaultMoc;
+	void compileStateJoinInputTransition(ExecutableForm & anExecutableForm);
 
 };
 

@@ -33,7 +33,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	MultiLifoBuffer(InstanceOfBuffer * aBuffer)
+	MultiLifoBuffer(const InstanceOfBuffer & aBuffer)
 	: BaseBufferQueue(CLASS_KIND_T( MultiLifoBuffer ), aBuffer)
 	{
 		//!! NOTHING
@@ -57,7 +57,7 @@ public:
 	 * push
 	 * top
 	 */
-	inline virtual bool push(const Message & aMsg)
+	inline virtual bool push(const Message & aMsg) override
 	{
 		if( size() < capacity() )
 		{
@@ -70,7 +70,7 @@ public:
 	}
 
 
-	inline virtual bool top(const Message & aMsg)
+	inline virtual bool top(const Message & aMsg) override
 	{
 		if( nonempty() )
 		{
@@ -82,7 +82,7 @@ public:
 		return( false );
 	}
 
-	inline virtual const Message & top() const
+	inline virtual const Message & top() const override
 	{
 		if( nonempty() )
 		{
@@ -92,8 +92,8 @@ public:
 		return( Message::_NULL_ );
 	}
 
-	inline virtual const Message & top(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+	inline virtual const Message & top(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		if( nonempty() && mMessages.back().isCompatible(mid, aReceiverRID) )
 		{
@@ -109,7 +109,7 @@ public:
 	 * uncontains
 	 */
 	inline virtual bool contains(ListOfInstanceOfPort & aSignalTrace,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		ListOfInstanceOfPort::const_iterator itSignal = aSignalTrace.begin();
 		ListOfInstanceOfPort::const_iterator endSignal = aSignalTrace.end();
@@ -126,9 +126,12 @@ public:
 		return( itSignal == endSignal );
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using BaseBufferQueue::contains;
+
 
 	inline virtual bool uncontains(ListOfInstanceOfPort & aSignalTrace,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		ListOfInstanceOfPort::iterator itSignal = aSignalTrace.begin();
 		ListOfInstanceOfPort::iterator endSignal = aSignalTrace.end();
@@ -149,7 +152,7 @@ public:
 	/**
 	 * pop
 	 */
-	inline virtual Message pop()
+	inline virtual Message pop() override
 	{
 		if( nonempty() )
 		{
@@ -162,8 +165,8 @@ public:
 	}
 
 
-	inline virtual Message pop(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+	inline virtual Message pop(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
 		if( nonempty() )
 		{
@@ -179,9 +182,26 @@ public:
 		return( Message::_NULL_ );
 	}
 
+	inline virtual void pop(std::size_t mid, List< Message > & messages,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
+	{
+		if( nonempty() )
+		{
+			Message aMsg = mMessages.back();
+			if( aMsg.isCompatible(mid, aReceiverRID) )
+			{
+				mMessages.pop_back();
+
+				messages.append( aMsg );
+			}
+		}
+	}
+
+	// Due to [-Woverloaded-virtual=]
+	using BaseBufferQueue::pop;
 
 
-	inline virtual void popBefore(const RuntimeID & aReceiverRID)
+	inline virtual void popBefore(const RuntimeID & aReceiverRID) override
 	{
 		ListOfMessage::reverse_iterator it = mMessages.rbegin();
 		for( ; it != mMessages.rend() ; )
@@ -196,7 +216,7 @@ public:
 	}
 
 	inline virtual void popBefore(const ListOfInstanceOfPort & ieComs,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
 		ListOfMessage::reverse_iterator it = mMessages.rbegin();
 		for( ; it != mMessages.rend() ; )
@@ -218,7 +238,7 @@ public:
 	}
 
 	inline virtual void popBefore(const ListOfSizeT & ieComs,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
 		ListOfMessage::reverse_iterator it = mMessages.rbegin();
 		for( ; it != mMessages.rend() ; )
@@ -244,7 +264,7 @@ public:
 	 * copyTo
 	 * restore
 	 */
-	inline virtual void copyTo(BaseBufferForm & aBuffer) const
+	inline virtual void copyTo(BaseBufferForm & aBuffer) const override
 	{
 		ListOfMessage::const_reverse_iterator it = mMessages.rbegin();
 		ListOfMessage::const_reverse_iterator itEnd = mMessages.rend();
@@ -254,7 +274,7 @@ public:
 		}
 	}
 
-	inline virtual void restore(ListOfMessage & listOfMessage)
+	inline virtual void restore(ListOfMessage & listOfMessage) override
 	{
 		while( listOfMessage.nonempty() )
 		{

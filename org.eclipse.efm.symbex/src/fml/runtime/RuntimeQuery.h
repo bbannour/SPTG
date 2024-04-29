@@ -16,14 +16,15 @@
 #ifndef FML_RUNTIME_RUNTIMEQUERY_H_
 #define FML_RUNTIME_RUNTIMEQUERY_H_
 
-#include <fml/symbol/Symbol.h>
+#include <common/BF.h>
 
-#include <sew/Configuration.h>
+#include <fml/runtime/ExecutionData.h>
 
 
 namespace sep
 {
 
+class Configuration;
 
 class ExecutionData;
 
@@ -67,9 +68,9 @@ public:
 	 * Symbol
 	 * !UNUSED!
 	 *
-	const BF & searchSymbol(WObject * aWProperty);
+	const BF & searchSymbol(const WObject * aWProperty);
 
-	avm_size_t searchSymbol(WObject * aWProperty, BFList & listofSymbol);
+	std::size_t searchSymbol(const WObject * aWProperty, BFList & listofSymbol);
 	*
 	* !UNUSED!
 	*/
@@ -92,17 +93,17 @@ public:
 	inline BF searchVariable(const ExecutionData & anED,
 			const std::string & aFullyQualifiedNameID) const
 	{
-		return( searchVariable(anED, anED.mRID, aFullyQualifiedNameID) );
+		return( searchVariable(anED, anED.getRID(), aFullyQualifiedNameID) );
 	}
 
-
+//!@?UNUSED:
 	const BF & searchVariable(const ExecutionData & anED,
-			const RuntimeID & ctxRID, const ObjectElement * objElement) const;
+			const RuntimeID & ctxRID, const ObjectElement & astElement) const;
 
 	inline const BF & searchVariable(
-			const ExecutionData & anED, const ObjectElement * objElement) const
+			const ExecutionData & anED, const ObjectElement & astElement) const
 	{
-		return( searchVariable(anED, anED.mRID, objElement) );
+		return( searchVariable(anED, anED.getRID(), astElement) );
 	}
 
 
@@ -112,7 +113,7 @@ public:
 	inline BF searchVariable(
 			const ExecutionData & anED, const BF & aSymbolicParameter) const
 	{
-		return( searchVariable(anED, anED.mRID, aSymbolicParameter) );
+		return( searchVariable(anED, anED.getRID(), aSymbolicParameter) );
 	}
 
 
@@ -125,7 +126,7 @@ public:
 			const ExecutionData & anED, UniFormIdentifier * anUFI);
 
 	const BF & searchSymbol(TableOfSymbol & aliasTable,
-			const ExecutionData & anED, const ObjectElement * objElement);
+			const ExecutionData & anED, const ObjectElement & astElement);
 
 	const BF & searchSymbol(TableOfSymbol & aliasTable,
 			const ExecutionData & anED, const BF & aBaseInstance);
@@ -140,7 +141,7 @@ public:
 
 	void getSystemLifelines(Vector< RuntimeID > & lifelines) const;
 
-	const RuntimeID & getRuntineByQualifiedNameID(
+	const RuntimeID & getRuntimeByQualifiedNameID(
 			const std::string & aQualifiedNameID) const;
 
 };

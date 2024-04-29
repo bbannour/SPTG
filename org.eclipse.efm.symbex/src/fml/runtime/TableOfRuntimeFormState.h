@@ -17,8 +17,7 @@
 #define TABLEOFRUNTIMEFORMSTATE_H_
 
 #include <common/AvmObject.h>
-
-#include <common/AvmPointer.h>
+#include <common/Element.h>
 
 #include <collection/Bitset.h>
 
@@ -37,7 +36,7 @@ class TableOfRuntimeFormState  :
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( TableOfRuntimeFormState )
 {
 
-	AVM_DECLARE_CLONABLE_CLASS( TableOfRuntimeFormState )
+	AVM_DECLARE_CLONABLE_BASE_CLASS( TableOfRuntimeFormState )
 
 
 public:
@@ -50,7 +49,7 @@ protected :
 	/**
 	 * ATTRIBUTES
 	 */
-	avm_size_t mSize;
+	std::size_t mSize;
 
 	PROCESS_EVAL_STATE * mEvalState;
 
@@ -63,11 +62,11 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	TableOfRuntimeFormState(avm_size_t aSize)
+	TableOfRuntimeFormState(std::size_t aSize)
 	: AvmObject( ),
 	mSize( aSize ),
-	mEvalState( NULL ),
-	mTableOfAssignedFlag( NULL )
+	mEvalState( nullptr ),
+	mTableOfAssignedFlag( nullptr )
 	{
 		allocTableOfState();
 		resetTableOfState();
@@ -80,12 +79,12 @@ public:
 	TableOfRuntimeFormState(const TableOfRuntimeFormState & aTable)
 	: AvmObject( aTable ),
 	mSize( aTable.mSize ),
-	mEvalState( NULL ),
-	mTableOfAssignedFlag( NULL )
+	mEvalState( nullptr ),
+	mTableOfAssignedFlag( nullptr )
 	{
 		allocTableOfState( aTable.mEvalState );
 
-		if( aTable.mTableOfAssignedFlag != NULL )
+		if( aTable.mTableOfAssignedFlag != nullptr )
 		{
 			allocAssignedFlag( aTable.mTableOfAssignedFlag );
 		}
@@ -128,7 +127,7 @@ public:
 			allocTableOfState( aTable.mEvalState );
 		}
 
-		if( assignedResetFlag && (aTable.mTableOfAssignedFlag != NULL) )
+		if( assignedResetFlag && (aTable.mTableOfAssignedFlag != nullptr) )
 		{
 			allocAssignedFlag( aTable.mTableOfAssignedFlag );
 		}
@@ -139,7 +138,7 @@ public:
 	 * GETTER - SETTER
 	 * mSize
 	 */
-	inline avm_size_t size() const
+	inline std::size_t size() const
 	{
 		return( mSize );
 	}
@@ -150,7 +149,7 @@ public:
 	}
 
 
-	void resize(avm_size_t newSize);
+	void resize(std::size_t newSize);
 
 
 	/**
@@ -160,14 +159,14 @@ public:
 	inline void allocTableOfState()
 	{
 		mEvalState = ( mSize > 0 ) ?
-				( new PROCESS_EVAL_STATE[ mSize ] ) : NULL;
+				( new PROCESS_EVAL_STATE[ mSize ] ) : nullptr;
 	}
 
 
 	inline void allocTableOfState(PROCESS_EVAL_STATE * tableOfState)
 	{
 		mEvalState = ( mSize > 0 ) ?
-				( new PROCESS_EVAL_STATE[ mSize ] ) : NULL;
+				( new PROCESS_EVAL_STATE[ mSize ] ) : nullptr;
 
 		resetTableOfState(tableOfState);
 	}
@@ -176,7 +175,7 @@ public:
 	inline void resetTableOfState(
 			PROCESS_EVAL_STATE value = PROCESS_UNDEFINED_STATE)
 	{
-		for( avm_size_t i = 0 ; i != mSize ; ++i )
+		for( std::size_t i = 0 ; i != mSize ; ++i )
 		{
 			mEvalState[i] = value;
 		}
@@ -184,7 +183,7 @@ public:
 
 	inline void resetTableOfState(PROCESS_EVAL_STATE * tableOfState)
 	{
-		for( avm_size_t i = 0 ; i != mSize ; ++i )
+		for( std::size_t i = 0 ; i != mSize ; ++i )
 		{
 			mEvalState[i] = tableOfState[i];
 		}
@@ -200,17 +199,17 @@ public:
 		return( mEvalState );
 	}
 
-	inline PROCESS_EVAL_STATE stateAt(avm_size_t rid) const
+	inline PROCESS_EVAL_STATE stateAt(std::size_t rid) const
 	{
 		return( mEvalState[rid] );
 	}
 
-	inline PROCESS_EVAL_STATE stateGet(avm_size_t rid) const
+	inline PROCESS_EVAL_STATE stateGet(std::size_t rid) const
 	{
 		return( mEvalState[rid] );
 	}
 
-	inline void stateSet(avm_size_t rid, PROCESS_EVAL_STATE aEvalState)
+	inline void stateSet(std::size_t rid, PROCESS_EVAL_STATE aEvalState)
 	{
 		mEvalState[rid] = aEvalState;
 	}
@@ -423,7 +422,7 @@ public:
 	/**
 	 * COMPARISON
 	 */
-	bool equalsState(TableOfRuntimeFormState * other) const;
+	bool equalsState(const TableOfRuntimeFormState * other) const;
 
 
 	inline bool isEQ(PROCESS_EVAL_STATE oneState,
@@ -462,44 +461,44 @@ public:
 	// GLOBAL TABLE
 	inline void destroyAssignedFlags()
 	{
-		if( mTableOfAssignedFlag != NULL )
+		if( mTableOfAssignedFlag != nullptr )
 		{
-			for( avm_size_t i = 0 ; i < mSize ; ++i )
+			for( std::size_t i = 0 ; i < mSize ; ++i )
 			{
 				delete mTableOfAssignedFlag[i];
 			}
 
 			delete[] mTableOfAssignedFlag;
 
-			mTableOfAssignedFlag = NULL;
+			mTableOfAssignedFlag = nullptr;
 		}
 	}
 
 
 	inline void resetAssignedFlags()
 	{
-		if( mTableOfAssignedFlag != NULL )
+		if( mTableOfAssignedFlag != nullptr )
 		{
-			for( avm_size_t i = 0 ; i < mSize ; ++i )
+			for( std::size_t i = 0 ; i < mSize ; ++i )
 			{
 				delete mTableOfAssignedFlag[i];
 
-				mTableOfAssignedFlag[i] = NULL;
+				mTableOfAssignedFlag[i] = nullptr;
 			}
 		}
 	}
 
 
-	inline void resetAssignedFlags(Bitset * * tableOfAssignFlag)
+	inline void resetAssignedFlags(const Bitset * * tableOfAssignFlag)
 	{
-		if( mTableOfAssignedFlag != NULL )
+		if( mTableOfAssignedFlag != nullptr )
 		{
-			for( avm_size_t i = 0 ; i < mSize ; ++i )
+			for( std::size_t i = 0 ; i < mSize ; ++i )
 			{
 				delete mTableOfAssignedFlag[i];
 
-				mTableOfAssignedFlag[i] = ( tableOfAssignFlag[i] != NULL ) ?
-						new Bitset( *(tableOfAssignFlag[i]) ) : NULL;
+				mTableOfAssignedFlag[i] = ( tableOfAssignFlag[i] != nullptr ) ?
+						new Bitset( *(tableOfAssignFlag[i]) ) : nullptr;
 			}
 		}
 	}
@@ -509,12 +508,12 @@ public:
 	inline void allocAssignedFlag(Bitset * * tableOfAssignFlag)
 	{
 		mTableOfAssignedFlag = ( mSize > 0 ) ?
-				( new Bitset *[ mSize ] ) : NULL;
+				( new Bitset *[ mSize ] ) : nullptr;
 
-		for( avm_size_t i = 0 ; i < mSize ; ++i )
+		for( std::size_t i = 0 ; i < mSize ; ++i )
 		{
-			mTableOfAssignedFlag[i] = ( tableOfAssignFlag[i] != NULL ) ?
-					( new Bitset( *(tableOfAssignFlag[i]) ) ) : NULL;
+			mTableOfAssignedFlag[i] = ( tableOfAssignFlag[i] != nullptr ) ?
+					( new Bitset( *(tableOfAssignFlag[i]) ) ) : nullptr;
 		}
 	}
 
@@ -523,40 +522,40 @@ public:
 		destroyAssignedFlags();
 
 		mTableOfAssignedFlag = ( mSize > 0 ) ?
-				( new Bitset *[ mSize ] ) : NULL;
+				( new Bitset *[ mSize ] ) : nullptr;
 
-		for( avm_size_t i = 0 ; i < mSize ; ++i )
+		for( std::size_t i = 0 ; i < mSize ; ++i )
 		{
-			mTableOfAssignedFlag[i] = NULL;
+			mTableOfAssignedFlag[i] = nullptr;
 		}
 	}
 
 
 	// RF TABLE
-	inline void allocAssignedFlag(avm_size_t rid, avm_size_t aSize, bool value)
+	inline void allocAssignedFlag(std::size_t rid, std::size_t aSize, bool value)
 	{
 		reallocAssignedFlag();
 
 		mTableOfAssignedFlag[rid] = ( aSize > 0 ) ?
-				( new Bitset( aSize, value ) ) : NULL;
+				( new Bitset( aSize, value ) ) : nullptr;
 	}
 
 
 	// ASSIGNED TEST
-	inline Bitset * getAssigned(avm_size_t rid) const
+	inline const Bitset * getAssigned(std::size_t rid) const
 	{
-		if( mTableOfAssignedFlag != NULL )
+		if( mTableOfAssignedFlag != nullptr )
 		{
 			return( mTableOfAssignedFlag[rid] );
 		}
-		return( NULL );
+		return( nullptr );
 	}
 
-	inline bool isAssigned(avm_size_t rid, avm_offset_t offset) const
+	inline bool isAssigned(std::size_t rid, avm_offset_t offset) const
 	{
-		if( mTableOfAssignedFlag != NULL )
+		if( mTableOfAssignedFlag != nullptr )
 		{
-			if( mTableOfAssignedFlag[rid] != NULL )
+			if( mTableOfAssignedFlag[rid] != nullptr )
 			{
 				return( (*(mTableOfAssignedFlag[rid]))[offset] );
 			}
@@ -567,30 +566,30 @@ public:
 
 	inline bool hasAssigned() const
 	{
-		return( mTableOfAssignedFlag != NULL );
+		return( mTableOfAssignedFlag != nullptr );
 	}
 
 	inline bool zeroAssigned() const
 	{
-		return( mTableOfAssignedFlag == NULL );
+		return( mTableOfAssignedFlag == nullptr );
 	}
 
 
-	inline bool hasAssigned(avm_size_t rid) const
+	inline bool hasAssigned(std::size_t rid) const
 	{
-		if( mTableOfAssignedFlag != NULL )
+		if( mTableOfAssignedFlag != nullptr )
 		{
-			return( mTableOfAssignedFlag[rid] != NULL );
+			return( mTableOfAssignedFlag[rid] != nullptr );
 		}
 
 		return( false );
 	}
 
-	inline bool zeroAssigned(avm_size_t rid) const
+	inline bool zeroAssigned(std::size_t rid) const
 	{
-		if( mTableOfAssignedFlag != NULL )
+		if( mTableOfAssignedFlag != nullptr )
 		{
-			return( mTableOfAssignedFlag[rid] == NULL );
+			return( mTableOfAssignedFlag[rid] == nullptr );
 		}
 
 		return( true );
@@ -599,27 +598,27 @@ public:
 
 
 	void setAssigned(const ExecutionData & anED,
-			avm_size_t rid, avm_size_t offset, bool flag);
+			std::size_t rid, std::size_t offset);
 
 
-	inline void setAssigned(avm_size_t rid, Bitset * assignedTable)
+	inline void setAssigned(std::size_t rid, const Bitset * assignedTable)
 	{
-		if( mTableOfAssignedFlag == NULL )
+		if( mTableOfAssignedFlag == nullptr )
 		{
 			reallocAssignedFlag();
 		}
-		else if( mTableOfAssignedFlag[rid] != NULL )
+		else if( mTableOfAssignedFlag[rid] != nullptr )
 		{
 			delete mTableOfAssignedFlag[rid];
 		}
 
-		mTableOfAssignedFlag[rid] = ( assignedTable != NULL ) ?
-				( new Bitset( *assignedTable ) ) : NULL;
+		mTableOfAssignedFlag[rid] = ( assignedTable != nullptr ) ?
+				( new Bitset( *assignedTable ) ) : nullptr;
 	}
 
 
-	void setAssignedUnion(avm_size_t rid,
-			Bitset * assignedTableA, Bitset * assignedTableB);
+	void setAssignedUnion(std::size_t rid,
+			const Bitset * assignedTableA, const Bitset * assignedTableB);
 
 
 
@@ -635,22 +634,14 @@ public:
 		return( oss.str() );
 	}
 
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & os) const override;
 
 	virtual void toStream(const ExecutionData & anED, OutStream & os) const;
 
+	// Due to [-Woverloaded-virtual=]
+	using AvmObject::toStream;
+
 };
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-// TYPE DEFINITION for SMART POINTER and CONTAINER
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-AVM_DEFINE_AP_CLASS( TableOfRuntimeFormState )
-
 
 
 }

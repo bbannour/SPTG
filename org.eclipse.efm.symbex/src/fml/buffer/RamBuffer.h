@@ -45,7 +45,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	RamBuffer(InstanceOfBuffer * aBuffer)
+	RamBuffer(const InstanceOfBuffer & aBuffer)
 	: BaseBufferForm(CLASS_KIND_T( RamBuffer ), aBuffer),
 	mMessage( )
 	{
@@ -67,7 +67,7 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	RamBuffer(class_kind_t aClassKind, InstanceOfBuffer * aBuffer)
+	RamBuffer(class_kind_t aClassKind, const InstanceOfBuffer & aBuffer)
 	: BaseBufferForm(aClassKind, aBuffer),
 	mMessage( )
 	{
@@ -91,32 +91,32 @@ public:
 	 * emptiness
 	 * size
 	 */
-	inline virtual bool empty() const
+	inline virtual bool empty() const override
 	{
 		return( mMessage.invalid() );
 	}
 
-	inline virtual bool nonempty() const
+	inline virtual bool nonempty() const override
 	{
 		return( mMessage.valid() );
 	}
 
-	inline virtual bool singleton()const
+	inline virtual bool singleton() const override
 	{
 		return( mMessage.valid() );
 	}
 
-	inline virtual bool populated()const
+	inline virtual bool populated() const override
 	{
 		return( false );
 	}
 
-	inline virtual bool full() const
+	inline virtual bool full() const override
 	{
 		return( mMessage.valid() );
 	}
 
-	virtual avm_size_t size() const
+	virtual std::size_t size() const override
 	{
 		return( mMessage.valid() ? 1 : 0 );
 	}
@@ -125,30 +125,29 @@ public:
 	 * Comparison
 	 * operator==
 	 */
-	inline virtual bool equals(const BaseBufferForm & aBuffer) const
+	inline virtual bool equals(const BaseBufferForm & aBuffer) const override
 	{
 		return( (this == &aBuffer)
 				|| (aBuffer.is< RamBuffer >()
-					&& mMessage.equals(
-							aBuffer.to< RamBuffer >()->mMessage ) ) );
+					&& mMessage.equals(aBuffer.to< RamBuffer >().mMessage)) );
 	}
 
 	/**
 	 * clear
 	 * resize
 	 */
-	inline virtual void clear()
+	inline virtual void clear() override
 	{
 		mMessage.destroy();
 	}
 
 
-	virtual void resize(avm_size_t newSize)
+	virtual void resize(std::size_t newSize) override
 	{
 		// NOTHING
 	}
 
-	inline virtual void resize(avm_size_t newSize, const Message & aMsg)
+	inline virtual void resize(std::size_t newSize, const Message & aMsg) override
 	{
 		if( mMessage.invalid() )
 		{
@@ -161,7 +160,7 @@ public:
 	 * push
 	 * top
 	 */
-	inline virtual bool push(const Message & aMsg)
+	inline virtual bool push(const Message & aMsg) override
 	{
 		mMessage = aMsg;
 
@@ -169,20 +168,20 @@ public:
 	}
 
 
-	inline virtual bool top(const Message & aMsg)
+	inline virtual bool top(const Message & aMsg) override
 	{
 		mMessage = aMsg;
 
 		return( true );
 	}
 
-	inline virtual const Message & top() const
+	inline virtual const Message & top() const override
 	{
 		return( mMessage );
 	}
 
-	inline virtual const Message & top(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+	inline virtual const Message & top(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		if( nonempty() && mMessage.isCompatible(mid, aReceiverRID) )
 		{
@@ -197,28 +196,28 @@ public:
 	 * contains
 	 * uncontains
 	 */
-	inline virtual bool contains(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+	inline virtual bool contains(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		return( nonempty() && mMessage.isCompatible(mid, aReceiverRID) );
 	}
 
 	inline virtual bool contains(InstanceOfPort * aSignal,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		return( nonempty() && mMessage.isCompatible(aSignal, aReceiverRID) );
 	}
 
 
 	inline virtual bool contains(ListOfInstanceOfPort & aSignalTrace,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		return( aSignalTrace.singleton() &&
 				contains(aSignalTrace.first(), aReceiverRID) );
 	}
 
 	inline virtual bool uncontains(ListOfInstanceOfPort & aSignalTrace,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
 		if( aSignalTrace.nonempty() &&
 			contains(aSignalTrace.first(), aReceiverRID) )
@@ -233,14 +232,14 @@ public:
 	/**
 	 * pop
 	 */
-	inline virtual Message pop()
+	inline virtual Message pop() override
 	{
 		return( mMessage );
 	}
 
 
-	inline virtual Message pop(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+	inline virtual Message pop(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
 		if( nonempty() && mMessage.isCompatible(mid, aReceiverRID) )
 		{
@@ -250,8 +249,20 @@ public:
 		return( Message::_NULL_ );
 	}
 
+	inline virtual void pop(std::size_t mid, List< Message > & messages,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
+	{
+		if( nonempty() && mMessage.isCompatible(mid, aReceiverRID) )
+		{
+			messages.append( mMessage );
+		}
+	}
 
-	inline virtual void popBefore(const RuntimeID & aReceiverRID)
+	// Due to [-Woverloaded-virtual=]
+	using BaseBufferForm::pop;
+
+
+	inline virtual void popBefore(const RuntimeID & aReceiverRID) override
 	{
 		if( mMessage.isCompatible(aReceiverRID) )
 		{
@@ -260,7 +271,7 @@ public:
 	}
 
 	inline virtual void popBefore(const ListOfInstanceOfPort & ieComs,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
 		if( mMessage.isCompatible(aReceiverRID) )
 		{
@@ -272,7 +283,7 @@ public:
 	}
 
 	inline virtual void popBefore(const ListOfSizeT & ieComs,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
 		if( mMessage.isCompatible(aReceiverRID) )
 		{
@@ -289,7 +300,7 @@ public:
 	 * copyTo
 	 * restore
 	 */
-	inline virtual void remove(InstanceOfPort * aSignal)
+	inline virtual void remove(InstanceOfPort * aSignal) override
 	{
 		if( mMessage.valid() &&
 			mMessage.isSignal(aSignal) )
@@ -298,7 +309,7 @@ public:
 		}
 	}
 
-	inline virtual void copyTo(BaseBufferForm & aBuffer) const
+	inline virtual void copyTo(BaseBufferForm & aBuffer) const override
 	{
 		if( mMessage.valid() )
 		{
@@ -306,7 +317,7 @@ public:
 		}
 	}
 
-	inline virtual void restore(ListOfMessage & listOfMessage)
+	inline virtual void restore(ListOfMessage & listOfMessage) override
 	{
 		if( listOfMessage.nonempty() )
 		{
@@ -320,10 +331,12 @@ public:
 	 * SERIALIZATION
 	 ***************************************************************************
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
 
-	virtual void toFscn(OutStream & os, const RuntimeID & aRID,
-			const BaseBufferForm * prevBuf = NULL) const;
+	virtual void toStreamValue(OutStream & out) const override;
+
+	virtual void toFscn(OutStream & out, const RuntimeID & aRID,
+			const BaseBufferForm * prevBuf = nullptr) const override;
 
 };
 

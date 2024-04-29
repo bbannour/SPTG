@@ -20,9 +20,6 @@
 
 #include <base/ClassKindInfo.h>
 
-#include <common/AvmPointer.h>
-
-
 
 namespace sep
 {

@@ -45,9 +45,9 @@ public:
 	 * GETTER - SETTER
 	 * theGlobalMap
 	 */
-	static std::map< std::string , Operator * > theGlobalMap;
+	static std::map< std::string , const Operator * > theGlobalMap;
 
-	inline static Operator * getGlobal(const std::string & method)
+	inline static const Operator * getGlobal(const std::string & method)
 	{
 		return( theGlobalMap[ method ] );
 	}
@@ -58,7 +58,7 @@ public:
 	}
 
 	inline static void putGlobal(const std::string & method,
-			Operator * anOperator)
+			const Operator * anOperator)
 	{
 		theGlobalMap[ method ] = anOperator;
 	}
@@ -72,26 +72,31 @@ public:
 	/**
 	 * GETTER - SETTER
 	 */
-	static Operator * get(const std::string & method);
+	static const Operator * get(const std::string & method);
 
-	static Operator * get(const BF & aReceiver, const std::string & method);
+	static const Operator * get(const BF & aReceiver, const std::string & method);
 
-	static Operator * get(BaseInstanceForm * anInstance,
+	static const Operator * get(BaseInstanceForm * anInstance,
 			const std::string & method);
 
 
-	static bool exist(const std::string & method);
+	static bool exists(const std::string & method);
 
-	static bool exist(BaseInstanceForm * anInstance,
+	static bool exists(BaseInstanceForm * anInstance,
 			const std::string & method);
 
-	static bool exist(const std::string & method, Operator * anOperator);
+	static bool exists(const std::string & method, const Operator * anOperator);
 
 
-	static void put(const std::string & method, Operator * anOperator);
+	inline static void put(const Operator * anOperator)
+	{
+		put(anOperator->getNameID(), anOperator);
+	}
+
+	static void put(const std::string & method, const Operator * anOperator);
 
 	static void put(BaseInstanceForm * anInstance,
-			const std::string & method, Operator * anOperator);
+			const std::string & method, const Operator * anOperator);
 
 
 };

@@ -15,8 +15,6 @@ options {
 
 @parser::header {
 
-#include <parser/model/ParserUtil.h>
-
 #include <common/BF.h>
 
 #include <collection/BFContainer.h>
@@ -51,9 +49,6 @@ options {
 #include <fml/infrastructure/ComRoute.h>
 #include <fml/infrastructure/Connector.h>
 
-// extern "C" and C++ template incompatibility !!!
-//#include <fml/infrastructure/PropertyPart.h>
-
 #include <fml/infrastructure/DataType.h>
 #include <fml/infrastructure/Machine.h>
 #include <fml/infrastructure/Package.h>
@@ -76,6 +71,7 @@ options {
 #include <fml/workflow/UniFormIdentifier.h>
 #include <fml/workflow/WObject.h>
 
+#include <parser/ParserUtil.h>
 
 //void fmlDisplayRecognitionError(
 //		pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8 * tokenNames);
@@ -93,10 +89,10 @@ options {
 // SET LOCATION IN TRACEABLE FORM
 ////////////////////////////////////////////////////////////////////////////////
 
-#define SAVE_RULE_BEGIN_LOCATION  sep::avm_size_t bLine = LT(1)->getLine(LT(1))
+#define SAVE_RULE_BEGIN_LOCATION  std::size_t bLine = LT(1)->line
 
 #define SET_RULE_LOCATION(form)   \
-		sep::ParserUtil::setLocation(form, bLine, LT(-1)->getLine(LT(-1)))
+		sep::ParserUtil::setLocation(form, bLine, LT(-1)->line)
 
 
 
@@ -108,7 +104,7 @@ options {
 
 #define NEW_EXPR(e)       sep::ExpressionConstructor::newExpr(e)
 
-#define NEW_BOOL(b)       sep::ExpressionConstructor::newBoolean((bool) b)
+#define NEW_BOOLEAN(b)    sep::ExpressionConstructor::newBoolean((bool) b)
 #define NEW_INTEGER(i)    sep::ExpressionConstructor::newInteger(i)
 #define NEW_RATIONAL(q)   sep::ExpressionConstructor::newRational(q)
 #define NEW_FLOAT(f)      sep::ExpressionConstructor::newFloat(f)
@@ -179,17 +175,13 @@ sep::BF new_not_expr(sep::BF & arg)
 ////////////////////////////////////////////////////////////////////////////////
 
 // WObject Manager
-sep::WObjectManager * mWObjectManager = NULL;
-
-// Current Diversity prologue specification
-sep::WObject * DIVERITY_PROLOG = sep::WObject::_NULL_;
-
+static sep::WObjectManager * mWObjectManager = nullptr;
 
 // Current Parse System
-static sep::System * _SYSTEM_ = NULL;
+static sep::System * _SYSTEM_ = nullptr;
 
 // Current Parse Machine
-static sep::Machine * _CPM_ = NULL;
+static sep::Machine * _CPM_ = nullptr;
 
 #define PUSH_CTX_CPM( cpm )   sep::ParserUtil::pushCTX( _CPM_ = cpm )
 
@@ -197,9 +189,13 @@ static sep::Machine * _CPM_ = NULL;
 
 
 // Current Parse Routine
-static sep::Routine * _CPR_ = NULL;
+static sep::Routine * _CPR_ = nullptr;
 
 #define PUSH_CTX_CPR( cpr )   sep::ParserUtil::pushCTX( _CPR_ = cpr )
+
+// Current Parse Local PropertyPart
+#define PUSH_CTX_LOCAL( cpl )   sep::ParserUtil::pushCTX( cpl )
+
 
 // Pop old local parse context & update current machine & routine
 #define POP_CTX               sep::ParserUtil::popCTX( _CPM_ , _CPR_ )
@@ -208,16 +204,16 @@ static sep::Routine * _CPR_ = NULL;
 		if( _CPM_ == cpm ) { sep::ParserUtil::popCTX( _CPM_ , _CPR_ ); }
 
 // Current Parse Routine | Machine | System
-#define _CPRMS_  ( ( _CPR_ != NULL )  \
+#define _CPRMS_  ( ( _CPR_ != nullptr )  \
 		? static_cast< sep::BehavioralElement * >(_CPR_)  \
-		: ( ( _CPM_ != NULL )  \
+		: ( ( _CPM_ != nullptr )  \
 				? static_cast< sep::BehavioralElement * >(_CPM_)  \
 				: static_cast< sep::BehavioralElement * >(_SYSTEM_) ) )
 
 
 // Current Parse [ [ Fully ] Qualified ] Name ID
-std::string cpLOCATOR;
-std::vector< std::string > cpQNID;
+static std::string cpLOCATOR;
+static std::vector< std::string > cpQNID;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +231,7 @@ static sep::ListOfMachine needDefaultStateReturn;
 // TRANSITION ID
 ////////////////////////////////////////////////////////////////////////////////
 
-static sep::avm_size_t transition_id = 0;
+static std::size_t transition_id = 0;
 
 static void resetTransitionID()
 {
@@ -246,7 +242,8 @@ static std::string newTransitionID(
 		const std::string & id, const std::string & prefix = "t")
 {
 	return( id.empty() ?
-			(sep::OSS() << prefix << '#' << transition_id++).str() : id );
+			(sep::OSS() << prefix << sep::NamedElement::NAME_ID_SEPARATOR
+						<< transition_id++).str() : id );
 }
 
 
@@ -255,7 +252,8 @@ static int mInvokeNewInstanceCount = 0;
 static std::string newInvokeNewInstanceNameID(
 		sep::Machine * container, const std::string modelNameID)
 {
-	return( sep::OSS() << modelNameID << '#' << mInvokeNewInstanceCount++ );
+	return( sep::OSS() << modelNameID << sep::NamedElement::NAME_ID_SEPARATOR
+						<< mInvokeNewInstanceCount++ );
 }
 
 
@@ -265,10 +263,10 @@ static int mProcedureCallCount = 0;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// CONNECT ID
+// BUFFER ID
 ////////////////////////////////////////////////////////////////////////////////
 
-static sep::avm_size_t buffer_id = 0;
+static std::size_t buffer_id = 0;
 
 static void resetBufferID()
 {
@@ -277,26 +275,28 @@ static void resetBufferID()
 
 static std::string newBufferID(const std::string & prefix = sep::Buffer::ANONYM_ID)
 {
-	return( sep::OSS() << prefix << '#' << buffer_id++ );
+	return( sep::OSS() << prefix << sep::NamedElement::NAME_ID_SEPARATOR
+					<< buffer_id++ );
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// CONNECT ID
+// CONNECTOR ID
 ////////////////////////////////////////////////////////////////////////////////
 
-static sep::avm_size_t connector_id = 0;
+static std::size_t connector_id = 0;
 
-static void resetConnectID()
+static void resetConnectorID()
 {
 	connector_id = 0;
 }
 
-static std::string newConnectID(const std::string & id,
+static std::string newConnectorID(const std::string & id,
 		const std::string & prefix = sep::Connector::ANONYM_ID)
 {
 	return( id.empty() ?
-			(sep::OSS() << prefix << '#' << connector_id++).str() : id );
+			(sep::OSS() << prefix << sep::NamedElement::NAME_ID_SEPARATOR
+						<< connector_id++).str() : id );
 }
 
 
@@ -305,7 +305,7 @@ static std::string newConnectID(const std::string & id,
 ////////////////////////////////////////////////////////////////////////////////
 
 #define IS_KEYWORD(kw)   \
-	( (STR(LT(1)->getText(LT(1))->chars) == kw)? ANTLR3_TRUE : ANTLR3_FALSE )
+	( (STR(LT(1)->text->chars) == kw)? ANTLR3_TRUE : ANTLR3_FALSE )
 
 
 
@@ -325,11 +325,11 @@ void fmlDisplayRecognitionError(
 	// Retrieve some info for easy reading.
 	//
 	ex	    =		recognizer->state->exception;
-	ttext   =		NULL;
+	ttext   =		nullptr;
 
 	// See if there is a 'filename' we can use
 	//
-	if	(ex->streamName == NULL)
+	if	(ex->streamName == nullptr)
 	{
 		if	(((pANTLR3_COMMON_TOKEN)(ex->token))->type == ANTLR3_TOKEN_EOF)
 		{
@@ -365,13 +365,14 @@ void fmlDisplayRecognitionError(
 		// Prepare the knowledge we know we have
 		//
 		parser	    = (pANTLR3_PARSER) (recognizer->super);
-		tparser	    = NULL;
+		tparser	    = nullptr;
 		is			= parser->tstream->istream;
 		theToken    = (pANTLR3_COMMON_TOKEN)(recognizer->state->exception->token);
 		ttext	    = theToken->toString(theToken);
 
-		ANTLR3_FPRINTF(stderr, ", at offset \%d", recognizer->state->exception->charPositionInLine);
-		if  (theToken != NULL)
+		ANTLR3_FPRINTF(stderr, ", at offset \%d",
+				recognizer->state->exception->charPositionInLine);
+		if  (theToken != nullptr)
 		{
 			if (theToken->type == ANTLR3_TOKEN_EOF)
 			{
@@ -381,7 +382,8 @@ void fmlDisplayRecognitionError(
 			{
 				// Guard against null text in a token
 				//
-				ANTLR3_FPRINTF(stderr, "\n    NEAR \%s\n    ", ttext == NULL ? (pANTLR3_UINT8)"<no text for the token>" : ttext->chars);
+				ANTLR3_FPRINTF(stderr, "\n    NEAR \%s\n    ", ttext == nullptr ? 
+						(pANTLR3_UINT8)"<no text for the token>" : ttext->chars);
 			}
 		}
 		break;
@@ -389,16 +391,16 @@ void fmlDisplayRecognitionError(
 	case	ANTLR3_TYPE_TREE_PARSER:
 
 		tparser		= (pANTLR3_TREE_PARSER) (recognizer->super);
-		parser		= NULL;
+		parser		= nullptr;
 		is			= tparser->ctnstream->tnstream->istream;
 		theBaseTree	= (pANTLR3_BASE_TREE)(recognizer->state->exception->token);
 		ttext		= theBaseTree->toStringTree(theBaseTree);
 
-		if  (theBaseTree != NULL)
+		if  (theBaseTree != nullptr)
 		{
 			theCommonTree	= (pANTLR3_COMMON_TREE)	    theBaseTree->super;
 
-			if	(theCommonTree != NULL)
+			if	(theCommonTree != nullptr)
 			{
 				theToken	= (pANTLR3_COMMON_TOKEN)    theBaseTree->getToken(theBaseTree);
 			}
@@ -436,7 +438,7 @@ void fmlDisplayRecognitionError(
 		// correct stream. Then we can see that the token we are looking at
 		// is just something that should not be there and throw this exception.
 		//
-		if	(tokenNames == NULL)
+		if	(tokenNames == nullptr)
 		{
 			ANTLR3_FPRINTF(stderr, " : Extraneous input...");
 		}
@@ -460,7 +462,7 @@ void fmlDisplayRecognitionError(
 		// token. Perhaps a missing ';' at line end or a missing ',' in an
 		// expression list, and such like.
 		//
-		if	(tokenNames == NULL)
+		if	(tokenNames == nullptr)
 		{
 			ANTLR3_FPRINTF(stderr, " : Missing token (\%d)...\n", ex->expecting);
 		}
@@ -499,7 +501,7 @@ void fmlDisplayRecognitionError(
 		// for down to something small. Knowing what you are parsing may be
 		// able to allow you to be even more specific about an error.
 		//
-		if	(tokenNames == NULL)
+		if	(tokenNames == nullptr)
 		{
 			ANTLR3_FPRINTF(stderr, " : syntax error...\n");
 		}
@@ -628,14 +630,12 @@ returns [ sep::System * spec ]
 @init{
 	mWObjectManager = &( aWObjectManager );
 
-	spec = NULL;
+	$spec = nullptr;
 }
-@after{
-	spec->setWObject(DIVERITY_PROLOG);
-}
-	: prologue_fml
-	  ( s=def_system   { $spec = $s.sys;  }
-//	  | p=def_package  { $spec = $p.pack;  }
+	: pfml=prologue_fml
+	  ( s=def_system   { $spec = $s.sys;  $spec->setWObject($pfml.fmlProlog); }
+	  
+//	  | p=def_package  { $pack = $p.pack; $pack->setWObject($pfml.fmlProlog); }
 	  )
 	;
 
@@ -645,19 +645,23 @@ returns [ sep::System * spec ]
 ////////////////////////////////////////////////////////////////////////////////
 
 prologue_fml
+returns [ sep::WObject * fmlProlog = sep::WObject::_NULL_]
 @init{
+	// Current Diversity prologue specification
+
 	std::string attrID;
 }
-	: ( '@formalml'  { DIVERITY_PROLOG = mWObjectManager->newWSequence(sep::WObject::_NULL_, "formalml" ); }
-	  | '@xfml'      { DIVERITY_PROLOG = mWObjectManager->newWSequence(sep::WObject::_NULL_, "xfml"     ); }
-	  | '@fml'       { DIVERITY_PROLOG = mWObjectManager->newWSequence(sep::WObject::_NULL_, "fml"      ); }
-	  | '@diversity' { DIVERITY_PROLOG = mWObjectManager->newWSequence(sep::WObject::_NULL_, "diversity"); }
-	  | '@xlia'      { DIVERITY_PROLOG = mWObjectManager->newWSequence(sep::WObject::_NULL_, "xlia"     ); }
-	  | '@xfsp'      { DIVERITY_PROLOG = mWObjectManager->newWSequence(sep::WObject::_NULL_, "xfsp"     ); }
+	: ( '@FormalML'  { $fmlProlog = mWObjectManager->newWSequence(sep::WObject::_NULL_, "formalml" ); }
+	  | '@formalml'  { $fmlProlog = mWObjectManager->newWSequence(sep::WObject::_NULL_, "formalml" ); }
+	  | '@xfml'      { $fmlProlog = mWObjectManager->newWSequence(sep::WObject::_NULL_, "xfml"     ); }
+	  | '@fml'       { $fmlProlog = mWObjectManager->newWSequence(sep::WObject::_NULL_, "fml"      ); }
+	  | '@diversity' { $fmlProlog = mWObjectManager->newWSequence(sep::WObject::_NULL_, "diversity"); }
+	  | '@xlia'      { $fmlProlog = mWObjectManager->newWSequence(sep::WObject::_NULL_, "xlia"     ); }
+	  | '@xfsp'      { $fmlProlog = mWObjectManager->newWSequence(sep::WObject::_NULL_, "xfsp"     ); }
 	  ) ?
 	  {
-	  	if( DIVERITY_PROLOG == sep::WObject::_NULL_ )
-	  	{ DIVERITY_PROLOG = mWObjectManager->newWSequence(sep::WObject::_NULL_, "symbex"); }
+		if( $fmlProlog == sep::WObject::_NULL_ )
+		{ $fmlProlog = mWObjectManager->newWSequence(sep::WObject::_NULL_, "symbex"); }
 	  }
 	  LT_
 	    ( 'system'   { attrID = "system";  }
@@ -666,29 +670,31 @@ prologue_fml
 	    )
 	    ( ASSIGN id=ID
 		{
-			DIVERITY_PROLOG->append( mWObjectManager->newWPropertyIdentifier(
-					DIVERITY_PROLOG, attrID, STR($id.text->chars) ) );
+			$fmlProlog->append( 
+					mWObjectManager->newWPropertyIdentifier(
+							$fmlProlog, attrID, STR($id.text->chars) ) );
 		}
 	    )?
-	  ( COMMA ( FloatLiteral | ID | StringLiteral ) )*
+	  ( COMMA ( 'version:' )? ( FloatLiteral | ID | StringLiteral ) )*
 	  GT
 	  COLON
-	  ( prologue_attribute )?
+	  ( prologue_attribute[ $fmlProlog ] )?
 	  ( prologue_options )?
 	;
 
 
 prologue_attribute
+/* in */[ sep::WObject * fmlProlog ]
 	: '@package'  ASSIGN  id=ID  SEMI
 	{
-		DIVERITY_PROLOG->append( mWObjectManager->newWPropertyIdentifier(
-				DIVERITY_PROLOG, "package", STR($id.text->chars) ) );
+		fmlProlog->append( mWObjectManager->newWPropertyIdentifier(
+				fmlProlog, "package", STR($id.text->chars) ) );
 	}
 
 	| '@system'  ASSIGN  id=ID  SEMI
 	{
-		DIVERITY_PROLOG->append( mWObjectManager->newWPropertyIdentifier(
-				DIVERITY_PROLOG, "system", STR($id.text->chars) ) );
+		fmlProlog->append( mWObjectManager->newWPropertyIdentifier(
+				fmlProlog, "system", STR($id.text->chars) ) );
 	}
 	;
 
@@ -696,7 +702,7 @@ prologue_attribute
 prologue_options
 	: '@options'  LCURLY
 		  ( id=ID ASSIGN e=expression SEMI
-		  	{ sep::ParserUtil::setPrologueOption(STR($id.text->chars), $e.bf); }
+		  { sep::ParserUtil::setPrologueOption(STR($id.text->chars), $e.bf); }
 		  )*
 	  RCURLY
 	;
@@ -709,26 +715,28 @@ prologue_options
 //modifier_property_specifier
 modifier_declaration
 returns [ sep::Modifier mdfr ]
-	: ( 'final'         { mdfr.setFeatureFinal();     }
-//	  | 'const'         { mdfr.setFeatureConst();     }
+	: ( 'final'         { $mdfr.setFeatureFinal();        }
+//	  | 'const'         { $mdfr.setFeatureConst();        }
 
-	  | 'static'        { mdfr.setFeatureStatic();    }
+	  | 'static'        { $mdfr.setFeatureStatic();       }
 
-	  | 'volatile'      { mdfr.setFeatureVolatile();  }
-	  | 'transient'     { mdfr.setFeatureTransient(); }
+	  | 'volatile'      { $mdfr.setFeatureVolatile();     }
+	  | 'transient'     { $mdfr.setFeatureTransient();    }
 
-	  | 'unsafe'        { mdfr.setFeatureUnsafe();    }
+	  | 'unsafe'        { $mdfr.setFeatureUnsafe();       }
 
-	  | 'ref'           { mdfr.setNatureReference();  }
-//	  | 'macro'         { mdfr.setNatureMacro();      }
+	  | 'optional'      { $mdfr.setFeatureOptional();     }
 
-	  | 'bind'          { mdfr.setNatureBind();       }
+	  | 'ref'           { $mdfr.setNatureReference();     }
+//	  | 'macro'         { $mdfr.setNatureMacro();         }
 
-	  | 'public'        { mdfr.setVisibilityPublic();    }
-//	  | 'protected'     { mdfr.setVisibilityProtected(); }
-	  | 'private'       { mdfr.setVisibilityPrivate();   }
+	  | 'bind'          { $mdfr.setNatureBind();          }
 
-	  | modifier_set_direction_strict_text[ mdfr ]
+	  | 'public'        { $mdfr.setVisibilityPublic();    }
+//	  | 'protected'     { $mdfr.setVisibilityProtected(); }
+	  | 'private'       { $mdfr.setVisibilityPrivate();   }
+
+	  | modifier_set_direction_strict_text[ $mdfr ]
 	  )+
 	;
 
@@ -736,131 +744,140 @@ returns [ sep::Modifier mdfr ]
 //modifier_parameter_specifier
 modifier_direction
 returns [ sep::Modifier mdfr ]
-	: ( '->'  | 'in'  | 'input'  )  { mdfr.setDirectionInput();  }
-	| ( '<-'  | 'out' | 'output' )  { mdfr.setDirectionOutput(); }
-	| ( '<->' | 'inout'  )          { mdfr.setDirectionInout();  }
-	| ( '<='  | 'return' )          { mdfr.setDirectionReturn(); }
+	: ( '->'  | 'in'  | 'input'  )  { $mdfr.setDirectionInput();  }
+	| ( '<-'  | 'out' | 'output' )  { $mdfr.setDirectionOutput(); }
+	| ( '<->' | 'inout'  )          { $mdfr.setDirectionInout();  }
+	| ( '<='  | 'return' )          { $mdfr.setDirectionReturn(); }
 	;
 
 modifier_direction_text
 returns [ sep::Modifier mdfr ]
-	: ( 'in'  | 'input'  )  { mdfr.setDirectionInput();  }
-	| ( 'out' | 'output' )  { mdfr.setDirectionOutput(); }
-	| ( 'inout'  )          { mdfr.setDirectionInout();  }
-	| ( 'return' )          { mdfr.setDirectionReturn(); }
+	: ( 'in'  | 'input'  )  { $mdfr.setDirectionInput();  }
+	| ( 'out' | 'output' )  { $mdfr.setDirectionOutput(); }
+	| ( 'inout'  )          { $mdfr.setDirectionInout();  }
+	| ( 'return' )          { $mdfr.setDirectionReturn(); }
 	;
 
 modifier_set_direction_strict_text
 /*inout*/[ sep::Modifier & mdfr ]
-	: 'input'    { mdfr.setDirectionInput();  }
-	| 'output'   { mdfr.setDirectionOutput(); }
-	| 'inout'    { mdfr.setDirectionInout();  }
-	| 'return'   { mdfr.setDirectionReturn(); }
+	: 'input'    { $mdfr.setDirectionInput();  }
+	| 'output'   { $mdfr.setDirectionOutput(); }
+	| 'inout'    { $mdfr.setDirectionInout();  }
+	| 'return'   { $mdfr.setDirectionReturn(); }
 	;
 
 modifier_direction_symbol
 returns [ sep::Modifier mdfr ]
-	: '->'    { mdfr.setDirectionInput();  }
-	| '<-'    { mdfr.setDirectionOutput(); }
-	| '<->'   { mdfr.setDirectionInout();  }
-	| '<='    { mdfr.setDirectionReturn(); }
+	: '->'    { $mdfr.setDirectionInput();  }
+	| '<-'    { $mdfr.setDirectionOutput(); }
+	| '<->'   { $mdfr.setDirectionInout();  }
+	| '<='    { $mdfr.setDirectionReturn(); }
 	;
 
 
 //modifier_parameter_specifier
 modifier_param
 returns [ sep::Modifier mdfr ]
-	: m=modifier_direction  { mdfr = $m.mdfr; }
+	: m=modifier_direction  { $mdfr = $m.mdfr; }
 
-	| 'final'           { mdfr.setFeatureFinal();    }
-	| 'const'           { mdfr.setFeatureConst();    }
+	| 'final'           { $mdfr.setFeatureFinal();    }
+	| 'const'           { $mdfr.setFeatureConst();    }
 
-	| ( '&' | 'ref' )   { mdfr.setNatureReference(); }
-	| 'macro'           { mdfr.setNatureMacro();     }
+	| ( '&' | 'ref' )   { $mdfr.setNatureReference(); }
+	| 'macro'           { $mdfr.setNatureMacro();     }
 
-	| 'bind'            { mdfr.setNatureBind();      }
+	| 'bind'            { $mdfr.setNatureBind();      }
 	;
 
 
 //modifier_procedure_specifier
 procedure_modifier_specifier
 returns [ sep::Modifier mdfr , sep::Specifier spcfr ]
-//	: ( 'final'         { $mdfr.setFeatureFinal();     }
+//	: ( 'final'          { $mdfr.setFeatureFinal();           }
 
-//	  | 'volatile'      { $mdfr.setFeatureVolatile();  }
-//	  | 'transient'     { $mdfr.setFeatureTransient(); }
+//	  | 'volatile'       { $mdfr.setFeatureVolatile();        }
+//	  | 'transient'      { $mdfr.setFeatureTransient();       }
 
-//	  | 'model'         { $mdfr.setDesignModel();           }
-//	  | 'prototype'     { $mdfr.setDesignPrototypeStatic(); }
-//	  | 'instance'      { $mdfr.setDesignInstanceStatic();  }
-//	  | 'dynamic'       { $mdfr.setDesignInstanceDynamic(); }
+//	  | 'model'          { $mdfr.setDesignModel();            }
+//	  | 'prototype'      { $mdfr.setDesignPrototypeStatic();  }
+//	  | 'instance'       { $mdfr.setDesignInstanceStatic();   }
+//	  | 'dynamic'        { $mdfr.setDesignInstanceDynamic();  }
 
-//	  | 'macro'         { $mdfr.setNatureMacro(); }
+//	  | 'macro'          { $mdfr.setNatureMacro(); }
 
-//	  | 'public'        { $mdfr.setVisibilityPublic();    }
-//	  | 'protected'     { $mdfr.setVisibilityProtected(); }
-//	  | 'private'       { $mdfr.setVisibilityPrivate();   }
+//	  | 'public'         { $mdfr.setVisibilityPublic();       }
+//	  | 'protected'      { $mdfr.setVisibilityProtected();    }
+//	  | 'private'        { $mdfr.setVisibilityPrivate();      }
 
 
-	: ( 'timed'         { $spcfr.setFeatureTimed();        }
-	  | 'input_enabled' { $spcfr.setFeatureInputEnabled(); }
-//	  | 'lifeline'      { $spcfr.setFeatureLifeline();     }
-	  | 'unsafe'        { $mdfr.setFeatureUnsafe();        }
+	: ( 'timed'          { $spcfr.setFeatureTimed();          }
+	  | 'timed#dense'    { $spcfr.setFeatureDenseTimed();     }
+	  | 'timed#discrete' { $spcfr.setFeatureDiscreteTimed();  }
+
+	  | 'input_enabled'  { $spcfr.setFeatureInputEnabled();   }
+//	  | 'lifeline'       { $spcfr.setFeatureLifeline();       }
+	  | 'unsafe'         { $mdfr.setFeatureUnsafe();          }
 	  )+
 	;
 
 
 executable_modifier_specifier
 returns [ sep::Modifier mdfr , sep::Specifier spcfr ]
-//	: ( 'final'         { $mdfr.setFeatureFinal();     }
+//	: ( 'final'          { $mdfr.setFeatureFinal();           }
 
-//	  | 'volatile'      { $mdfr.setFeatureVolatile();  }
-//	  | 'transient'     { $mdfr.setFeatureTransient(); }
+//	  | 'volatile'       { $mdfr.setFeatureVolatile();        }
+//	  | 'transient'      { $mdfr.setFeatureTransient();       }
 
-	: ( 'model'         { $spcfr.setDesignModel();           }
-	  | 'prototype'     { $spcfr.setDesignPrototypeStatic(); }
-//	  | 'instance'      { $spcfr.setDesignInstanceStatic();  }
-	  | 'dynamic'       { $spcfr.setDesignInstanceDynamic(); }
+	: ( 'model'          { $spcfr.setDesignModel();           }
+	  | 'prototype'      { $spcfr.setDesignPrototypeStatic(); }
+//	  | 'instance'       { $spcfr.setDesignInstanceStatic();  }
+	  | 'dynamic'        { $spcfr.setDesignInstanceDynamic(); }
 
-//	  | 'macro'         { $mdfr.setNatureMacro(); }
-//	  | 'bind'          { $mdfr.setNatureBind();  }
+//	  | 'macro'          { $mdfr.setNatureMacro();            }
+//	  | 'bind'           { $mdfr.setNatureBind();             }
 
-//	  | 'public'        { $mdfr.setVisibilityPublic();     }
-//	  | 'protected'     { $mdfr.setVisibilityProtected();  }
-//	  | 'private'       { $mdfr.setVisibilityPrivate();    }
+//	  | 'public'         { $mdfr.setVisibilityPublic();       }
+//	  | 'protected'      { $mdfr.setVisibilityProtected();    }
+//	  | 'private'        { $mdfr.setVisibilityPrivate();      }
 
-	  | 'unsafe'        { $mdfr.setFeatureUnsafe();        }
+	  | 'unsafe'         { $mdfr.setFeatureUnsafe();          }
 
-	  | 'timed'         { $spcfr.setFeatureTimed();        }
-	  | 'input_enabled' { $spcfr.setFeatureInputEnabled(); }
-	  | 'lifeline'      { $spcfr.setFeatureLifeline();     }
+	  | 'timed'          { $spcfr.setFeatureTimed();          }
+	  | 'timed#dense'    { $spcfr.setFeatureDenseTimed();     }
+	  | 'timed#discrete' { $spcfr.setFeatureDiscreteTimed();  }
+
+	  | 'input_enabled'  { $spcfr.setFeatureInputEnabled();   }
+	  | 'lifeline'       { $spcfr.setFeatureLifeline();       }
 	  )+
 	;
 
 instance_modifier_specifier
 returns [ sep::Modifier mdfr , sep::Specifier spcfr ]
-	: ( 'final'         { $mdfr.setFeatureFinal();     }
+	: ( 'final'          { $mdfr.setFeatureFinal();           }
 
-//	  | 'volatile'      { $mdfr.setFeatureVolatile();  }
-//	  | 'transient'     { $mdfr.setFeatureTransient(); }
+//	  | 'volatile'       { $mdfr.setFeatureVolatile();        }
+//	  | 'transient'      { $mdfr.setFeatureTransient();       }
 
-//	  | 'model'         { $spcfr.setDesignModel();           }
-//	  | 'prototype'     { $spcfr.setDesignPrototypeStatic(); }
-//	  | 'instance'      { $spcfr.setDesignInstanceStatic();  }
-	  | 'dynamic'       { $spcfr.setDesignInstanceDynamic(); }
+//	  | 'model'          { $spcfr.setDesignModel();           }
+//	  | 'prototype'      { $spcfr.setDesignPrototypeStatic(); }
+//	  | 'instance'       { $spcfr.setDesignInstanceStatic();  }
+	  | 'dynamic'        { $spcfr.setDesignInstanceDynamic(); }
 
-//	  | 'macro'         { $mdfr.setNatureMacro(); }
-//	  | 'bind'          { $mdfr.setNatureBind();  }
+//	  | 'macro'          { $mdfr.setNatureMacro();            }
+//	  | 'bind'           { $mdfr.setNatureBind();             }
 
-	  | 'public'        { $mdfr.setVisibilityPublic();    }
-	  | 'protected'     { $mdfr.setVisibilityProtected(); }
-	  | 'private'       { $mdfr.setVisibilityPrivate();   }
+	  | 'public'         { $mdfr.setVisibilityPublic();       }
+	  | 'protected'      { $mdfr.setVisibilityProtected();    }
+	  | 'private'        { $mdfr.setVisibilityPrivate();      }
 
-	  | 'unsafe'        { $mdfr.setFeatureUnsafe();       }
+	  | 'unsafe'         { $mdfr.setFeatureUnsafe();          }
 
-	  | 'timed'         { $spcfr.setFeatureTimed();        }
-	  | 'input_enabled' { $spcfr.setFeatureInputEnabled(); }
-	  | 'lifeline'      { $spcfr.setFeatureLifeline();     }
+	  | 'timed'          { $spcfr.setFeatureTimed();          }
+	  | 'timed#dense'    { $spcfr.setFeatureDenseTimed();     }
+	  | 'timed#discrete' { $spcfr.setFeatureDiscreteTimed();  }
+
+	  | 'input_enabled'  { $spcfr.setFeatureInputEnabled();   }
+	  | 'lifeline'       { $spcfr.setFeatureLifeline();       }
 	  )+
 	;
 
@@ -868,15 +885,17 @@ returns [ sep::Modifier mdfr , sep::Specifier spcfr ]
 //modifier_transition_specifier
 modifier_transition
 returns [ sep::Modifier mdfr , sep::Specifier spcfr ]
-//	: ( 'final'         { $mdfr.setFeatureFinal();         }
+//	: ( 'final'          { $mdfr.setFeatureFinal();          }
 
-//	  | 'volatile'      { $mdfr.setFeatureVolatile();      }
-	: ( 'transient'     { $mdfr.setFeatureTransient();     }
+//	  | 'volatile'       { $mdfr.setFeatureVolatile();       }
+	: ( 'transient'      { $mdfr.setFeatureTransient();      }
 
-//	  | 'unsafe'        { $mdfr.setFeatureUnsafe();        }
+//	  | 'unsafe'         { $mdfr.setFeatureUnsafe();         }
 
-	  | 'timed'         { $spcfr.setFeatureTimed();        }
-	  | 'input_enabled' { $spcfr.setFeatureInputEnabled(); }
+	  | 'timed'          { $spcfr.setFeatureTimed();         }
+	  | 'timed#dense'    { $spcfr.setFeatureDenseTimed();    }
+	  | 'timed#discrete' { $spcfr.setFeatureDiscreteTimed(); }
+	  | 'input_enabled'  { $spcfr.setFeatureInputEnabled();  }
 	  )+
 	;
 
@@ -894,19 +913,19 @@ returns [ sep::Package * pack ]
 			needDefaultStateTerminal, needDefaultStateReturn);
 }
 	: 'package' id=ID
-	    { PUSH_CTX_CPM( $pack = new sep::Package(STR($id.text->chars)) ); }
+		{ PUSH_CTX_CPM( $pack = new sep::Package(STR($id.text->chars)) ); }
 
 	    ( StringLiteral
-	    { $pack->setUnrestrictedName(STR($StringLiteral.text->chars)); }
+		{ $pack->setUnrestrictedName(STR($StringLiteral.text->chars));    }
 	    )?
 
 	  LCURLY
-	  section_header[ pack ] ?
-	  section_import[ pack ] ?
+	  section_header[ $pack ] ?
+	  section_import[ $pack ] ?
 
-	  ( section_property[ pack ] )*
+	  ( section_property[ $pack ] )*
 
-	  ( section_composite_structure[ pack ] )*
+	  ( section_composite_structure[ $pack ] )*
 	  RCURLY
 	;
 
@@ -920,7 +939,8 @@ returns [ sep::System * sys ]
 @init{
 	 sep::Modifier mdfr;
 
-	sep::Specifier spcfr( sep::Specifier::COMPONENT_SYSTEM_KIND );
+	sep::Specifier spcfr(sep::Specifier::COMPONENT_SYSTEM_KIND,
+			sep::Specifier::MOC_COMPOSITE_STRUCTURE_KIND );
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
@@ -930,7 +950,7 @@ returns [ sep::System * sys ]
 	sep::ParserUtil::declareDefaultEndingStateIfNeed(needDefaultStateFinal,
 			needDefaultStateTerminal, needDefaultStateReturn);
 
-	SET_RULE_LOCATION(sys);
+	SET_RULE_LOCATION($sys);
 }
 	: ( ms=executable_modifier_specifier
 	  { mdfr = $ms.mdfr; spcfr.ifnot_define( $ms.spcfr ); }
@@ -939,11 +959,11 @@ returns [ sep::System * sys ]
 	  ( LT_ ( 'moc:' )?  executable_specifier[ spcfr ] GT )?
 	  id=ID
 	  {
-	  	PUSH_CTX_CPM( _SYSTEM_ = $sys = new sep::System(STR($id.text->chars)) );
+		PUSH_CTX_CPM( _SYSTEM_ = $sys = new sep::System(STR($id.text->chars)) );
 
-	  	$sys->getwModifier().override_ifdef( mdfr );
+		$sys->getwModifier().override_ifdef( mdfr );
 
-	  	$sys->getwSpecifier().ifnot_define( spcfr );
+		$sys->getwSpecifier().ifnot_define( spcfr );
 	  }
 
 	  ( StringLiteral
@@ -952,30 +972,30 @@ returns [ sep::System * sys ]
 
 	  LCURLY
 
-//	  section_header_import_parameter_property[ sys ]
+//	  section_header_import_parameter_property[ $sys ]
 
-	  section_header[ sys ] ?
-	  section_import[ sys ] ?
+	  section_header[ $sys ] ?
+	  section_import[ $sys ] ?
 
-	  ( section_parameter[ sys ] )*
+	  ( section_parameter[ $sys ] )*
 
 	  // Conditional Template Code Generation for @declaration
-	  {  sep::TemplateFactory::genProperty(sys); }
+	  {  sep::TemplateFactory::genProperty($sys); }
 
-	  ( section_property[ sys ] )*
+	  ( section_property[ $sys ] )*
 
-	  ( section_composite_structure[ sys ] )*
+	  ( section_composite_structure[ $sys ] )*
 
-	  ( section_behavior[ sys ]
-	  | section_statemachine[ sys ]
+	  ( section_behavior[ $sys ]
+	  | section_statemachine[ $sys ]
 	  )?
 	  
 	  // Conditional Template Code Generation for @moe
-	  {  sep::TemplateFactory::genBehavior(sys); }
+	  {  sep::TemplateFactory::genBehavior($sys); }
 
-	  ( section_model_of_computation[ sys ]
-	  | section_model_of_interaction[ sys ]
-	  | section_model_of_execution[ sys ]
+	  ( section_model_of_computation[ $sys ]
+	  | section_model_of_interaction[ $sys ]
+	  | section_model_of_execution[ $sys ]
 	  )*
 	  RCURLY
 	;
@@ -986,7 +1006,7 @@ returns [ sep::System * sys ]
 ////////////////////////////////////////////////////////////////////////////////
 
 qualifiedNameID
-returns [ std::string s , sep::avm_size_t nb = 1 ]
+returns [ std::string s , std::size_t nb = 1 ]
 @init{
 	cpLOCATOR.clear();
 	cpQNID.clear();
@@ -1002,7 +1022,7 @@ returns [ std::string s , sep::avm_size_t nb = 1 ]
 
 
 integer_constant
-returns [ sep::avm_size_t val ]
+returns [ std::size_t val ]
 	: n=IntegerLiteral
 	{ $val = NUM_INT($n.text->chars); }
 
@@ -1025,7 +1045,8 @@ returns [ sep::avm_float_t val ]
 // section HEADER
 ////////////////////////////////////////////////////////////////////////////////
 
-section_header [ sep::Machine * container ]
+section_header
+/* in */[ sep::Machine * container ]
 	: '@header:'
 	;
 
@@ -1056,32 +1077,32 @@ executable_specification
 		sep::Modifier mdfr , sep::Specifier spcfr ]
 returns [ sep::Machine * machine ]
 @init{
-	sep::avm_size_t initialCount = 1;
-	sep::avm_size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
+	std::size_t initialCount = 1;
+	std::size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
 	POP_CTX;
 
-	SET_RULE_LOCATION(machine);
+	SET_RULE_LOCATION($machine);
 }
 	: 'executable'
 	  ( LT_
-	  	( ( 'moc:' )?  executable_specifier[ spcfr ]
+		( ( 'moc:' )?  executable_specifier[ $spcfr ]
 	 	  ( COMMA  def_instance_count[ initialCount , maximalCount ] )?
 
-	  	| def_instance_count[ initialCount , maximalCount ]
-	  	)?
+		| def_instance_count[ initialCount , maximalCount ]
+		)?
 	  GT )?
 	  id=ID
 	  {
-	  	PUSH_CTX_CPM( $machine = sep::Machine::newExecutable(
-	  			container, STR($id.text->chars), spcfr) );
+		PUSH_CTX_CPM( $machine = sep::Machine::newExecutable(
+				container, STR($id.text->chars), $spcfr) );
 
-		$machine->getwModifier().override_ifdef( mdfr );
+		$machine->getwModifier().override_ifdef( $mdfr );
 
-	  	container->saveOwnedElement( $machine );
+		container->saveOwnedElement( $machine );
 
 		$machine->getUniqInstanceSpecifier()
 				->setInstanceCount(initialCount, maximalCount);
@@ -1091,11 +1112,11 @@ returns [ sep::Machine * machine ]
 	  { $machine->setUnrestrictedName(STR($StringLiteral.text->chars)); }
 	  )?
 
-	  def_machine_parameters[ machine , sep::Modifier::PROPERTY_PARAMETER_MODIFIER ] ?
+	  def_machine_parameters[ $machine , sep::Modifier::PROPERTY_PARAMETER_MODIFIER ] ?
 
-	  def_machine_returns[ machine , sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ] ?
+	  def_machine_returns[ $machine , sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ] ?
 
-	  def_body_machine[ machine ]
+	  def_body_machine[ $machine ]
 	;
 
 
@@ -1132,9 +1153,9 @@ returns [ sep::Machine * procedure ]
 @after{
 	POP_CTX;
 
-	sep::ParserUtil::checkProcedureCompositeMocKind(procedure);
+	sep::ParserUtil::checkProcedureCompositeMocKind($procedure);
 
-	SET_RULE_LOCATION(procedure);
+	SET_RULE_LOCATION($procedure);
 }
 	: ( ms=procedure_modifier_specifier
 	  { mdfr.override_ifdef( $ms.mdfr ); spcfr.override_ifdef( $ms.spcfr ); }
@@ -1148,19 +1169,19 @@ returns [ sep::Machine * procedure ]
 
 		$procedure->getwModifier().override_ifdef( mdfr );
 
-		container->saveOwnedElement( $procedure );
+		$container->saveOwnedElement( $procedure );
 	  }
 
 	  ( StringLiteral
 	  { $procedure->setUnrestrictedName(STR($StringLiteral.text->chars)); }
 	  )?
 
-	  def_machine_parameters[ procedure ] ?
+	  def_machine_parameters[ $procedure ] ?
 
-	  def_machine_returns[ procedure ,
-	  		sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ] ?
+	  def_machine_returns[ $procedure ,
+			sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ] ?
 
-	  def_body_procedure[ procedure ]
+	  def_body_procedure[ $procedure ]
 	;
 
 
@@ -1169,14 +1190,14 @@ def_machine_parameters [ sep::Machine * machine ]
 	sep::avm_offset_t offset = 0;
 	sep::Modifier mdfr = sep::Modifier::PROPERTY_PARAMETER_MODIFIER;
 
-	sep::PropertyPart & declProperty = machine->getPropertyPart();
+	sep::PropertyPart & declPropertyPart = $machine->getPropertyPart();
 }
-	: LBRACKET  def_machine_variable_parameter_atom[ declProperty , mdfr , offset ]
-	  ( COMMA   def_machine_variable_parameter_atom[ declProperty , mdfr , ++offset ] )*
+	: LBRACKET  def_machine_variable_parameter_atom[ declPropertyPart , mdfr , offset ]
+	  ( COMMA   def_machine_variable_parameter_atom[ declPropertyPart , mdfr , ++offset ] )*
 	  RBRACKET
 
-	| LPAREN   def_machine_variable_parameter_atom[ declProperty , mdfr , offset ]
-	  ( COMMA  def_machine_variable_parameter_atom[ declProperty , mdfr , ++offset ] )*
+	| LPAREN   def_machine_variable_parameter_atom[ declPropertyPart , mdfr , offset ]
+	  ( COMMA  def_machine_variable_parameter_atom[ declPropertyPart , mdfr , ++offset ] )*
 	  RPAREN
 	;
 
@@ -1186,19 +1207,19 @@ def_machine_variable_parameter_atom
 		sep::Modifier mdfr , sep::avm_offset_t offset ]
 @init{
 	sep::Variable * variable;
-	sep::Machine * machine = paramDecl.getContainer()->as< sep::Machine >();
+	sep::Machine * machine = $paramDecl.getContainer()->as_ptr< sep::Machine >();
 	sep::BF paramT = sep::TypeManager::UNIVERSAL;
 	std::string paramID;
 	sep::BF value;
 }
-	: ( m=modifier_param { mdfr.override_ifdef( $m.mdfr ); } )?
+	: ( m=modifier_param { $mdfr.override_ifdef( $m.mdfr ); } )?
 	  tv=type_var { paramT = $tv.type; }
 	  ( id=ID     { paramID = STR($id.text->chars); }
 	    ( iv=initial_value  { value = $iv.bf; } )?
 	  )?
 	  {
-		paramDecl.saveOwnedVariable( variable = new sep::Variable(
-				machine, mdfr, paramT, paramID, value ) );
+		$paramDecl.saveOwnedVariable( variable = new sep::Variable(
+				machine, $mdfr, paramT, paramID, value ) );
 	  }
 
 	| 'bind:'
@@ -1206,17 +1227,17 @@ def_machine_variable_parameter_atom
 	    e=expression { value = $e.bf; }
 	  | vid=qualifiedNameID
 	  {
-	  	value = sep::ParserUtil::getVariable($vid.s, $vid.nb);
-	  	if( value.valid() ) { paramT = value.to_ptr< sep::Variable >()->getType(); }
+		value = sep::ParserUtil::getVariable($vid.s, $vid.nb);
+		if( value.valid() ) { paramT = value.to_ptr< sep::Variable >()->getType(); }
 	  }
 	  )
 	  {
 		paramID = sep::OSS() << '#' << offset;
-		paramDecl.saveOwnedVariable( variable = new sep::Variable(machine,
-						mdfr.addNatureKind( sep::Modifier::NATURE_BIND_KIND ),
+		$paramDecl.saveOwnedVariable( variable = new sep::Variable(machine,
+						$mdfr.addNatureKind( sep::Modifier::NATURE_BIND_KIND ),
 						paramT, paramID, value ) );
 
-		variable->setOffset( offset );
+		variable->setOwnedOffset( offset );
 	  }
 	;
 
@@ -1225,28 +1246,28 @@ def_machine_returns
 /* in */[ sep::Machine * machine , sep::Modifier mdfr ]
 @init{
 	sep::avm_offset_t offset = 0;
-	mdfr.setDirectionKind( sep::Modifier::DIRECTION_RETURN_KIND );
+	$mdfr.setDirectionKind( sep::Modifier::DIRECTION_RETURN_KIND );
 	sep::BF value;
 
-	sep::PropertyPart & declProperty = machine->getPropertyPart();
+	sep::PropertyPart & declPropertyPart = machine->getPropertyPart();
 }
 	: ( '-->' | 'returns:' )
-	  ( ( LBRACKET  def_machine_variable_return_atom[ declProperty , mdfr , offset]
-	      ( COMMA   def_machine_variable_return_atom[ declProperty , mdfr , ++offset ] )*
+	  ( ( LBRACKET  def_machine_variable_return_atom[ declPropertyPart , $mdfr , offset]
+	      ( COMMA   def_machine_variable_return_atom[ declPropertyPart , $mdfr , ++offset ] )*
 	      RBRACKET
 	    )
 
-	  | ( LPAREN   def_machine_variable_return_atom[ declProperty , mdfr , offset]
-	      ( COMMA  def_machine_variable_return_atom[ declProperty , mdfr , ++offset ] )*
+	  | ( LPAREN   def_machine_variable_return_atom[ declPropertyPart , $mdfr , offset]
+	      ( COMMA  def_machine_variable_return_atom[ declPropertyPart , $mdfr , ++offset ] )*
 	      RPAREN
 	    )
 
 	  | tv=type_var ( iv=initial_value  { value = $iv.bf; } )?
 	  {
 		sep::Variable * variable =
-				new sep::Variable(machine, mdfr, $tv.type, "#0", value);
+				new sep::Variable(machine, $mdfr, $tv.type, "#0", value);
 
-		declProperty.saveOwnedVariable( variable );
+		declPropertyPart.saveOwnedVariable( variable );
 	  }
 	  )
 	;
@@ -1257,12 +1278,12 @@ def_machine_variable_return_atom
 		sep::Modifier mdfr , sep::avm_offset_t offset ]
 @init{
 	sep::Variable * variable;
-	sep::Machine * machine = paramDecl.getContainer()->as< sep::Machine >();
+	sep::Machine * machine = $paramDecl.getContainer()->as_ptr< sep::Machine >();
 	sep::BF paramT = sep::TypeManager::UNIVERSAL;
 	std::string paramID;
 	sep::BF value;
 }
-	: ( m=modifier_param { mdfr.override_ifdef( $m.mdfr ); } )?
+	: ( m=modifier_param { $mdfr.override_ifdef( $m.mdfr ); } )?
 	  tv=type_var { paramT = $tv.type; }
 	  ( id=ID     { paramID = STR($id.text->chars); }
 	    ( iv=initial_value  { value = $iv.bf; } )?
@@ -1277,20 +1298,20 @@ def_machine_variable_return_atom
 	    e=expression { value = $e.bf; }
 	  | vid=qualifiedNameID
 	  {
-	  	value = sep::ParserUtil::getVariable($vid.s, $vid.nb);
-	  	if( value.valid() ) { paramT = value.to_ptr< sep::Variable >()->getType(); }
+		value = sep::ParserUtil::getVariable($vid.s, $vid.nb);
+		if( value.valid() ) { paramT = value.to_ptr< sep::Variable >()->getType(); }
 	  }
 	  )
 	  {
 		paramID = sep::OSS() << '#' << offset;
 
 		variable = new sep::Variable(machine,
-				mdfr.addNatureKind( sep::Modifier::NATURE_BIND_KIND ),
+				$mdfr.addNatureKind( sep::Modifier::NATURE_BIND_KIND ),
 				paramT, paramID, value);
 
-		paramDecl.saveOwnedVariable( variable );
+		$paramDecl.saveOwnedVariable( variable );
 
-		variable->setOffset( offset );
+		variable->setOwnedOffset( offset );
 	  }
 	;
 
@@ -1307,22 +1328,22 @@ def_body_procedure [ sep::Machine * procedure ]
 	;
 
 def_body_procedure_section [ sep::Machine * procedure ]
-	: section_header[ procedure ] ?
-	  section_import[ procedure ] ?
+	: section_header[ $procedure ] ?
+	  section_import[ $procedure ] ?
 
-	  ( section_parameter[ procedure ] )*
+	  ( section_parameter[ $procedure ] )*
 
-	  ( section_property [ procedure ] )*
+	  ( section_property [ $procedure ] )*
 
-	  ( section_composite_structure[ procedure ] )*
+	  ( section_composite_structure[ $procedure ] )*
 
-	  ( section_behavior[ procedure ]
-	  | section_statemachine[ procedure ]
+	  ( section_behavior[ $procedure ]
+	  | section_statemachine[ $procedure ]
 	  )?
 
-	  ( section_model_of_computation[ procedure ]
-	  | section_model_of_execution[ procedure ]
-	  | section_model_of_interaction[ procedure ]
+	  ( section_model_of_computation[ $procedure ]
+	  | section_model_of_execution  [ $procedure ]
+	  | section_model_of_interaction[ $procedure ]
 	  )*
 	;
 
@@ -1337,11 +1358,11 @@ def_body_procedure_simplif [ sep::Machine * procedure ]
 
 		( m=modifier_declaration  { mdfr = $m.mdfr; } )?
 
-	    ( decl_variable[ procedure->getPropertyPart() , mdfr ]
+	    ( decl_variable[ $procedure->getPropertyPart() , mdfr ]
 
-	    | ads=any_def_statemachine[ procedure , mdfr , spcfr ]
+	    | ads=any_def_statemachine[ $procedure , mdfr , spcfr ]
 
-	    | def_state_activity[ procedure ]
+	    | def_state_activity[ $procedure ]
 	    )
 	  )+
 	;
@@ -1405,13 +1426,13 @@ returns [ sep::Machine * machine ]
 	  { mdfr = $ms.mdfr; spcfr = $ms.spcfr; }
 	  )?
 
-	  ( dm=def_machine[ container , mdfr , spcfr ]
+	  ( dm=def_machine[ $container , mdfr , spcfr ]
 	  { $machine = $dm.machine;  }
 
-	  | ads=any_def_statemachine[ container , mdfr , spcfr ]
+	  | ads=any_def_statemachine[ $container , mdfr , spcfr ]
 	  { $machine = $ads.machine;  }
 
-	  | emi=decl_instance[ container , mdfr , spcfr ]
+	  | emi=decl_instance[ $container , mdfr , spcfr ]
 	  { $machine = $emi.instance; }
 	  )
 	;
@@ -1422,13 +1443,13 @@ executable_model_definiton
 		sep::Modifier mdfr , sep::Specifier spcfr ]
 returns [ sep::Machine * machine ]
 	: ( ms=executable_modifier_specifier
-	  { mdfr.override_ifdef( $ms.mdfr );  spcfr.override_ifdef( $ms.spcfr ); }
+	  { $mdfr.override_ifdef( $ms.mdfr );  $spcfr.override_ifdef( $ms.spcfr ); }
 	  )?
 
-	  ( dm=def_machine      [ container , mdfr , spcfr ]
+	  ( dm=def_machine      [ $container , $mdfr , $spcfr ]
 	  { $machine = $dm.machine;  }
 
-	  | ads=def_statemachine[ container , mdfr , spcfr ]
+	  | ads=def_statemachine[ $container , $mdfr , $spcfr ]
 	  { $machine = $ads.machine; }
 	  )
 	;
@@ -1444,7 +1465,7 @@ returns [ sep::Machine * instance ]
 	  { mdfr = $ms.mdfr; spcfr = $ms.spcfr; }
 	  )?
 
-	  emi=decl_instance[ container , mdfr , spcfr ]
+	  emi=decl_instance[ $container , mdfr , spcfr ]
 	  { $instance = $emi.instance; }
 	;
 
@@ -1460,8 +1481,8 @@ returns [ sep::Machine * instance ]
 @init{
 	sep::BF aModel;
 
-	sep::avm_size_t initialCount = 1;
-	sep::avm_size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
+	std::size_t initialCount = 1;
+	std::size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
@@ -1470,38 +1491,38 @@ returns [ sep::Machine * instance ]
 	{
 		POP_CTX;
 	}
-	SET_RULE_LOCATION(instance);
+	SET_RULE_LOCATION($instance);
 }
 	: 'instance'  ( 'machine' | 'statemachine' )?
 	  LT_
-	  	( 'model:' )? mm=instance_machine_model  { aModel = $mm.model; }
+		( 'model:' )? mm=instance_machine_model  { aModel = $mm.model; }
 
-	  	( COMMA  def_instance_count[ initialCount , maximalCount ] )?
+		( COMMA  def_instance_count[ initialCount , maximalCount ] )?
 	  GT  id=ID
 	  {
-	  	if( aModel.is< sep::Machine >() )
-	  	{
-	  		PUSH_CTX_NEW( aModel.to_ptr< sep::Machine >() );
-	  	}
+		if( aModel.is< sep::Machine >() )
+		{
+			PUSH_CTX_NEW( aModel.to_ptr< sep::Machine >() );
+		}
 
-	  	$instance = sep::Machine::newInstance(container,
-	  			STR($id.text->chars), aModel, initialCount, maximalCount);
+		$instance = sep::Machine::newInstance(container,
+				STR($id.text->chars), aModel, initialCount, maximalCount);
 
 		$instance->getwModifier().override_ifdef( mdfr );
 
 		$instance->getwSpecifier().override_ifdef(
-				spcfr.isDesignInstanceDynamic() ?
-						spcfr : spcfr.setDesignInstanceStatic() );
+				$spcfr.isDesignInstanceDynamic() ?
+						$spcfr : $spcfr.setDesignInstanceStatic() );
 
-	  	container->saveOwnedElement( $instance );
+		container->saveOwnedElement( $instance );
 	  }
 
 	  ( StringLiteral
 	  { $instance->setUnrestrictedName(STR($StringLiteral.text->chars)); }
 	  )?
 /*
-	  decl_instance_machine_params [ machine ] ?
-	  decl_instance_machine_returns[ machine ] ?
+	  decl_instance_machine_params [ instance ] ?
+	  decl_instance_machine_returns[ instance ] ?
 
 	  ( def_body_machine[ machine ] | SEMI )
 */
@@ -1513,7 +1534,7 @@ returns [ sep::Machine * instance ]
 	  ( SEMI
 
 	  | LCURLY
-		( s=statement { instance->getUniqBehaviorPart()->seqOnCreate($s.ac); } )*
+		( s=statement { $instance->getUniqBehaviorPart()->seqOnCreate($s.ac); } )*
 
 		( def_instance_activity[ $instance ] )*
 	    RCURLY
@@ -1523,27 +1544,27 @@ returns [ sep::Machine * instance ]
 
 def_instance_on_new_activity [ sep::Machine * instance ]
 @init{
-	sep::avm_size_t position = 0;
+	std::size_t position = 0;
 }
 	: def_instance_on_new_activity_parameter[ $instance , position++ ]
       ( COMMA def_instance_on_new_activity_parameter[ $instance , position++ ] )*
 	;
 
 def_instance_on_new_activity_parameter
-/* in */[ sep::Machine * instance , sep::avm_size_t position ]
+/* in */[ sep::Machine * instance , std::size_t position ]
 	: ( lvalue  op_assign_param ) =>
 	  lv=lvalue  oap=op_assign_param  e=expression
-	  { instance->getUniqBehaviorPart()->seqOnCreate( NEW_STMT2($oap.op, $lv.bf, $e.bf) ); }
+	  { $instance->getUniqBehaviorPart()->seqOnCreate( NEW_STMT2($oap.op, $lv.bf, $e.bf) ); }
 
 	| e=expression
 	  {
-	  	sep::ParserUtil::appendInstanceDynamicPositionalParameter(
-	  			instance, $e.bf, position);
+		sep::ParserUtil::appendInstanceDynamicPositionalParameter(
+				$instance, $e.bf, position);
 	  }
 	;
 
 op_assign_param
-returns [ sep::Operator * op ]
+returns [ const sep::Operator * op ]
 	: ( ASSIGN | COLON )  { $op = OP(ASSIGN);       }
 	| ASSIGN_REF          { $op = OP(ASSIGN_REF);   }
 	| ASSIGN_MACRO        { $op = OP(ASSIGN_MACRO); }
@@ -1552,10 +1573,10 @@ returns [ sep::Operator * op ]
 
 def_instance_activity [ sep::Machine * instance ]
 @init{
-	sep::BehavioralPart * theBehavior = instance->getUniqBehaviorPart();
+	sep::BehavioralPart * theBehavior = $instance->getUniqBehaviorPart();
 }
 	: '@create'   bs=block_statement  { theBehavior->seqOnCreate($bs.ac); }
-	| '@start'     bs=block_statement  { theBehavior->seqOnStart($bs.ac);   }
+	| '@start'    bs=block_statement  { theBehavior->seqOnStart($bs.ac);   }
 /*
 	| '@init'     bs=block_statement  { theBehavior->seqOnInit($bs.ac);   }
 
@@ -1582,7 +1603,11 @@ def_instance_activity [ sep::Machine * instance ]
 
 section_behavior [ sep::Machine * container ]
 	: '@behavior:'
-	  ( m=executable_machine[ container ] )+
+	  { $container->getwSpecifier().setMocCompositeStructure(); }
+	  
+	  ( m=executable_machine[ container ]  
+	  { $container->getUniqBehaviorPart()->appendOwnedBehavior( $m.machine ); }
+	  )+
 	;
 
 
@@ -1591,7 +1616,7 @@ section_behavior [ sep::Machine * container ]
 ////////////////////////////////////////////////////////////////////////////////
 
 def_instance_count
-/* in */[ sep::avm_size_t & initial , sep::avm_size_t & maximal ]
+/* in */[ std::size_t & initial , std::size_t & maximal ]
 @after{
 	if( $maximal < $initial )
 	{
@@ -1618,7 +1643,7 @@ def_instance_count
 	;
 
 def_instance_count_atom
-/* in */[ sep::avm_size_t & initial , sep::avm_size_t & maximal ]
+/* in */[ std::size_t & initial , std::size_t & maximal ]
 	: 'init:' n=integer_constant  { $initial = $n.val; }
 	| 'max:'  n=integer_constant  { $maximal = $n.val; }
 	;
@@ -1629,32 +1654,32 @@ def_machine
 		sep::Modifier mdfr , sep::Specifier spcfr ]
 returns [ sep::Machine * machine ]
 @init{
-	sep::avm_size_t initialCount = 1;
-	sep::avm_size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
+	std::size_t initialCount = 1;
+	std::size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
 	POP_CTX;
 
-	SET_RULE_LOCATION(machine);
+	SET_RULE_LOCATION($machine);
 }
 	: 'machine'
 	  ( LT_
-	  	( ( 'moc:' )?  executable_specifier[ spcfr ]
+		( ( 'moc:' )?  executable_specifier[ $spcfr ]
 	 	  ( COMMA  def_instance_count[ initialCount , maximalCount ] )?
 
-	  	| def_instance_count[ initialCount , maximalCount ]
-	  	)?
+		| def_instance_count[ initialCount , maximalCount ]
+		)?
 	  GT )?
 	  id=ID
 	  {
-	  	PUSH_CTX_CPM( $machine = sep::Machine::newExecutable(
-	  			container, STR($id.text->chars), spcfr) );
+		PUSH_CTX_CPM( $machine = sep::Machine::newExecutable(
+				container, STR($id.text->chars), $spcfr) );
 
-		$machine->getwModifier().override_ifdef( mdfr );
+		$machine->getwModifier().override_ifdef( $mdfr );
 
-	  	container->saveOwnedElement( $machine );
+		container->saveOwnedElement( $machine );
 
 		$machine->getUniqInstanceSpecifier()->
 				setInstanceCount(initialCount, maximalCount);
@@ -1664,11 +1689,11 @@ returns [ sep::Machine * machine ]
 	  { $machine->setUnrestrictedName(STR($StringLiteral.text->chars)); }
 	  )?
 
-	  def_machine_parameters[ machine ] ?
+	  def_machine_parameters[ $machine ] ?
 
-	  def_machine_returns[ machine , sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ] ?
+	  def_machine_returns[ $machine , sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ] ?
 
-	  def_body_machine[ machine ]
+	  def_body_machine[ $machine ]
 	;
 
 
@@ -1687,8 +1712,10 @@ def_body_machine_using_section_parameter_predicat
 	;
 
 def_body_machine_using_section_property_predicat
-	: '@property:'  | '@public:'   | '@protected:' | '@private:'
-	| '@declaration:' /* deprecated */
+	: '@property:'
+	|  '@declaration:'  //deprecated
+	| '@public:'    |  '@protected:'
+	| '@private:'   |  '@local:'
 	;
 
 
@@ -1700,10 +1727,10 @@ def_body_machine_using_section_predicat
 
 	| '@macro:' | '@routine' | '@procedure:'
 
-	| '@composite' | '@machine:'
-	| '@region:'   | '@statemachine:'
+	| '@composite:'  |  '@machine:'  |  '@executable:'
+	| '@state:'      |  '@region:'   |  '@statemachine:'
 
-	| '@behavior:' | '@transition:'
+	| '@behavior:'  | '@transition:'
 
 	// Model Of { Computation , Execution , Interaction }
 	| '@moc:' | '@moe:' | '@com:' | '@interaction:'
@@ -1713,47 +1740,47 @@ def_body_machine_using_section_predicat
 def_body_machine [ sep::Machine * machine ]
 	: LCURLY
 	      //( def_body_machine_using_section_predicat ) =>
-	      def_body_machine_section[ machine ]
+	      def_body_machine_section[ $machine ]
 
-	    //| def_body_machine_simplif[ machine ]
+	    //| def_body_machine_simplif[ $machine ]
 	  RCURLY
 	;
 
 def_body_machine_section [ sep::Machine * machine ]
-	: section_header[ machine ] ?
-	  section_import[ machine ] ?
+	: section_header[ $machine ] ?
+	  section_import[ $machine ] ?
 
-	  ( section_parameter[ machine ] )*
+	  ( section_parameter[ $machine ] )*
 
 	  // Conditional Template Code Generation for @declaration
-	  {  sep::TemplateFactory::genProperty( machine ); }
+	  {  sep::TemplateFactory::genProperty( $machine ); }
 
-	  ( section_property [ machine ] )*
+	  ( section_property [ $machine ] )*
 
-	  ( section_composite_structure[ machine ] )*
+	  ( section_composite_structure[ $machine ] )*
 
-	  ( section_behavior[ machine ]
-	  | section_statemachine[ machine ]
+	  ( section_behavior[ $machine ]
+	  | section_statemachine[ $machine ]
 	  )?
 
 	  // Conditional Template Code Generation for @moe
-	  {  sep::TemplateFactory::genBehavior(machine); }
+	  {  sep::TemplateFactory::genBehavior($machine); }
 
-	  ( section_model_of_computation[ machine ]
-	  | section_model_of_execution[ machine ]
-	  | section_model_of_interaction[ machine ]
+	  ( section_model_of_computation[ $machine ]
+	  | section_model_of_execution  [ $machine ]
+	  | section_model_of_interaction[ $machine ]
 	  )*
 	;
 
 def_body_machine_simplif [ sep::Machine * machine ]
 @init{
-	sep::PropertyPart & declProperty = machine->getPropertyPart();
+	sep::PropertyPart & declPropertyPart = machine->getPropertyPart();
 }
-	: ( ( property_declaration[ declProperty ,
+	: ( ( property_declaration[ declPropertyPart ,
 				sep::Modifier::PROPERTY_UNDEFINED_MODIFIER ]
 		)*
 
-	  | ( def_moe_primitive[ machine ] )+
+	  | ( def_moe_primitive[ $machine ] )+
 	  )
 	;
 
@@ -1766,16 +1793,16 @@ any_def_statemachine
 		sep::Modifier mdfr , sep::Specifier spcfr ]
 returns [ sep::Machine * machine ]
 	: ( ms=executable_modifier_specifier
-	  { mdfr.override_ifdef( $ms.mdfr ); spcfr.override_ifdef( $ms.spcfr ); }
+	  { $mdfr.override_ifdef( $ms.mdfr ); $spcfr.override_ifdef( $ms.spcfr ); }
 	  )?
 
-	  (  st=def_state_singleton[ container , mdfr , spcfr ]
-	  { $machine = $st.state;   }
+	  (  dss=def_state_singleton[ $container , $mdfr , $spcfr ]
+	  { $machine = $dss.state;   }
 
-	  | st=def_state[ container , mdfr , spcfr ]
-	  { $machine = $st.state;   }
+	  | ds=def_state[ $container , $mdfr , $spcfr ]
+	  { $machine = $ds.state;   }
 
-	  | sm=def_statemachine[ container , mdfr , spcfr ]
+	  | sm=def_statemachine[ $container , $mdfr , $spcfr ]
 	  { $machine = $sm.machine; }
 	  )
 	;
@@ -1787,56 +1814,56 @@ def_statemachine
 returns [ sep::Machine * machine ]
 @init{
 //	resetTransitionID();
-	resetConnectID();
+	resetConnectorID();
 	resetBufferID();
 
-	sep::avm_size_t initialCount = 1;
-	sep::avm_size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
+	std::size_t initialCount = 1;
+	std::size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
 	POP_CTX;
 
-	SET_RULE_LOCATION(machine);
+	SET_RULE_LOCATION($machine);
 }
 	: 'statemachine'
 	  ( LT_
-	  	( ( 'moc:' )?  executable_specifier[ spcfr ]
+		( ( 'moc:' )?  executable_specifier[ $spcfr ]
 	 	  ( COMMA  def_instance_count[ initialCount , maximalCount ] )?
 
-	  	| def_instance_count[ initialCount , maximalCount ]
-	  	)?
+		| def_instance_count[ initialCount , maximalCount ]
+		)?
 	  GT
 	  )?
 
 	  ( id=ID
 		{
-		  	if( spcfr.isUndefined() )
-		  	{
-		  		spcfr.setComponentExecutable();
-		  	}
-		  	PUSH_CTX_CPM( $machine = sep::Machine::newStatemachine(
-		  			container, STR($id.text->chars), spcfr) );
+			if( $spcfr.isUndefined() )
+			{
+				$spcfr.setComponentExecutable();
+			}
+			PUSH_CTX_CPM( $machine = sep::Machine::newStatemachine(
+					$container, STR($id.text->chars), $spcfr) );
 
-		  	$machine->getwModifier().override_ifdef( mdfr );
+			$machine->getwModifier().override_ifdef( $mdfr );
 
-			container->saveOwnedElement( $machine );
+			$container->saveOwnedElement( $machine );
 
 			$machine->getUniqInstanceSpecifier()->
 					setInstanceCount(initialCount, maximalCount);
 		}
 
-	  | ( LBRACKET         { spcfr.setGroupSome(); }
-	    | LBRACKET_EXCEPT  { spcfr.setGroupExcept(); }
+	  | ( LBRACKET         { $spcfr.setGroupSome(); }
+	    | LBRACKET_EXCEPT  { $spcfr.setGroupExcept(); }
 	    )
 		{
-		  	PUSH_CTX_CPM( $machine = sep::Machine::newStatemachine(
-		  			container, "[]", spcfr/*, type*/) );
+			PUSH_CTX_CPM( $machine = sep::Machine::newStatemachine(
+					$container, "[]", $spcfr/*, type*/) );
 
-		  	$machine->getwModifier().override_ifdef( mdfr );
+			$machine->getwModifier().override_ifdef( $mdfr );
 
-			container->saveOwnedElement( $machine );
+			$container->saveOwnedElement( $machine );
 
 			$machine->getUniqInstanceSpecifier()->
 					setInstanceCount(initialCount, maximalCount);
@@ -1846,7 +1873,7 @@ returns [ sep::Machine * machine ]
 	      ( COMMA id=ID  { $machine->appendGroupId( STR($id.text->chars) ); } )*
 
 	    | STAR
-	    { $machine->getwSpecifier().setGroupEvery(); }
+		{ $machine->getwSpecifier().setGroupEvery(); }
 	    )
 	    RBRACKET   { $machine->setGroupId(); }
 	  )
@@ -1855,11 +1882,11 @@ returns [ sep::Machine * machine ]
 	  { $machine->setUnrestrictedName(STR($StringLiteral.text->chars)); }
 	  )?
 
-	  def_machine_parameters[ machine ] ?
+	  def_machine_parameters[ $machine ] ?
 
-	  def_machine_returns[ machine , sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ] ?
+	  def_machine_returns[ $machine , sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ] ?
 
-	  def_body_statemachine[ machine ]
+	  def_body_statemachine[ $machine ]
 	;
 
 
@@ -1869,35 +1896,35 @@ decl_instance_statemachine [ sep::Machine * container ]
 returns [ sep::Machine * machine ]
 @init{
 //	resetTransitionID();
-	resetConnectID();
+	resetConnectorID();
 	resetBufferID();
 
 	sep::Specifier spcfr;
 
 	sep::BF aModel;
 
-	sep::avm_size_t initialCount = 1;
-	sep::avm_size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
+	std::size_t initialCount = 1;
+	std::size_t maximalCount = AVM_NUMERIC_MAX_SIZE_T;
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
 	POP_CTX;
 
-	SET_RULE_LOCATION(machine);
+	SET_RULE_LOCATION($machine);
 }
 	: 'statemachine'
 	  LT_
-	  	( ( 'moc:' )?  executable_specifier[ spcfr ]  COMMA )?
-	  	( 'model:' )?  mm=instance_machine_model  { aModel = $mm.model; }
+		( ( 'moc:' )?  executable_specifier[ spcfr ]  COMMA )?
+		( 'model:' )?  mm=instance_machine_model  { aModel = $mm.model; }
 
-	  	( COMMA  def_instance_count[ initialCount , maximalCount ] )?
+		( COMMA  def_instance_count[ initialCount , maximalCount ] )?
 	  GT  id=ID
 	  {
-	  	if( spcfr.isUndefined() )
-	  	{
-	  		spcfr.setComponentStatemachine();
-	  	}
+		if( spcfr.isUndefined() )
+		{
+			spcfr.setComponentStatemachine();
+		}
 		PUSH_CTX_CPM( $machine = sep::Machine::newStatemachineInstance(
 				container, STR($id.text->chars), spcfr, aModel) );
 
@@ -1922,44 +1949,82 @@ returns [ sep::Machine * machine ]
 
 def_body_statemachine [ sep::Machine * machine ]
 	: LCURLY
-	  section_header[ machine ] ?
-	  section_import[ machine ] ?
+	  section_header[ $machine ] ?
+	  section_import[ $machine ] ?
 
-	  ( section_parameter[ machine ] )*
+	  ( section_parameter[ $machine ] )*
 
 	  // Conditional Template Code Generation for @declaration
-	  {  sep::TemplateFactory::genProperty( machine ); }
+	  {  sep::TemplateFactory::genProperty( $machine ); }
 
-	  ( section_property [ machine ] )*
+	  ( section_property [ $machine ] )*
 
-	  ( section_composite_structure[ machine ] )*
+	  ( section_composite_structure[ $machine ] )*
 
-	  section_region[ machine ] ?
-
-	  section_transition[ machine ] ?
+	  ( section_state_region[ $machine ]
+	  | ( section_composite_region[ $machine ] )+
+	  )?
+	  
+	  section_transition[ $machine ] ?
 
 	  // Conditional Template Code Generation for @moe
 	  {  sep::TemplateFactory::genBehavior(machine); }
 
-	  ( section_model_of_computation[ machine ]
-	  | section_model_of_execution[ machine ]
-	  | section_model_of_interaction[ machine ]
+	  ( section_model_of_computation[ $machine ]
+	  | section_model_of_execution  [ $machine ]
+	  | section_model_of_interaction[ $machine ]
 	  )*
 	  RCURLY
 	;
 
 
-section_region [ sep::Machine * container ]
+section_state_region [ sep::Machine * container ]
 @init{
 	 sep::Modifier mdfr;
 
 	sep::Specifier spcfr;
 }
-	: '@region:'
-	  { container->getwSpecifier().setMocStateTransitionSystem(); }
+	: ( '@state:' | '@region:' )
+	  { $container->getwSpecifier().setMocStateTransitionSystem(); }
 
-	  ( m=any_def_statemachine[ container , mdfr , spcfr ] )+
+	  ( m=any_def_statemachine[ $container , mdfr , spcfr ] )+
 	;
+
+section_composite_region [ sep::Machine * container ]
+@init{
+	sep::Machine * regionComposititeState;
+	
+	std::string unrestrictedName;
+	
+	sep::Modifier mdfr;
+
+	sep::Specifier spcfr;
+
+	SAVE_RULE_BEGIN_LOCATION;
+}
+@after{
+	POP_CTX;
+
+	SET_RULE_LOCATION(regionComposititeState);
+}
+	: '@region(' ( 'name:' )? id=ID
+	  	( sl=StringLiteral  { unrestrictedName = STR($sl.text->chars); } )?	
+	 '):'
+	  {
+	  	$container->getwSpecifier().setMocCompositeStructure();
+	  	
+		PUSH_CTX_CPM( regionComposititeState = sep::Machine::newState(
+				$container, STR($id.text->chars),
+				sep::Specifier::MOC_STATE_TRANSITION_SYSTEM_KIND) );
+				
+		regionComposititeState->setUnrestrictedName( unrestrictedName );
+				
+		$container->saveOwnedElement( regionComposititeState );
+	  }
+
+	  ( m=any_def_statemachine[ regionComposititeState , mdfr , spcfr ] )+
+	;
+
 
 section_statemachine [ sep::Machine * container ]
 @init{
@@ -1968,9 +2033,9 @@ section_statemachine [ sep::Machine * container ]
 	sep::Specifier spcfr;
 }
 	: '@statemachine:'
-	  { container->getwSpecifier().setMocStateTransitionSystem(); }
+	  { $container->getwSpecifier().setMocStateTransitionSystem(); }
 
-	  ( m=any_def_statemachine[ container , mdfr , spcfr ] )+
+	  ( m=any_def_statemachine[ $container , mdfr , spcfr ] )+
 	;
 
 
@@ -1978,7 +2043,7 @@ section_statemachine [ sep::Machine * container ]
 def_state
 /* in */[ sep::Machine * container ,
 		sep::Modifier mdfr , sep::Specifier spcfr ]
-returns [ sep::Machine * state = NULL ]
+returns [ sep::Machine * state = nullptr ]
 @init{
 	std::string sid;
 
@@ -1987,57 +2052,57 @@ returns [ sep::Machine * state = NULL ]
 @after{
 	POP_CTX;
 
-	SET_RULE_LOCATION(state);
+	SET_RULE_LOCATION($state);
 }
 	: 'state'
-	  ( LT_ ( 'moc:' )?  executable_specifier[ spcfr ]  GT
-	    { sid = "$" + spcfr.strAnyStateMoc(""); }
+	  ( LT_ ( 'moc:' )?  executable_specifier[ $spcfr ]  GT
+		{ sid = "$" + $spcfr.strAnyStateMoc(""); }
 	  )?
 	  ( id=state_id
-	    {
-	    	if( spcfr.couldBeStateMocSIMPLE() )
-	    	{
-	    		spcfr.setStateMocSIMPLE();
-	    	}
+		{
+			if( $spcfr.couldBeStateMocSIMPLE() )
+			{
+				$spcfr.setStateMocSIMPLE();
+			}
 
-	    	PUSH_CTX_CPM(
-	    			$state = sep::Machine::newState(container, $id.s, spcfr) );
+			PUSH_CTX_CPM(
+					$state = sep::Machine::newState($container, $id.s, $spcfr) );
 
-	    	$state->getwModifier().override_ifdef( mdfr );
+			$state->getwModifier().override_ifdef( $mdfr );
 
-			container->saveOwnedElement( $state );
-	    }
+			$container->saveOwnedElement( $state );
+		}
 
-	  | ( LBRACKET         { spcfr.setGroupSome(); }
-	    | LBRACKET_EXCEPT  { spcfr.setGroupExcept(); }
+	  | ( LBRACKET         { $spcfr.setGroupSome(); }
+	    | LBRACKET_EXCEPT  { $spcfr.setGroupExcept(); }
 	    )
 		{
-		  	PUSH_CTX_CPM(
-		  			$state = sep::Machine::newState(container, "[]", spcfr) );
+			PUSH_CTX_CPM(
+					$state = sep::Machine::newState($container, "[]", $spcfr) );
 
-			container->saveOwnedElement( $state );
+			$container->saveOwnedElement( $state );
 
-		  	$state->getwModifier().override_ifdef( mdfr );
+			$state->getwModifier().override_ifdef( $mdfr );
 		}
 
 	    ( id=state_id          { $state->appendGroupId( $id.s ); }
 	      ( COMMA id=state_id  { $state->appendGroupId( $id.s ); } )*
 
 	    | STAR
-	    { $state->getwSpecifier().setGroupEvery(); }
+		{ $state->getwSpecifier().setGroupEvery(); }
 	    )
 	    RBRACKET   { $state->setGroupId(); }
 	  )?
 
 	  {
-		if( $state == NULL )
+		if( $state == nullptr )
 		{
 			PUSH_CTX_CPM(
-					$state = sep::Machine::newState(container, sid, spcfr) );
+					$state = sep::Machine::newState($container, sid, $spcfr) );
 
-			$state->getwModifier().override_ifdef( mdfr );
+			$state->getwModifier().override_ifdef( $mdfr );
 
-			container->saveOwnedElement( $state );
+			$container->saveOwnedElement( $state );
 		}
 	  }
 
@@ -2045,7 +2110,7 @@ returns [ sep::Machine * state = NULL ]
 	  { $state->setUnrestrictedName(STR($StringLiteral.text->chars)); }
 	  )?
 
-	  ( def_body_state[ state ] | SEMI )
+	  ( def_body_state[ $state ] | SEMI )
 	;
 
 
@@ -2072,7 +2137,7 @@ state_id
 returns [ std::string s ]
 	: kw=state_kw_id  { $s = $kw.s; }
 	| id=ID           { $s = STR($id.text->chars); }
-	| DOLLAR id=ID    { $s = "$" + STR($id.text->chars); }
+	| DOLLAR id=ID    { $s = "#" + STR($id.text->chars); }
 	;
 
 
@@ -2086,118 +2151,133 @@ returns [ sep::Machine * state ]
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
-	state->getwModifier().override_ifdef( mdfr );
+	$state->getwModifier().override_ifdef( $mdfr );
 
 	POP_CTX;
 
-	SET_RULE_LOCATION(state);
+	SET_RULE_LOCATION($state);
 }
 	: ( '#initial'
 	  {
-	  	PUSH_CTX_CPM( $state = sep::Machine::newState(
-	  			container, "#initial", spcfr.setPseudostateMocINITIAL()) );
+		PUSH_CTX_CPM( $state = sep::Machine::newState(
+				$container, "#initial", $spcfr.setPseudostateMocINITIAL()) );
 
-	  	container->saveOwnedElement( $state );
+		$container->saveOwnedElement( $state );
 	  }
 
 	  | '#start'
 	  {
-	  	PUSH_CTX_CPM( $state = sep::Machine::newState(
-	  			container, "#start", spcfr.setStateMocSTART()) );
+		PUSH_CTX_CPM( $state = sep::Machine::newState(
+				$container, "#start", $spcfr.setStateMocSTART()) );
 
-	  	container->saveOwnedElement( $state );
+		$container->saveOwnedElement( $state );
 	  }
 
 	  | '#dhistory'
 	  {
-	  	PUSH_CTX_CPM( $state = sep::Machine::newState(
-	  			container, "#dhistory",
-	  			spcfr.setPseudostateMocDEEP_HISTORY()) );
+		PUSH_CTX_CPM( $state = sep::Machine::newState(
+				$container, "#dhistory",
+				$spcfr.setPseudostateMocDEEP_HISTORY()) );
 
-	  	container->saveOwnedElement( $state );
+		$container->saveOwnedElement( $state );
 	  }
 
 	  | '#shistory'
 	  {
-	  	PUSH_CTX_CPM( $state = sep::Machine::newState(
-	  			container, "#shistory",
-	  			spcfr.setPseudostateMocSHALLOW_HISTORY()) );
+		PUSH_CTX_CPM( $state = sep::Machine::newState(
+				$container, "#shistory",
+				$spcfr.setPseudostateMocSHALLOW_HISTORY()) );
 
-	  	container->saveOwnedElement( $state );
+		$container->saveOwnedElement( $state );
 	  }
 	  )
-	  LCURLY  def_body_state_simplif[ state ]  RCURLY
+	  LCURLY  def_body_state_simplif[ $state ]  RCURLY
 
 	| '#final' bs=block_statement
 	{
 		PUSH_CTX_CPM( $state = sep::Machine::newState(
-			container, "#final", spcfr.setStateMocFINAL()) );
+			$container, "#final", $spcfr.setStateMocFINAL()) );
 
-	  	container->saveOwnedElement( $state );
+		$container->saveOwnedElement( $state );
 
 		$state->getUniqBehaviorPart()->seqOnFinal($bs.ac);
 
-		needDefaultStateFinal.remove(container);
+		needDefaultStateFinal.remove($container);
 	}
 
 	| '#terminal' bs=block_statement
 	{
 		PUSH_CTX_CPM( $state = sep::Machine::newState(
-			container, "#terminal", spcfr.setPseudostateMocTERMINAL()) );
+			$container, "#terminal", $spcfr.setPseudostateMocTERMINAL()) );
 
-	  	container->saveOwnedElement( $state );
+		$container->saveOwnedElement( $state );
 
 		$state->getUniqBehaviorPart()->seqOnFinal($bs.ac);
 
-		needDefaultStateTerminal.remove(container);
+		needDefaultStateTerminal.remove($container);
 	}
 
 	| '#return' bs=block_statement
 	{
 		PUSH_CTX_CPM( $state = sep::Machine::newState(
-			container, "#return", spcfr.setPseudostateMocRETURN()) );
+			$container, "#return", $spcfr.setPseudostateMocRETURN()) );
 
-	  	container->saveOwnedElement( $state );
+		$container->saveOwnedElement( $state );
 
 		$state->getUniqBehaviorPart()->seqOnFinal($bs.ac);
 
-		needDefaultStateReturn.remove(container);
+		needDefaultStateReturn.remove($container);
 	}
 	;
 
 
 executable_specifier [ sep::Specifier & spcfr ]
-	: ka=executable_specifier_atom[ spcfr ]
-	  ( BAND ka=executable_specifier_atom[ spcfr ] )*
+	: ka=executable_specifier_atom[ $spcfr ]
+	  ( BAND ka=executable_specifier_atom[ $spcfr ] )*
 	;
 
 
 executable_specifier_atom [ sep::Specifier & spcfr ]
-	: id=ID  { spcfr.setMoc( STR($id.text->chars) ); }
+	: id=ID  { $spcfr.setMoc( STR($id.text->chars) ); }
 
-//	| 'simple'     { spcfr.setStateMocSIMPLE(); }
-	| 'start'      { spcfr.setStateMocSTART();  }
-	| 'final'      { spcfr.setStateMocFINAL();  }
-//	| 'sync'       { spcfr.setStateMocSYNC();   }
+//	| 'simple'     { $spcfr.setStateMocSIMPLE(); }
+	| 'start'      { $spcfr.setStateMocSTART();  }
+	| 'final'      { $spcfr.setStateMocFINAL();  }
+//	| 'sync'       { $spcfr.setStateMocSYNC();   }
 
-//	| 'initial'    { spcfr.setPseudostateMocINITIAL();  }
-//	| 'terminal'   { spcfr.setPseudostateMocTERMINAL(); }
-	| 'return'     { spcfr.setPseudostateMocRETURN();   }
+//	| 'initial'    { $spcfr.setPseudostateMocINITIAL();  }
+//	| 'terminal'   { $spcfr.setPseudostateMocTERMINAL(); }
+	| 'return'     { $spcfr.setPseudostateMocRETURN();   }
 
-//	| 'junction'   { spcfr.setPseudostateMocJUNCTION(); }
-	| 'choice'     { spcfr.setPseudostateMocCHOICE();   }
+//	| 'junction'   { $spcfr.setPseudostateMocJUNCTION(); }
+	| 'choice'     { $spcfr.setPseudostateMocCHOICE();   }
 
-	| 'fork'       { spcfr.setPseudostateMocFORK(); }
-	| 'join'       { spcfr.setPseudostateMocJOIN(); }
+	| 'fork'       { $spcfr.setPseudostateMocFORK(); }
+	| 'join'       { $spcfr.setPseudostateMocJOIN(); }
 
-//	| 'dhistory'   { spcfr.setPseudostateMocDEEP_HISTORY();    }
-//	| 'shistory'   { spcfr.setPseudostateMocSHALLOW_HISTORY(); }
+//	| 'dhistory'   { $spcfr.setPseudostateMocDEEP_HISTORY();    }
+//	| 'shistory'   { $spcfr.setPseudostateMocSHALLOW_HISTORY(); }
 
-	| 'and'        { spcfr.setMocCompositeStructure();     }
-	| 'or'         { spcfr.setMocStateTransitionSystem();  }
-	| '#sts'       { spcfr.setMocStateTransitionSystem();  }
-	| '#stf'       { spcfr.setMocStateTransitionFlow();  }
-	| 'flow'       { spcfr.setCompositeMocDataFlow();      }
+	| 'and'        { $spcfr.setMocCompositeStructure();     }
+	| 'or'         { $spcfr.setMocStateTransitionSystem();  }
+	| '#sts'       { $spcfr.setMocStateTransitionSystem();  }
+	| '#stf'       { $spcfr.setMocStateTransitionFlow();    }
+	| 'flow'       { $spcfr.setCompositeMocDataFlow();      }
+	
+	| '#alt'       { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionAlternative();    }
+	| '#opt'       { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionOption();         }
+	| '#loop'      { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionLoop();           }
+	| '#break'     { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionBreak();          }
+	| '#par'       { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionParallel();       }
+	| '#strict'    { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionStrictSequence(); }
+	| '#weak'      { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionWeakSequence();   }
+	| '#seq'       { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionWeakSequence();   }
+	| '#critical'  { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionCritical();       }
+	| '#ignore'    { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionIgnore();         }
+	| '#consider'  { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionAlternative();    }
+	| '#assert'    { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionAlternative();    }
+	| '#neg'       { $spcfr.setComponentInteraction().setMocCompositeInteraction().setInteractionAlternative();    }
+	
 	;
 
 
@@ -2210,7 +2290,7 @@ returns [ sep::BF model ]
 		if( $model.invalid() )
 		{
 			sep::ParserUtil::avm_syntax_error(
-				"instance_machine_model", LT(0)->getLine(LT(0)) )
+				"instance_machine_model", LT(0)->line )
 					<< "unexpected ID< " << $tid.s << " >"
 					<< sep::ParserUtil::SYNTAX_ERROR_EOL;
 		}
@@ -2221,25 +2301,27 @@ returns [ sep::BF model ]
 def_body_state [ sep::Machine * state ]
 	: LCURLY
 	  ( ( def_body_machine_using_section_predicat ) =>
-	    def_body_state_section[ state ]
+	    def_body_state_section[ $state ]
 
-	  | def_body_state_simplif[ state ]
+	  | def_body_state_simplif[ $state ]
 	  )
 	  RCURLY
 	;
 
 def_body_state_section [ sep::Machine * machine ]
-	: ( section_property[ machine ] )*
+	: ( section_property[ $machine ] )*
 
-	  ( section_composite_structure[ machine ] )*
+	  ( section_composite_structure[ $machine ] )*
 
-	  section_region[ machine ] ?
+	  ( section_state_region[ $machine ]
+	  | ( section_composite_region[ $machine ] )+
+	  )?
 
-	  section_transition[ machine ] ?
+	  section_transition[ $machine ] ?
 
-	  ( section_model_of_computation[ machine ]
-	  | section_model_of_execution[ machine ]
-	  | section_model_of_interaction[ machine ]
+	  ( section_model_of_computation[ $machine ]
+	  | section_model_of_execution  [ $machine ]
+	  | section_model_of_interaction[ $machine ]
 	  )*
 	;
 
@@ -2253,13 +2335,13 @@ def_body_state_simplif [ sep::Machine * state ]
 
 		( m=modifier_declaration  { mdfr = $m.mdfr; } )?
 
-	    ( decl_variable[ state->getPropertyPart() , mdfr ]
+	    ( decl_variable[ $state->getPropertyPart() , mdfr ]
 
-	    | ads=any_def_statemachine[ state , mdfr , spcfr ]
+	    | ads=any_def_statemachine[ $state , mdfr , spcfr ]
 
-	    | def_transition[ state , mdfr , spcfr ]
+	    | def_transition[ $state , mdfr , spcfr ]
 
-	    | def_state_activity[ state ]
+	    | def_state_activity[ $state ]
 	    )
 	  )*
 	;
@@ -2272,7 +2354,7 @@ section_transition [ sep::Machine * state ]
 }
 	: '@transition:'
 	  ( ( m=modifier_transition  { mdfr = $m.mdfr; } )?
-	    def_transition[ state , mdfr , spcfr ]
+	    def_transition[ $state , mdfr , spcfr ]
 	  )*
 	;
 
@@ -2280,7 +2362,7 @@ def_transition
 /* in */[ sep::Machine * state ,
 		sep::Modifier mdfr , sep::Specifier spcfr ]
 @init{
-	sep::Transition * trans = NULL;
+	sep::Transition * trans = nullptr;
 	std::string t_id;
 
 	mProcedureCallCount = 0;
@@ -2288,7 +2370,7 @@ def_transition
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
-	if( (mProcedureCallCount > 0) && (trans != NULL) )
+	if( (mProcedureCallCount > 0) && (trans != nullptr) )
 	{
 		sep::ParserUtil::inlineTransitionProcedureCall(trans, trans->getNameID());
 	}
@@ -2299,12 +2381,12 @@ def_transition
 	  | ( tok=AT_ID  { t_id = STR($tok.text->chars); } )
 	  )
 	  {
-	  	state->getUniqBehaviorPart()->saveOutgoingTransition(
-	  			trans = new sep::Transition(state, newTransitionID(t_id)) );
+		state->getUniqBehaviorPart()->saveOutgoingTransition(
+				trans = new sep::Transition((* state), newTransitionID(t_id)) );
 
-	  	trans->setModifier( mdfr );
+		trans->setModifier( $mdfr );
 
-	  	trans->setSpecifier( spcfr );
+		trans->setSpecifier( $spcfr );
 	  }
 	  ( LT_  moc_transition[ trans ]  GT )?
 
@@ -2312,12 +2394,12 @@ def_transition
 
 	| 'transition'
 	  {
-	  	state->getUniqBehaviorPart()->saveOutgoingTransition(
-	  			trans = new sep::Transition(state) );
+		state->getUniqBehaviorPart()->saveOutgoingTransition(
+				trans = new sep::Transition(* state) );
 
-	  	trans->setModifier( mdfr );
+		trans->setModifier( $mdfr );
 
-	  	trans->setSpecifier( spcfr );
+		trans->setSpecifier( $spcfr );
 	  }
 	  ( LT_ moc_transition[ trans ] GT )?
 
@@ -2395,25 +2477,25 @@ moe_transition [ sep::Transition * trans ]
 transition_statement
 returns [ sep::BFCode ac ]
 @init{
-	sep::Operator * op = OP(SEQUENCE);
+	const sep::Operator * op = OP(SEQUENCE);
 	bool implicitSequenceOp = true;
 }
 @after{
-	if( implicitSequenceOp && $ac.valid() && $ac->singleton() &&
-			sep::OperatorManager::isSchedule(op) )
+	if( implicitSequenceOp && $ac.valid() && $ac->hasOneOperand()
+		&& sep::OperatorManager::isSchedule(op) )
 	{
 		sep::BFCode singleCode = $ac->first().bfCode();
 		$ac = singleCode;
 	}
 }
 	: LCURLY  ( o=op_block { op = $o.op; implicitSequenceOp = false; } )?
-	    { $ac = NEW_STMT(op); }
+		{ $ac = NEW_STMT(op); }
 		( s=statement  { $ac->append($s.ac); } )*
 
-		( transition_trigger[ ac ] )?
-		( transition_guard[ ac ] )?
-		( transition_timed_guard[ ac ] )?
-		( transition_effect[ ac ] )?
+		( transition_trigger    [ $ac ] )?
+		( transition_guard      [ $ac ] )?
+		( transition_timed_guard[ $ac ] )?
+		( transition_effect     [ $ac ] )?
 	  RCURLY
 	;
 
@@ -2456,12 +2538,12 @@ target_state_id
 returns [ sep::BF target ]
 @init{
 	std::string tid;
-	sep::avm_size_t nb = 1;
+	std::size_t nb = 1;
 }
 @after{
-	if( (target = sep::ParserUtil::getvarMachine(tid, nb)).invalid() )
+	if( ($target = sep::ParserUtil::getvarMachine(tid, nb)).invalid() )
 	{
-		target = NEW_QNID(tid, nb);
+		$target = NEW_QNID(tid, nb);
 	}
 }
 	: kw=target_state_kw_id  { tid = $kw.s; }
@@ -2526,43 +2608,43 @@ def_state_activity [ sep::Machine * state ]
 section_header_import_parameter_property
 /* in */[ sep::Machine * container ]
 	: ( def_body_machine_using_section_header_predicat ) =>
-	  section_header[ container ]
+	  section_header[ $container ]
 
-	  ( section_import[ container ] )?
+	  ( section_import[ $container ] )?
 
-	  ( section_parameter[ container ] )?
+	  ( section_parameter[ $container ] )?
 
 	  // Conditional Template Code Generation for @declaration
-	  {  sep::TemplateFactory::genProperty( container ); }
+	  {  sep::TemplateFactory::genProperty( $container ); }
 
-	  ( section_property[ container ] )*
+	  ( section_property[ $container ] )*
 
 	| ( def_body_machine_using_section_import_predicat ) =>
-	  section_import[ container ]
+	  section_import[ $container ]
 
-	  ( section_parameter[ container ] )?
+	  ( section_parameter[ $container ] )?
 
 	  // Conditional Template Code Generation for @declaration
-	  {  sep::TemplateFactory::genProperty( container ); }
+	  {  sep::TemplateFactory::genProperty( $container ); }
 
-	  ( section_property[ container ] )*
+	  ( section_property[ $container ] )*
 
 	| ( def_body_machine_using_section_parameter_predicat ) =>
-	  section_parameter[ container ]
+	  section_parameter[ $container ]
 
 	  // Conditional Template Code Generation for @declaration
-	  {  sep::TemplateFactory::genProperty( container ); }
+	  {  sep::TemplateFactory::genProperty( $container ); }
 
-	  ( section_property[ container ] )*
+	  ( section_property[ $container ] )*
 
 	| ( def_body_machine_using_section_property_predicat ) =>
 	  // Conditional Template Code Generation for @declaration
-	  {  sep::TemplateFactory::genProperty( container ); }
+	  {  sep::TemplateFactory::genProperty( $container ); }
 
-	  ( section_property[ container ] )+
+	  ( section_property[ $container ] )+
 
-	| {  sep::TemplateFactory::genProperty( container ); }
-	  section_property_free_declaration[ container ]
+	| {  sep::TemplateFactory::genProperty( $container ); }
+	  section_property_free_declaration[ $container ]
 	;
 
 
@@ -2573,33 +2655,33 @@ section_header_import_parameter_property
 
 section_parameter [ sep::Machine * container ]
 @init{
-	sep::PropertyPart & declProperty = container->getPropertyPart();
+	sep::PropertyPart & declPropertyPart = $container->getPropertyPart();
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
-	SET_RULE_LOCATION(declProperty);
+	SET_RULE_LOCATION(declPropertyPart);
 }
 	: ( '@parameter:' | '@param:' /* deprecated */ )
-	  ( property_declaration[ declProperty ,
-	  			sep::Modifier::PROPERTY_INPUT_PARAMETER_MODIFIER  ]
-	  )*
-
-	| '@input:'  ( property_declaration[ declProperty ,
+	  ( property_declaration[ declPropertyPart ,
 				sep::Modifier::PROPERTY_INPUT_PARAMETER_MODIFIER  ]
 	  )*
 
-	| '@inout:'  ( property_declaration[ declProperty ,
+	| '@input:'  ( property_declaration[ declPropertyPart ,
+				sep::Modifier::PROPERTY_INPUT_PARAMETER_MODIFIER  ]
+	  )*
+
+	| '@inout:'  ( property_declaration[ declPropertyPart ,
 				sep::Modifier::PROPERTY_INOUT_PARAMETER_MODIFIER  ]
 	  )*
 
-	| '@output:' ( property_declaration[ declProperty ,
+	| '@output:' ( property_declaration[ declPropertyPart ,
 				sep::Modifier::PROPERTY_OUTPUT_PARAMETER_MODIFIER ]
 	  )*
 
 	| ( '@returns:' | '@return:' /* deprecated */ )
-	  ( property_declaration[ declProperty ,
-	  			sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ]
+	  ( property_declaration[ declPropertyPart ,
+				sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER ]
 	  )*
 	;
 
@@ -2610,46 +2692,46 @@ section_parameter [ sep::Machine * container ]
 
 section_property [ sep::Machine * container ]
 @init{
-	sep::PropertyPart & declProperty = container->getPropertyPart();
+	sep::PropertyPart & declPropertyPart = $container->getPropertyPart();
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
-	SET_RULE_LOCATION(declProperty);
+	SET_RULE_LOCATION(declPropertyPart);
 }
 	: ( '@property:' | '@declaration:' /* deprecated */ )
-	  ( property_declaration[ declProperty ,
-	  			sep::Modifier::PROPERTY_UNDEFINED_MODIFIER ]
+	  ( property_declaration[ declPropertyPart ,
+				sep::Modifier::PROPERTY_UNDEFINED_MODIFIER ]
 	  )*
 
 	| '@public:'
-	  ( property_declaration[ declProperty ,
-	  			sep::Modifier::PROPERTY_PUBLIC_MODIFIER ]
+	  ( property_declaration[ declPropertyPart ,
+				sep::Modifier::PROPERTY_PUBLIC_MODIFIER ]
 	  )*
 
 	| '@protected:'
-	  ( property_declaration[ declProperty ,
-	  			sep::Modifier::PROPERTY_PROTECTED_MODIFIER ]
+	  ( property_declaration[ declPropertyPart ,
+				sep::Modifier::PROPERTY_PROTECTED_MODIFIER ]
 	  )*
 
-	| '@private:'
-	  ( property_declaration[ declProperty ,
-	  			sep::Modifier::PROPERTY_PRIVATE_MODIFIER ]
+	| ( '@private:'  |  '@local:' )
+	  ( property_declaration[ declPropertyPart ,
+				sep::Modifier::PROPERTY_PRIVATE_MODIFIER ]
 	  )*
 	;
 
 
 section_property_free_declaration [ sep::Machine * container ]
 @init{
-	sep::PropertyPart & declProperty = container->getPropertyPart();
+	sep::PropertyPart & declPropertyPart = $container->getPropertyPart();
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
-	SET_RULE_LOCATION(declProperty);
+	SET_RULE_LOCATION(declPropertyPart);
 }
-	: ( property_declaration[ declProperty ,
-	  			sep::Modifier::PROPERTY_UNDEFINED_MODIFIER ]
+	: ( property_declaration[ declPropertyPart ,
+				sep::Modifier::PROPERTY_UNDEFINED_MODIFIER ]
 	  )*
 	;
 
@@ -2658,30 +2740,31 @@ section_property_free_declaration [ sep::Machine * container ]
 ////////////////////////////////////////////////////////////////////////////////
 
 property_declaration
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: ( m=modifier_declaration { mdfr.override_ifdef( $m.mdfr ); } )?
-	  decl_property_element[ declProperty , mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: ( m=modifier_declaration { $mdfr.override_ifdef( $m.mdfr ); } )?
+	  decl_property_element[ $declPropertyPart , $mdfr ]
 	;
 
 decl_property_element
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: decl_variable[ declProperty , mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: decl_variable[ $declPropertyPart , $mdfr ]
 
-	| decl_port   [ declProperty , mdfr ]
-	| decl_signal [ declProperty , mdfr ]
-	| decl_buffer [ declProperty , mdfr ]
-	| decl_channel[ declProperty , mdfr ]
+	| decl_port   [ $declPropertyPart , $mdfr ]
+	| decl_signal [ $declPropertyPart , $mdfr ]
+	| decl_buffer [ $declPropertyPart , $mdfr ]
+	| decl_channel[ $declPropertyPart , $mdfr ]
 
-	| def_type  [ declProperty , mdfr ]
-	| def_enum  [ declProperty , mdfr ]
-	| def_union [ declProperty , mdfr ]
-	| def_choice[ declProperty , mdfr ]
-	| def_struct[ declProperty , mdfr ]
-/*
-	| decl_func[ declProperty , mdfr ]
-	| decl_proc[ declProperty , mdfr ]
+	| def_type  [ $declPropertyPart , $mdfr ]
+	| def_enum  [ $declPropertyPart , $mdfr ]
+	| def_union [ $declPropertyPart , $mdfr ]
+	| def_choice[ $declPropertyPart , $mdfr ]
+	| def_struct[ $declPropertyPart , $mdfr ]
 
-	| decl_lambda[ declProperty , mdfr ]
+	| decl_function[ $declPropertyPart , $mdfr ]
+/*	
+	| decl_procedure[ $declPropertyPart , $mdfr ]
+
+	| decl_lambda[ $declPropertyPart , $mdfr ]
 */
 	;
 
@@ -2692,15 +2775,19 @@ decl_property_element
 
 labelled_argument
 returns [ std::string label, sep::BF arg ]
-	: ( ID COLON ) =>  id=ID COLON  { $label = STR($id.text->chars); }
+	: ( ( ID COLON ) =>  id=ID COLON  { $label = STR($id.text->chars); }
+	  | 'name:'                       { $label = "name"; }
+	  | 'size:'                       { $label = "size"; }
+	  )
 	  e=expression  { $arg = $e.bf; }
+	  
 	| e=expression  { $arg = $e.bf; }
 	;
 
 decl_instance_machine_params [ sep::Machine * machine ]
 @init{
 	sep::BFVector labelledParams(
-		( machine->getType().is< sep::Machine >() ) ? machine->getType().
+		( $machine->getType().is< sep::Machine >() ) ? $machine->getType().
 			to_ptr< sep::Machine >()->getVariableParametersCount() : 0 );
 
 	sep::BFList positionalParams;
@@ -2709,21 +2796,21 @@ decl_instance_machine_params [ sep::Machine * machine ]
 	if( labelledParams.nonempty() )
 	{
 		sep::ParserUtil::computeInstanceMachineParameter(
-				machine, labelledParams, positionalParams);
+				$machine, labelledParams, positionalParams);
 	}
 }
 	: LPAREN
 	  ( lp=labelled_argument
-	    {
-	    	sep::ParserUtil::appendInstanceMachineParameter(machine, $lp.label,
+		{
+			sep::ParserUtil::appendInstanceMachineParameter($machine, $lp.label,
 					labelledParams, positionalParams, $lp.arg);
-	    }
+		}
 	    ( COMMA
 	    lp=labelled_argument
-	    {
-	    	sep::ParserUtil::appendInstanceMachineParameter(machine, $lp.label,
+		{
+			sep::ParserUtil::appendInstanceMachineParameter($machine, $lp.label,
 					labelledParams, positionalParams, $lp.arg);
-	    }
+		}
 	    )*
 	  )?
 	  RPAREN
@@ -2733,7 +2820,7 @@ decl_instance_machine_params [ sep::Machine * machine ]
 decl_instance_machine_returns [ sep::Machine * machine ]
 @init{
 	sep::BFVector labelledReturns(
-		( machine->getType().is< sep::Machine >() ) ? machine->getType().
+		( $machine->getType().is< sep::Machine >() ) ? $machine->getType().
 			to_ptr< sep::Machine >()->getVariableParametersCount() : 0 );
 
 	sep::BFList positionalReturns;
@@ -2742,30 +2829,30 @@ decl_instance_machine_returns [ sep::Machine * machine ]
 	if( labelledReturns.nonempty() )
 	{
 		sep::ParserUtil::computeInstanceMachineReturn(
-				machine, labelledReturns, positionalReturns);
+				$machine, labelledReturns, positionalReturns);
 	}
 }
 	: ( '-->' | 'returns:' )
 	  ( LPAREN
 	    lp=labelled_argument
-	    {
-	    	sep::ParserUtil::appendInstanceMachineReturn(machine, $lp.label,
+		{
+			sep::ParserUtil::appendInstanceMachineReturn($machine, $lp.label,
 					labelledReturns, positionalReturns, $lp.arg);
-	    }
+		}
 	    ( COMMA
 	      lp=labelled_argument
 	      {
-	    	sep::ParserUtil::appendInstanceMachineReturn(machine, $lp.label,
+			sep::ParserUtil::appendInstanceMachineReturn($machine, $lp.label,
 					labelledReturns, positionalReturns, $lp.arg);
 	      }
 	    )*
 	    RPAREN
 
 	  | lp=labelled_argument
-	    {
-	    	sep::ParserUtil::appendInstanceMachineReturn(machine, $lp.label,
+		{
+			sep::ParserUtil::appendInstanceMachineReturn($machine, $lp.label,
 					labelledReturns, positionalReturns, $lp.arg);
-	    }
+		}
 	  )
 	;
 
@@ -2774,16 +2861,15 @@ decl_instance_machine_returns [ sep::Machine * machine ]
 activity_machine_param_return
 /* in */[ const sep::BF & argMachine , sep::BFCode & ac ]
 @init{
-	sep::Machine * machine = argMachine.is< sep::Machine >() ?
-			argMachine.to_ptr< sep::Machine >() : NULL;
+	sep::Machine * machine = sep::ParserUtil::getActivityMachine(argMachine);
 
-	sep::Routine * routine = NULL;
+	sep::Routine * routine = nullptr;
 
-	sep::avm_size_t paramCount = 0;
-	sep::avm_size_t returnCount = 0;
-	if( machine == NULL )
+	std::size_t paramCount = 0;
+	std::size_t returnCount = 0;
+	if( machine == nullptr )
 	{
-		routine = NULL;
+		routine = nullptr;
 	}
 	else if( machine->getSpecifier().isDesignInstanceStatic()
 			&& machine->getType().is< sep::Machine >() )
@@ -2798,10 +2884,10 @@ activity_machine_param_return
 				getActivity( ac->getAvmOpCode() ) );
 	}
 
-	if( routine != NULL )
+	if( routine != nullptr )
 	{
-		paramCount  = routine->getParameters().size();
-		returnCount = routine->getReturns().size();
+		paramCount  = routine->getPropertyPart().getVariableParametersCount();
+		returnCount = routine->getPropertyPart().getVariableReturnsCount();
 	}
 
 
@@ -2811,7 +2897,7 @@ activity_machine_param_return
 	sep::BFVector labelledReturns( returnCount );
 	sep::BFList positionalReturns;
 
-	if( machine != NULL )
+	if( machine != nullptr )
 	{
 		PUSH_CTX_CPM( machine );
 	}
@@ -2823,23 +2909,23 @@ activity_machine_param_return
 			labelledParams , positionalParams, labelledReturns, positionalReturns);
 	}
 
-	if( machine != NULL )
+	if( machine != nullptr )
 	{
 		POP_CTX;
 	}
 }
 	: LPAREN  // Parameters
 	  ( lp=labelled_argument
-	    {
-	    	sep::ParserUtil::appendRoutineParameters(routine, $lp.label,
+		{
+			sep::ParserUtil::appendRoutineParameters(routine, $lp.label,
 					labelledParams, positionalParams, $lp.arg);
-	    }
+		}
 	    ( COMMA
 	    lp=labelled_argument
-	    {
-	    	sep::ParserUtil::appendRoutineParameters(routine, $lp.label,
+		{
+			sep::ParserUtil::appendRoutineParameters(routine, $lp.label,
 					labelledParams, positionalParams, $lp.arg);
-	    }
+		}
 	    )*
 	  )?
 	  RPAREN
@@ -2847,24 +2933,24 @@ activity_machine_param_return
 	( ( '-->' | 'returns:' )
 	  ( LPAREN
 	    lp=labelled_argument
-	    {
-	    	sep::ParserUtil::appendRoutineReturns(routine, $lp.label,
+		{
+			sep::ParserUtil::appendRoutineReturns(routine, $lp.label,
 					labelledReturns, positionalReturns, $lp.arg);
-	    }
+		}
 	    ( COMMA
 	      lp=labelled_argument
 	      {
-	    	sep::ParserUtil::appendRoutineReturns(routine, $lp.label,
+			sep::ParserUtil::appendRoutineReturns(routine, $lp.label,
 					labelledReturns, positionalReturns, $lp.arg);
 	      }
 	    )*
 	    RPAREN
 
 	  | lp=labelled_argument
-	    {
-	    	sep::ParserUtil::appendRoutineReturns(routine, $lp.label,
+		{
+			sep::ParserUtil::appendRoutineReturns(routine, $lp.label,
 					labelledReturns, positionalReturns, $lp.arg);
-	    }
+		}
 	  )
 	)?
 
@@ -2877,70 +2963,84 @@ activity_machine_param_return
 ////////////////////////////////////////////////////////////////////////////////
 
 decl_port
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 @init{
 	sep::IComPoint::ENUM_IO_NATURE nature = sep::IComPoint::IO_UNDEFINED_NATURE;
 }
 	: 'port'  { nature = sep::IComPoint::IO_PORT_NATURE; }
 	
-	  decl_port_impl[ declProperty , mdfr, nature ]
+	  decl_port_impl[ $declPropertyPart , $mdfr, nature ]
 	;
 
 decl_port_impl
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ,
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ,
 		sep::IComPoint::ENUM_IO_NATURE nature ]
 @init{
 	sep::Port * port;
 	sep::BF TPort;
-	bool isaType = true;
 }
 	: ( ID ) =>  id=ID
 	  {
-		declProperty.appendPort( sep::BF(
-				port = new sep::Port(declProperty,
+		$declPropertyPart.appendPort( sep::BF(
+				port = new sep::Port($declPropertyPart,
 						STR($id.text->chars), nature,
-						mdfr.setDirectionInoutElse() ) ) );
+						$mdfr.setDirectionInoutElse() ) ) );
 	  }
-	  ( type_param_com[ port ] )?  SEMI
+	  ( sl=StringLiteral
+	  { port->setUnrestrictedName(STR($sl.text->chars)); }
+	  )?
+	  ( typed_parameter_input[ port->getParameterPart() ] )?  SEMI
 
-	| modifier_set_direction_strict_text[ mdfr ]
+	| modifier_set_direction_strict_text[ $mdfr ]
 	  ( id=ID
 		{
-			declProperty.appendPort( sep::BF(
-		  			port = new sep::Port(declProperty,
-		  					STR($id.text->chars), nature, mdfr ) ) );
+			$declPropertyPart.appendPort( sep::BF(
+					port = new sep::Port($declPropertyPart,
+							STR($id.text->chars), nature, $mdfr ) ) );
 		}
-		( type_param_com[ port ] )?  SEMI
+		( sl=StringLiteral
+		{ port->setUnrestrictedName(STR($sl.text->chars)); }
+		)?
+		( typed_parameter_input[ port->getParameterPart() ] )?  SEMI
 
 	  | LCURLY
-	  	( id=ID
+		( id=ID
 	      {
-	    	declProperty.appendPort( sep::BF(
-	    			port = new sep::Port(declProperty,
-	    					STR($id.text->chars), nature, mdfr) ) );
+			$declPropertyPart.appendPort( sep::BF(
+					port = new sep::Port($declPropertyPart,
+							STR($id.text->chars), nature, $mdfr) ) );
 	      }
-	      ( type_param_com[ port ] )?  SEMI
+		  ( sl=StringLiteral
+		  { port->setUnrestrictedName(STR($sl.text->chars)); }
+		  )?
+	      ( typed_parameter_input[ port->getParameterPart() ] )?  SEMI
 	 	)+
 		RCURLY
 	  )
 	| LCURLY
 	  ( ( ID ) =>  id=ID
-	    {
-			declProperty.appendPort( sep::BF(
-	    			port = new sep::Port(declProperty,
-			    			STR($id.text->chars), nature,
-			    			mdfr.setDirectionInoutElse() ) ) );
-	  		port->setModifier( mdfr );
-	    }
-	    ( type_param_com[ port ] )?  SEMI
+		{
+			$declPropertyPart.appendPort( sep::BF(
+					port = new sep::Port($declPropertyPart,
+							STR($id.text->chars), nature,
+							$mdfr.setDirectionInoutElse() ) ) );
+			port->setModifier( $mdfr );
+		}
+		( sl=StringLiteral
+		{ port->setUnrestrictedName(STR($sl.text->chars)); }
+		)?
+	    ( typed_parameter_input[ port->getParameterPart() ] )?  SEMI
 
-	  | modifier_set_direction_strict_text[ mdfr ] id=ID
-	    {
-	    	declProperty.appendPort( sep::BF(
-	    			port = new sep::Port(declProperty,
-	    					STR($id.text->chars), nature, mdfr) ) );
-	    }
-	    ( type_param_com[ port ] )?  SEMI
+	  | modifier_set_direction_strict_text[ $mdfr ] id=ID
+		{
+			$declPropertyPart.appendPort( sep::BF(
+					port = new sep::Port($declPropertyPart,
+							STR($id.text->chars), nature, $mdfr) ) );
+		}
+		( sl=StringLiteral
+		{ port->setUnrestrictedName(STR($sl.text->chars)); }
+		)?
+	    ( typed_parameter_input[ port->getParameterPart() ] )?  SEMI
 	  )+
 	  RCURLY
 	;
@@ -2951,71 +3051,85 @@ decl_port_impl
 ////////////////////////////////////////////////////////////////////////////////
 
 decl_signal
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 @init{
 	sep::IComPoint::ENUM_IO_NATURE nature = sep::IComPoint::IO_UNDEFINED_NATURE;
 }
 	: ( 'signal'  { nature = sep::IComPoint::IO_SIGNAL_NATURE;  }
 	  | 'message' { nature = sep::IComPoint::IO_MESSAGE_NATURE; }
 	  )
-	  decl_signal_impl[ declProperty , mdfr, nature ]
+	  decl_signal_impl[ $declPropertyPart , $mdfr, nature ]
 	;
 
 decl_signal_impl
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ,
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ,
 		sep::IComPoint::ENUM_IO_NATURE nature ]
 @init{
 	sep::Port * signal;
 	sep::BF TPort;
-	bool isaType = true;
 }
 	: ( ID ) =>  id=ID
 	  {
-		declProperty.appendSignal( sep::BF(
-				signal = new sep::Signal(declProperty,
+		$declPropertyPart.appendSignal( sep::BF(
+				signal = new sep::Signal($declPropertyPart,
 						STR($id.text->chars), nature,
-						mdfr.setDirectionInoutElse() ) ) );
+						$mdfr.setDirectionInoutElse() ) ) );
 	  }
-	  ( type_param_com[ signal ] )?  SEMI
+	  ( sl=StringLiteral
+	  { signal->setUnrestrictedName(STR($sl.text->chars)); }
+	  )?
+	  ( typed_parameter_input[ signal->getParameterPart() ] )?  SEMI
 
-	| modifier_set_direction_strict_text[ mdfr ]
+	| modifier_set_direction_strict_text[ $mdfr ]
 	  ( id=ID
 		{
-			declProperty.appendSignal( sep::BF(
-		  			signal = new sep::Signal(declProperty,
-		  					STR($id.text->chars), nature, mdfr ) ) );
+			$declPropertyPart.appendSignal( sep::BF(
+					signal = new sep::Signal($declPropertyPart,
+							STR($id.text->chars), nature, $mdfr ) ) );
 		}
-		( type_param_com[ signal ] )?  SEMI
+	    ( sl=StringLiteral
+	    { signal->setUnrestrictedName(STR($sl.text->chars)); }
+	    )?
+		( typed_parameter_input[ signal->getParameterPart() ] )?  SEMI
 
 	  | LCURLY
-	  	( id=ID
+		( id=ID
 	      {
-	    	declProperty.appendSignal( sep::BF(
-	    			signal = new sep::Signal(declProperty,
-	    					STR($id.text->chars), nature, mdfr) ) );
+			$declPropertyPart.appendSignal( sep::BF(
+					signal = new sep::Signal($declPropertyPart,
+							STR($id.text->chars), nature, $mdfr) ) );
 	      }
-	      ( type_param_com[ signal ] )?  SEMI
+		  ( sl=StringLiteral
+		  { signal->setUnrestrictedName(STR($sl.text->chars)); }
+		  )?
+	      ( typed_parameter_input[ signal->getParameterPart() ] )?  SEMI
 	 	)+
 		RCURLY
 	  )
 	| LCURLY
 	  ( ( ID ) =>  id=ID
-	    {
-			declProperty.appendSignal( sep::BF(
-	    			signal = new sep::Signal(declProperty,
-			    			STR($id.text->chars), nature,
-			    			mdfr.setDirectionInoutElse() ) ) );
-	  		signal->setModifier( mdfr );
-	    }
-	    ( type_param_com[ signal ] )?  SEMI
+		{
+			$declPropertyPart.appendSignal( sep::BF(
+					signal = new sep::Signal($declPropertyPart,
+							STR($id.text->chars), nature,
+							$mdfr.setDirectionInoutElse() ) ) );
+			signal->setModifier( $mdfr );
+		}
+		( sl=StringLiteral
+		{ signal->setUnrestrictedName(STR($sl.text->chars)); }
+		)?
+		( typed_parameter_input[ signal->getParameterPart() ] )?  SEMI
 
-	  | modifier_set_direction_strict_text[ mdfr ] id=ID
-	    {
-	    	declProperty.appendSignal( sep::BF(
-	    			signal = new sep::Signal(declProperty,
-	    					STR($id.text->chars), nature, mdfr) ) );
-	    }
-	    ( type_param_com[ signal ] )?  SEMI
+	  | modifier_set_direction_strict_text[ $mdfr ] id=ID
+		{
+			$declPropertyPart.appendSignal( sep::BF(
+					signal = new sep::Signal($declPropertyPart,
+							STR($id.text->chars), nature, $mdfr) ) );
+		}
+		( sl=StringLiteral
+		{ signal->setUnrestrictedName(STR($sl.text->chars)); }
+		)?
+		( typed_parameter_input[ signal->getParameterPart() ] )?  SEMI
 	  )+
 	  RCURLY
 	;
@@ -3025,18 +3139,38 @@ decl_signal_impl
 // declaration COMMUNCATION PARAMETER
 ////////////////////////////////////////////////////////////////////////////////
 
-type_param_com [ sep::Port * port ]
+typed_parameter_input [ sep::PropertyPart & declParameterPart ]
 @init{
 	sep::avm_offset_t offset = 0;
 }
 	: LPAREN
-	    param_com_atom[ port , offset]
-	    ( COMMA param_com_atom[ port , ++offset ] )*
+		typed_parameter_atom[ declParameterPart, 
+				sep::Modifier::PROPERTY_PARAMETER_MODIFIER, offset]
+		( COMMA typed_parameter_atom[ declParameterPart ,
+				sep::Modifier::PROPERTY_PARAMETER_MODIFIER, ++offset ] )*
 	  RPAREN
 	;
 
-param_com_atom
-/* in */[ sep::Port * port , sep::avm_offset_t offset ]
+
+typed_parameter_return [ sep::PropertyPart & declParameterPart ]
+@init{
+	sep::avm_offset_t offset = 0;
+}
+	: ( LPAREN
+			typed_parameter_atom[ declParameterPart, 
+				sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER, offset]
+			( COMMA typed_parameter_atom[ declParameterPart,
+				sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER, ++offset ] )*
+		RPAREN
+	  | typed_parameter_atom[ declParameterPart, 
+				sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER, offset]
+	  )
+	;
+
+
+typed_parameter_atom
+/* in */[ sep::PropertyPart & declParameterPart ,
+			sep::Modifier mdfr , sep::avm_offset_t offset ]
 @init{
 	sep::Variable * variable;
 	sep::BF paramT = sep::TypeManager::UNIVERSAL;
@@ -3048,9 +3182,10 @@ param_com_atom
 	    ( iv=initial_value  { value = $iv.bf; } )?
 	  )?
 	{
-		port->saveParameter( variable = new sep::Variable(port,
-				sep::Modifier::PROPERTY_PARAMETER_MODIFIER,
-				paramT, paramID, value) );
+		variable = new sep::Variable(declParameterPart.getContainer(),
+				mdfr, paramT, paramID, value);
+				
+		declParameterPart.saveOwnedVariable( variable );
 	}
 
 	| 'bind:'
@@ -3058,17 +3193,21 @@ param_com_atom
 	    e=expression { value = $e.bf; }
 	  | vid=qualifiedNameID
 	  {
-	  	value = sep::ParserUtil::getVariable($vid.s, $vid.nb);
-	  	if( value.valid() )
-	  	{ paramT = value.to_ptr< sep::Variable >()->getType(); }
+		value = sep::ParserUtil::getVariable($vid.s, $vid.nb);
+		if( value.valid() )
+		{ paramT = value.to_ptr< sep::Variable >()->getType(); }
 	  }
 	  )
 	{
 		paramID = sep::OSS() << '#' << offset;
-		port->saveParameter( variable = new sep::Variable(port,
+		
+		variable = new sep::Variable(declParameterPart.getContainer(),
 				sep::Modifier::PROPERTY_PARAMETER_BIND_MODIFIER,
-				paramT, paramID, value) );
-		variable->setOffset( offset );
+				paramT, paramID, value);
+				
+		declParameterPart.saveOwnedVariable( variable );
+				
+		variable->setOwnedOffset( offset );
 	}
 	;
 
@@ -3077,36 +3216,35 @@ param_com_atom
 ////////////////////////////////////////////////////////////////////////////////
 
 decl_buffer
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: 'buffer'  decl_buffer_impl[ declProperty , mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: 'buffer'  decl_buffer_impl[ $declPropertyPart , $mdfr ]
 	;
 
 decl_buffer_impl
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 @init{
 	sep::Buffer * buffer;
 
 	sep::BF TBuffer;
-	bool isaType = true;
 }
 	: db=def_buffer  id=ID
 	{
-		declProperty.appendBuffer( sep::BF(
-				buffer = new sep::Buffer( declProperty,
+		$declPropertyPart.appendBuffer( sep::BF(
+				buffer = new sep::Buffer( $declPropertyPart,
 						STR($id.text->chars), $db.kind, $db.size)) );
-	  	buffer->setModifier( mdfr );
+		buffer->setModifier( $mdfr );
 	}
 	  ( initial_buffer_contents[ buffer ] )?  SEMI
 
 	| LCURLY
 	  (
 	    db=def_buffer  id=ID
-	    {
-	  		declProperty.appendBuffer( sep::BF(
-	  				buffer = new sep::Buffer(declProperty,
-	  						STR($id.text->chars), $db.kind, $db.size)) );
-	  		buffer->setModifier( mdfr );
-	    }
+		{
+			$declPropertyPart.appendBuffer( sep::BF(
+					buffer = new sep::Buffer($declPropertyPart,
+							STR($id.text->chars), $db.kind, $db.size)) );
+			buffer->setModifier( $mdfr );
+		}
 	  )+
 	  RCURLY
 	;
@@ -3115,12 +3253,17 @@ decl_buffer_impl
 def_buffer
 returns [ sep::avm_type_specifier_kind_t kind , int size = -1 ]
 	: pb=policy_buffer  { $kind = $pb.kind; }
-	  ( LT_
+	  ( LT_ ( 'size:' )?
 	    ( n=integer_constant  { $size = $n.val; }
 	    | STAR                { $size = -1; }
 	    )
-	  GT )?
-
+	    GT
+	  | LBRACKET ( 'size:' )?
+	    ( n=integer_constant  { $size = $n.val; }
+	    | STAR                { $size = -1; }
+	    )
+	    RBRACKET 
+	  )?
 	| 'ram'  { $kind = sep::TYPE_RAM_SPECIFIER; $size = 1; }
 	;
 
@@ -3132,6 +3275,7 @@ returns [ sep::avm_type_specifier_kind_t kind ]
 	| 'multififo' { $kind = sep::TYPE_MULTI_FIFO_SPECIFIER;     }
 	| 'multilifo' { $kind = sep::TYPE_MULTI_LIFO_SPECIFIER;     }
 	| 'set'       { $kind = sep::TYPE_SET_SPECIFIER;            }
+	| 'bag'       { $kind = sep::TYPE_MULTISET_SPECIFIER;       }
 	| 'multiset'  { $kind = sep::TYPE_MULTISET_SPECIFIER;       }
 	| 'vector'    { $kind = sep::TYPE_VECTOR_SPECIFIER;         }
 	| 'rvector'   { $kind = sep::TYPE_REVERSE_VECTOR_SPECIFIER; }
@@ -3150,8 +3294,8 @@ initial_buffer_contents[ const sep::Buffer * buffer ]
 }
 	: ASSIGN LBRACKET
 	    mid=qualifiedNameID
-	    {/* msg = sep::ParserUtil::getMessage($mid.s, $mid.nb);
-	    	buffer->appendMessage(msg); */}
+		{/* msg = sep::ParserUtil::getMessage($mid.s, $mid.nb);
+			buffer->appendMessage(msg); */}
 	  ( COMMA mid=qualifiedNameID
 	  )*
 	  RBRACKET
@@ -3163,27 +3307,28 @@ initial_buffer_contents[ const sep::Buffer * buffer ]
 ////////////////////////////////////////////////////////////////////////////////
 
 decl_channel
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: 'channel'  decl_channel_port[ declProperty , mdfr ]
-/*	  ( ID LCURLY  =>  decl_channel_port[ declProperty , mdfr ]
-	  | decl_channel_var[ declProperty , mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: 'channel'  decl_channel_port[ $declPropertyPart , $mdfr ]
+/*	  ( ID LCURLY  =>  decl_channel_port[ $declPropertyPart , $mdfr ]
+	  | decl_channel_var[ $declPropertyPart , $mdfr ]
 	  )
 */	;
 
 
 decl_channel_port
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 @init{
 	sep::Channel * aChannel;
 
-  	declProperty.appendChannel( sep::BF( aChannel =
-  			new sep::Channel( declProperty,
-  					"#channel#", mdfr.setDirectionInoutElse() ) ));
+	$declPropertyPart.appendChannel( sep::BF( aChannel =
+			new sep::Channel( $declPropertyPart,
+					"#channel#", $mdfr.setDirectionInoutElse() ) ));
 
 }
 	: ( LT_
-	    com_protocol[ declProperty.getContainer()->as< sep::Machine >(), aChannel ]
-	    ( COMMA com_cast[ aChannel ] )?
+	    com_protocol[ $declPropertyPart.getContainer()->as_ptr< sep::Machine >(),
+	    			(* aChannel) ]
+	    ( COMMA com_cast[ * aChannel ] )?
 	    GT
 	  )?
 
@@ -3193,33 +3338,33 @@ decl_channel_port
 	  LCURLY
 	  (
 	    m=modifier_direction  uid=qualifiedNameID SEMI
-	    {
-	    	sep::BF comSignal = sep::ParserUtil::getComSignal($uid.s, $uid.nb);
-	  		if( comSignal.valid() )
-	  		{
-	  			aChannel->appendSignal($m.mdfr, comSignal);
-	  		}
-	    }
+		{
+			sep::BF comSignal = sep::ParserUtil::getComSignal($uid.s, $uid.nb);
+			if( comSignal.valid() )
+			{
+				aChannel->appendSignal($m.mdfr, comSignal);
+			}
+		}
 
-	  | decl_port[ *(aChannel->getContents()) ,
-	  					sep::Modifier::PROPERTY_PUBLIC_MODIFIER ]
-	  					
-	  | decl_signal[ *(aChannel->getContents()) ,
-	  					sep::Modifier::PROPERTY_PUBLIC_MODIFIER ]
+	  | decl_port[ aChannel->getParameterPart() ,
+	  				sep::Modifier::PROPERTY_PUBLIC_MODIFIER ]
+						
+	  | decl_signal[ aChannel->getParameterPart() ,
+					sep::Modifier::PROPERTY_PUBLIC_MODIFIER ]
 	  )+
 	  RCURLY
 	;
 
 
 decl_channel_var
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 @init{
 	sep::Variable * var;
 }
 	: tv=type_var  id=ID
 	  {
-	  	declProperty.saveOwnedVariable( var = new sep::Variable(
-	  			declProperty, mdfr, $tv.type, STR($id.text->chars)) );
+		$declPropertyPart.saveOwnedVariable( var = new sep::Variable(
+				$declPropertyPart, $mdfr, $tv.type, STR($id.text->chars)) );
 	  }
 	  ( iv=initial_value  { var->setValue($iv.bf); } )?
 	  ( SEMI  |  on_write_var_routine_def[ var ] )
@@ -3227,8 +3372,8 @@ decl_channel_var
 	| LCURLY (
 	  tv=type_var  id=ID
 	  {
-	  	declProperty.saveOwnedVariable( var = new sep::Variable(
-	  			declProperty, mdfr, $tv.type, STR($id.text->chars)) );
+		$declPropertyPart.saveOwnedVariable( var = new sep::Variable(
+				$declPropertyPart, $mdfr, $tv.type, STR($id.text->chars)) );
 	  }
 	  ( iv=initial_value  { var->setValue($iv.bf); } )?
 	  ( SEMI  |  on_write_var_routine_def[ var ] )
@@ -3236,65 +3381,91 @@ decl_channel_var
 	;
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// declaration COMMUNCATION POINT : PORT
+////////////////////////////////////////////////////////////////////////////////
+
+decl_function
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: 'fun'  decl_function_impl[ $declPropertyPart , $mdfr ]
+	;
+
+decl_function_impl
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+@init{
+	sep::Function * function;
+}
+	: id=ID
+	  {
+		$declPropertyPart.appendFunction( sep::BF(
+			function = new sep::Function($declPropertyPart, STR($id.text->chars)) ));
+	  }
+	  ( typed_parameter_input[ function->getParameterPart() ] )?
+	  '->'
+	  typed_parameter_return[ function->getParameterPart() ]
+	  SEMI
+	;
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // declaration VAR
 ////////////////////////////////////////////////////////////////////////////////
 
 decl_variable
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: ( 'var'      {  mdfr.setNatureVariable(); }
-	  | 'val'      {  mdfr.setFeatureConst();   }
-	  | ( 'const'  {  mdfr.setFeatureConst();   }
-	    | 'macro'  {  mdfr.setNatureMacro();    }
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: ( 'var'      {  $mdfr.setNatureVariable(); }
+	  | 'val'      {  $mdfr.setFeatureConst();   }
+	  | ( 'const'  {  $mdfr.setFeatureConst();   }
+	    | 'macro'  {  $mdfr.setNatureMacro();    }
 	    )+
 	    ( 'var' )?
 	  )
-	  decl_variable_impl[ declProperty , mdfr ]
+	  decl_variable_impl[ $declPropertyPart , $mdfr ]
 
-	| decl_variable_time_clock_impl[ declProperty , mdfr ]
+	| decl_variable_time_clock_impl[ $declPropertyPart , $mdfr ]
 	;
 
 
 decl_variable_time_clock_impl
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 @init{
-	mdfr.override_ifdef( sep::Modifier::PROPERTY_PUBLIC_VOLATILE_MODIFIER );
+	$mdfr.override_ifdef( sep::Modifier::PROPERTY_PUBLIC_VOLATILE_MODIFIER );
 }
 	: ctv=time_clock_type
-	  decl_typed_variable_atom_impl[ declProperty , mdfr , $ctv.bts ]
+	  decl_typed_variable_atom_impl[ $declPropertyPart , $mdfr , $ctv.bts ]
 	;
 
 
 decl_variable_impl
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: decl_variable_atom_impl[ declProperty , mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: decl_variable_atom_impl[ $declPropertyPart , $mdfr ]
 
 	| LCURLY
-	  ( decl_variable_atom_impl[ declProperty , mdfr ] )+
+	  ( decl_variable_atom_impl[ $declPropertyPart , $mdfr ] )+
 	  RCURLY
 	;
 
 decl_variable_atom_impl
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: tv=type_var
-	  decl_typed_variable_atom_impl[ declProperty , mdfr , $tv.type ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: tv=type_var  ( BAND  { mdfr.setNatureReference(); } )?
+	  decl_typed_variable_atom_impl[ $declPropertyPart , $mdfr , $tv.type ]
 	;
 
 decl_typed_variable_atom_impl
-/* in */[ sep::PropertyPart & declProperty ,
+/* in */[ sep::PropertyPart & declPropertyPart ,
 		sep::Modifier mdfr , const sep::BF & type ]
 @init{
 	sep::Variable * var;
 }
 	: id=ID
 	  {
-	  	declProperty.saveOwnedVariable( var = new sep::Variable(
-	  			declProperty, mdfr, type, STR($id.text->chars)) );
+		$declPropertyPart.saveOwnedVariable( var = new sep::Variable(
+				$declPropertyPart, $mdfr, type, STR($id.text->chars)) );
 	  }
 
-	  ( StringLiteral
-	  { var->setUnrestrictedName(STR($StringLiteral.text->chars)); }
-	  )?
+	  ( sl=StringLiteral { var->setUnrestrictedName(STR($sl.text->chars)); } )?
 
 	  ( iv=initial_value  { var->setValue($iv.bf); } )?
 	  ( SEMI  |  on_write_var_routine_def[ var ] )
@@ -3311,7 +3482,7 @@ returns [ sep::BF bf ]
 type_var
 returns [ sep::BF type ]
 	: btv=base_type_var                  { $type = $btv.type; }
-	  ( dta=def_type_array[ type , "" ]  { $type = $dta.type; } )?
+	  ( dta=def_type_array[ $type , "" ] { $type = $dta.type; } )?
 
 	| dtc=def_type_container[ "" ]       { $type = $dtc.type; }
 
@@ -3338,7 +3509,7 @@ returns [ sep::BF type ]
 					sep::TYPE_ARRAY_SPECIFIER, baseT, listOfSize.back()) );
 			listOfSize.pop_back();
 		}
-		type = sep::BF( sep::DataType::newContainer(_CPM_,
+		$type = sep::BF( sep::DataType::newContainer(_CPM_,
 				sep::DataType::strContainerId(
 						tid, sep::TYPE_ARRAY_SPECIFIER, baseT, szT),
 				sep::TYPE_ARRAY_SPECIFIER, baseT, szT) );
@@ -3348,8 +3519,8 @@ returns [ sep::BF type ]
 def_type_array_size
 returns [ int size ]
 	: LBRACKET
-	    ( sz=IntegerLiteral    { size = NUM_INT($sz.text->chars); }
-//	    ( sz=integer_constant  { size = $sz.val; }
+	    ( sz=IntegerLiteral    { $size = NUM_INT($sz.text->chars); }
+//	    ( sz=integer_constant  { $size = $sz.val; }
 
 		| id=qualifiedNameID
 		{
@@ -3359,7 +3530,7 @@ returns [ int size ]
 				constVar.to_ptr< sep::Variable >()->hasValue() &&
 				constVar.to_ptr< sep::Variable >()->getValue().isInteger() )
 			{
-				size = constVar.to_ptr< sep::Variable >()->getValue().toInteger();
+				$size = constVar.to_ptr< sep::Variable >()->getValue().toInteger();
 			}
 			else
 			{
@@ -3369,25 +3540,25 @@ returns [ int size ]
 				{
 					if( aType.to_ptr< sep::DataType >()->isTypedInterval() )
 					{
-						size = aType.to_ptr< sep::DataType >()->getIntervalLength();
+						$size = aType.to_ptr< sep::DataType >()->getIntervalLength();
 
-						if( size < 0 )
+						if( $size < 0 )
 						{
 							sep::ParserUtil::avm_syntax_error(
 								"def_type_array_size(...)" )
 									<< "unexpected << interval: " << $id.s
-									<< " >> as size (i.e. " << size
+									<< " >> as size (i.e. " << $size
 									<< ") in an array typedef"
 									<< sep::ParserUtil::SYNTAX_ERROR_EOL;
 
-							size = 0;
+							$size = 0;
 						}
 					}
 					else if( aType.to_ptr< sep::DataType >()->isTypedEnum() )
 					{
-						size = aType.to_ptr< sep::DataType >()->getEnumSize();
+						$size = aType.to_ptr< sep::DataType >()->getEnumSize();
 
-						if( size == 0 )
+						if( $size == 0 )
 						{
 							sep::ParserUtil::avm_syntax_error(
 								"def_type_array_size(...)" )
@@ -3398,7 +3569,7 @@ returns [ int size ]
 					}
 					else
 					{
-						size = 0;
+						$size = 0;
 
 						sep::ParserUtil::avm_syntax_error(
 							"def_type_array_size(...)" )
@@ -3409,7 +3580,7 @@ returns [ int size ]
 				}
 				else
 				{
-					size = 0;
+					$size = 0;
 
 					sep::ParserUtil::avm_syntax_error(
 						"def_type_array_size(...)" )
@@ -3462,6 +3633,7 @@ returns [ sep::avm_type_specifier_kind_t kind ]
 	| 'multififo' { $kind = sep::TYPE_MULTI_FIFO_SPECIFIER;     }
 	| 'multilifo' { $kind = sep::TYPE_MULTI_LIFO_SPECIFIER;     }
 	| 'set'       { $kind = sep::TYPE_SET_SPECIFIER;            }
+	| 'bag'       { $kind = sep::TYPE_MULTISET_SPECIFIER;       }
 	| 'multiset'  { $kind = sep::TYPE_MULTISET_SPECIFIER;       }
 	;
 
@@ -3498,13 +3670,13 @@ returns [ sep::BF type ]
 primitive_type
 returns [ sep::TypeSpecifier bts ]
 @init{
-	sep::avm_size_t arity = 1;
+	std::size_t arity = 1;
 }
 	: ( 'boolean' | 'bool' ) { $bts = sep::TypeManager::BOOLEAN; }
 
 	| ( 'integer' | 'int' )  { $bts = sep::TypeManager::INTEGER; }
 	  ( bfs=bit_field_size
-	    { $bts = sep::TypeManager::getTypeInteger( $bfs.size ); }
+		{ $bts = sep::TypeManager::getTypeInteger( $bfs.size ); }
 	  )?
 
 	| ( 'uinteger' | 'uint' )  { $bts = sep::TypeManager::UINTEGER; }
@@ -3520,6 +3692,9 @@ returns [ sep::TypeSpecifier bts ]
 
 	| ( ( 'rational'  | 'rat'  )  { $bts = sep::TypeManager::RATIONAL; }
 	  | ( 'urational' | 'urat' )  { $bts = sep::TypeManager::URATIONAL; }
+	  
+	  | ( 'pos_rational' | 'pos_rat' )
+		{ $bts = sep::TypeManager::POS_RATIONAL; }
 
 	  | 'float'    { $bts = sep::TypeManager::FLOAT; }
 	  | 'ufloat'   { $bts = sep::TypeManager::UFLOAT; }
@@ -3532,8 +3707,8 @@ returns [ sep::TypeSpecifier bts ]
 	  )
 	  ( bfs=bit_field_size
 	  {
-	  	$bts = sep::TypeManager::newNumericTypeSpecifier(
-	  			$bts, $bfs.size, sep::ExpressionConstant::INTEGER_ZERO);
+		$bts = sep::TypeManager::newNumericTypeSpecifier(
+				$bts, $bfs.size, sep::ExpressionConstant::INTEGER_ZERO);
 	  }
 	  )?
 
@@ -3570,8 +3745,8 @@ returns [ sep::TypeSpecifier bts ]
 	| 'machine'    { $bts = sep::TypeManager::MACHINE;    }
 	  ( LT_  id=qualifiedNameID  GT
 	  {
-	  	sep::BF machineT =
-	  			sep::ParserUtil::getExecutableMachine($id.s, $id.nb);
+		sep::BF machineT =
+				sep::ParserUtil::getExecutableMachine($id.s, $id.nb);
 	  }
 	  )?
 
@@ -3581,8 +3756,8 @@ returns [ sep::TypeSpecifier bts ]
 
 bit_field_size
 returns [ int size ]
-	: COLON  n=integer_constant                  { size = $n.val; }
-	| LT_  ( 'size:' )?  n=integer_constant  GT  { size = $n.val; }
+	: COLON  n=integer_constant                  { $size = $n.val; }
+	| LT_  ( 'size:' )?  n=integer_constant  GT  { $size = $n.val; }
 	;
 
 
@@ -3610,7 +3785,7 @@ on_write_var_routine_def [ sep::Variable * var ]
 
 var_routine_def [ sep::Variable * var ]
 @init{
-	sep::Routine * onWriteRoutine = NULL;
+	sep::Routine * onWriteRoutine = nullptr;
 
 	sep::BehavioralPart * aBehavioralpart = var->getUniqContainerOfRoutines();
 
@@ -3619,14 +3794,14 @@ var_routine_def [ sep::Variable * var ]
 @after{
 	SET_RULE_LOCATION( onWriteRoutine );
 }
-	: '@on_write'
+	: ( '@write' | '@on_write' )
 	  {
-	  	onWriteRoutine = new sep::Routine(var, "on_write");
-	  	var->setOnWriteRoutine(onWriteRoutine);
-	  	if( aBehavioralpart != NULL )
-	  	{
-	  		aBehavioralpart->saveAnonymousInnerRoutine(onWriteRoutine);
-	  	}
+		onWriteRoutine = new sep::Routine(var, "on_write");
+		var->setOnWriteRoutine(onWriteRoutine);
+		if( aBehavioralpart != nullptr )
+		{
+			aBehavioralpart->saveAnonymousInnerRoutine(onWriteRoutine);
+		}
 	  }
 	  ( routine_single_param[*onWriteRoutine, var->getType()] )?
 	  ( bs=block_statement  { onWriteRoutine->setCode($bs.ac); }
@@ -3647,171 +3822,237 @@ routine_single_param
 	  )
 	  ( iv=initial_value  { value = $iv.bf; } )?
 	  {
-	  	sep::Variable * variable;
-	  	routine.saveParameter( variable = new sep::Variable( &routine,
-	  			sep::Modifier::PROPERTY_INPUT_PARAMETER_MODIFIER,
-	  			paramT, STR($id.text->chars), value) );
+		sep::Variable * variable = new sep::Variable( &routine,
+				sep::Modifier::PROPERTY_INPUT_PARAMETER_MODIFIER,
+				paramT, STR($id.text->chars), value );
+				
+		routine.getPropertyPart().saveOwnedVariableParameter( variable );
 	  }
 	  RPAREN
 	;
 
 
 def_enum
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 @init{
-	sep::Variable * var = NULL;
+	sep::Variable * var = nullptr;
+	sep::BF superEnumType;
 }
 	: 'enum'  id=ID
-	  def_enum_impl[declProperty, mdfr, STR($id.text->chars)]
+		def_enum_impl[$declPropertyPart, $mdfr, STR($id.text->chars)]
 	;
 
 def_enum_impl
-/* in */[ sep::PropertyPart & declProperty ,
+/* in */[ sep::PropertyPart & declPropertyPart ,
 		sep::Modifier mdfr , const std::string & tid ]
 @init{
-	sep::Variable * var = NULL;
+	sep::Variable * var = nullptr;
 	sep::DataType * enumT;
 
-	sep::BF td( enumT = sep::DataType::newEnum(declProperty, tid) );
-	enumT->setModifier( mdfr );
-	declProperty.appendDataType( td );
+	const sep::DataType * superEnumDataType = nullptr;
 }
 	: LCURLY
+		id=ID
+		{
+			
+			sep::BF td( enumT = sep::DataType::newEnum($declPropertyPart, tid) );
+			enumT->setModifier( $mdfr );
+			$declPropertyPart.appendDataType( td );
+
+			enumT->saveVariable( var = new sep::Variable( enumT,
+					sep::Modifier::PROPERTY_UNDEFINED_MODIFIER,
+					sep::TypeManager::INTEGER, STR($id.text->chars) ) );
+		}
+		( sl=StringLiteral { var->setUnrestrictedName(STR($sl.text->chars)); } )?
+		( ASSIGN e=expression  { var->setValue($e.bf); } )?
+		
+		( COMMA id=ID
+		{
+			enumT->saveVariable( var = new sep::Variable( enumT,
+					sep::Modifier::PROPERTY_UNDEFINED_MODIFIER,
+					sep::TypeManager::INTEGER, STR($id.text->chars) ) );
+		}
+		( sl=StringLiteral { var->setUnrestrictedName(STR($sl.text->chars)); } )?
+		( ASSIGN e=expression  { var->setValue($e.bf); } )?
+		)*
+//!@! TODO#ADD
+//	    ( COMMA )?
+
+	  RCURLY
+	  
+	| LT_ ( 'super:' )?  superId=ID  
+	  	{
+	  		const sep::BF & superEnumType =
+	  				declPropertyPart.getSemEnumDataType(STR($superId.text->chars));
+			if( superEnumType.valid() )
+			{
+				superEnumDataType = superEnumType.to_ptr< sep::DataType >();
+			}
+			else
+			{
+				sep::ParserUtil::avm_syntax_error("def_sub_enum_impl:> "
+					"with super enum ID: " + superEnumType.str() , $superId.line)
+							<< "Unfound super enum datatype specifier !"
+							<< sep::ParserUtil::SYNTAX_ERROR_EOL;
+			}
+			
+			sep::BF td( enumT = sep::DataType::newEnum($declPropertyPart, tid, superEnumType) );
+			enumT->setModifier( $mdfr );
+			$declPropertyPart.appendDataType( td );
+	  	}
+	  	GT
+	  	
+	  LCURLY
 	    id=ID
-	    {
-	    	enumT->saveVariable( var = new sep::Variable( enumT,
-	    			sep::Modifier::PROPERTY_UNDEFINED_MODIFIER,
-	    			sep::TypeManager::INTEGER, STR($id.text->chars) ) );
-	    }
-	       ( ASSIGN e=expression  { var->setValue($e.bf); } )?
+		{
+			if( superEnumDataType != nullptr )
+			{
+				const sep::BF & foundSymbol =
+						superEnumDataType->getEnumSymbol( STR($id.text->chars) );
+			
+				if( foundSymbol.valid() )
+				{
+					enumT->appendVariable(foundSymbol);
+				}
+				else
+				{
+					sep::ParserUtil::avm_syntax_error("def_sub_enum_impl:> "
+						"enum symbol alias ID: " + STR($id.text->chars), $id.line )
+								<< "Unfound enum symbol in super enum datatype: "
+								<< superEnumDataType->toString()
+								<< sep::ParserUtil::SYNTAX_ERROR_EOL;
+				}
+			}
+		}
 
 	    ( COMMA id=ID
-	    {
-	    	enumT->saveVariable( var = new sep::Variable( enumT,
-	    			sep::Modifier::PROPERTY_UNDEFINED_MODIFIER,
-	    			sep::TypeManager::INTEGER, STR($id.text->chars) ) );
-	    }
-	       ( ASSIGN e=expression  { var->setValue($e.bf); } )?
+		{
+			if( superEnumDataType != nullptr )
+			{
+				const sep::BF & foundSymbol =
+						superEnumDataType->getEnumSymbol( STR($id.text->chars) );
+			
+				if( foundSymbol.valid() )
+				{
+					enumT->appendVariable(foundSymbol);
+				}
+				else
+				{
+					sep::ParserUtil::avm_syntax_error("def_sub_enum_impl:> "
+						"enum symbol alias ID: " + STR($id.text->chars), $id.line )
+								<< "Unfound enum symbol in super enum datatype: "
+								<< superEnumDataType->toString()
+								<< sep::ParserUtil::SYNTAX_ERROR_EOL;
+				}
+			}
+		}
 	    )*
-/*TODO#ADD
-	    ( COMMA )?
-*/
+//!@! TODO#ADD
+//	    ( COMMA )?
+
 	  RCURLY
 	;
 
 
 def_struct
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 	: ( 'struct' | 'class' )  id=ID
-	  def_class_structure_impl[declProperty, mdfr, STR($id.text->chars)]
+	  def_class_structure_impl[$declPropertyPart, $mdfr, STR($id.text->chars)]
 	;
 
 def_class_structure_impl
-/* in */[ sep::PropertyPart & declProperty ,
+/* in */[ sep::PropertyPart & declPropertyPart ,
 		sep::Modifier mdfr , const std::string & tid ]
 @init{
 	sep::DataType * structT;
 
-	sep::BF td( structT = sep::DataType::newStructure(declProperty, tid) );
-	structT->setModifier( mdfr );
-	declProperty.appendDataType( td );
+	sep::BF td( structT = sep::DataType::newStructure($declPropertyPart, tid) );
+	structT->setModifier( $mdfr );
+	$declPropertyPart.appendDataType( td );
 }
 	: LCURLY
-		( { mdfr = sep::Modifier::PROPERTY_UNDEFINED_MODIFIER; }
+		( { $mdfr = sep::Modifier::PROPERTY_UNDEFINED_MODIFIER; }
 
-			( m=modifier_declaration  { mdfr = $m.mdfr; } )?
+			( m=modifier_declaration  { $mdfr = $m.mdfr; } )?
 
-		    ( decl_variable[ *(structT->getPropertyPart()) , mdfr ]
-		    | def_method[ declProperty ]
-		    )
+		    decl_variable[ *(structT->getPropertyPart()) , $mdfr ]
 	    )+
 	  RCURLY
 	;
 
 
 def_choice
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 	: 'choice'  id=ID
-	  def_choice_impl[declProperty, mdfr, STR($id.text->chars)]
+	  def_choice_impl[declPropertyPart, $mdfr, STR($id.text->chars)]
 	;
 
 def_choice_impl
-/* in */[ sep::PropertyPart & declProperty ,
+/* in */[ sep::PropertyPart & declPropertyPart ,
 		sep::Modifier mdfr , const std::string & tid ]
 @init{
 	sep::DataType * choiceT;
 
-	sep::BF td( choiceT = sep::DataType::newChoice(declProperty, tid) );
-	choiceT->setModifier( mdfr );
-	declProperty.appendDataType( td );
+	sep::BF td( choiceT = sep::DataType::newChoice($declPropertyPart, tid) );
+	choiceT->setModifier( $mdfr );
+	$declPropertyPart.appendDataType( td );
 }
 	: LCURLY
-		( { mdfr = sep::Modifier::PROPERTY_UNDEFINED_MODIFIER; }
+		( { $mdfr = sep::Modifier::PROPERTY_UNDEFINED_MODIFIER; }
 
-			( m=modifier_declaration  { mdfr = $m.mdfr; } )?
+			( m=modifier_declaration  { $mdfr = $m.mdfr; } )?
 
-		    ( decl_variable[ *(choiceT->getPropertyPart()) , mdfr ]
-		    | def_method[ declProperty ]
-		    )
+		    decl_variable[ *(choiceT->getPropertyPart()) , $mdfr ]
 	    )+
 	  RCURLY
 	;
 
 
 def_union
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 	: 'union'  id=ID
-	  def_union_impl[declProperty , mdfr, STR($id.text->chars)]
+	  def_union_impl[$declPropertyPart , $mdfr, STR($id.text->chars)]
 	;
 
 
 def_union_impl
-/* in */[ sep::PropertyPart & declProperty ,
+/* in */[ sep::PropertyPart & declPropertyPart ,
 		sep::Modifier mdfr , const std::string & tid ]
 @init{
 	sep::DataType * unionT;
 
-	sep::BF td(	unionT = sep::DataType::newUnion(declProperty, tid) );
-	unionT->setModifier( mdfr );
-	declProperty.appendDataType( td );
+	sep::BF td(	unionT = sep::DataType::newUnion($declPropertyPart, tid) );
+	unionT->setModifier( $mdfr );
+	$declPropertyPart.appendDataType( td );
 }
 	: LCURLY
-		( { mdfr = sep::Modifier::PROPERTY_UNDEFINED_MODIFIER; }
+		( {$mdfr = sep::Modifier::PROPERTY_UNDEFINED_MODIFIER; }
 
-			( m=modifier_declaration  { mdfr = $m.mdfr; } )?
+			( m=modifier_declaration  { $mdfr = $m.mdfr; } )?
 
-		    decl_variable[ *(unionT->getPropertyPart()) , mdfr ]
+		    decl_variable[ *(unionT->getPropertyPart()) , $mdfr ]
 	    )+
 	  RCURLY
 	;
 
 
-def_method[ sep::PropertyPart & declProperty ]
-	: 'fun'  ID  LPAREN  decl_parameters ?  RPAREN  ( type_var )?
-	;
-
-decl_parameters
-	: type_var ID ( COMMA type_var ID )*
-	;
-
-
 def_type
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: 'type'  def_type_impl[ declProperty , mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: 'type'  def_type_impl[ $declPropertyPart , $mdfr ]
 	;
 
 def_type_impl
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: def_type_atom_impl[ declProperty , mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
+	: def_type_atom_impl[ $declPropertyPart , $mdfr ]
 
 	| LCURLY
-	  ( def_type_atom_impl[ declProperty , mdfr ] )+
+	  ( def_type_atom_impl[ $declPropertyPart , $mdfr ] )+
 	  RCURLY
 	;
 
 
 def_type_atom_impl
-/* in */[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in */[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 @init{
 	sep::DataType * aliasT;
 	sep::BF type;
@@ -3822,61 +4063,61 @@ def_type_atom_impl
 	    ( dta=def_type_array[ type , STR($id.text->chars) ]
 	      { type = $dta.type; isTypedArray = true; }
 	    )?
-	    {
-	    	if( isTypedArray )
-	    	{
-	    		aliasT = type.to_ptr< sep::DataType >();
-	  			aliasT->setModifier( mdfr );
-	    		declProperty.appendDataType( type );
-	    	}
-	    	else
-	    	{
+		{
+			if( isTypedArray )
+			{
+				aliasT = type.to_ptr< sep::DataType >();
+				aliasT->setModifier( $mdfr );
+				$declPropertyPart.appendDataType( type );
+			}
+			else
+			{
 				sep::BF td( aliasT = sep::DataType::newAlias(
-					declProperty, STR($id.text->chars), type) );
-				aliasT->setModifier( mdfr  );
-				declProperty.appendDataType( td );
-	    	}
-	    }
+					$declPropertyPart, STR($id.text->chars), type) );
+				aliasT->setModifier( $mdfr  );
+				$declPropertyPart.appendDataType( td );
+			}
+		}
         ( def_typedef_constraint[ aliasT ] | SEMI )?
 
 	  | dtc=def_type_container[ STR($id.text->chars) ]
 	  {
 	    aliasT = $dtc.type.to_ptr< sep::DataType >();
-	  	aliasT->setModifier( mdfr );
-	  	declProperty.appendDataType( $dtc.type );
+		aliasT->setModifier( $mdfr );
+		$declPropertyPart.appendDataType( $dtc.type );
 	  }
 	  ( def_typedef_constraint[ aliasT ] | SEMI )?
 
 	  | dti=def_type_interval[ STR($id.text->chars) ] SEMI
 	  {
 	    aliasT = $dti.type.to_ptr< sep::DataType >();
-	  	aliasT->setModifier( mdfr );
-	  	declProperty.appendDataType( $dti.type );
+		aliasT->setModifier( $mdfr );
+		$declPropertyPart.appendDataType( $dti.type );
 	  }
 
 	  | 'enum'
-	    def_enum_impl[declProperty, mdfr, STR($id.text->chars)]
+	    def_enum_impl[$declPropertyPart, $mdfr, STR($id.text->chars)]
 
 	  | 'union'
-	    def_union_impl[declProperty, mdfr, STR($id.text->chars)]
+	    def_union_impl[$declPropertyPart, $mdfr, STR($id.text->chars)]
 
 	  | 'choice'
-	    def_choice_impl[declProperty, mdfr, STR($id.text->chars)]
+	    def_choice_impl[$declPropertyPart, $mdfr, STR($id.text->chars)]
 
 	  | ( 'struct' | 'class' )
-	    def_class_structure_impl[declProperty, mdfr, STR($id.text->chars)]
+	    def_class_structure_impl[$declPropertyPart, $mdfr, STR($id.text->chars)]
 	  )
 
-	| def_enum  [ declProperty , mdfr ]
-	| def_union [ declProperty , mdfr ]
-	| def_choice[ declProperty , mdfr ]
-	| def_struct[ declProperty , mdfr ]
+	| def_enum  [ $declPropertyPart , $mdfr ]
+	| def_union [ $declPropertyPart , $mdfr ]
+	| def_choice[ $declPropertyPart , $mdfr ]
+	| def_struct[ $declPropertyPart , $mdfr ]
 	;
 
 
 def_typedef_constraint[ sep::DataType * aliasT ]
 @init{
-	sep::Routine * onConstraintRoutine = NULL;
+	sep::Routine * onConstraintRoutine = nullptr;
 
 	sep::BehavioralPart * aBehavioralpart = aliasT->getUniqBehaviorPart();
 
@@ -3887,11 +4128,11 @@ def_typedef_constraint[ sep::DataType * aliasT ]
 }
 	: LCURLY
 		'@constraint'
-	    {
-	    	onConstraintRoutine = new sep::Routine(aliasT, "constraint");
-	    	aliasT->setConstraintRoutine(onConstraintRoutine);
-	    	aBehavioralpart->saveAnonymousInnerRoutine(onConstraintRoutine);
-	    }
+		{
+			onConstraintRoutine = new sep::Routine(aliasT, "constraint");
+			aliasT->setConstraintRoutine(onConstraintRoutine);
+			aBehavioralpart->saveAnonymousInnerRoutine(onConstraintRoutine);
+		}
 	    ( routine_single_param[*onConstraintRoutine, aliasT->getTypeSpecifier()] )?
 	    ( bs=block_statement  { onConstraintRoutine->setCode( $bs.ac ); }
 	    | '|=>' ce=conditionalExpression SEMI
@@ -3911,9 +4152,15 @@ returns [ sep::TypeSpecifier bts ]
 	int szT = 1;
 	sep::avm_type_specifier_kind_t tsk = sep::TYPE_TIME_SPECIFIER;
 }
-	: ( 'time'   { $bts = sep::TypeManager::TIME;            }
-	  | 'ctime'  { $bts = sep::TypeManager::CONTINUOUS_TIME; }
-	  | 'dtime'  { $bts = sep::TypeManager::DISCRETE_TIME;   }
+	: ( 'time'             { $bts = sep::TypeManager::TIME;            }
+	
+		| 'ctime'          { $bts = sep::TypeManager::CONTINUOUS_TIME; }
+		| 'time#continous' { $bts = sep::TypeManager::CONTINUOUS_TIME; }
+		
+		| 'time#dense'     { $bts = sep::TypeManager::DENSE_TIME;      }
+		
+		| 'dtime'          { $bts = sep::TypeManager::DISCRETE_TIME;   }
+		| 'time#discrete'  { $bts = sep::TypeManager::DISCRETE_TIME;   }
 	  )
 	  ( LT_      { tsk = $bts.getTypeSpecifierKind(); }
 	    pt=time_type_domain           { $bts = $pt.type; }
@@ -3934,18 +4181,32 @@ returns [ sep::TypeSpecifier bts ]
 }
 	: 'clock'  { $bts = sep::TypeManager::CLOCK;    }
 	  ( LT_
-		( 'time'   { $bts = sep::TypeManager::TIME;            }
-		| 'ctime'  { $bts = sep::TypeManager::CONTINUOUS_TIME; }
-		| 'dtime'  { $bts = sep::TypeManager::DISCRETE_TIME;   }
+		( 'time'           { $bts = sep::TypeManager::TIME;            }
+		
+		| 'ctime'          { $bts = sep::TypeManager::CONTINUOUS_TIME; }
+		| 'time#continous' { $bts = sep::TypeManager::CONTINUOUS_TIME; }
+		
+		| 'time#dense'     { $bts = sep::TypeManager::DENSE_TIME;      }
+		
+		| 'dtime'          { $bts = sep::TypeManager::DISCRETE_TIME;   }
+		| 'time#discrete'  { $bts = sep::TypeManager::DISCRETE_TIME;   }
+		
 		| pt=time_type_domain { $bts = $pt.type;   }
 		)
 		( COMMA  sz=integer_constant  { szT = $sz.val; } )?
 	   GT
 	   { $bts = sep::TypeManager::newClockTime(sep::TYPE_CLOCK_SPECIFIER, $bts, szT); }
 
-	  | ( 'time'   { $bts = sep::TypeManager::TIME;            }
-		| 'ctime'  { $bts = sep::TypeManager::CONTINUOUS_TIME; }
-		| 'dtime'  { $bts = sep::TypeManager::DISCRETE_TIME;   }
+	  | ( 'time'           { $bts = sep::TypeManager::TIME;            }
+	  
+		| 'ctime'          { $bts = sep::TypeManager::CONTINUOUS_TIME; }
+		| 'time#continous' { $bts = sep::TypeManager::CONTINUOUS_TIME; }
+		
+		| 'time#dense'     { $bts = sep::TypeManager::DENSE_TIME;      }
+		
+		| 'dtime'          { $bts = sep::TypeManager::DISCRETE_TIME;   }
+		| 'time#discrete'  { $bts = sep::TypeManager::DISCRETE_TIME;   }
+		
 		| pt=time_type_domain { $bts = $pt.type;   }
 		)
 		( COMMA  sz=integer_constant  { szT = $sz.val; } )?
@@ -3959,17 +4220,19 @@ returns [ sep::TypeSpecifier type ]
 	: ( 'integer'  |  'int' )  { $type = sep::TypeManager::INTEGER; }
 	  ( LT_
 	    n=integer_constant
-	    { $type = sep::TypeManager::getTypeInteger( $n.val ); }
+		{ $type = sep::TypeManager::getTypeInteger( $n.val ); }
 	   GT )?
 
 	| ( 'uinteger'  |  'uint' )  { $type = sep::TypeManager::UINTEGER; }
 	  ( LT_
 	    n=integer_constant
-	    { $type = sep::TypeManager::getTypeUInteger( $n.val); }
+		{ $type = sep::TypeManager::getTypeUInteger( $n.val); }
 	   GT )?
 
-	| ( 'rational'  | 'rat'  )  { $type = sep::TypeManager::RATIONAL; }
-	| ( 'urational' | 'urat' )  { $type = sep::TypeManager::URATIONAL; }
+	| ( 'rational'     | 'rat'     ) { $type = sep::TypeManager::RATIONAL;     }
+	| ( 'urational'    | 'urat'    ) { $type = sep::TypeManager::URATIONAL;    }
+	  
+	| ( 'pos_rational' | 'pos_rat' ) { $type = sep::TypeManager::POS_RATIONAL; }
 
 	| 'float'      { $type = sep::TypeManager::FLOAT; }
 	| 'ufloat'     { $type = sep::TypeManager::UFLOAT; }
@@ -3983,31 +4246,17 @@ returns [ sep::TypeSpecifier type ]
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// declaration FUNCTION , PROCEDURE , LAMBDA
+// declaration PROCEDURE , LAMBDA
 ////////////////////////////////////////////////////////////////////////////////
 /*
-decl_func [ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
-	: 'func'  ID  func_signature
-	  block_statement
-	;
-
-func_signature
-	: LPAREN  decl_call_param ?  RPAREN
-	  '-->'
-	  LPAREN  decl_ret_value     RPAREN
-
-	| COLON   decl_call_param
-	  '-->'   decl_ret_value
-	;
-
-decl_proc
-/* in /[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+decl_procedure
+/* in /[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 	: 'proc'  ID decl_call_param
 	  block_statement
 	;
 
 decl_lambda
-/* in /[ sep::PropertyPart & declProperty , sep::Modifier mdfr ]
+/* in /[ sep::PropertyPart & declPropertyPart , sep::Modifier mdfr ]
 	: 'lambda'  ID
 	  COLON   decl_call_param
 	  '-->'   decl_ret_value
@@ -4060,17 +4309,17 @@ section_routine [ sep::Machine * container ]
 	: ( '@routine:'
 	  | '@macro:'  { mdfr.setNatureMacro(); }
 	  )
-	  ( def_routine_model[ container , mdfr , spcfr ] )*
+	  ( def_routine_model[ $container , mdfr , spcfr ] )*
 	;
 
 def_routine_model
 /* in */[ sep::Machine * container ,
 		sep::Modifier mdfr , sep::Specifier spcfr ]
 	: ('routine'
-	  | 'macro'   { mdfr.setNatureMacro(); }
+	  | 'macro'   { $mdfr.setNatureMacro(); }
 	    ( 'routine' ) ?
 	  )
-	  def_routine_model_impl[ container , mdfr , spcfr ]
+	  def_routine_model_impl[ $container , $mdfr , $spcfr ]
 	;
 
 
@@ -4087,10 +4336,10 @@ def_routine_model_impl
 }
 	: ID
 	  {
-	  	PUSH_CTX_CPR( sep::Routine::newDefine(
-	  			container, mdfr, spcfr, STR($ID.text->chars)) );
+		PUSH_CTX_CPR( sep::Routine::newDefine(
+				$container, $mdfr, $spcfr, STR($ID.text->chars)) );
 
-		container->saveOwnedElement( _CPR_ );
+		$container->saveOwnedElement( _CPR_ );
 	  }
 
 	  ( def_routine_parameters[ *_CPR_ ] )?
@@ -4102,7 +4351,7 @@ def_routine_model_impl
 
 def_routine_parameters [ sep::Routine & routine ]
 @init{
-	sep::avm_size_t offset = 0;
+	std::size_t offset = 0;
 }
 	: LPAREN
 	     ( def_routine_param_atom[ routine , offset++ ]
@@ -4112,7 +4361,7 @@ def_routine_parameters [ sep::Routine & routine ]
 	;
 
 def_routine_param_atom
-/* in */[ sep::Routine & routine , sep::avm_size_t offset ]
+/* in */[ sep::Routine & routine , std::size_t offset ]
 @init{
 	sep::BF variable;
 	sep::Variable * param;
@@ -4126,46 +4375,49 @@ def_routine_param_atom
 	    tv=type_var { paramT = $tv.type; }  id=ID
 
 	  | id=ID
-	    {
-	    	variable = sep::ParserUtil::getVariable(STR($id.text->chars) , 1);
-	    	if( variable.invalid() )
-	    	{
-	    		sep::ParserUtil::avm_syntax_error(
-	    			"def_routine_param_atom:> " + routine.str(), $id.line )
-	    				<< "Unfound machine param's variable < "
-  						<< STR($id.text->chars)
-  						<< " > in routine header < " << " >"
-  						<< sep::ParserUtil::SYNTAX_ERROR_EOL;
-	    	}
-	    }
+		{
+			variable = sep::ParserUtil::getVariable(STR($id.text->chars) , 1);
+			if( variable.invalid() )
+			{
+				sep::ParserUtil::avm_syntax_error(
+					"def_routine_param_atom:> " + routine.str(), $id.line )
+						<< "Unfound machine param's variable < "
+						<< STR($id.text->chars)
+						<< " > in routine header < " << " >"
+						<< sep::ParserUtil::SYNTAX_ERROR_EOL;
+			}
+		}
 	  )
 	  {
 	    if( variable.valid() )
-	    {
-		  	routine.saveParameter( param = new sep::Variable( &routine,
-		  			sep::Modifier::PROPERTY_MACRO_MODIFIER,
-		  			variable.to_ptr< sep::Variable >()->getType(),
-		  			STR($id.text->chars)) );
-		  	param->setOffset( offset );
-	    	param->setBinding( variable );
-	    }
+		{
+			param = new sep::Variable( &routine,
+					sep::Modifier::PROPERTY_PARAMETER_MACRO_MODIFIER,
+					variable.to_ptr< sep::Variable >()->getType(),
+					STR($id.text->chars));
+					
+			routine.getPropertyPart().saveOwnedVariableParameter( param );
+					
+			param->setOwnedOffset( offset );
+			param->setBinding( variable );
+		}
 	    else
-	    {
-	    	param = new sep::Variable(&routine,
-	    			mdfr, $tv.type, STR($id.text->chars));
-		  	param->setOffset( offset );
+		{
+			param = new sep::Variable(&routine,
+					mdfr, $tv.type, STR($id.text->chars));
+			param->setOwnedOffset( offset );
 
-		  	// Only for Routine design as PROTOTYPE a.k.a. primitive routine
-		  	if( routine.getSpecifier().isDesignPrototypeStatic() )
-		  	{
-				routine.appendParameter(
-		  			machine->getPropertyPart().saveOwnedVariable( param ) );
+			// Only for Routine design as PROTOTYPE a.k.a. primitive routine
+			if( routine.getSpecifier().isDesignPrototypeStatic() )
+			{
+				routine.getPropertyPart().appendVariableParameter(
+					machine->getPropertyPart().saveOwnedVariable( param ) );
 			}
 			else
 			{
-				routine.saveParameter( param );
+				routine.getPropertyPart().saveOwnedVariableParameter( param );
 			}
-	    }
+		}
 	  }
 	  ( iv=initial_value  { param->setValue($iv.bf); } )?
 	;
@@ -4174,7 +4426,7 @@ def_routine_param_atom
 def_routine_returns [ sep::Routine & routine ]
 @init{
 	sep::BF value;
-	sep::avm_size_t offset = 0;
+	std::size_t offset = 0;
 }
 	: LPAREN
 	     def_routine_returns_atom[ routine , offset++ ]
@@ -4184,17 +4436,19 @@ def_routine_returns [ sep::Routine & routine ]
 
 	| tv=type_var ( iv=initial_value  { value = $iv.bf; } )?
 	{
-		sep::Variable * variable;
-		routine.saveReturn( variable = new sep::Variable( &routine,
+		sep::Variable * variable = new sep::Variable( &routine,
 				sep::Modifier::PROPERTY_RETURN_PARAMETER_MODIFIER,
-				$tv.type, "#0", value) );
-		variable->setOffset( offset );
+				$tv.type, "#0", value );
+				
+		routine.getPropertyPart().saveOwnedVariableReturn( variable );
+				
+		variable->setOwnedOffset( offset );
 	}
 	;
 
 
 def_routine_returns_atom
-/* in */[ sep::Routine & routine , sep::avm_size_t offset ]
+/* in */[ sep::Routine & routine , std::size_t offset ]
 @init{
 	sep::BF variable;
 	sep::Variable * param;
@@ -4207,48 +4461,50 @@ def_routine_returns_atom
 	    tv=type_var { paramT = $tv.type; }  id=ID
 
 	  | id=ID
-	    {
-	    	variable = sep::ParserUtil::getVariable(STR($id.text->chars) , 1);
-	    	if( variable.invalid() )
-	    	{
-	    		sep::ParserUtil::avm_syntax_error(
-	    			"def_routine_returns_atom:> " + routine.str(), $id.line )
-	    				<< "Unfound machine return's variable < "
-	  					<< STR($id.text->chars)
-	  					<< " > in routine header < " << " >"
-	  					<< sep::ParserUtil::SYNTAX_ERROR_EOL;
-	    	}
-	    }
+		{
+			variable = sep::ParserUtil::getVariable(STR($id.text->chars) , 1);
+			if( variable.invalid() )
+			{
+				sep::ParserUtil::avm_syntax_error(
+					"def_routine_returns_atom:> " + routine.str(), $id.line )
+						<< "Unfound machine return's variable < "
+						<< STR($id.text->chars)
+						<< " > in routine header < " << " >"
+						<< sep::ParserUtil::SYNTAX_ERROR_EOL;
+			}
+		}
 	  )
 
 	  {
 	    if( variable.valid() )
-	    {
-		  	routine.saveReturn( param = new sep::Variable( &routine,
-		  			sep::Modifier::PROPERTY_MACRO_MODIFIER,
-		  			variable.to_ptr< sep::Variable >()->getType(),
-		  			STR($id.text->chars)) );
+		{
+			param = new sep::Variable( &routine,
+					sep::Modifier::PROPERTY_RETURN_PARAMETER_MACRO_MODIFIER,
+					variable.to_ptr< sep::Variable >()->getType(),
+					STR($id.text->chars));
+					
+			routine.getPropertyPart().saveOwnedVariableReturn( param );
 
-		  	param->setOffset( offset );
-	    	param->setBinding( variable );
-	    }
+			param->setOwnedOffset( offset );
+			param->setBinding( variable );
+		}
 	    else
-	    {
-	    	param = new sep::Variable(&routine,
-		  			mdfr, $tv.type, STR($id.text->chars));
-		  	param->setOffset( offset );
+		{
+			param = new sep::Variable(&routine,
+					mdfr, $tv.type, STR($id.text->chars));
+			param->setOwnedOffset( offset );
 
-		  	// Only for Routine design as PROTOTYPE a.k.a. primitive routine
-		  	if( routine.getSpecifier().isDesignPrototypeStatic() )
-		  	{
-		  		routine.appendReturn(
-		  			machine->getPropertyPart().saveOwnedVariable( param ));
-		  	}
-		  	else
-		  	{
-		  		routine.saveReturn( param );
-		  	}
-	    }
+			// Only for Routine design as PROTOTYPE a.k.a. primitive routine
+			if( routine.getSpecifier().isDesignPrototypeStatic() )
+			{
+				routine.getPropertyPart().appendVariableReturn(
+					machine->getPropertyPart().saveOwnedVariable( param ));
+			}
+			else
+			{
+				routine.getPropertyPart().saveOwnedVariableReturn( param );
+			}
+		}
 	  }
 
 	  ( iv=initial_value  { param->setValue($iv.bf); } )?
@@ -4260,12 +4516,12 @@ def_routine_returns_atom
 ////////////////////////////////////////////////////////////////////////////////
 
 section_model_of_execution [ sep::Machine * container ]
-	: '@moe:'  ( def_moe_primitive[ container ] )*
+	: '@moe:'  ( def_moe_primitive[ $container ] )*
 	;
 
 def_moe_primitive [ sep::Machine * container ]
 @init{
-	sep::BehavioralPart * theBehavior = container->getUniqBehaviorPart();
+	sep::BehavioralPart * theBehavior = $container->getUniqBehaviorPart();
 
 	 sep::Modifier mdfr;
 
@@ -4295,10 +4551,14 @@ def_moe_primitive [ sep::Machine * container ]
 
 	| '@concurrency'  def_routine_seq[ theBehavior->getOnConcurrencyRoutine() ]
 	| '@schedule'     def_routine_seq[ theBehavior->getOnScheduleRoutine()    ]
+	
+	| '@xschedule'    { theBehavior->setUserDefinedSchedule(); 
+						$container->getwSpecifier().setFeatureUserDefinedSchedule(); }
+	                  def_routine_seq[ theBehavior->getOnScheduleRoutine()    ]
 
 
 	| 'routine'
-	  def_routine_model_impl[ container , mdfr , spcfr ]
+	  def_routine_model_impl[ $container , mdfr , spcfr ]
 	;
 
 
@@ -4335,39 +4595,39 @@ section_model_of_interaction [ sep::Machine * machine ]
 }
 
 	: ( '@interaction:' | '@com:' )
-	  ( com_connect[ machine, theInteraction ] )*
+	  ( com_connector[ machine, theInteraction ] )*
 	;
 
 com_protocol
-/* in */[ sep::Machine * machine , sep::ComProtocol * cp ]
-	: 'env'       { $cp->setProtocol(sep::ComProtocol::PROTOCOL_ENVIRONMENT_KIND); }
+/* in */[ sep::Machine * machine , sep::ComProtocol & cp ]
+	: 'env'       { $cp.setProtocol(sep::ComProtocol::PROTOCOL_ENVIRONMENT_KIND); }
 
-	| 'rdv'       { $cp->setProtocolCast(sep::ComProtocol::PROTOCOL_RDV_KIND, sep::ComProtocol::PROTOCOL_UNICAST_KIND); }
-	| 'multirdv'  { $cp->setProtocolCast(sep::ComProtocol::PROTOCOL_MULTIRDV_KIND, sep::ComProtocol::PROTOCOL_MULTICAST_KIND); }
+	| 'rdv'       { $cp.setProtocolCast(sep::ComProtocol::PROTOCOL_RDV_KIND, sep::ComProtocol::PROTOCOL_UNICAST_KIND); }
+	| 'multirdv'  { $cp.setProtocolCast(sep::ComProtocol::PROTOCOL_MULTIRDV_KIND, sep::ComProtocol::PROTOCOL_MULTICAST_KIND); }
 
-	| 'flow'      { $cp->setProtocolCast(sep::ComProtocol::PROTOCOL_FLOW_KIND, sep::ComProtocol::PROTOCOL_MULTICAST_KIND); }
+	| 'flow'      { $cp.setProtocolCast(sep::ComProtocol::PROTOCOL_FLOW_KIND, sep::ComProtocol::PROTOCOL_MULTICAST_KIND); }
 
 
-	| 'anycast'   { $cp->setProtocolCast(sep::ComProtocol::PROTOCOL_ANYCAST_KIND, sep::ComProtocol::PROTOCOL_ANYCAST_KIND); }
+	| 'anycast'   { $cp.setProtocolCast(sep::ComProtocol::PROTOCOL_ANYCAST_KIND, sep::ComProtocol::PROTOCOL_ANYCAST_KIND); }
 
-	| 'unicast'   { $cp->setProtocolCast(sep::ComProtocol::PROTOCOL_UNICAST_KIND, sep::ComProtocol::PROTOCOL_UNICAST_KIND); }
+	| 'unicast'   { $cp.setProtocolCast(sep::ComProtocol::PROTOCOL_UNICAST_KIND, sep::ComProtocol::PROTOCOL_UNICAST_KIND); }
 
-	| 'multicast' { $cp->setProtocolCast(sep::ComProtocol::PROTOCOL_MULTICAST_KIND, sep::ComProtocol::PROTOCOL_MULTICAST_KIND); }
+	| 'multicast' { $cp.setProtocolCast(sep::ComProtocol::PROTOCOL_MULTICAST_KIND, sep::ComProtocol::PROTOCOL_MULTICAST_KIND); }
 
-	| 'broadcast' { $cp->setProtocolCast(sep::ComProtocol::PROTOCOL_BROADCAST_KIND, sep::ComProtocol::PROTOCOL_BROADCAST_KIND); }
+	| 'broadcast' { $cp.setProtocolCast(sep::ComProtocol::PROTOCOL_BROADCAST_KIND, sep::ComProtocol::PROTOCOL_BROADCAST_KIND); }
 
 	| bc=buffer_com [ machine ]
 	{
-		$cp->setProtocol(sep::ComProtocol::PROTOCOL_BUFFER_KIND);
-		$cp->setBuffer($bc.buf);
+		$cp.setProtocol(sep::ComProtocol::PROTOCOL_BUFFER_KIND);
+		$cp.setBuffer($bc.buf);
 	}
 	;
 
-com_cast[ sep::ComProtocol * cp ]
-	: 'anycast'    { $cp->setCast(sep::ComProtocol::PROTOCOL_ANYCAST_KIND); }
-	| 'unicast'    { $cp->setCast(sep::ComProtocol::PROTOCOL_UNICAST_KIND); }
-	| 'multicast'  { $cp->setCast(sep::ComProtocol::PROTOCOL_MULTICAST_KIND); }
-	| 'broadcast'  { $cp->setCast(sep::ComProtocol::PROTOCOL_BROADCAST_KIND); }
+com_cast[ sep::ComProtocol & cp ]
+	: 'anycast'    { $cp.setCast(sep::ComProtocol::PROTOCOL_ANYCAST_KIND); }
+	| 'unicast'    { $cp.setCast(sep::ComProtocol::PROTOCOL_UNICAST_KIND); }
+	| 'multicast'  { $cp.setCast(sep::ComProtocol::PROTOCOL_MULTICAST_KIND); }
+	| 'broadcast'  { $cp.setCast(sep::ComProtocol::PROTOCOL_BROADCAST_KIND); }
 	;
 
 buffer_com [ sep::Machine * machine ]
@@ -4376,10 +4636,10 @@ returns  [ sep::BF buf ]
 	  ( COLON
 	    ( rb=ref_buffer[machine]  { $buf = $rb.buf; }
 	    | db=def_buffer
-	    {
+		{
 			$buf = sep::BF( new sep::Buffer(machine,
 				newBufferID(), $db.kind, $db.size) );
-	    }
+		}
 	    )
 
 	  | LT_
@@ -4400,15 +4660,12 @@ returns  [ sep::BF buf ]
 	;
 
 
-com_connect
-/* in */[ sep::Machine * machine , sep::InteractionPart * anInteraction ]
+com_connector
+/* in */[ sep::Machine * machine , sep::InteractionPart * anInteractionPart ]
 @init{
-	sep::Connector * aConnector;
-	anInteraction->saveConnector( aConnector = new sep::Connector(*anInteraction) );
-	aConnector->update(anInteraction);
+	sep::Connector & aConnector = anInteractionPart->appendConnector();
+	aConnector.updateProtocol(* anInteractionPart);
 	std::string c_id;
-
-	sep::ComRoute * comRoute = NULL;
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
@@ -4422,7 +4679,7 @@ com_connect
 	    GT
 	  )?
 	  ( ID { c_id = STR($ID.text->chars); } )?
-	  { aConnector->fullyUpdateAllNameID(newConnectID(c_id, "_#connector")); }
+	  { aConnector.fullyUpdateAllNameID(newConnectorID(c_id, "_#connector")); }
 	  LCURLY
 	  ( com_route[ machine, aConnector ] )+
 	  RCURLY
@@ -4430,8 +4687,8 @@ com_connect
 
 	| ( 'route' )
 	  {
-	  	aConnector->setNature( sep::IComPoint::IO_SIGNAL_NATURE );
-	  	aConnector->fullyUpdateAllNameID(newConnectID("", "_#route"));
+		aConnector.setNature( sep::IComPoint::IO_SIGNAL_NATURE );
+		aConnector.fullyUpdateAllNameID(newConnectorID("", "_#route"));
 	  }
 	  ( LT_
 	    com_protocol[ machine, aConnector ]
@@ -4441,52 +4698,31 @@ com_connect
 
 	  ( com_route[ machine, aConnector ]
 
-	  | LCURLY
-	    ( com_route[ machine, aConnector ] )+
-	    RCURLY
+	  | LCURLY  ( com_route[ machine, aConnector ] )+  RCURLY
 
-	  | LBRACKET
-	    {
-	    	comRoute = new sep::ComRoute(aConnector,
-	    			sep::Modifier::PROPERTY_INOUT_DIRECTION);
-	      	aConnector->appendComRoute(comRoute);
-	    }
-	    ( com_port[ machine , comRoute ]
-	      ( COMMA  com_port[ machine , comRoute ] )*
-
-	    | STAR
-	    {
-			sep::ComPoint * comPoint = new sep::ComPoint();
-	    	comPoint->setMachineAllSignal(machine);
-			comRoute->setComPoint(comPoint, sep::Modifier::DIRECTION_INOUT_KIND);
-
-			SET_RULE_LOCATION(comPoint);
-	    }
-	    )
-	    RBRACKET
-	    SEMI
+	  | LBRACKET  com_route_points[ machine , aConnector ]  RBRACKET  SEMI
 	  )
 	;
 
 
 com_route
-/* in */[ sep::Machine * machine , sep::Connector * aConnector ]
+/* in */[ sep::Machine * machine , sep::Connector & aConnector ]
 @init{
-	sep::ComRoute * comRoute = new sep::ComRoute(aConnector);
-	aConnector->appendComRoute(comRoute);
+	sep::ComRoute & comRoute = aConnector.appendComRoute(
+			sep::Modifier::PROPERTY_INOUT_DIRECTION );
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
 @after{
 	SET_RULE_LOCATION(comRoute);
 }
-	: modifier_set_direction_strict_text[ comRoute->getwModifier() ]
+	: modifier_set_direction_strict_text[ comRoute.getwModifier() ]
 	  ( LT_ (
 	    bc=buffer_com[ machine ]
-	    {
-	    	comRoute->setProtocol(sep::ComProtocol::PROTOCOL_BUFFER_KIND);
-	    	comRoute->setBuffer($bc.buf);
-	    }
+		{
+			comRoute.setProtocol(sep::ComProtocol::PROTOCOL_BUFFER_KIND);
+			comRoute.setBuffer($bc.buf);
+		}
 	    | com_cast[ comRoute ]
 	  ) GT )?
 
@@ -4501,13 +4737,11 @@ com_route
 	      ( COMMA  com_port[ machine , comRoute ] )*
 
 	    | STAR
-	    {
-			sep::ComPoint * comPoint = new sep::ComPoint();
-	    	comPoint->setMachineAllSignal(machine);
-			comRoute->setComPoint(comPoint, sep::Modifier::DIRECTION_INOUT_KIND);
+		{
+			sep::ComPoint & comPoint = comRoute.appendAllComPoint(machine);
 
 			SET_RULE_LOCATION(comPoint);
-	    }
+		}
 	    )
 	    RBRACKET
 	    SEMI
@@ -4517,11 +4751,34 @@ com_route
 	;
 
 
+com_route_points
+/* in */[ sep::Machine * machine , sep::Connector & aConnector ]
+@init{
+	sep::ComRoute & comRoute = aConnector.appendComRoute(
+			sep::Modifier::PROPERTY_INOUT_DIRECTION );
+
+	SAVE_RULE_BEGIN_LOCATION;
+}
+@after{
+	SET_RULE_LOCATION(comRoute);
+}
+	: com_port[ machine , comRoute ]  
+	  ( COMMA  com_port[ machine , comRoute ] )*
+
+	| STAR
+    {
+		sep::ComPoint & comPoint = comRoute.appendAllComPoint(machine);
+
+		SET_RULE_LOCATION(comPoint);
+    }
+	;
+
+
 com_port
-/* in */[ sep::Machine * machine , sep::ComRoute * comRoute]
+/* in */[ sep::Machine * machine , sep::ComRoute & comRoute]
 @init{
 	sep::Machine * comMachine = machine;
-	while( comMachine != NULL )
+	while( comMachine != nullptr )
 	{
 		if( comMachine->hasPortSignal() || (! comMachine->hasContainer()) )
 		{
@@ -4538,58 +4795,55 @@ com_port
 	  
 	  '->'
 
-	  ( cp=com_port_id[ machine , comMachine ]
-	    { comRoute->appendComPoint($cp.comPoint); }
+	  ( com_port_id[ machine , comRoute , comMachine ]
 
 	  | LBRACKET
-	    ( cp=com_port_id[ machine , comMachine ]
-	      { comRoute->appendComPoint($cp.comPoint); }
+	    ( com_port_id[ machine , comRoute , comMachine ]
 
-	      ( COMMA  cp=com_port_id[ machine , comMachine ]
-	      { comRoute->appendComPoint($cp.comPoint); } )*
+	      ( COMMA  com_port_id[ machine , comRoute , comMachine ] )*
 
 	    | STAR
-	    {
-	    	sep::ComPoint * comPoint = new sep::ComPoint();
-			comPoint->setMachineAllSignal(comMachine);
-			comRoute->setComPoint(comPoint, sep::Modifier::DIRECTION_INOUT_KIND);
+		{
+			sep::ComPoint & comPoint = comRoute.appendAllComPoint(comMachine);
 
 			SET_RULE_LOCATION(comPoint);
-	    }
+		}
 	    )
 	    RBRACKET
 	  )
 
 
-	| cp=com_port_id[ machine , comMachine ]
-	{ comRoute->appendComPoint($cp.comPoint); }
+	| id=qualifiedNameID
+	  {
+		const sep::BF & comPort = sep::ParserUtil::getComPortSignal(
+				comMachine, $id.s, $id.nb);
+				
+		sep::ComPoint & comPoint = ( comPort.valid() ) 
+				? comRoute.appendComPoint(comPort.to_ptr< sep::Port >())
+				: comRoute.appendComPoint(comMachine, NEW_QNID($id.s, $id.nb));
+			
+		SET_RULE_LOCATION(comPoint);
+	  }
+
 	;
 
 
 com_port_id
-/* in */[ sep::Machine * machine , sep::Machine * comMachine ]
-returns [ sep::BF comPoint ]
+/* in */[ sep::Machine * machine ,
+		sep::ComRoute & comRoute , sep::Machine * comMachine ]
 @init{
 	SAVE_RULE_BEGIN_LOCATION;
 }
 	: id=qualifiedNameID
 	  {
-		sep::ComPoint * aComPoint;
-		$comPoint = sep::BF( aComPoint = new sep::ComPoint() );
-
-		SET_RULE_LOCATION(aComPoint);
-
 		const sep::BF & comPort = sep::ParserUtil::getComPortSignal(
 				comMachine, $id.s, $id.nb);
-	  	if( comPort.valid() )
-	  	{
-	  		aComPoint->setMachinePort(comMachine, comPort.to_ptr< sep::Port >());
-	  	}
-	  	else
-	  	{
-	  		aComPoint->setMachine(comMachine);
-	  		aComPoint->setMachinePort(NEW_QNID($id.s, $id.nb));
-	  	}
+				
+		sep::ComPoint & comPoint = ( comPort.valid() ) 
+			? comRoute.appendComPoint(comMachine, comPort.to_ptr< sep::Port >())
+			: comRoute.appendComPoint(comMachine, NEW_QNID($id.s, $id.nb));
+			
+		SET_RULE_LOCATION(comPoint);
 	  }
 	;
 
@@ -4603,104 +4857,105 @@ returns [ sep::BF comPoint ]
 
 statement
 returns [ sep::BFCode ac ]
-	: s=statement_assign            { $ac = $s.ac; }
-//	| s=statement_buffer            { $ac = $s.ac; }
-	| s=statement_com               { $ac = $s.ac; }
-	| s=statement_constraint        { $ac = $s.ac; }
-	| s=statement_jump              { $ac = $s.ac; }
-//	| s=statement_time              { $ac = $s.ac; }
+	: s01=statement_assign            { $ac = $s01.ac; }
+//	| s02=statement_buffer            { $ac = $s02.ac; }
+	| s03=statement_com               { $ac = $s03.ac; }
+	| s04=statement_constraint        { $ac = $s04.ac; }
+	| s05=statement_jump              { $ac = $s05.ac; }
+//	| s06=statement_time              { $ac = $s06.ac; }
 
-	| s=statement_activity          { $ac = $s.ac; }
-	| s=statement_invoke_routine    { $ac = $s.ac; }
+	| s07=statement_activity          { $ac = $s07.ac; }
+	| s08=statement_invoke_routine    { $ac = $s08.ac; }
 
-	| s=statement_moc               { $ac = $s.ac; }
+	| s09=statement_moc               { $ac = $s09.ac; }
 
-	| s=statement_invoke            { $ac = $s.ac; }
-	| s=statement_invoke_method     { $ac = $s.ac; }
+	| s10=statement_invoke            { $ac = $s10.ac; }
+	| s11=statement_invoke_method     { $ac = $s11.ac; }
 
-	| s=statement_activity_new      { $ac = $s.ac; }
+	| s12=statement_activity_new      { $ac = $s12.ac; }
 
-	| s=statement_ite               { $ac = $s.ac; }
-	| s=statement_iteration         { $ac = $s.ac; }
+	| s13=statement_ite               { $ac = $s13.ac; }
+	| s14=statement_iteration         { $ac = $s14.ac; }
 
-//	| s=statement_lem               { $ac = $s.ac; }
+//	| s15=statement_lem               { $ac = $s15.ac; }
 
-	| s=block_statement             { $ac = $s.ac; }
+	| s16=block_statement             { $ac = $s16.ac; }
 
-	| s=prefix_statement            { $ac = $s.ac; }
+	| s17=prefix_statement            { $ac = $s17.ac; }
 
-	| s=statement_prompt            { $ac = $s.ac; }
+	| s18=statement_prompt            { $ac = $s18.ac; }
 
-	| s=meta_statement              { $ac = $s.ac; }
+	| s19=meta_statement              { $ac = $s19.ac; }
 
-//	| s=quote_statement             { $ac = $s.ac; }
+//	| s20=quote_statement             { $ac = $s20.ac; }
 	;
+
 
 
 block_statement
 returns [ sep::BFCode ac ]
 @init{
-	sep::Operator * op = OP(SEQUENCE);
+	const sep::Operator * op = OP(SEQUENCE);
 	bool implicitSequenceOp = true;
 }
 @after{
-	if( implicitSequenceOp && $ac.valid() && $ac->singleton() &&
-			sep::OperatorManager::isSchedule(op) )
+	if( implicitSequenceOp && $ac.valid() && $ac->hasOneOperand() )
 	{
 		sep::BFCode singleCode = $ac->first().bfCode();
 		$ac = singleCode;
 	}
 }
 	: LCURLY  ( o=op_block { op = $o.op; implicitSequenceOp = false; } )?
-	    { $ac = NEW_STMT(op); }
+		{ $ac = NEW_STMT(op); }
 	    (  s=statement  { $ac->append($s.ac); }  )*
 	  RCURLY
 	;
 
 op_block
-returns [ sep::Operator * op ]
-	: o=op_sequence    { $op = $o.op; }
-	| o=op_scheduling  { $op = $o.op; }
-	| o=op_concurrency { $op = $o.op; }
+returns [ const sep::Operator * op ]
+	: o1=op_sequence    { $op = $o1.op;   }
+	| o2=op_scheduling  { $op = $o2.op;   }
+	| o3=op_concurrency { $op = $o3.op;   }
 
 	| OP_FORK          { $op = OP(FORK); }
 	| OP_JOIN          { $op = OP(JOIN); }
 	;
 
 op_sequence
-returns [ sep::Operator * op ]
-	: OP_SEQUENCE         { $op = OP(SEQUENCE); }
-	| OP_SEQUENCE_SIDE    { $op = OP(SEQUENCE_SIDE); }
-	| OP_SEQUENCE_WEAK    { $op = OP(SEQUENCE_WEAK); }
+returns [ const sep::Operator * op ]
+	: OP_SEQUENCE           { $op = OP(SEQUENCE);        }
+	| OP_SEQUENCE_SIDE      { $op = OP(SEQUENCE_SIDE);   }
+	| OP_SEQUENCE_WEAK      { $op = OP(SEQUENCE_WEAK);   }
 
-	| OP_ATOMIC_SEQUENCE  { $op = OP(ATOMIC_SEQUENCE); }
+	| OP_ATOMIC_SEQUENCE    { $op = OP(ATOMIC_SEQUENCE); }
 	;
 
 op_scheduling
-returns [ sep::Operator * op ]
-	: OP_SCHEDULE_GT        { $op = OP(PRIOR_GT); }
-	| OP_SCHEDULE_LT        { $op = OP(PRIOR_LT); }
+returns [ const sep::Operator * op ]
+	: OP_SCHEDULE_GT        { $op = OP(PRIOR_GT);  }
+	| OP_SCHEDULE_LT        { $op = OP(PRIOR_LT);  }
 	| OP_SCHEDULE_XOR       { $op = OP(EXCLUSIVE); }
 
 	| OP_SCHEDULE_AND_THEN  { $op = OP(SCHEDULE_AND_THEN); }
-	| OP_SCHEDULE_OR_ELSE   { $op = OP(SCHEDULE_OR_ELSE); }
+	| OP_SCHEDULE_OR_ELSE   { $op = OP(SCHEDULE_OR_ELSE);  }
 
-	| OP_NON_DETERMINISM    { $op = OP(NONDETERMINISM); }
+	| OP_NON_DETERMINISM    { $op = OP(NONDETERMINISM);    }
 	;
 
 op_concurrency
-returns [ sep::Operator * op ]
-	: OP_CONCURRENCY_ASYNC            { $op = OP(ASYNCHRONOUS); }
-	| OP_CONCURRENCY_AND              { $op = OP(STRONG_SYNCHRONOUS); }
-	| OP_CONCURRENCY_OR               { $op = OP(WEAK_SYNCHRONOUS); }
-	| OP_CONCURRENCY_INTERLEAVING     { $op = OP(INTERLEAVING); }
-	| OP_CONCURRENCY_PARALLEL         { $op = OP(PARALLEL); }
-
-	| OP_CONCURRENCY_RDV_ASYNC        { $op = OP(RDV_ASYNCHRONOUS); }
+returns [ const sep::Operator * op ]
+	: OP_CONCURRENCY_ASYNC            { $op = OP(ASYNCHRONOUS);           }
+	| OP_CONCURRENCY_AND              { $op = OP(STRONG_SYNCHRONOUS);     }
+	| OP_CONCURRENCY_OR               { $op = OP(WEAK_SYNCHRONOUS);       }
+	| OP_CONCURRENCY_INTERLEAVING     { $op = OP(INTERLEAVING);           }
+	| OP_CONCURRENCY_PARTIAL_ORDER    { $op = OP(PARTIAL_ORDER);          }
+	| OP_CONCURRENCY_PARALLEL         { $op = OP(PARALLEL);               }
+	
+	| OP_CONCURRENCY_RDV_ASYNC        { $op = OP(RDV_ASYNCHRONOUS);       }
 	| OP_CONCURRENCY_RDV_AND          { $op = OP(RDV_STRONG_SYNCHRONOUS); }
-	| OP_CONCURRENCY_RDV_OR           { $op = OP(RDV_WEAK_SYNCHRONOUS); }
-	| OP_CONCURRENCY_RDV_INTERLEAVING { $op = OP(RDV_INTERLEAVING); }
-	| OP_CONCURRENCY_RDV_PARALLEL     { $op = OP(RDV_PARALLEL); }
+	| OP_CONCURRENCY_RDV_OR           { $op = OP(RDV_WEAK_SYNCHRONOUS);   }
+	| OP_CONCURRENCY_RDV_INTERLEAVING { $op = OP(RDV_INTERLEAVING);       }
+	| OP_CONCURRENCY_RDV_PARALLEL     { $op = OP(RDV_PARALLEL);           }
 	;
 
 
@@ -4759,7 +5014,7 @@ returns [ sep::Operator * op ]
 
 prefix_statement
 returns [ sep::BFCode ac ]
-	: DOLLAR_LCURLY  op=avm_operator  { $ac = NEW_STMT(op);  }
+	: DOLLAR_LCURLY  a=avm_operator   { $ac = NEW_STMT($a.op);  }
 	    ( ps=prefix_statement         { $ac->append($ps.ac); }
 	    | e=unaryExpression           { $ac->append($e.bf);  }
 	    )*
@@ -4768,7 +5023,7 @@ returns [ sep::BFCode ac ]
 
 prefix_expression
 returns [ sep::BFCode ac ]
-	: DOLLAR_LCURLY  op=avm_operator  { $ac = NEW_STMT(op);  }
+	: DOLLAR_LCURLY  a=avm_operator   { $ac = NEW_STMT($a.op);  }
 	    ( ps=prefix_expression        { $ac->append($ps.ac); }
 	    | e=unaryExpression           { $ac->append($e.bf);  }
 	    )*
@@ -4776,12 +5031,12 @@ returns [ sep::BFCode ac ]
 	;
 
 avm_operator
-returns [ sep::Operator * op ]
-	: o=op_invokable   { $op = $o.op; }
+returns [ const sep::Operator * op ]
+	: oi=op_invokable  { $op = $oi.op; }
 
-	| o=op_activity   { $op = $o.op; }
+	| oa=op_activity   { $op = $oa.op; }
 
-	| { (op = sep::OperatorManager::getOp(STR(LT(1)->getText(LT(1))->chars))) != NULL }? ID
+	| { (op = sep::OperatorManager::getOp(STR(LT(1)->getText(LT(1))->chars))) != nullptr }? ID
 	;
 
 
@@ -4803,15 +5058,16 @@ returns [ sep::BFCode ac ]
 }
 	: 'call' id=ID
 	  {
-	  	modelProcedure = sep::ParserUtil::getvarProcedure(STR($id.text->chars));
+		modelProcedure = sep::ParserUtil::getvarProcedure(STR($id.text->chars));
 
-	  	callProcedure = sep::Machine::newProcedureInstance(_CPM_,
-	  			sep::OSS() << "call_" << ++mProcedureCallCount
-	  					<< '#' << STR($id.text->chars), modelProcedure);
+		callProcedure = sep::Machine::newProcedureInstance(_CPM_,
+				sep::OSS() << "call_" << ++mProcedureCallCount
+						<< sep::NamedElement::NAME_ID_SEPARATOR
+						<< STR($id.text->chars), modelProcedure);
 
 		callProcedure->getwSpecifier().setDesignInstanceStatic();
 
-	  	$ac = NEW_STMT1(OP(INVOKE_METHOD), sep::BF(callProcedure));
+		$ac = NEW_STMT1(OP(INVOKE_METHOD), sep::BF(callProcedure));
 	  }
 
 	  decl_instance_machine_params [ callProcedure ] ?
@@ -4842,17 +5098,17 @@ returns [ sep::BFCode ac ]
 expression_invoke
 returns [ sep::BFCode ac ]
 	: LPAREN_INVOKE
-	    e=unaryExpression  { $ac = NEW_STMT1(OP(INVOKE_METHOD), $e.bf); }
+	    ue=unaryExpression  { $ac = NEW_STMT1(OP(INVOKE_METHOD), $ue.bf); }
 	    ( id=ID            { $ac->append(sep::ParserUtil::getInvokable($e.bf, STR($id.text->chars))); }
 	    | 'in'             { $ac->append( INCR_BF(OP(IN)) ); }
-	    | op=op_invokable  { $ac->append( INCR_BF($op.op) ); }
+	    | oi=op_invokable  { $ac->append( INCR_BF($oi.op) ); }
 	    )
 	    ( e=expression     { $ac->append($e.bf); } )*
-	    ( 'provided:'   e=expression
-	    | 'from:'      ue=unaryExpression
-	    | 'to:'        ue=unaryExpression
-	    | 'activity:'   o=op_activity
-	    )?
+//	    ( 'provided:'   e=expression
+//	    | 'from:'      ue=unaryExpression
+//	    | 'to:'        ue=unaryExpression
+//	    | 'activity:'   o=op_activity
+//	    )?
 	  RPAREN
 	;
 
@@ -4864,7 +5120,7 @@ returns [ sep::BFCode ac ]
 statement_activity_new
 returns [ sep::BFCode ac ]
 @init{
-	sep::Machine * ptrInstance = NULL;
+	sep::Machine * ptrInstance = nullptr;
 	sep::BF aModel;
 	
 	sep::Machine * container = _CPM_;
@@ -4878,23 +5134,23 @@ returns [ sep::BFCode ac ]
 	: 'new'   { $ac = NEW_STMT(OP(INVOKE_NEW)); }
 	  id=qualifiedNameID
 	  {
-	  	aModel = sep::ParserUtil::getvarMachine($id.s, $id.nb);
+		aModel = sep::ParserUtil::getvarMachine($id.s, $id.nb);
 
-	  	if( aModel.is< sep::Machine >() )
-	  	{
-	  		PUSH_CTX_NEW( aModel.to_ptr< sep::Machine >() );
-	  	}
+		if( aModel.is< sep::Machine >() )
+		{
+			PUSH_CTX_NEW( aModel.to_ptr< sep::Machine >() );
+		}
 
-	  	ptrInstance = sep::Machine::newInstance(container,
-	  			newInvokeNewInstanceNameID(container, $id.s), aModel, 1, 1);
+		ptrInstance = sep::Machine::newInstance(container,
+				newInvokeNewInstanceNameID(container, $id.s), aModel, 1, 1);
 
 		ptrInstance->getwSpecifier().override_ifdef(
 				sep::Specifier::DESIGN_INSTANCE_DYNAMIC_SPECIFIER );
 
-	  	 $ac->append( container->saveOwnedElement( ptrInstance ) );
+		 $ac->append( container->saveOwnedElement( ptrInstance ) );
 	  }
 
-	  //activity_machine_param_return[ aModel , ac ]
+	  //activity_machine_param_return[ aModel , $ac ]
 	  decl_instance_dynamic_impl[ _CPM_ , ptrInstance ]
 
 	  ( ( '-->' | 'returns:' ) e=expression )?
@@ -4929,7 +5185,7 @@ decl_instance_dynamic_impl
 expression_activity_new
 returns [ sep::BFCode ac ]
 @init{
-	sep::Machine * ptrInstance = NULL;
+	sep::Machine * ptrInstance = nullptr;
 	sep::BF aModel;
 	
 	sep::Machine * container = _CPM_;
@@ -4943,24 +5199,24 @@ returns [ sep::BFCode ac ]
 	: 'new'    { $ac = NEW_STMT(OP(INVOKE_NEW)); }
 	  id=qualifiedNameID
 	  {
-	  	sep::BF aModel = sep::ParserUtil::getvarMachine($id.s, $id.nb);
+		sep::BF aModel = sep::ParserUtil::getvarMachine($id.s, $id.nb);
 
-	  	if( aModel.is< sep::Machine >() )
-	  	{
-	  		PUSH_CTX_NEW( aModel.to_ptr< sep::Machine >() );
-	  	}
+		if( aModel.is< sep::Machine >() )
+		{
+			PUSH_CTX_NEW( aModel.to_ptr< sep::Machine >() );
+		}
 
-	  	ptrInstance = sep::Machine::newInstance(container,
-	  			newInvokeNewInstanceNameID(container, $id.s), aModel, 1, 1);
+		ptrInstance = sep::Machine::newInstance(container,
+				newInvokeNewInstanceNameID(container, $id.s), aModel, 1, 1);
 
 		ptrInstance->getwSpecifier().override_ifdef(
 				sep::Specifier::DESIGN_INSTANCE_DYNAMIC_SPECIFIER );
 
-	  	 $ac->append( container->saveOwnedElement( ptrInstance ) );
+		 $ac->append( container->saveOwnedElement( ptrInstance ) );
 	  }
 
-	  activity_machine_param_return[ aModel , ac ]
-//	  decl_instance_dynamic_expr_impl[ _CPM_ , ptrInstance , ac ]
+	  activity_machine_param_return[ aModel , $ac ]
+//	  decl_instance_dynamic_expr_impl[ _CPM_ , ptrInstance , $ac ]
 
 //	  { $ac->toStream(sep::AVM_OS_DEBUG); }
 	;
@@ -4972,36 +5228,33 @@ returns [ sep::BFCode ac ]
 
 statement_prompt
 returns [ sep::BFCode ac ]
-	: STATEMENT_PROMPT  spi=statement_prompt_impl { $ac =  $spi.ac; }
+	: spi=statement_prompt_obs { $ac =  $spi.ac; }  // STATEMENT_PROMPT
 	;
-
-statement_prompt_impl
-returns [ sep::BFCode ac ]
-	: spo=statement_prompt_obs  { $ac = $spo.ac; }
-	;
-
 
 statement_prompt_obs
 returns [ sep::BFCode ac ]
 @init{
 	sep::BF varMachine = INCR_BF(_SYSTEM_);
+	sep::BF condition = sep::ExpressionConstant::BOOLEAN_TRUE;
 }
-	: { IS_KEYWORD( "obs" ) }? ID
+	: ( '@observe' | '@obs' )
 
-	  ( 'ctx:' id=qualifiedNameID
+	  ( LPAREN  'ctx:'  id=qualifiedNameID  RPAREN
 	  { varMachine = sep::ParserUtil::getvarMachine($id.s, $id.nb); }
 	  )?
 
 	  LCURLY
 	    bs=statement_prompt_obs_com[ varMachine ]
 	  RCURLY
-
+	  (
 	  ( 'provided:' e=expression
 	  | LBRACKET e=expression RBRACKET
-	  )
+	  ) 
+	  { condition = $e.bf; }
 	  SEMI
+	  )?
 
-	{ $ac = NEW_STMT3(OP(OBS), varMachine, $bs.ac, $e.bf); }
+	{ $ac = NEW_STMT3(OP(OBS), varMachine, $bs.ac, condition); }
 	;
 
 
@@ -5017,10 +5270,19 @@ returns [ sep::BFCode ac ]
 
 meta_statement
 returns [ sep::BFCode ac ]
-	: '$:informal'  bs=block_statement  { $ac = NEW_STMT1(OP(INFORMAL), $bs.ac); }
-	| '$:trace'     bs=block_statement  { $ac = NEW_STMT1(OP(TRACE)   , $bs.ac); }
-	| '$:debug'     bs=block_statement  { $ac = NEW_STMT1(OP(DEBUG)   , $bs.ac); }
-	| '$:comment'   bs=block_statement  { $ac = NEW_STMT1(OP(COMMENT) , $bs.ac); }
+	: ( '@informal'  { $ac = NEW_STMT(OP(INFORMAL)); }
+	  | '@trace'     { $ac = NEW_STMT(OP(TRACE));    }
+	  | '@debug'     { $ac = NEW_STMT(OP(DEBUG));    }
+	  | '@comment'   { $ac = NEW_STMT(OP(COMMENT));  }
+	  )
+		LCURLY  
+	    	( ( s=statement   { $ac->append($s.ac); } )+
+	    	| ( e=expression  { $ac->append($e.bf); } )+
+	    	)
+	  	RCURLY
+//	| '@expression' id=StringLiteral { $ac = NEW_STMT(OP(DEBUG));    }
+//	| '@statement'  id=StringLiteral { $ac = NEW_STMT(OP(DEBUG));    }
+	
 /* TODO#ADD
 	// meta_eval
 	| LBRACKET_BAR
@@ -5038,7 +5300,7 @@ returns [ sep::BFCode ac ]
 quote_statement
 returns [ sep::BFCode ac ]
 @init{
-	sep::Operator * op = OP(SEQUENCE);
+	const sep::Operator * op = OP(SEQUENCE);
 }
 	: PERCENT_LCURLY  ( o=op_block { op = $o.op; } ) ?  { $ac = NEW_STMT(op); }
 	    ( s=statement  { $ac->append($s.ac); }  )+
@@ -5059,8 +5321,8 @@ returns [ sep::BFCode ac ]
 	( ( ASSIGN | ASSIGN_AFTER )  e=expression  SEMI
 	  { $ac = NEW_STMT2(OP(ASSIGN), $lv.bf, $e.bf); }
 
-	| ASSIGN_REF  e=lvalue  SEMI
-	{ $ac = NEW_STMT2(OP(ASSIGN_REF), $lv.bf, $e.bf); }
+	| ASSIGN_REF  rlv=lvalue  SEMI
+	{ $ac = NEW_STMT2(OP(ASSIGN_REF), $lv.bf, $rlv.bf); }
 
 	| ASSIGN_MACRO  e=expression  SEMI
 	{ $ac = NEW_STMT2(OP(ASSIGN_MACRO), $lv.bf, $e.bf); }
@@ -5168,7 +5430,7 @@ returns [ sep::BF bf ]
 	sep::UniFormIdentifier * ufi;
 	sep::BF bfUfi; // for automatic destruction of << UFI >> if need
 
-	sep::avm_size_t countID = 1;
+	std::size_t countID = 1;
 	bool isnotEXPR = true;
 
 	SAVE_RULE_BEGIN_LOCATION;
@@ -5176,31 +5438,31 @@ returns [ sep::BF bf ]
 	: ( COLONx2 { ufi->setAbsolute(); } )?
 	  id=ID
 	  {
-	  	ufi = new sep::UniFormIdentifier(false);
-	  	bfUfi = ufi;
+		ufi = new sep::UniFormIdentifier(false);
+		bfUfi = ufi;
 
 		if( ($bf = sep::ParserUtil::getvar(STR($id.text->chars), 1)).valid() )
 		{
-		  	ufi->appendFieldVariable($bf);
+			ufi->appendFieldVariable($bf);
 		}
 		else if( ($bf = sep::ParserUtil::getvarMachine(
 				STR($id.text->chars), 1)).valid() )
 		{
-		  	ufi->appendFieldMachine($bf);
+			ufi->appendFieldMachine($bf);
 		}
 		else
 		{
-		  	ufi->appendField(STR($id.text->chars));
+			ufi->appendField(STR($id.text->chars));
 		}
 
 		$bf = bfUfi;
 	  }
 
 	  ( ( DOT id=ID
-	    { ufi->appendField(STR($id.text->chars));  ++countID; } )
+		{ ufi->appendField(STR($id.text->chars));  ++countID; } )
 
 	  | ( LBRACKET  e=expression  RBRACKET
-	    { ufi->appendIndex($e.bf); isnotEXPR = false; } )
+		{ ufi->appendIndex($e.bf); isnotEXPR = false; } )
 	  )*
 	{
 		if( isnotEXPR )
@@ -5282,16 +5544,16 @@ parameters [ const sep::BFCode & ac ]
 
 statement_com
 returns [ sep::BFCode ac ]
-	: s=statement_com_input   { $ac = $s.ac; }
-	| s=statement_com_output  { $ac = $s.ac; }
+	: si=statement_com_input   { $ac = $si.ac; }
+	| so=statement_com_output  { $ac = $so.ac; }
 	;
 
 statement_com_input
 returns [ sep::BFCode ac ]
 @init{
 	sep::BF varPortSignal;
-	sep::Port * port = NULL;
-	sep::Operator * op = NULL;
+	sep::Port * port = nullptr;
+	const sep::Operator * op = nullptr;
 }
 	: ( tok='input'        { op = OP(INPUT);        }
 	  | tok='input#save'   { op = OP(INPUT_SAVE);   }
@@ -5302,37 +5564,39 @@ returns [ sep::BFCode ac ]
 	  | tok='input#rdv'    { op = OP(INPUT_RDV);    }
 	  ) id=qualifiedNameID
 	  {
-	  	$ac = NEW_STMT1( op,
-	  		varPortSignal = sep::ParserUtil::getvarPortSignal($id.s, $id.nb) );
-	  	if( varPortSignal.is< sep::Port >() )
-	  	{ port = varPortSignal.to_ptr< sep::Port >(); }
-	  	else if( varPortSignal.invalid() )
-	  	{
-	  		sep::ParserUtil::avm_syntax_error(
-	  			"statement_com_input:> ", $tok.line )
-	  				<< "Unfound port/signal or variable < " << $id.s
-	  				<< " > in machine < " << str_header( _CPM_ ) << " >"
-	  				<< sep::ParserUtil::SYNTAX_ERROR_EOL;
-	  	}
+		$ac = NEW_STMT1( op,
+			varPortSignal = sep::ParserUtil::getvarPortSignal($id.s, $id.nb) );
+		if( varPortSignal.is< sep::Port >() )
+		{ port = varPortSignal.to_ptr< sep::Port >(); }
+		else if( varPortSignal.invalid() )
+		{
+			sep::ParserUtil::avm_syntax_error(
+				"statement_com_input:> ", $tok.line )
+					<< "Unfound port/signal or variable < " << $id.s
+					<< " > in machine < " << str_header( _CPM_ ) << " >"
+					<< sep::ParserUtil::SYNTAX_ERROR_EOL;
+		}
 	  }
-	  parameters_port[ port , ac ] ?
+	  parameters_port[ port , $ac ] ?
 	  ( '<--'
 	    ( 'env'  { $ac->setOperator( OP(INPUT_ENV) ); }
 	    | me=expression
 		{
 			sep::BFCode inputFrom = NEW_STMT2(OP(INPUT_FROM), $ac->first(), $me.bf);
 
-			inputFrom->insert(inputFrom->end(), ++($ac->begin()), $ac->end());
+			inputFrom->getOperands().insert(
+					inputFrom->end(), ++($ac->begin()), $ac->end() );
+					
 			$ac = inputFrom;
 		}
 	    )
 	    ( '<-' id=qualifiedNameID
-	    { $ac->append(sep::ParserUtil::getvarPortSignal($id.s, $id.nb)); }
+		{ $ac->append(sep::ParserUtil::getvarPortSignal($id.s, $id.nb)); }
 	    )?
 	  )?
 	  ( ( '<==' | 'via' ) id=qualifiedNameID
 	  { sep::ParserUtil::updateSignalRoutingChannel(
-	  		sep::Modifier::DIRECTION_INPUT_KIND, $ac, $id.s, $id.nb); }
+			sep::Modifier::DIRECTION_INPUT_KIND, $ac, $id.s, $id.nb); }
 	  )?
 	  SEMI
 	;
@@ -5341,8 +5605,8 @@ statement_com_output
 returns [ sep::BFCode ac ]
 @init{
 	sep::BF varPortSignal;
-	sep::Port * port = NULL;
-	sep::Operator * op = NULL;
+	sep::Port * port = nullptr;
+	const sep::Operator * op = nullptr;
 }
 	: ( tok='output'        { op = OP(OUTPUT);        }
 	  | tok='output#var'    { op = OP(OUTPUT_VAR);    }
@@ -5352,37 +5616,39 @@ returns [ sep::BFCode ac ]
 	  | tok='output#rdv'    { op = OP(OUTPUT_RDV);    }
 	  ) id=qualifiedNameID
 	  {
-	  	$ac = NEW_STMT1( op,
-	  		varPortSignal = sep::ParserUtil::getvarPortSignal($id.s, $id.nb) );
-	  	if( varPortSignal.is< sep::Port >() )
-	  	{ port = varPortSignal.to_ptr< sep::Port >(); }
-	  	else if( varPortSignal.invalid() )
-	  	{
-	  		sep::ParserUtil::avm_syntax_error(
-	  			"statement_com_output:>", $tok.line )
-	  				<< "Unfound port/signal or variable < " << $id.s
-	  				<< " > in machine < " << str_header( _CPM_ ) << " >"
-	  				<< sep::ParserUtil::SYNTAX_ERROR_EOL;
-	  	}
+		$ac = NEW_STMT1( op,
+			varPortSignal = sep::ParserUtil::getvarPortSignal($id.s, $id.nb) );
+		if( varPortSignal.is< sep::Port >() )
+		{ port = varPortSignal.to_ptr< sep::Port >(); }
+		else if( varPortSignal.invalid() )
+		{
+			sep::ParserUtil::avm_syntax_error(
+				"statement_com_output:>", $tok.line )
+					<< "Unfound port/signal or variable < " << $id.s
+					<< " > in machine < " << str_header( _CPM_ ) << " >"
+					<< sep::ParserUtil::SYNTAX_ERROR_EOL;
+		}
 	  }
-	  parameters_port[ port , ac ] ?
+	  parameters_port[ port , $ac ] ?
 	  ( '-->'
 	    ( 'env'  { $ac->setOperator( OP(OUTPUT_ENV) ); }
 	    | me=expression
 		  {
-		  	sep::BFCode outputTo = NEW_STMT2(OP(OUTPUT_TO), $ac->first(), $me.bf);
+			sep::BFCode outputTo = NEW_STMT2(OP(OUTPUT_TO), $ac->first(), $me.bf);
 
-		  	outputTo->insert(outputTo->end(), ++($ac->begin()), $ac->end());
-		  	$ac = outputTo;
+			outputTo->getOperands().insert(
+					outputTo->end(), ++($ac->begin()), $ac->end() );
+					
+			$ac = outputTo;
 		  }
 	    )
 	    ( '->' id=qualifiedNameID
-	    { $ac->append(sep::ParserUtil::getvarPortSignal($id.s, $id.nb)); }
+		{ $ac->append(sep::ParserUtil::getvarPortSignal($id.s, $id.nb)); }
 	    )?
 	  )?
 	  ( ( '==>' | 'via' ) id=qualifiedNameID
 	  { sep::ParserUtil::updateSignalRoutingChannel(
-	  		sep::Modifier::DIRECTION_OUTPUT_KIND, $ac, $id.s, $id.nb); }
+			sep::Modifier::DIRECTION_OUTPUT_KIND, $ac, $id.s, $id.nb); }
 	  )?
 	  SEMI
 	;
@@ -5392,7 +5658,7 @@ parameters_port
 /* in */[ sep::Port * port , const sep::BFCode & ac ]
 @init{
 	sep::BFVector labelledParams(
-			(port != NULL) ? port->getParametersCount() : 0 );
+			(port != nullptr) ? port->getParametersCount() : 0 );
 
 	sep::BFList positionalParams;
 }
@@ -5402,15 +5668,15 @@ parameters_port
 }
 	: LPAREN
 	    lp=labelled_argument
-	    {
-    		sep::ParserUtil::appendPortParameter(port, $lp.label,
-    				labelledParams, positionalParams, $lp.arg);
-	    }
+		{
+			sep::ParserUtil::appendPortParameter(port, $lp.label,
+					labelledParams, positionalParams, $lp.arg);
+		}
 	  ( COMMA  lp=labelled_argument
-	    {
-    		sep::ParserUtil::appendPortParameter(port, $lp.label,
-    				labelledParams, positionalParams, $lp.arg);
-	    }
+		{
+			sep::ParserUtil::appendPortParameter(port, $lp.label,
+					labelledParams, positionalParams, $lp.arg);
+		}
 	    )*
 	  RPAREN
 	;
@@ -5434,9 +5700,9 @@ returns [ sep::BFCode ac ]
 
 statement_constraint
 returns [ sep::BFCode ac ]
-	: s=statement_guard        { $ac = $s.ac; }
-	| s=statement_timed_guard  { $ac = $s.ac; }
-	| s=statement_checksat     { $ac = $s.ac; }
+	: sg=statement_guard        { $ac = $sg.ac; }
+	| st=statement_timed_guard  { $ac = $st.ac; }
+	| sc=statement_checksat     { $ac = $sc.ac; }
 	;
 
 
@@ -5478,7 +5744,7 @@ returns [ sep::BFCode ac ]
 	;
 
 
-expression_guard
+expression_checksat
 returns [ sep::BFCode ac ]
 @init{
 	std::string solverID;
@@ -5500,6 +5766,44 @@ returns [ sep::BFCode ac ]
 	}
 	;
 
+expression_quantifier
+returns [ sep::BFCode ac ]
+@init{
+	sep::Variable * var;
+	sep::BFCode code;
+	
+	sep::PropertyPart boundVariables(_CPM_, "bound#vars");
+	
+	PUSH_CTX_LOCAL( & boundVariables );
+}
+@after{
+	POP_CTX;
+}
+	: ( 'forall' { code = NEW_CODE( OP(FORALL) ); }
+	  | 'exists' { code = NEW_CODE( OP(EXISTS) ); } 
+	  )
+	  LT_  ( id=ID  COLON  tv=type_var )
+	  { code->append( boundVariables.saveOwnedVariable(
+	  			new sep::Variable( _CPM_,
+	  					sep::Modifier::PROPERTY_QUANTIFIER_PARAMETER_MODIFIER,
+	  					$tv.type, STR($id.text->chars) ) )); 
+	  }
+	  ( COMMA id=ID  COLON  tv=type_var
+	  { code->append( boundVariables.saveOwnedVariable(
+	  			new sep::Variable( _CPM_,
+			  			sep::Modifier::PROPERTY_QUANTIFIER_PARAMETER_MODIFIER,
+			  			$tv.type, STR($id.text->chars) ) )); 
+	  }
+	  )*
+	  GT
+	  e=expression
+	{
+		code->append( $e.bf );
+		$ac = code;
+	}
+	;
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // STATEMENT IF THEN [ ELSEIF ] [ ELSE ]
 ////////////////////////////////////////////////////////////////////////////////
@@ -5513,19 +5817,19 @@ returns [ sep::BFCode ac ]
 	: 'if'  e=expression  bs=block_statement
 	  { code = $ac = NEW_STMT2(OP(IF), $e.bf, $bs.ac); }
 	  ( ( 'elseif' | 'else' 'if' )  e=expression  bs=block_statement
-	    {
-	    	code->setOperator(OP(IFE));
-	    	code->append(elseifCode = NEW_STMT2(OP(IF), $e.bf, $bs.ac));
-	    	code = elseifCode;
-	    }
+		{
+			code->setOperator(OP(IFE));
+			code->append(elseifCode = NEW_STMT2(OP(IF), $e.bf, $bs.ac));
+			code = elseifCode;
+		}
 	  )*
 	  ( 'else'  bs=block_statement
-	    {
-	    	if( $bs.ac->nonempty() )
-	    	{
-	    		code->setOperator(OP(IFE)); code->append($bs.ac);
-	    	}
-	    }
+		{
+			if( $bs.ac->hasOperand() )
+			{
+				code->setOperator(OP(IFE)); code->append($bs.ac);
+			}
+		}
 	  )?
 	;
 
@@ -5538,14 +5842,14 @@ returns [ sep::BFCode ac ]
 	: 'if'  c=expression  LCURLY  e=expression  RCURLY
 	  { expr = $ac = NEW_STMT2(OP(IF), $c.bf, $e.bf); }
 	  ( ( 'elseif' | 'else' 'if' ) c=expression  LCURLY  e=expression  RCURLY
-	    {
+		{
 			expr->setOperator(OP(IFE));
-	    	expr->append(elseifExpr = NEW_STMT2(OP(IF), $c.bf, $e.bf));
-	    	expr = elseifExpr;
-	    }
+			expr->append(elseifExpr = NEW_STMT2(OP(IF), $c.bf, $e.bf));
+			expr = elseifExpr;
+		}
 	  )*
 	  ( 'else'  LCURLY  e=expression  RCURLY
-	    { expr->setOperator(OP(IFE)); expr->append($e.bf); }
+		{ expr->setOperator(OP(IFE)); expr->append($e.bf); }
 	  )?
 	;
 
@@ -5572,18 +5876,18 @@ statement_iteration
 returns [ sep::BFCode ac ]
 	: 'for'
 	  ( isa=for_assign_header  SEMI  e=expression  SEMI  sai=for_assign_header
-	    { $ac = NEW_STMT3(OP(FOR), $isa.ac, $e.bf, $sai.ac); }
+		{ $ac = NEW_STMT3(OP(FOR), $isa.ac, $e.bf, $sai.ac); }
 	  |
 	    LPAREN
 	      isa=for_assign_header  SEMI  e=expression  SEMI  sai=for_assign_header
 	    RPAREN
-	    { $ac = NEW_STMT3(OP(FOR), $isa.ac, $e.bf, $sai.ac); }
+		{ $ac = NEW_STMT3(OP(FOR), $isa.ac, $e.bf, $sai.ac); }
 	  |
 	    lv=lvalue  COLON  e=expression
-	    { $ac = NEW_STMT2(OP(FOREACH), $lv.bf, $e.bf); }
+		{ $ac = NEW_STMT2(OP(FOREACH), $lv.bf, $e.bf); }
 	  |
 	    LPAREN  lv=lvalue  COLON  e=expression  RPAREN
-	    { $ac = NEW_STMT2(OP(FOREACH), $lv.bf, $e.bf); }
+		{ $ac = NEW_STMT2(OP(FOREACH), $lv.bf, $e.bf); }
 	  )
 	  sa=block_statement  { $ac->append($sa.ac); }
 
@@ -5726,20 +6030,42 @@ returns [ sep::BFCode ac ]
 }
 	: o=op_activity  { $ac = NEW_STMT($o.op); }
 	  ( id=qualifiedNameID
-	    { $ac->append(machine =
-	    	sep::ParserUtil::getvarMachine($id.s, $id.nb)); }
-	  )?
+		{ $ac->append(machine =
+			sep::ParserUtil::getvarMachine($id.s, $id.nb)); }
 
-	  activity_machine_param_return[ machine , ac ] ?
+	  | ( '$self' | 'self' )  
+		{ machine = sep::ExecutableLib::MACHINE_SELF; }
+		( ( ( LPAREN id=qualifiedNameID RPAREN )
+		  | ( LT_ id=qualifiedNameID GT )
+		  )
+		{ machine = NEW_CODE1(OP(SELF),
+				sep::ParserUtil::getSelfExecutableMachine($id.s)); }
+		)?
+		{ $ac->append(machine); }
+	  | ( '$this' | 'this' ) 
+	  	{ $ac->append(machine = sep::ExecutableLib::MACHINE_THIS); }
+
+	  | '$parent' { $ac->append(machine = sep::ExecutableLib::MACHINE_PARENT); }
+	  | '$super'  { $ac->append(machine = sep::ExecutableLib::MACHINE_PARENT); }
+	  
+	  | '$system' { $ac->append(machine = sep::ExecutableLib::MACHINE_SYSTEM); }
+	  )?
+	  
+//	  ( e=expression { $ac->append($e.bf); } )?
+	  
+	  activity_machine_param_return[ machine , $ac ] ?
 	  SEMI
 	/*
 	| 'wait'  expression  SEMI
 	{ $ac = NEW_STMT(OP(WAIT)); }
 	*/
 
-	| 'goto'  id=qualifiedNameID
-	  { $ac = NEW_STMT1(OP(GOTO),
-	  	flowTarget = sep::ParserUtil::getvarMachine($id.s, $id.nb)); }
+//	| 'goto'  id=qualifiedNameID
+//	  { $ac = NEW_STMT1(OP(GOTO),
+//		flowTarget = sep::ParserUtil::getvarMachine($id.s, $id.nb)); }
+	| 'goto'   e=expression 
+	  { $ac = NEW_STMT1(OP(GOTO),  $e.bf); flowTarget = $e.bf; }
+		
 	  ( fs=statement_init_flow[flowTarget]  { $ac->append($fs.ac); }
 	  | SEMI
 	  )
@@ -5775,35 +6101,35 @@ returns [ sep::BFCode ac ]
 statement_invoke_routine
 returns [ sep::BFCode ac ]
 @init{
-	sep::Routine * invokeRoutine = NULL;
+	sep::Routine * invokeRoutine = nullptr;
 }
 	: id=ID
 	  {
-	  	invokeRoutine = sep::Routine::newInvoke( _CPRMS_, STR($id.text->chars));
+		invokeRoutine = sep::Routine::newInvoke( _CPRMS_, STR($id.text->chars));
 
-	  	invokeRoutine->setModel(
-	  			sep::ParserUtil::getvarRoutine(STR($id.text->chars)) );
+		invokeRoutine->setModel(
+				sep::ParserUtil::getvarRoutine(STR($id.text->chars)) );
 	  }
 
 	  invoke_routine_params[ invokeRoutine ]
       ( invoke_routine_returns[ invokeRoutine ] )?
       SEMI
 
-      { $ac = sep::ParserUtil::invokeRoutineStatement(invokeRoutine); }
+      { $ac = sep::Routine::invokeRoutineStatement(invokeRoutine); }
 	;
 
 
 invoke_routine_params [ sep::Routine * invokeRoutine ]
 	: LPAREN
 	  ( lp=labelled_argument
-	    {
-	    	invokeRoutine->appendParameter($lp.label, $lp.arg);
-	    }
+		{
+			invokeRoutine->getPropertyPart().appendVariableParameter($lp.label, $lp.arg);
+		}
 	    ( COMMA
 	    lp=labelled_argument
-	    {
-	    	invokeRoutine->appendParameter($lp.label, $lp.arg);
-	    }
+		{
+			invokeRoutine->getPropertyPart().appendVariableParameter($lp.label, $lp.arg);
+		}
 	    )*
 	  )?
 	  RPAREN
@@ -5814,21 +6140,21 @@ invoke_routine_returns [ sep::Routine * invokeRoutine ]
 	: ( '-->' | 'returns:' )
 	  ( LPAREN
 	    lp=labelled_argument
-	    {
-	    	invokeRoutine->appendReturn($lp.label, $lp.arg);
-	    }
+		{
+			invokeRoutine->getPropertyPart().appendVariableReturn($lp.label, $lp.arg);
+		}
 	    ( COMMA
 	      lp=labelled_argument
 	      {
-	    	invokeRoutine->appendReturn($lp.label, $lp.arg);
+			invokeRoutine->getPropertyPart().appendVariableReturn($lp.label, $lp.arg);
 	      }
 	    )*
 	    RPAREN
 
 	  | lp=labelled_argument
-	    {
-	    	invokeRoutine->appendReturn($lp.label, $lp.arg);
-	    }
+		{
+			invokeRoutine->getPropertyPart().appendVariableReturn($lp.label, $lp.arg);
+		}
 	  )
 	;
 
@@ -5847,7 +6173,7 @@ returns [ sep::BFCode ac ]
 
 	| 'in'  id=qualifiedNameID
 	  { $ac = NEW_STMT1(OP(LEM_INPUT),
-	  	sep::ParserUtil::getvarPortSignal($id.s, $id.nb)); }
+		sep::ParserUtil::getvarPortSignal($id.s, $id.nb)); }
 	  ( 'provided'  e=expression  { $ac->append($e.bf); }  )?
 	  SEMI
 
@@ -5894,7 +6220,7 @@ returns [ sep::BFCode ac ]
 
 expression
 returns [ sep::BF bf ]
-	: e=conditionalExpression  { $bf = $e.bf; }
+	: ce=conditionalExpression  { $bf = $ce.bf; }
 
 	( ASSIGN  e=expression
 	{ $bf = NEW_CODE2(OP(ASSIGN), $bf, $e.bf); }
@@ -6010,11 +6336,20 @@ returns [ sep::BF bf ]
 
 conditionalOrExpression
 returns [ sep::BF bf ]
-	: e=conditionalAndExpression  { $bf = $e.bf; }
-	  ( LOR e=conditionalAndExpression
+	: e=conditionalImpliesExpression  { $bf = $e.bf; }
+	  ( LOR e=conditionalImpliesExpression
 	  { $bf = NEW_CODE_FLAT(OP(OR), $bf, $e.bf); }
 	  )*
 	;
+
+conditionalImpliesExpression
+returns [ sep::BF bf ]
+	: e=conditionalAndExpression  { $bf = $e.bf; }
+	  ( LIMPLIES e=conditionalAndExpression
+	  { $bf = NEW_CODE_FLAT(OP(IMPLIES), $bf, $e.bf); }
+	  )*
+	;
+
 
 conditionalAndExpression
 returns [ sep::BF bf ]
@@ -6055,36 +6390,36 @@ returns [ sep::BF bf ]
 	sep::BF rhs;
 }
 	: e=relationalExpression  { $bf = $e.bf; }
-	  ( op=equalOp e=relationalExpression
-	  { eqExpr = NEW_CODE2(op, $bf, $e.bf); }
-	    ( op=equalOp e=relationalExpression
-	    {
-	    	/*if( eqExpr.getOperator() == op )
-	    	{
-	    		eqExpr.append( $e.bf );
-	    	}
-	    	else*/ if( eqExpr.getOperator() == OP(AND) )
-	    	{
-	    		eqExpr.append( NEW_CODE2(op, rhs, $e.bf) );
-	    	}
-	    	else
-	    	{
-	    		eqExpr = NEW_CODE2(OP(AND), eqExpr, NEW_CODE2(op, rhs, $e.bf));
-	    	}
+	  ( eq=equalOp e=relationalExpression
+	  { eqExpr = NEW_CODE2($eq.op, $bf, $e.bf); }
+	    ( eq=equalOp e=relationalExpression
+		{
+			/*if( eqExpr.getOperator() == $eq.op )
+			{
+				eqExpr.append( $e.bf );
+			}
+			else*/ if( eqExpr.getOperator() == OP(AND) )
+			{
+				eqExpr.append( NEW_CODE2($eq.op, rhs, $e.bf) );
+			}
+			else
+			{
+				eqExpr = NEW_CODE2(OP(AND), eqExpr, NEW_CODE2($eq.op, rhs, $e.bf));
+			}
 
-	    	rhs = $e.bf;
-	    }
+			rhs = $e.bf;
+		}
 	    )*
 	  { $bf = eqExpr; }
 	  )?
 	;
 
 equalOp
-returns [ sep::Operator * op ]
-	: EQUAL   { op = OP(EQ);   }
-	| NEQUAL  { op = OP(NEQ);  }
-	| SEQUAL  { op = OP(SEQ);  }
-	| NSEQUAL { op = OP(NSEQ); }
+returns [ const sep::Operator * op ]
+	: EQUAL   { $op = OP(EQ);   }
+	| NEQUAL  { $op = OP(NEQ);  }
+	| SEQUAL  { $op = OP(SEQ);  }
+	| NSEQUAL { $op = OP(NSEQ); }
 	;
 
 
@@ -6095,32 +6430,32 @@ returns [ sep::BF bf ]
 	sep::BF rhs;
 }
 	: e=shiftExpression  { $bf = $e.bf; }
-	  ( op=relationalOp e=shiftExpression
-	  { relExpr = NEW_CODE2(op, $bf, rhs = $e.bf); }
-	    ( op=relationalOp e=shiftExpression
-	    {
-	    	/*if( relExpr.getOperator() == op )
-	    	{
-	    		relExpr.append( $e.bf );
-	    	}
-	    	else*/ if( relExpr.getOperator() == OP(AND) )
-	    	{
-	    		relExpr.append( NEW_CODE2(op, rhs, $e.bf) );
-	    	}
-	    	else
-	    	{
-	    		relExpr = NEW_CODE2(OP(AND), relExpr, NEW_CODE2(op, rhs, $e.bf));
-	    	}
+	  ( r=relationalOp e=shiftExpression
+	  { relExpr = NEW_CODE2($r.op, $bf, rhs = $e.bf); }
+	    ( r=relationalOp e=shiftExpression
+		{
+			/*if( relExpr.getOperator() == $r.op )
+			{
+				relExpr.append( $e.bf );
+			}
+			else*/ if( relExpr.getOperator() == OP(AND) )
+			{
+				relExpr.append( NEW_CODE2($r.op, rhs, $e.bf) );
+			}
+			else
+			{
+				relExpr = NEW_CODE2(OP(AND), relExpr, NEW_CODE2($r.op, rhs, $e.bf));
+			}
 
-	    	rhs = $e.bf;
-	    }
+			rhs = $e.bf;
+		}
 	    )*
 	  { $bf = relExpr; }
 	  )?
 	;
 
 relationalOp
-returns [ sep::Operator * op ]
+returns [ const sep::Operator * op ]
 	: LTE  { $op = OP(LTE); }
 	| GTE  { $op = OP(GTE); }
 	| LT_  { $op = OP(LT); }
@@ -6139,14 +6474,14 @@ returns [ sep::Operator * op ]
 shiftExpression
 returns [ sep::BF bf ]
 	: e=additiveExpression  { $bf = $e.bf; }
-	  ( op=shiftOp e=additiveExpression
-	  { $bf = NEW_CODE2(op, $bf, $e.bf); }
+	  ( s=shiftOp e=additiveExpression
+	  { $bf = NEW_CODE2($s.op, $bf, $e.bf); }
 	  )*
 	;
 
 
 shiftOp
-returns [ sep::Operator * op ]
+returns [ const sep::Operator * op ]
 	: LSHIFT  { $op = OP(LSHIFT); }
 	| RSHIFT  { $op = OP(RSHIFT); }
 	;
@@ -6155,21 +6490,30 @@ returns [ sep::Operator * op ]
 additiveExpression
 returns [ sep::BF bf ]
 @init{
-	sep::Operator * op = NULL;
+	const sep::Operator * op = nullptr;
 }
 	: e=multiplicativeExpression  { $bf = $e.bf; }
 	  ( ( PLUS  { op = OP(PLUS);  }
 	    | MINUS { op = OP(MINUS); }
 	    )
 	    e=multiplicativeExpression
-	    { $bf = NEW_CODE_FLAT(op, $bf, $e.bf); }
+		{
+			if( op == OP(MINUS) )
+			{
+				$bf = NEW_CODE_FLAT(OP(PLUS), $bf, new_uminus_expr($e.bf));
+			}
+			else
+			{
+				$bf = NEW_CODE_FLAT(op, $bf, $e.bf);
+			}
+		}
 	  )*
 	;
 
 multiplicativeExpression
 returns [ sep::BF bf ]
 @init{
-	sep::Operator * op = NULL;
+	const sep::Operator * op = nullptr;
 }
 	: e=unaryExpression  { $bf = $e.bf; }
 	  ( ( STAR { op = OP(MULT); }
@@ -6177,7 +6521,7 @@ returns [ sep::BF bf ]
 	    | MOD  { op = OP(MOD); }
 	    )
 	    e=unaryExpression
-	    { $bf = NEW_CODE_FLAT(op, $bf, $e.bf); }
+		{ $bf = NEW_CODE_FLAT(op, $bf, $e.bf); }
 	  )*
 	;
 
@@ -6215,43 +6559,43 @@ returns [ sep::BF bf ]
 //	| 'newfresh'  e=unaryExpression
 //	{ $bf = NEW_CODE1(OP(ASSIGN_NEWFRESH), $e.bf); }
 
+	| pe=prefix_expression           { $bf = $pe.ac; }
 
-	| c=prefix_expression           { $bf = $c.ac; }
+	| ei=expression_invoke           { $bf = $ei.ac; }
 
-	| c=expression_invoke           { $bf = $c.ac; }
+	| ea=expression_activity_new     { $bf = $ea.ac; }
 
-	| c=expression_activity_new     { $bf = $c.ac; }
+//	| eb=expression_buffer           { $bf = $eb.ac; }
+	| ec=expression_com              { $bf = $ec.ac; }
+	| ek=expression_checksat         { $bf = $ek.ac; }
+	| eq=expression_quantifier       { $bf = $eq.ac; }
+	| et=expression_ite              { $bf = $et.ac; }
+	| el=expression_lambda           { $bf = $el.ac; }
+//	| es=expression_status           { $bf = $es.ac; }
+//	| et=expression_time             { $bf = $et.ac; }
 
-//	| c=expression_buffer           { $bf = $c.ac; }
-	| c=expression_com              { $bf = $c.ac; }
-	| c=expression_guard            { $bf = $c.ac; }
-	| c=expression_ite              { $bf = $c.ac; }
-	| c=expression_lambda           { $bf = $c.ac; }
-//	| c=expression_status           { $bf = $c.ac; }
-//	| c=expression_time             { $bf = $c.ac; }
+//	| em=expression_lem              { $bf = $em.ac; }
 
-//	| c=expression_lem              { $bf = $c.ac; }
+	| ce=ctorExpression              { $bf = $ce.ctor; }
 
-	| e=ctorExpression              { $bf = $e.bf; }
-
-	| e=primary                     { $bf = $e.bf; }
+	| p=primary                      { $bf = $p.bf; }
 	  ( INCR
-		{ $bf = NEW_STMT_ASSIGN_OP_AFTER(OP(PLUS), $e.bf,
+		{ $bf = NEW_STMT_ASSIGN_OP_AFTER(OP(PLUS), $p.bf,
 			sep::ExpressionConstant::INTEGER_ONE); }
 	  | DECR
-		{ $bf = NEW_STMT_ASSIGN_OP_AFTER(OP(PLUS), $e.bf,
+		{ $bf = NEW_STMT_ASSIGN_OP_AFTER(OP(PLUS), $p.bf,
 			sep::ExpressionConstant::INTEGER_MINUS_ONE); }
 	  )?
 
-	| l=literal                     { $bf = $l.bf; }
+	| l=literal                      { $bf = $l.bf; }
 
-	| q=quote_expression            { $bf = $q.ac; }
+	| qe=quote_expression            { $bf = $qe.ac; }
 
-	| q=meta_eval_expression        { $bf = $q.ac; }
+	| me=meta_eval_expression        { $bf = $me.ac; }
 
-	| LPAREN  e=expression  RPAREN  { $bf = $e.bf; }
+	| LPAREN  le=expression  RPAREN  { $bf = $le.bf; }
 
-	| e=collection_of_expression    { $bf = $e.bf; }
+	| co=collection_of_expression    { $bf = $co.bf; }
 	;
 
 
@@ -6266,7 +6610,7 @@ returns [ sep::BFCode ctor ]
 quote_expression
 returns [ sep::BFCode ac ]
 @init{
-	sep::Operator * op = OP(SEQUENCE);
+	const sep::Operator * op = OP(SEQUENCE);
 }
 	: PERCENT_LCURLY  ( o=op_block { op = $o.op; } ) ?  { $ac = NEW_STMT(op); }
 	    ( s=statement   { $ac->append($s.ac); }  )*
@@ -6300,9 +6644,9 @@ returns [ sep::BF bf ]
 	sep::UniFormIdentifier * ufi;
 	sep::BF bfUfi;// for automatic destruction of << UFI >> if need
 
-	sep::avm_size_t countID = 1;
+	std::size_t countID = 1;
 	bool isnotEXPR  = true;
-	bool hasntPARAM = true;
+	bool hasnoPARAM = true;
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
@@ -6310,32 +6654,32 @@ returns [ sep::BF bf ]
 	  //  COLONx2 { ufi->setAbsolute(); } )?
 	  id=ID
 	  {
-	  	ufi = new sep::UniFormIdentifier(false);
-	  	bfUfi = ufi;
+		ufi = new sep::UniFormIdentifier(false);
+		bfUfi = ufi;
 
 		if( ($bf = sep::ParserUtil::getObjectByNameID(STR($id.text->chars))).valid() )
 		{
-		  	ufi->appendField($bf);
+			ufi->appendField($bf);
 		}
 		else
 		{
-		  	ufi->appendField(STR($id.text->chars));
+			ufi->appendField(STR($id.text->chars));
 		}
 
 		$bf = bfUfi;
 	  }
 
 	  ( ( DOT id=ID
-	    { ufi->appendField(STR($id.text->chars));  ++countID; } )
+		{ ufi->appendField(STR($id.text->chars));  ++countID; } )
 
 	  | ( LBRACKET  e=expression  RBRACKET
-	    { ufi->appendIndex($e.bf);  isnotEXPR = false; }
+		{ ufi->appendIndex($e.bf);  isnotEXPR = false; }
 	    )
 
 	  | LPAREN            { ufi->last().addScheme(sep::UFI_SCHEME_INVOKABLE); }
-	    ( e=expression    { ufi->appendFieldParameter($e.bf);  hasntPARAM = false; }
+	    ( e=expression    { ufi->appendFieldParameter($e.bf);  hasnoPARAM = false; }
 	      ( COMMA
-	        e=expression  { ufi->appendFieldParameter($e.bf);  hasntPARAM = false; }
+	        e=expression  { ufi->appendFieldParameter($e.bf);  hasnoPARAM = false; }
 	      )*
 	    )?
 	    RPAREN
@@ -6345,7 +6689,7 @@ returns [ sep::BF bf ]
 		{
 			$bf = ufi->first();
 		}
-		else if( isnotEXPR && hasntPARAM )
+		else if( isnotEXPR && hasnoPARAM )
 		{
 			if( ($bf = sep::ParserUtil::getvar(
 					ufi->str(), countID)).invalid() )
@@ -6366,13 +6710,13 @@ returns [ sep::BF bf ]
 primary
 returns [ sep::BF bf ]
 	: id=ID
-	  ( ( LPAREN         ) => p=primary_invoke[ STR($id.text->chars) ]
-	    { $bf = $p.bf; }
+	  ( ( LPAREN         ) => pi=primary_invoke[ STR($id.text->chars) ]
+		{ $bf = $pi.bf; }
 
-	  | ( DOT | LBRACKET ) => p=primary_ufid[ STR($id.text->chars) ]
-	    { $bf = $p.bf; }
+	  | ( DOT | LBRACKET ) => pu=primary_ufid[ STR($id.text->chars) ]
+		{ $bf = $pu.bf; }
 	  | ( COLONx2        ) => p=primary_ufi[ STR($id.text->chars) ]
-	    { $bf = $p.bf; }
+		{ $bf = $p.bf; }
 	  )?
 	  {
 		if( $bf.invalid() )
@@ -6380,7 +6724,7 @@ returns [ sep::BF bf ]
 			if( ($bf = sep::ParserUtil::getObjectByNameID(
 					STR($id.text->chars))).invalid() )
 			{
-			  	$bf = NEW_ID( STR($id.text->chars));
+				$bf = NEW_ID( STR($id.text->chars));
 			}
 		}
 	  }
@@ -6397,25 +6741,25 @@ returns [ sep::BF bf ]
 
 	if( ($bf = sep::ParserUtil::getObjectByNameID(mainId)).valid() )
 	{
-	  	ufi->appendField( $bf );
+		ufi->appendField( $bf );
 	}
 	else
 	{
-	  	ufi->appendField( mainId );
+		ufi->appendField( mainId );
 	}
 
 	$bf = bfUfi;
 
-	sep::avm_size_t countID = 1;
+	std::size_t countID = 1;
 	bool isnotEXPR  = true;
 
 	SAVE_RULE_BEGIN_LOCATION;
 }
 	: ( ( DOT id=ID
-	    { ufi->appendField( STR($id.text->chars) );  ++countID; } )
+		{ ufi->appendField( STR($id.text->chars) );  ++countID; } )
 
 	  | ( LBRACKET  e=expression  RBRACKET
-	    { ufi->appendIndex( $e.bf );  isnotEXPR = false; }
+		{ ufi->appendIndex( $e.bf );  isnotEXPR = false; }
 	    )
 	  )+
 	{
@@ -6446,7 +6790,7 @@ returns [ sep::BF bf ]
 
 	$bf = bfUfi;
 
-	sep::avm_size_t countID = 1;
+	std::size_t countID = 1;
 	bool isnotEXPR  = true;
 
 	SAVE_RULE_BEGIN_LOCATION;
@@ -6455,19 +6799,19 @@ returns [ sep::BF bf ]
 	  {
 		if( ($bf = sep::ParserUtil::getObjectByNameID(STR($id.text->chars))).valid() )
 		{
-		  	ufi->appendField( $bf );
+			ufi->appendField( $bf );
 		}
 		else
 		{
-		  	ufi->appendField( STR($id.text->chars) );
+			ufi->appendField( STR($id.text->chars) );
 		}
 	  }
 
 	  ( ( DOT id=ID
-	    { ufi->appendField( STR($id.text->chars) );  ++countID; } )
+		{ ufi->appendField( STR($id.text->chars) );  ++countID; } )
 
 	  | ( LBRACKET  e=expression  RBRACKET
-	    { ufi->appendIndex( $e.bf );  isnotEXPR = false; }
+		{ ufi->appendIndex( $e.bf );  isnotEXPR = false; }
 	    )
 	  )+
 	{
@@ -6498,19 +6842,19 @@ returns [ sep::BF bf ]
 }
 	: LPAREN
 	  ( lp=labelled_argument
-	    {
-	    	invokeRoutine->appendParameter($lp.label, $lp.arg);
-	    }
+		{
+			invokeRoutine->getPropertyPart().appendVariableParameter($lp.label, $lp.arg);
+		}
 	    ( COMMA
 	    lp=labelled_argument
-	    {
-	    	invokeRoutine->appendParameter($lp.label, $lp.arg);
-	    }
+		{
+			invokeRoutine->getPropertyPart().appendVariableParameter($lp.label, $lp.arg);
+		}
 	    )*
 	  )?
 	  RPAREN
 
-	  { $bf = sep::ParserUtil::invokeRoutineExpression(invokeRoutine); }
+	  { $bf = sep::Routine::invokeRoutineExpression(invokeRoutine); }
 	;
 
 
@@ -6523,28 +6867,46 @@ returns [ sep::BF bf ]
 	| CharLiteral     { $bf = NEW_CHAR(STR($CharLiteral.text->chars));     }
 	| StringLiteral   { $bf = NEW_STRING(STR($StringLiteral.text->chars)); }
 
-	| 'true'   { $bf = NEW_BOOL(true);  }
-	| 'false'  { $bf = NEW_BOOL(false); }
+	| 'true'   { $bf = NEW_BOOLEAN(true);  }
+	| 'false'  { $bf = NEW_BOOLEAN(false); }
 
-	| 'self'   { $bf = sep::ExecutableLib::MACHINE_SELF;        }
-	| 'parent' { $bf = sep::ExecutableLib::MACHINE_PARENT;      }
-	| 'env'    { $bf = sep::ExecutableLib::MACHINE_ENVIRONMENT; }
+	| '$time'  { $bf = sep::ParserUtil::getVarTime();      }
+	| '$delay' { $bf = sep::ParserUtil::getVarDeltaTime(); }
+	| '$delta' { $bf = sep::ParserUtil::getVarDeltaTime(); }
+	
+	| ( '$self' | 'self' )  
+	  { $bf = sep::ExecutableLib::MACHINE_SELF; }
+	  ( ( ( LPAREN id=qualifiedNameID RPAREN )
+	  | ( LT_ id=qualifiedNameID GT )
+	  )
+	  { $bf = NEW_CODE1(OP(SELF),
+			sep::ParserUtil::getSelfExecutableMachine($id.s));   }
+	  )?
+	
+	| ( '$this' | 'this' ) { $bf = sep::ExecutableLib::MACHINE_THIS;        }
 
-	| '$this'   { $bf = sep::ExecutableLib::MACHINE_SELF;        }
-	| '$self'   { $bf = sep::ExecutableLib::MACHINE_SELF;        }
-	| '$parent' { $bf = sep::ExecutableLib::MACHINE_PARENT;      }
-	| '$super'  { $bf = sep::ExecutableLib::MACHINE_PARENT;      }
-	| '$env'    { $bf = sep::ExecutableLib::MACHINE_ENVIRONMENT; }
+	| ( '$env'  | 'env'  ) { $bf = sep::ExecutableLib::MACHINE_ENVIRONMENT; }
 
-	| 'null<'
-	   ( 'machine'  { $bf = sep::ExecutableLib::MACHINE_NULL; }
-	   | 'channel'  { $bf = sep::ExecutableLib::CHANNEL_NIL;    }
-	   | 'port'     { $bf = sep::ExecutableLib::PORT_NIL;    }
-	   | 'signal'   { $bf = sep::ExecutableLib::PORT_NIL;    }
-	   | 'message'  { $bf = sep::ExecutableLib::PORT_NIL;    }
-	   | 'buffer'   { $bf = sep::ExecutableLib::BUFFER_NIL;    }
+	| '$parent'     { $bf = sep::ExecutableLib::MACHINE_PARENT;    }
+	| '$super'      { $bf = sep::ExecutableLib::MACHINE_PARENT;    }
+	
+	| '$system'     { $bf = sep::ExecutableLib::MACHINE_SYSTEM;    }
+
+	| '$null' LT_
+	   ( 'machine'  { $bf = sep::ExecutableLib::MACHINE_NULL;      }
+	   | 'channel'  { $bf = sep::ExecutableLib::CHANNEL_NIL;       }
+	   | 'port'     { $bf = sep::ExecutableLib::PORT_NIL;          }
+	   | 'signal'   { $bf = sep::ExecutableLib::PORT_NIL;          }
+	   | 'message'  { $bf = sep::ExecutableLib::PORT_NIL;          }
+	   | 'buffer'   { $bf = sep::ExecutableLib::BUFFER_NIL;        }
 	   ) GT
-	| 'null'       { $bf = sep::BF::REF_NULL; }
+
+	| '$any'        { $bf = sep::ExecutableLib::ANY_VALUE;         }
+	| '$default'    { $bf = sep::ExecutableLib::DEFAULT_VALUE;     }
+	| '$optional'   { $bf = sep::ExecutableLib::OPTIONAL_VALUE;    }
+	| '$omit'       { $bf = sep::ExecutableLib::OMIT_VALUE;        }
+	| '$none'       { $bf = sep::ExecutableLib::NONE_VALUE;        }
+	| '$any$none'   { $bf = sep::ExecutableLib::ANY_OR_NONE_VALUE; }
 	;
 
 
@@ -6592,160 +6954,166 @@ kw_wait      : { IS_KEYWORD( "wait"     ) }?  ID;
 ////////////////////////////////////////////////////////////////////////////////
 
 
-OP_ATOMIC_SEQUENCE : '|§|'  ;
+OP_ATOMIC_SEQUENCE              : '|§|'  ;
 
-OP_SEQUENCE        : '|;|'  ;
-OP_SEQUENCE_SIDE   : '|.|'  | '|/;|' ;
-OP_SEQUENCE_WEAK   : '|;;|' ;
+OP_SEQUENCE                     : '|;|'  ;
+OP_SEQUENCE_SIDE                : '|.|'  | '|/;|' ;
+OP_SEQUENCE_WEAK                : '|;;|' ;
 
-OP_SCHEDULE_GT     : '|>|'   ;
-OP_SCHEDULE_LT     : '|<|'   ;
-OP_SCHEDULE_XOR    : '|xor|' ;
+OP_SCHEDULE_GT                  : '|>|'   ;
+OP_SCHEDULE_LT                  : '|<|'   ;
+OP_SCHEDULE_XOR                 : '|xor|' ;
 
-OP_SCHEDULE_AND_THEN : '|and#then|' ;
-OP_SCHEDULE_OR_ELSE  : '|or#else|'  ;
+OP_SCHEDULE_AND_THEN            : '|and#then|' ;
+OP_SCHEDULE_OR_ELSE             : '|or#else|'  ;
 
 
-OP_NON_DETERMINISM : '|/\|' | '|indet|' ;
+OP_NON_DETERMINISM              : '|/\\|' | '|indet|' ;
 
-OP_CONCURRENCY_ASYNC        : '|a|'   ;
-OP_CONCURRENCY_AND          : '|and|' ;
-OP_CONCURRENCY_OR           : '|or|'  ;
-OP_CONCURRENCY_INTERLEAVING : '|i|'   ;
-OP_CONCURRENCY_PARALLEL     : '|,|'   ;
+OP_CONCURRENCY_ASYNC            : '|a|'   | '|async|' ;
 
-OP_FORK             : '|fork|'  ;
-OP_JOIN             : '|join|'  ;
+OP_CONCURRENCY_AND              : '|and|' | '|strong_sync|';
+OP_CONCURRENCY_OR               : '|or|'  | '|weak_sync|'  ;
+
+OP_CONCURRENCY_INTERLEAVING     : '|i|'   | '|<>|' | '|interleaving|'  ;
+OP_CONCURRENCY_PARTIAL_ORDER    : '|~|'   | '|><|' | '|partial-order|' ;
+
+OP_CONCURRENCY_PARALLEL         : '|,|'   | '|parallel|' ;
+
+OP_FORK                         : '|fork|'  ;
+OP_JOIN                         : '|join|'  ;
 
 
 OP_CONCURRENCY_RDV_ASYNC        : '||a||'   ;
 OP_CONCURRENCY_RDV_AND          : '||and||' ;
 OP_CONCURRENCY_RDV_OR           : '||or||'  ;
 OP_CONCURRENCY_RDV_INTERLEAVING : '||i||'   ;
+OP_CONCURRENCY_RDV_PARTIAL_ORDER: '||~||'   ;
 OP_CONCURRENCY_RDV_PARALLEL     : '||,||'   ;
 
-//LEM_TRANSFERT   : '->'  ;
+//LEM_TRANSFERT                 : '->'  ;
 
-ASSIGN          : '='   | ':=' ;
-ASSIGN_AFTER    : '=:'  ;
-ASSIGN_REF      : '<-'  ;
-ASSIGN_MACRO    : '::=' ;
+ASSIGN                          : '='   | ':=' ;
+ASSIGN_AFTER                    : '=:'  ;
+ASSIGN_REF                      : '<-'  ;
+ASSIGN_MACRO                    : '::=' ;
 
-OP_PUSH         : '<=<' ;
-OP_ASSIGN_TOP   : '^=<' ;
-OP_TOP          : '^=>' ;
-OP_POP          : '>=>' ;
+OP_PUSH                         : '<=<' ;
+OP_ASSIGN_TOP                   : '^=<' ;
+OP_TOP                          : '^=>' ;
+OP_POP                          : '>=>' ;
 
-LPAREN          : '('   ;
-RPAREN          : ')'   ;
-LCURLY          : '{'   ;
-RCURLY          : '}'   ;
-LBRACKET        : '['   ;
-RBRACKET        : ']'   ;
+LPAREN                          : '('   ;
+RPAREN                          : ')'   ;
+LCURLY                          : '{'   ;
+RCURLY                          : '}'   ;
+LBRACKET                        : '['   ;
+RBRACKET                        : ']'   ;
 
-LBRACKET_EXCEPT : '[^'  ;
+LBRACKET_EXCEPT                 : '[^'  ;
 
-LPAREN_INVOKE   : '(:'  ;
-LCURLY_INVOKE   : '{:'  ;
+LPAREN_INVOKE                   : '(:'  ;
+LCURLY_INVOKE                   : '{:'  ;
 
-PERCENT_LPAREN_INVOKE : '%(:'  ;
+PERCENT_LPAREN_INVOKE           : '%(:'  ;
 
-PERCENT_LPAREN  : '%('  ;
-RPAREN_PERCENT  : ')%'  ;
-
-
-STATEMENT_PROMPT: ':>'  ;
-
-DOLLAR_LCURLY   : '${'  ;
-RCURLY_DOLLAR   : '}$'  ;
-
-PERCENT_LCURLY  : '%{'  ;
-RCURLY_PERCENT  : '}%'  ;
-
-LBRACKET_BAR    : '[|'  ;
-BAR_RBRACKET    : '|]'  ;
-
-LBRACKET_LCURLY : '[{'  ;
-RCURLY_RBRACKET : '}]'  ;
-
-COLON           : ':'   ;
-COMMA           : ','   ;
-QUESTION        : '?'   ;
-SEMI            : ';'   ;
-
-DIESE           : '#'   ;
-DOLLAR          : '$'   ;
-
-DOT             : '.'   ;
-DOTDOT          : '..'  ;
-COLONx2         : '::'  ;
+PERCENT_LPAREN                  : '%('  ;
+RPAREN_PERCENT                  : ')%'  ;
 
 
-LAND                : '&&'  | 'and' ;
-LAND_THEN           : 'and#then'    ;
-LAND_ASSIGN         : '&&=' | '&&:=';
-LAND_ASSIGN_AFTER   : '&&=:';
+STATEMENT_PROMPT                : ':>'  ;
 
-LNOT                : '!'   | 'not' ;
+DOLLAR_LCURLY                   : '${'  ;
+RCURLY_DOLLAR                   : '}$'  ;
 
-LOR                 : '||'  | 'or'  ;
-LOR_ELSE            : 'or#else'     ;
-LOR_ASSIGN          : '||=' | '||:=';
-LOR_ASSIGN_AFTER    : '||=:';
-LXOR                : 'xor' ;
+PERCENT_LCURLY                  : '%{'  ;
+RCURLY_PERCENT                  : '}%'  ;
 
-EQUAL               : '=='  ;
-NEQUAL              : '!='  ;
+LBRACKET_BAR                    : '[|'  ;
+BAR_RBRACKET                    : '|]'  ;
 
-SEQUAL              : '===' ;
-NSEQUAL             : '=!=' | '=/=' ;
+LBRACKET_LCURLY                 : '[{'  ;
+RCURLY_RBRACKET                 : '}]'  ;
 
-LTE                 : '<='  ;
-LT_                 : '<'   ;
-GTE                 : '>='  ;
-GT                  : '>'   ;
+COLON                           : ':'   ;
+COMMA                           : ','   ;
+QUESTION                        : '?'   ;
+SEMI                            : ';'   ;
+
+DIESE                           : '#'   ;
+DOLLAR                          : '$'   ;
+
+DOT                             : '.'   ;
+DOTDOT                          : '..'  ;
+COLONx2                         : '::'  ;
 
 
-PLUS                : '+'   ;
-PLUS_ASSIGN         : '+='  | '+:=' ;
-PLUS_ASSIGN_AFTER   : '+=:' ;
-INCR                : '++'  ;
+LAND                            : '&&'  | 'and' ;
+LAND_THEN                       : 'and#then'    ;
+LAND_ASSIGN                     : '&&=' | '&&:=';
+LAND_ASSIGN_AFTER               : '&&=:';
 
-MINUS               : '-'   ;
-MINUS_ASSIGN        : '-='  | '-:=' ;
-MINUS_ASSIGN_AFTER  : '-=:' ;
-DECR                : '--'  ;
+LNOT                            : '!'   | 'not' ;
 
-STAR                : '*'   ;
-STAR_ASSIGN         : '*='  | '*:=' ;
-STAR_ASSIGN_AFTER   : '*=:' ;
-DIV                 : '/'   ;
-DIV_ASSIGN          : '/='  | '/:=' ;
-DIV_ASSIGN_AFTER    : '/=:' ;
-MOD                 : '%'   ;
-MOD_ASSIGN          : '%='  | '%:=' ;
-MOD_ASSIGN_AFTER    : '%=:' ;
+LOR                             : '||'  | 'or'  ;
+LOR_ELSE                        : 'or#else'     ;
+LOR_ASSIGN                      : '||=' | '||:=';
+LOR_ASSIGN_AFTER                : '||=:';
+LXOR                            : 'xor' ;
 
-//POW                 : "**" ;
+LIMPLIES                        : '=>'  ;
 
-RSHIFT              : '>>'  ;
-RSHIFT_ASSIGN       : '>>=' | '>>:=';
-RSHIFT_ASSIGN_AFTER : '>>=:';
-LSHIFT              : '<<'  ;
-LSHIFT_ASSIGN       : '<<=' | '<<:=';
-LSHIFT_ASSIGN_AFTER : '<<=:';
+EQUAL                           : '=='  ;
+NEQUAL                          : '!='  ;
 
-BAND                : '&'   ;
-BAND_ASSIGN         : '&='  | '&:=' ;
-BAND_ASSIGN_AFTER   : '&=:' ;
-BNOT                : '~'   ;
-BOR                 : '|'   ;
-BOR_ASSIGN          : '|='  | '|:=' ;
-BOR_ASSIGN_AFTER    : '|=:' ;
-BXOR                : '^'   ;
-BXOR_ASSIGN         : '^='  | '^:=' ;
-BXOR_ASSIGN_AFTER   : '^=:' ;
+SEQUAL                          : '===' ;
+NSEQUAL                         : '=!=' | '=/=' ;
 
+LTE                             : '<='  ;
+LT_                             : '<'   ;
+GTE                             : '>='  ;
+GT                              : '>'   ;
+
+
+PLUS                            : '+'   ;
+PLUS_ASSIGN                     : '+='  | '+:=' ;
+PLUS_ASSIGN_AFTER               : '+=:' ;
+INCR                            : '++'  ;
+
+MINUS                           : '-'   ;
+MINUS_ASSIGN                    : '-='  | '-:=' ;
+MINUS_ASSIGN_AFTER              : '-=:' ;
+DECR                            : '--'  ;
+
+STAR                            : '*'   ;
+STAR_ASSIGN                     : '*='  | '*:=' ;
+STAR_ASSIGN_AFTER               : '*=:' ;
+DIV                             : '/'   ;
+DIV_ASSIGN                      : '/='  | '/:=' ;
+DIV_ASSIGN_AFTER                : '/=:' ;
+MOD                             : '%'   ;
+MOD_ASSIGN                      : '%='  | '%:=' ;
+MOD_ASSIGN_AFTER                : '%=:' ;
+
+//POW                           : "**" ;
+
+RSHIFT                          : '>>'  ;
+RSHIFT_ASSIGN                   : '>>=' | '>>:=';
+RSHIFT_ASSIGN_AFTER             : '>>=:';
+LSHIFT                          : '<<'  ;
+LSHIFT_ASSIGN                   : '<<=' | '<<:=';
+LSHIFT_ASSIGN_AFTER             : '<<=:';
+
+BAND                            : '&'   ;
+BAND_ASSIGN                     : '&='  | '&:=' ;
+BAND_ASSIGN_AFTER               : '&=:' ;
+BNOT                            : '~'   ;
+BOR                             : '|'   ;
+BOR_ASSIGN                      : '|='  | '|:=' ;
+BOR_ASSIGN_AFTER                : '|=:' ;
+BXOR                            : '^'   ;
+BXOR_ASSIGN                     : '^='  | '^:=' ;
+BXOR_ASSIGN_AFTER               : '^=:' ;
 
 
 ID
@@ -6756,12 +7124,12 @@ ID
 AT_ID
  @init{
 	ANTLR3_MARKER theStart = $start;
-	//sep::AVM_OS_DEBUG << "AT_ID:> start = " << theStart;
+//sep::AVM_OS_DEBUG << "AT_ID:> start = " << theStart;
  }
 	: '@'
 	{
 		theStart = GETCHARINDEX();
-		//sep::AVM_OS_DEBUG << "  GETCHARINDEX() = " << theStart << std::endl;
+//sep::AVM_OS_DEBUG << "  GETCHARINDEX() = " << theStart << std::endl;
 	}
 	  ('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'#'|'$')*
 	{ $start = theStart;  EMIT(); }
@@ -6774,7 +7142,7 @@ StringLiteral
  }
 	: '"'
 	{ theStart = GETCHARINDEX(); }
-	  ( ESC_SEQ | ~('\\'|'"') )*
+	  ( ESC_SEQUENCE | ~('\\'|'"') )*
 	{ $start = theStart;  EMIT(); }
 	  '"'
 	;
@@ -6785,28 +7153,22 @@ CharLiteral
  }
 	: '\''
 	{ theStart = GETCHARINDEX(); }
-	  ( ESC_SEQ | ~('\''|'\\') )
+	  ( ESC_SEQUENCE | ~('\''|'\\') )
 	{ $start = theStart;  EMIT(); }
 	  '\''
 	;
 
-
-NumberLiteral
-	: ( IntegerLiteral DOTDOT ) => IntegerLiteral   { $type=IntegerLiteral;  }
-//	| ( RationalLiteral )       => RationalLiteral  { $type=RationalLiteral; }
-	| ( FloatLiteral )          => FloatLiteral     { $type=FloatLiteral;    }
-	| IntegerLiteral                                { $type=IntegerLiteral;  }
+FloatLiteral
+	: FractionalConstant DecimalExponent? FloatingSuffix?
+	| DecimalDigits DecimalExponent DecimalDigits?
 	;
 
+RationalLiteral : IntegerLiteral  DIV  Integer;
+
+IntegerLiteral  : Integer IntSuffix?;
+
 // fragments
-fragment FloatLiteral    : Float ImaginarySuffix?;
-
-fragment RationalLiteral : IntegerLiteral  DIV  Integer;
-
-fragment IntegerLiteral  : Integer IntSuffix?;
-
-fragment FloatTypeSuffix : 'f' | 'F' | 'L';
-fragment ImaginarySuffix : 'i';
+fragment FloatingSuffix : 'f' | 'l' | 'F' | 'L';
 fragment IntSuffix       : 'L'|'u'|'U'|'Lu'|'LU'|'uL'|'UL' ;
 
 fragment Integer         : Decimal | Binary | Octal | Hexadecimal ;
@@ -6820,16 +7182,12 @@ fragment DecimalDigit    : '0'..'9' ;
 fragment OctalDigit      : '0'..'7' ;
 fragment HexDigit        : ('0'..'9'|'a'..'f'|'A'..'F') ;
 
-fragment DecimalExponent : 'e' | 'E' | 'e+' | 'E+' | 'e-' | 'E-' DecimalDigits;
+fragment DecimalExponent : ('e'|'E') ('+'|'-')? DecimalDigits;
 fragment DecimalDigits   : ( '0'..'9' | '_')+ ;
 
-fragment
-Float
-	: d=DecimalDigits
-	  ( options {greedy = true; } : FloatTypeSuffix
-	  | '.' DecimalDigits DecimalExponent?
-	  )
- 	| '.' DecimalDigits DecimalExponent?
+fragment FractionalConstant
+	: DecimalDigits? '.' DecimalDigits
+	| DecimalDigits '.'
  	;
 
 
@@ -6845,21 +7203,21 @@ HEX_DIGIT
 	;
 
 fragment
-ESC_SEQ
-	: '\\' ('b'|'t'|'n'|'f'|'r'|'\"'|'\''|'\\')
-	| UNICODE_ESC
-	| OCTAL_ESC
+ESC_SEQUENCE
+	: '\\' ('b'|'t'|'n'|'f'|'r'|'"'|'\''|'\\')
+	| UNICODE_ESCAPE
+	| OCTAL_ESCAPE
 	;
 
 fragment
-OCTAL_ESC
+OCTAL_ESCAPE
 	: '\\' ('0'..'3')  ('0'..'7')  ('0'..'7')
 	| '\\' ('0'..'7')  ('0'..'7')
 	| '\\' ('0'..'7')
 	;
 
 fragment
-UNICODE_ESC
+UNICODE_ESCAPE
 	: '\\' 'u' HEX_DIGIT  HEX_DIGIT  HEX_DIGIT  HEX_DIGIT
 	;
 

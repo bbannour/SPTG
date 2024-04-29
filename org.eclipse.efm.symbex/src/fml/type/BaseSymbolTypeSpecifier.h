@@ -18,17 +18,20 @@
 
 #include <fml/type/BaseTypeSpecifier.h>
 
-#include <common/BF.h>
-
 #include <fml/executable/InstanceOfData.h>
 
 #include <fml/symbol/TableOfSymbol.h>
+
+#include <fml/type/TypeSpecifier.h>
 
 
 namespace sep
 {
 
 class DataType;
+
+class InstanceOfData;
+
 class ObjectElement;
 
 
@@ -45,6 +48,8 @@ protected:
 	 */
 	TableOfSymbol mSymbolData;
 
+	TypeSpecifier mSuperTypeSpecifier;
+
 
 public:
 	/**
@@ -53,11 +58,12 @@ public:
 	 */
 	BaseSymbolTypeSpecifier(class_kind_t aClassKind,
 			avm_type_specifier_kind_t aSpecifierKind,
-			DataType * aCompiledType,
-			avm_size_t aSize, avm_size_t aDataSize, avm_size_t aBitSize)
-	: BaseTypeSpecifier(aClassKind, aSpecifierKind, aCompiledType,
+			const DataType & astType,
+			std::size_t aSize, std::size_t aDataSize, std::size_t aBitSize)
+	: BaseTypeSpecifier(aClassKind, aSpecifierKind, astType,
 			aSize, aDataSize, aBitSize),
-	mSymbolData()
+	mSymbolData(),
+	mSuperTypeSpecifier( )
 	{
 		//!!! NOTHING
 	}
@@ -134,13 +140,13 @@ public:
 
 
 	inline const Symbol & getDataByAstElement(
-			const ObjectElement * astElement) const
+			const ObjectElement & astElement) const
 	{
 		return( mSymbolData.getByAstElement(astElement) );
 	}
 
 
-	inline BaseTypeSpecifier * getSymbolType(avm_offset_t offset) const
+	inline const BaseTypeSpecifier & getSymbolType(avm_offset_t offset) const
 	{
 		return( mSymbolData.get(offset).getTypeSpecifier() );
 	}
@@ -153,18 +159,36 @@ public:
 
 
 	/**
+	 * GETTER - SETTER
+	 * mSuperTypeSpecifier
+	 */
+	inline const TypeSpecifier & getSuperTypeSpecifier() const
+	{
+		return( mSuperTypeSpecifier );
+	}
+
+	inline bool hasSuperTypeSpecifier() const
+	{
+		return( mSuperTypeSpecifier.valid() );
+	}
+
+	inline const void setSuperTypeSpecifier(
+			const TypeSpecifier & aSuperTypeSpecifier)
+	{
+		mSuperTypeSpecifier  = aSuperTypeSpecifier;
+	}
+
+	/**
 	 * SETTER
 	 * the Data Size
 	 */
-	inline virtual void updateSize()
+	inline virtual void updateSize() override
 	{
-		avm_size_t aDataSize = 0;
+		std::size_t aDataSize = 0;
 
-		TableOfSymbol::iterator it = getSymbolData().begin();
-		TableOfSymbol::iterator itEnd = getSymbolData().end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itSymbol : getSymbolData() )
 		{
-			aDataSize = aDataSize + (*it).getTypeSpecifier()->getDataSize();
+			aDataSize = aDataSize + itSymbol.getTypeSpecifier().getDataSize();
 		}
 
 		setDataSize( aDataSize );

@@ -24,6 +24,7 @@
 
 
 //// Default
+//#define _AVM_SOLVER_CVC5_
 //#define _AVM_SOLVER_CVC4_
 //
 //// Incubation
@@ -44,6 +45,10 @@
 
 
 //// Default
+//#if not defined( _AVM_SOLVER_CVC5_ )
+//#define _AVM_SOLVER_CVC5_
+//#endif /* _AVM_SOLVER_CVC5_ */
+//
 //#if not defined( _AVM_SOLVER_CVC4_ )
 //#define _AVM_SOLVER_CVC4_
 //#endif /* _AVM_SOLVER_CVC4_ */
@@ -75,9 +80,9 @@
 //#endif /* _AVM_SOLVER_OMEGA_ */
 
 
-//#if defined( _AVM_SOLVER_CVC4_ )
+//#if defined( _AVM_SOLVER_CVC5_ )
 //
-//#elif defined( _AVM_SOLVER_CVC3_ )
+//#elif defined( _AVM_SOLVER_CVC4_ )
 //
 //#endif /* _AVM_SOLVER_CVC_ */
 //
@@ -144,17 +149,18 @@ public:
 
 		SOLVER_Z3_KIND          = 0x00100,
 
-		SOLVER_CVC3_KIND        = 0x01000,
-		SOLVER_CVC3_BV32_KIND   = 0x02000,
+		SOLVER_CVC4_KIND        = 0x01000,
+		SOLVER_CVC4_BV32_KIND   = 0x02000,
 
-		SOLVER_CVC4_KIND        = 0x04000,
-		SOLVER_CVC4_BV32_KIND   = 0x08000,
+		SOLVER_CVC5_KIND        = 0x04000,
+		SOLVER_CVC5_BV32_KIND   = 0x08000,
 
-		SOLVER_CVC_KIND         = SOLVER_CVC3_KIND
-	                            | SOLVER_CVC4_KIND,
 
-		SOLVER_CVC_BV_KIND      = SOLVER_CVC3_BV32_KIND
-								| SOLVER_CVC4_BV32_KIND
+		SOLVER_CVC_KIND         = SOLVER_CVC4_KIND
+	                            | SOLVER_CVC5_KIND,
+
+		SOLVER_CVC_BV_KIND      = SOLVER_CVC4_BV32_KIND
+								| SOLVER_CVC5_BV32_KIND
 	};
 
 

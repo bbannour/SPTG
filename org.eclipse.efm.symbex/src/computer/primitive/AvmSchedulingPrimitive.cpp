@@ -38,16 +38,16 @@ namespace sep
  */
 bool AvmPrimitive_Exclusive::run(ExecutionEnvironment & ENV)
 {
-	ENV.inED->setEnabledLocalNodeCondition( true );
+	ENV.inED.setEnabledLocalNodeCondition( true );
 
-	ListOfAPExecutionData oneListOfED;
-	ListOfAPExecutionData resultListOfED;
+	ListOfExecutionData oneListOfED;
+	ListOfExecutionData resultListOfED;
 
-	AvmCode::const_iterator it = ENV.inCODE->begin();
-	AvmCode::const_iterator itEnd = ENV.inCODE->end();
+	AvmCode::const_iterator itOperand = ENV.inCODE->begin();
+	AvmCode::const_iterator endOperand = ENV.inCODE->end();
 
 	// Initialisation du process
-	ExecutionEnvironment tmpENV(ENV, *it);
+	ExecutionEnvironment tmpENV(ENV, *itOperand);
 	if( not tmpENV.run() )
 	{
 		return( false );
@@ -55,9 +55,9 @@ bool AvmPrimitive_Exclusive::run(ExecutionEnvironment & ENV)
 	oneListOfED.splice( tmpENV.outEDS );
 
 	// Recurrence
-	for( ++it ; it != itEnd ; ++it )
+	for( ++itOperand ; itOperand != endOperand ; ++itOperand )
 	{
-		if( not tmpENV.run(*it) )
+		if( not tmpENV.run(*itOperand) )
 		{
 			return( false );
 		}
@@ -74,20 +74,18 @@ bool AvmPrimitive_Exclusive::run(ExecutionEnvironment & ENV)
 
 		else
 		{
-			ListOfAPExecutionData::iterator itOther = tmpENV.outEDS.begin();
-			ListOfAPExecutionData::iterator endOther = tmpENV.outEDS.end();
-			for( ; itOther != endOther ; ++itOther )
+			for( auto & itOtherED : tmpENV.outEDS )
 			{
 				// Compute OTHER where NOT ONE
 				if( not evalExclusive(ENV.inED,
-						oneListOfED, (*itOther), resultListOfED) )
+						oneListOfED, itOtherED, resultListOfED) )
 				{
 					//return( false );
 				}
 
 				// Compute ONE where NOT OTHERS
 				if( not evalExclusive(ENV.inED,
-						(*itOther), oneListOfED, resultListOfED) )
+						itOtherED, oneListOfED, resultListOfED) )
 				{
 					//return( false );
 				}
@@ -99,13 +97,13 @@ bool AvmPrimitive_Exclusive::run(ExecutionEnvironment & ENV)
 
 		while( resultListOfED.nonempty() )
 		{
-			resultListOfED.last()->setEnabledLocalNodeCondition( false );
+			resultListOfED.last().setEnabledLocalNodeCondition( false );
 
 			oneListOfED.append( resultListOfED.pop_last() );
 		}
 	}
 
-	ENV.inED->setEnabledLocalNodeCondition( false );
+	ENV.inED.setEnabledLocalNodeCondition( false );
 
 	ENV.outEDS.splice( oneListOfED );
 
@@ -122,10 +120,9 @@ bool AvmPrimitive_Exclusive::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_Nondeterminism::run(ExecutionEnvironment & ENV)
 {
-	AvmCode::const_iterator endIt = ENV.inCODE->end();
-	for( AvmCode::const_iterator it = ENV.inCODE->begin() ; it != endIt ; ++it )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		ENV.run( *it );
+		ENV.run( itOperand );
 	}
 
 	return( true );
@@ -139,14 +136,14 @@ bool AvmPrimitive_Nondeterminism::run(ExecutionEnvironment & ENV)
  */
 bool AvmPrimitive_Prior::run(ExecutionEnvironment & ENV)
 {
-	APExecutionData tmpED;
+	ExecutionData tmpED;
 
 	BF aPathCondition;
 	BF aPriorityCondition = ExpressionConstant::BOOLEAN_TRUE;
 
 	BFCode theNodeCondition( OperatorManager::OPERATOR_OR );
 
-	BF saveParamsRF = ENV.inED->bfParametersRuntimeForm();
+	BF saveParamsRF = ENV.inED.bfParametersRuntimeForm();
 
 	BF bfUpdateParamsRF = saveParamsRF;
 	bfUpdateParamsRF.makeWritable();
@@ -154,13 +151,12 @@ bool AvmPrimitive_Prior::run(ExecutionEnvironment & ENV)
 			bfUpdateParamsRF.to_ptr< ParametersRuntimeForm >();
 
 	// Recurrence
-	AvmCode::const_iterator itEnd = ENV.inCODE->end();
-	for( AvmCode::const_iterator it = ENV.inCODE->begin() ; it != itEnd ; ++it )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		ENV.inED->assignParametersRuntimeForm( bfUpdateParamsRF );
+		ENV.inED.assignParametersRuntimeForm( bfUpdateParamsRF );
 
-		ExecutionEnvironment tmpENV(ENV, *it);
-		tmpENV.inED->setEnabledLocalNodeCondition( true );
+		ExecutionEnvironment tmpENV(ENV, itOperand);
+		tmpENV.inED.setEnabledLocalNodeCondition( true );
 
 		tmpENV.run();
 
@@ -172,16 +168,16 @@ bool AvmPrimitive_Prior::run(ExecutionEnvironment & ENV)
 
 				if( aPriorityCondition.isEqualTrue() )
 				{
-					aPathCondition = tmpED->getPathCondition();
+					aPathCondition = tmpED.getPathCondition();
 				}
-				else if( tmpED->getPathCondition().isEqualTrue() )
+				else if( tmpED.getPathCondition().isEqualTrue() )
 				{
 					aPathCondition = aPriorityCondition;
 				}
 				else
 				{
 					aPathCondition = ExpressionConstructor::andExpr(
-							aPriorityCondition, tmpED->getPathCondition());
+							aPriorityCondition, tmpED.getPathCondition());
 
 					if( not PathConditionProcessor::isWeakSatisfiable(
 							aPathCondition) )
@@ -190,26 +186,26 @@ bool AvmPrimitive_Prior::run(ExecutionEnvironment & ENV)
 
 AVM_IF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 	AVM_OS_TRACE << "PATH CONDITION : "
-			<< tmpED->getPathCondition().str() << std::endl
+			<< tmpED.getPathCondition().str() << std::endl
 			<< "PRIORITY CONDITION : " << aPriorityCondition.str() << std::endl
 			<< "FIREABLE CONDITION : " << aPathCondition.str()     << std::endl
 			<< "THROW UNSATISFIED << PRIOR CONDITION >> : "
-			<< tmpED->mRID.strUniqId() << " |=> " << (*it).str() << std::endl;
+			<< tmpED.getRID().strUniqId() << " |=> " << itOperand.str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 					}
 				}
 
 				if( aPathCondition.isNotEqualFalse() )
 				{
-					if( tmpED->getAllNodeCondition().isNotEqualTrue() )
+					if( tmpED.getAllNodeCondition().isNotEqualTrue() )
 					{
-						theNodeCondition->append( tmpED->getAllNodeCondition() );
+						theNodeCondition->append( tmpED.getAllNodeCondition() );
 
-						updateParamsRF->update( tmpED->getAllNodeCondition() );
+						updateParamsRF->update( tmpED.getAllNodeCondition() );
 					}
 
-					tmpED->setPathCondition( aPathCondition );
-					tmpED->setEnabledLocalNodeCondition( false );
+					tmpED.setPathCondition( aPathCondition );
+					tmpED.setEnabledLocalNodeCondition( false );
 
 					ENV.outEDS.append( tmpED );
 				}
@@ -221,16 +217,16 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 
 				if( aPriorityCondition.isEqualTrue() )
 				{
-					aPathCondition = tmpED->getPathCondition();
+					aPathCondition = tmpED.getPathCondition();
 				}
-				else if( tmpED->getPathCondition().isEqualTrue() )
+				else if( tmpED.getPathCondition().isEqualTrue() )
 				{
 					aPathCondition = aPriorityCondition;
 				}
 				else
 				{
 					aPathCondition = ExpressionConstructor::andExpr(
-							aPriorityCondition, tmpED->getPathCondition());
+							aPriorityCondition, tmpED.getPathCondition());
 
 					if( not PathConditionProcessor::isWeakSatisfiable(
 							aPathCondition) )
@@ -239,39 +235,39 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 
 AVM_IF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 	AVM_OS_TRACE << "PATH CONDITION : "
-			<< tmpED->getPathCondition().str() << std::endl
+			<< tmpED.getPathCondition().str() << std::endl
 			<< "PRIORITY CONDITION : " << aPriorityCondition.str() << std::endl
 			<< "FIREABLE CONDITION : " << aPathCondition.str()     << std::endl
 			<< "THROW UNSATISFIED << PRIOR CONDITION >> : "
-			<< tmpED->mRID.strUniqId() << " |=> " << (*it).str() << std::endl;
+			<< tmpED.getRID().strUniqId() << " |=> " << itOperand.str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 					}
 				}
 
 				if( aPathCondition.isNotEqualFalse() )
 				{
-					if( tmpED->getAllNodeCondition().isNotEqualTrue() )
+					if( tmpED.getAllNodeCondition().isNotEqualTrue() )
 					{
-						theNodeCondition->append( tmpED->getAllNodeCondition() );
+						theNodeCondition->append( tmpED.getAllNodeCondition() );
 
-						updateParamsRF->update( tmpED->getAllNodeCondition() );
+						updateParamsRF->update( tmpED.getAllNodeCondition() );
 					}
 
-					tmpED->setPathCondition( aPathCondition );
-					tmpED->setEnabledLocalNodeCondition( false );
+					tmpED.setPathCondition( aPathCondition );
+					tmpED.setEnabledLocalNodeCondition( false );
 
 					ENV.exitEDS.append( tmpED );
 				}
 			}
 
 
-			if( theNodeCondition->empty() )
+			if( theNodeCondition->noOperand() )
 			{
 				//aPriorityCondition = ExpressionConstant::BOOLEAN_FALSE; // <=> not true
 				break;
 			}
 
-			else if( theNodeCondition->populated() )
+			else if( theNodeCondition->hasManyOperands() )
 			{
 				aPriorityCondition = ExpressionConstructor::notExpr(
 						theNodeCondition );
@@ -279,7 +275,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 			else
 			{
 				aPriorityCondition = ExpressionConstructor::notExpr(
-						theNodeCondition->pop_last() );
+						theNodeCondition->getOperands().pop_last() );
 			}
 
 			if( not PathConditionProcessor::isWeakSatisfiable(
@@ -296,7 +292,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT_TEST_DECISION )
 		ENV.spliceNotOutput( tmpENV );
 	}
 
-	ENV.inED->assignParametersRuntimeForm( saveParamsRF );
+	ENV.inED.assignParametersRuntimeForm( saveParamsRF );
 
 
 	return( true );
@@ -314,14 +310,12 @@ bool AvmPrimitive_ScheduleAndThen::run(ExecutionEnvironment & ENV)
 
 	tmpENV.outEDS.append(tmpENV.inED);
 
-	AvmCode::const_iterator itArg = ENV.inCODE->begin();
-	AvmCode::const_iterator endArg = ENV.inCODE->end();
-	for( ; itArg != endArg ; ++itArg )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		if( tmpENV.runFromOutputs( (*itArg).bfCode() ) )
+		if( tmpENV.runFromOutputs( itOperand.bfCode() ) )
 		{
-			if( tmpENV.outEDS.empty()  && tmpENV.exitEDS.empty() &&
-				tmpENV.syncEDS.empty() && tmpENV.irqEDS.empty() )
+			if( tmpENV.outEDS.empty() && tmpENV.exitEDS.empty() &&
+				tmpENV.irqEDS.empty() && tmpENV.syncEDS.empty() )
 			{
 				break;
 			}
@@ -347,14 +341,12 @@ bool AvmPrimitive_ScheduleOrElse::run(ExecutionEnvironment & ENV)
 {
 	ExecutionEnvironment tmpENV(ENV, BF::REF_NULL);
 
-	AvmCode::const_iterator itArg = ENV.inCODE->begin();
-	AvmCode::const_iterator endArg = ENV.inCODE->end();
-	for( ; itArg != endArg ; ++itArg )
+	for( const auto & itOperand : ENV.inCODE.getOperands() )
 	{
-		if( tmpENV.run( (*itArg).bfCode() ) )
+		if( tmpENV.run( itOperand.bfCode() ) )
 		{
-			if( tmpENV.outEDS.nonempty()  || tmpENV.exitEDS.nonempty() ||
-				tmpENV.syncEDS.nonempty() || tmpENV.irqEDS.nonempty() )
+			if( tmpENV.outEDS.nonempty() || tmpENV.exitEDS.nonempty() ||
+				tmpENV.irqEDS.nonempty() || tmpENV.syncEDS.nonempty() )
 			{
 				ENV.spliceOutput( tmpENV );
 

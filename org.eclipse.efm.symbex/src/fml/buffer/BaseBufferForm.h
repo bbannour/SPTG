@@ -15,9 +15,7 @@
 
 #include <common/Element.h>
 
-#include <common/AvmPointer.h>
-
-#include <collection/Typedef.h>
+#include <collection/List.h>
 
 #include <fml/executable/InstanceOfBuffer.h>
 #include <fml/executable/InstanceOfPort.h>
@@ -34,8 +32,7 @@ namespace sep
 class RuntimeID;
 
 
-class BaseBufferForm :
-		public Element ,
+class BaseBufferForm : public Element ,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( BaseBufferForm )
 {
 
@@ -43,7 +40,7 @@ protected:
 	/**
 	 * ATTRIBUTE
 	 */
-	InstanceOfBuffer * mBufferIntance;
+	const InstanceOfBuffer & mBufferIntance;
 
 
 public:
@@ -51,7 +48,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	BaseBufferForm(class_kind_t aClassKind, InstanceOfBuffer * aBuffer)
+	BaseBufferForm(class_kind_t aClassKind, const InstanceOfBuffer & aBuffer)
 	: Element( aClassKind ),
 	mBufferIntance( aBuffer )
 	{
@@ -84,7 +81,7 @@ public:
 	/**
 	 * CLONE
 	 */
-	virtual BaseBufferForm * clone() const = 0;
+	virtual BaseBufferForm * clone() const override = 0;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -104,7 +101,7 @@ public:
 
 	virtual bool full() const = 0;
 
-	virtual avm_size_t size() const = 0;
+	virtual std::size_t size() const override = 0;
 
 	/**
 	 * Comparison
@@ -118,8 +115,8 @@ public:
 	 */
 	virtual void clear() = 0;
 
-	virtual void resize(avm_size_t newSize) = 0;
-	virtual void resize(avm_size_t newSize, const Message & aMsg) = 0;
+	virtual void resize(std::size_t newSize) = 0;
+	virtual void resize(std::size_t newSize, const Message & aMsg) = 0;
 
 	/**
 	 * push
@@ -130,11 +127,11 @@ public:
 	virtual bool top(const Message & aMsg) = 0;
 
 	virtual const Message & top() const = 0;
-	virtual const Message & top(avm_size_t mid,
+	virtual const Message & top(std::size_t mid,
 			const RuntimeID & aReceiverRID
 					= RuntimeID::REF_NULL) const = 0;
 
-	inline virtual bool isTop(avm_size_t mid,
+	inline virtual bool isTop(std::size_t mid,
 			const RuntimeID & aReceiverRID
 					= RuntimeID::REF_NULL) const
 	{
@@ -145,7 +142,7 @@ public:
 	 * contains
 	 * uncontains
 	 */
-	virtual bool contains(avm_size_t mid,
+	virtual bool contains(std::size_t mid,
 			const RuntimeID & aReceiverRID
 					= RuntimeID::REF_NULL) const = 0;
 
@@ -166,7 +163,16 @@ public:
 	 */
 	virtual Message pop() = 0;
 
-	virtual Message pop(avm_size_t mid,
+	virtual Message pop(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) = 0;
+
+	inline virtual Message pop(std::size_t mid, std::size_t minOccurrence,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+	{
+		return( pop(mid, aReceiverRID) );
+	}
+
+	virtual void pop(std::size_t mid, List< Message > & messages,
 			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) = 0;
 
 
@@ -194,22 +200,42 @@ public:
 	/**
 	 * Serialize
 	 */
-	virtual void toFscn(OutStream & os, const RuntimeID & aRID,
-			const BaseBufferForm * prevBuf = NULL) const = 0;
+	virtual void toStreamValue(OutStream & out) const = 0;
+
+	inline std::string strValue() const
+	{
+		StringOutStream oss(AVM_STR_INDENT);
+
+		toStreamValue( oss );
+
+		return( oss.str() );
+	}
+
+	virtual void toFscn(OutStream & out, const RuntimeID & aRID,
+			const BaseBufferForm * prevBuf = nullptr) const = 0;
 
 
 	/**
 	 * GETTER - SETTER
 	 * theInstance
 	 */
-	inline InstanceOfBuffer * getInstance() const
+	inline const InstanceOfBuffer & getInstance() const
 	{
 		return( mBufferIntance );
 	}
 
-	inline bool hasInstance() const
+	/**
+	 * GETTER
+	 * mPolicySpecifierKind
+	 */
+	inline bool hasDeterministicPolicy() const
 	{
-		return( mBufferIntance != NULL );
+		return( mBufferIntance.hasDeterministicPolicy() );
+	}
+
+	inline bool hasNonDeterministicPolicy() const
+	{
+		return( mBufferIntance.hasNonDeterministicPolicy() );
 	}
 
 };

@@ -80,7 +80,7 @@ public:
 		simplif();
 	}
 
-	// avm_integer_t / avm_integer_t  i.e.  avm_int64_t / avm_int64_t
+	// avm_integer_t / avm_integer_t  i.e.  std::int64_t / std::int64_t
 	Rational(avm_integer_t aNumerator, avm_integer_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -90,7 +90,7 @@ public:
 		simplif();
 	}
 
-	// avm_integer_t / avm_uinteger_t  i.e.  avm_int64_t / avm_uint64_t
+	// avm_integer_t / avm_uinteger_t  i.e.  std::int64_t / std::uint64_t
 	Rational(avm_integer_t aNumerator, avm_uinteger_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -100,7 +100,7 @@ public:
 		simplif();
 	}
 
-	// avm_uinteger_t / avm_integer_t  i.e.  avm_uint64_t / avm_int64_t
+	// avm_uinteger_t / avm_integer_t  i.e.  std::uint64_t / std::int64_t
 	Rational(avm_uinteger_t aNumerator, avm_integer_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -110,7 +110,7 @@ public:
 		simplif();
 	}
 
-	// avm_uinteger_t / avm_uinteger_t  i.e.  avm_uint64_t / avm_uint64_t
+	// avm_uinteger_t / avm_uinteger_t  i.e.  std::uint64_t / std::uint64_t
 	Rational(avm_uinteger_t aNumerator, avm_uinteger_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -120,7 +120,7 @@ public:
 		//!! NOTHING
 	}
 
-	// std::string / avm_integer_t  i.e.  std::string / avm_int64_t
+	// std::string / avm_integer_t  i.e.  std::string / std::int64_t
 	Rational(const std::string & aNumerator, avm_integer_t aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -130,7 +130,7 @@ public:
 		simplif();
 	}
 
-	// avm_integer_t / std::string  i.e.  avm_int64_t / std::string
+	// avm_integer_t / std::string  i.e.  std::int64_t / std::string
 	Rational(avm_integer_t aNumerator, const std::string & aDenominator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType(
@@ -166,7 +166,7 @@ public:
 		simplif();
 	}
 
-	// avm_integer_t i.e. avm_int64_t
+	// avm_integer_t i.e. std::int64_t
 	Rational(avm_integer_t aNumerator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType( Integer::RawValueType( aNumerator ) ) )
@@ -174,7 +174,7 @@ public:
 		simplif();
 	}
 
-	// avm_uinteger_t i.e. avm_uint64_t
+	// avm_uinteger_t i.e. std::uint64_t
 	Rational(avm_uinteger_t aNumerator)
 	: Number( CLASS_KIND_T( Rational ) ),
 	ThisNumberClass( RawValueType( Integer::RawValueType( aNumerator ) ) )
@@ -243,18 +243,21 @@ public:
 
 	inline static void fromString(RawValueType & rop, const std::string & aValue)
 	{
-		std::string::size_type pos = aValue.find('/');
+		std::string::size_type pos = aValue.find_first_of("/.");
 		if( pos != std::string::npos)
 		{
-			rop = RawValueType( aValue );
-		}
-		else if( (pos = aValue.find('.')) != std::string::npos )
-		{
-			Integer aNumer( std::string(aValue).erase(pos, 1) );
+			if( aValue[pos] == '/' )
+			{
+				rop = RawValueType( aValue );
+			}
+			else //if( aValue[pos] == '.' )
+			{
+				Integer aNumer( std::string(aValue).erase(pos, 1) );
 
-			Integer aDenom = Integer::pow(10, aValue.size() - (pos + 1));
+				Integer aDenom = Integer::pow(10, aValue.size() - (pos + 1));
 
-			rop = RawValueType( aNumer.getValue(), aDenom.getValue() );
+				rop = RawValueType( aNumer.getValue(), aDenom.getValue() );
+			}
 		}
 		else
 		{
@@ -329,22 +332,22 @@ public:
 	/**
 	 * BASICS TESTS
 	 */
-	virtual inline int sign() const
+	inline virtual int sign() const
 	{
 		return( ThisNumberClass::mValue.sign() );
 	}
 
-	virtual inline bool isZero() const
+	inline virtual bool isZero() const
 	{
 		return( ThisNumberClass::mValue.is_zero() );
 	}
 
-	virtual inline bool isOne() const
+	inline virtual bool isOne() const
 	{
 		return( ThisNumberClass::mValue == 1 );
 	}
 
-	virtual inline bool isNegativeOne() const
+	inline virtual bool isNegativeOne() const
 	{
 		return( ThisNumberClass::mValue == -1 );
 	}
@@ -368,24 +371,24 @@ public:
 	inline virtual bool isInt32() const
 	{
 		return( CPP_RAT_IS_INTEGER(
-				rawNumerator(), rawDenominator(), avm_int32_t) );
+				rawNumerator(), rawDenominator(), std::int32_t) );
 	}
 
-	inline virtual avm_int32_t toInt32() const
+	inline virtual std::int32_t toInt32() const
 	{
-		return( ThisNumberClass::mValue.convert_to< avm_int32_t >() );
+		return( ThisNumberClass::mValue.convert_to< std::int32_t >() );
 	}
 
 
 	inline virtual bool isInt64() const
 	{
 		return( CPP_RAT_IS_INTEGER(
-				rawNumerator(), rawDenominator(), avm_int64_t) );
+				rawNumerator(), rawDenominator(), std::int64_t) );
 	}
 
-	inline virtual avm_int64_t toInt64() const
+	inline virtual std::int64_t toInt64() const
 	{
-		return( ThisNumberClass::mValue.convert_to< avm_int64_t >() );
+		return( ThisNumberClass::mValue.convert_to< std::int64_t >() );
 	}
 
 
@@ -494,7 +497,7 @@ public:
 		os << EOL_FLUSH;
 	}
 
-	virtual std::string str() const
+	virtual std::string str() const override
 	{
 		if( rawDenominator() != 1 )
 		{
@@ -507,7 +510,7 @@ public:
 	}
 
 	inline virtual std::string strNum(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const
 	{
 		if( rawDenominator() != 1 )
 		{
@@ -520,13 +523,13 @@ public:
 	}
 
 	inline virtual std::string strNumerator(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const
 	{
 		return( OSS() << rawNumerator() );
 	}
 
 	inline virtual std::string strDenominator(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const
 	{
 		return( OSS() << rawDenominator() );
 	}

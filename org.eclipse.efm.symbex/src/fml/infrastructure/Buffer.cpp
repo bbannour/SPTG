@@ -30,20 +30,21 @@ std::string Buffer::ANONYM_ID = "_#buffer";
  * Default
  */
 Buffer::Buffer(Machine * aContainer, const std::string & id,
-		avm_type_specifier_kind_t aSpecifierKind, int aSize)
+		avm_type_specifier_kind_t aSpecifierKind, long aCapacity)
 : PropertyElement(CLASS_KIND_T( Buffer ), aContainer, id),
 mPolicySpecifierKind( aSpecifierKind ),
-mSize( aSize ),
+mCapacity( ( aCapacity < 0 ) ?  AVM_NUMERIC_MAX_SIZE_T : aCapacity
+		),
 mMessage( )
 {
 	//!! NOTHING
 }
 
 Buffer::Buffer(const PropertyPart & aPropertyPart, const std::string & id,
-		avm_type_specifier_kind_t aSpecifierKind, int aSize)
+		avm_type_specifier_kind_t aSpecifierKind, long aCapacity)
 : PropertyElement(CLASS_KIND_T( Buffer ), aPropertyPart.getContainer(), id),
 mPolicySpecifierKind( aSpecifierKind ),
-mSize( aSize ),
+mCapacity( ( aCapacity < 0 ) ?  AVM_NUMERIC_MAX_SIZE_T : aCapacity ),
 mMessage( )
 {
 	//!! NOTHING
@@ -122,35 +123,35 @@ std::string Buffer::str(avm_type_specifier_kind_t aSpecifierKind, long aSize)
 	{
 		case TYPE_FIFO_SPECIFIER:
 		{
-			os << "fifo<";
+			os << "fifo[";
 			break;
 		}
 		case TYPE_LIFO_SPECIFIER:
 		{
-			os << "lifo<";
+			os << "lifo[";
 			break;
 		}
 
 		case TYPE_MULTI_FIFO_SPECIFIER:
 		{
-			os << "multififo<";
+			os << "multififo[";
 			break;
 		}
 		case TYPE_MULTI_LIFO_SPECIFIER:
 		{
-			os << "multilifo<";
+			os << "multilifo[";
 			break;
 		}
 
 		case TYPE_MULTISET_SPECIFIER:
 		{
-			os << "multiset<";
+			os << "multiset[";
 			break;
 		}
 
 		case TYPE_SET_SPECIFIER:
 		{
-			os << "set<";
+			os << "set[";
 			break;
 		}
 
@@ -176,11 +177,11 @@ std::string Buffer::str(avm_type_specifier_kind_t aSpecifierKind, long aSize)
 	{
 		if( aSize > 0 )
 		{
-			os << aSize << ">";
+			os << aSize << "]";
 		}
 		else
 		{
-			os << "*>";
+			os << "*]";
 		}
 	}
 
@@ -188,42 +189,47 @@ std::string Buffer::str(avm_type_specifier_kind_t aSpecifierKind, long aSize)
 }
 
 
-void Buffer::strMessage(OutStream & os) const
+void Buffer::strMessage(OutStream & out) const
 {
 	if( mMessage.nonempty() )
 	{
 		BFList::const_iterator it = mMessage.begin();
 		BFList::const_iterator endIt = mMessage.end();
 
-		os << "[ " << (*it).str();
+		out << "[ " << (*it).str();
 		for( ++it ; it != endIt ; ++it )
 		{
-			os << " , " << (*it).str();
+			out << " , " << (*it).str();
 		}
-		os << " ]";
+		out << " ]";
 	}
 }
 
 
-void Buffer::strHeader(OutStream & os) const
+void Buffer::strHeader(OutStream & out) const
 {
-	os << getModifier().toString() << "buffer "
-			<< Buffer::str(mPolicySpecifierKind, mSize)
-			<< " " << getNameID() ;
+	out << getModifier().toString() << "buffer "
+		<< Buffer::str(mPolicySpecifierKind, realCapacity())
+		<< " " << getNameID() ;
 
-	strMessage( os );
+	strMessage( out );
 }
 
 
-void Buffer::toStream(OutStream & os) const
+void Buffer::toStream(OutStream & out) const
 {
-	os << TAB << getModifier().toString() << "buffer "
-			<< Buffer::str(mPolicySpecifierKind, mSize)
+	out << TAB << getModifier().toString() << "buffer "
+			<< Buffer::str(mPolicySpecifierKind, realCapacity())
 			<< " " << getNameID();
 
-	strMessage( os );
+	if( hasReallyUnrestrictedName() )
+	{
+		out << " \"" << getUnrestrictedName() << "\"";
+	}
 
-	os << ";" << EOL_FLUSH;
+	strMessage( out );
+
+	out << ";" << EOL_FLUSH;
 }
 
 

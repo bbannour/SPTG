@@ -13,11 +13,10 @@
 #ifndef SEW_SYMBEX_DISPATCHER_H_
 #define SEW_SYMBEX_DISPATCHER_H_
 
-#include <common/AvmPointer.h>
 #include <common/RunnableElement.h>
 
 #include <sew/SymbexController.h>
-#include <sew/SymbexEventManager.h>
+#include <sew/SymbexControllerEventManager.h>
 #include <sew/SymbexProcessor.h>
 #include <sew/SymbexControllerRequestManager.h>
 
@@ -52,7 +51,7 @@ protected:
 
 	SymbexControllerUnitManager & mControllerUnitManager;
 
-	SymbexEventManager mSymbexEventManager;
+	SymbexControllerEventManager mSymbexControllerEventManager;
 
 	SymbexControllerRequestManager mSymbexControllerRequestManager;
 
@@ -60,9 +59,14 @@ protected:
 
 	SymbexController mSymbexController;
 
-	avm_uint32_t mNextEvalNumber;
+	std::uint32_t mSymbexStepCount;
 
-	avm_uint32_t mGlobalGraphWidth;
+	std::uint32_t mNextEvalNumber;
+
+	std::uint32_t mGlobalGraphWidth;
+
+	ListOfExecutionContext mLastEvalContexts;
+	ListOfExecutionContext mLastResultContexts;
 
 
 public:
@@ -70,13 +74,14 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	SymbexDispatcher(SymbexEngine & anEngine, WObject * wfParameterObject,
+	SymbexDispatcher(SymbexEngine & anEngine, const WObject * wfParameterObject,
 			SymbexControllerUnitManager & aControllerUnitManager)
 	: RunnableElement( wfParameterObject ),
 	mSymbexEngine( anEngine ),
 	mControllerUnitManager( aControllerUnitManager ),
 
-	mSymbexEventManager( ),
+	mSymbexControllerEventManager( (*this) ,
+			wfParameterObject , aControllerUnitManager ),
 
 	mSymbexControllerRequestManager( (*this) ,
 			wfParameterObject , aControllerUnitManager ),
@@ -84,11 +89,16 @@ public:
 	mSymbexProcessor( (*this) ,
 			wfParameterObject , aControllerUnitManager ),
 
-	mSymbexController ( (*this) ,
+	mSymbexController( (*this) ,
 			wfParameterObject , aControllerUnitManager ),
 
-	mNextEvalNumber( 0 ),
-	mGlobalGraphWidth( 1 )
+	mSymbexStepCount( 0 ),
+	mNextEvalNumber ( 0 ),
+
+	mGlobalGraphWidth( 1 ),
+
+	mLastEvalContexts( ),
+	mLastResultContexts( )
 	{
 		//!! NOTHING
 	}
@@ -99,46 +109,57 @@ public:
 	virtual ~SymbexDispatcher()
 	{
 		// Unregistration
-		mSymbexEventManager.unregisterHandlerEventDestroyCtx(this);
+		mSymbexControllerEventManager.unregisterHandlerEventDestroyCtx(this);
 	}
 
 
 	/**
 	 * CONFIGURE
 	 */
-	bool configure();
+	bool configure() override;
 
 
 	/**
 	 * REPORT TRACE
 	 */
-	inline virtual void report(OutStream & os) const
+	inline virtual void report(OutStream & os) const override
 	{
 		mSymbexProcessor.report(os);
 
 		mSymbexController.report(os);
 	}
 
+	// Due to [-Woverloaded-virtual=]
+	using RunnableElement::report;
+
 
 	/**
 	 * INIT - EXIT
 	 */
-	virtual bool initImpl();
+	virtual bool initImpl() override;
 
-	virtual bool exitImpl();
+	virtual bool exitImpl() override;
 
 
 	/**
 	 * PRE - POST PROCESS
 	 */
-	bool preprocess();
+	virtual bool preprocess() override;
 
-	bool postprocess();
+	virtual bool postprocess() override;
 
 	/**
 	 * start
 	 */
 	void start();
+
+	void initStep();
+
+	void runStep();
+
+	void runStep(ExecutionContext & anEC);
+
+	void runStep(ExecutionContext & anEC, const BF & aRunnableElement);
 
 	/**
 	 * Has Work
@@ -151,7 +172,7 @@ public:
 
 	inline bool hasReadyWork() const
 	{
-		return( mSymbexControllerRequestManager.hasntRequestStop()
+		return( mSymbexControllerRequestManager.hasnoRequestStop()
 				&& mControllerUnitManager.hasReadyWork() );
 	}
 
@@ -189,11 +210,11 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * mSymbexEventManager
+	 * mSymbexControllerEventManager
 	 */
-	inline SymbexEventManager & getSymbexEventManager()
+	inline SymbexControllerEventManager & getSymbexEventManager()
 	{
-		return( mSymbexEventManager );
+		return( mSymbexControllerEventManager );
 	}
 
 
@@ -235,7 +256,7 @@ public:
 	 * HANDLER for Event Notification
 	 * Destroy Execution Context
 	 */
-	inline virtual void handleEventDestroyCtx(ExecutionContext * anEC)
+	inline virtual void handleEventDestroyCtx(ExecutionContext * anEC) override
 	{
 		mSymbexController.removeSymbexContext(anEC);
 
@@ -245,14 +266,29 @@ public:
 
 	/**
 	 * GETTER - SETTER
+	 * mSymbexStepCount
+	 */
+	inline std::uint32_t getSymbexStepCount() const
+	{
+		return( mSymbexStepCount );
+	}
+
+	inline void incrSymbexStepCount()
+	{
+		++mSymbexStepCount;
+	}
+
+
+	/**
+	 * GETTER - SETTER
 	 * mNextEvalNumber
 	 */
-	inline avm_uint32_t getEvalNumber() const
+	inline std::uint32_t getEvalNumber() const
 	{
 		return( mNextEvalNumber );
 	}
 
-	inline avm_uint32_t nextEvalNumber()
+	inline std::uint32_t nextEvalNumber()
 	{
 		return( ++mNextEvalNumber );
 	}
@@ -262,14 +298,30 @@ public:
 	 * GETTER - SETTER
 	 * mGlobalGraphWidth
 	 */
-	inline avm_uint32_t getGlobalGraphWidth() const
+	inline std::uint32_t getGlobalGraphWidth() const
 	{
 		return( mGlobalGraphWidth );
 	}
 
-	inline avm_uint32_t nextGlobalGraphWidth()
+	inline std::uint32_t nextGlobalGraphWidth()
 	{
 		return( ++mGlobalGraphWidth );
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * mLastEvalContexts
+	 * mLastResultContexts
+	 */
+	inline ListOfExecutionContext & getLastEvalContexts()
+	{
+		return( mLastEvalContexts );
+	}
+
+	inline ListOfExecutionContext & getLastResultContexts()
+	{
+		return( mLastResultContexts );
 	}
 
 

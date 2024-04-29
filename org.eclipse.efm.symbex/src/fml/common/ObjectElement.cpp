@@ -12,6 +12,10 @@
  ******************************************************************************/
 #include "ObjectElement.h"
 
+#include <common/BF.h>
+
+#include <fml/executable/BaseInstanceForm.h>
+
 #include <fml/infrastructure/Machine.h>
 #include <fml/infrastructure/Package.h>
 
@@ -34,7 +38,7 @@ bool ObjectElement::USE_ONLY_ID = false;
 std::string ObjectElement::makeFullyQualifiedNameID(
 		const ObjectElement * aContainer, const std::string & aNameID)
 {
-	if( aContainer == NULL )
+	if( aContainer == nullptr )
 	{
 		return( FQN_ID_ROOT_SEPARATOR + aNameID );
 	}
@@ -56,18 +60,23 @@ std::string ObjectElement::makeFullyQualifiedNameID(
  * GETTER
  * the first Machine container
  */
+bool ObjectElement::isContainerMachine() const
+{
+	return( (mContainer != nullptr) && mContainer->is< Machine >() );
+}
+
 Machine * ObjectElement::getContainerMachine() const
 {
 	ObjectElement * container = getContainer();
-	for( ; container != NULL ; container = container->getContainer() )
+	for( ; container != nullptr ; container = container->getContainer() )
 	{
 		if( container->is< Machine >() )
 		{
-			return( container->to< Machine >() );
+			return( container->to_ptr< Machine >() );
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
 }
 
 /**
@@ -77,15 +86,59 @@ Machine * ObjectElement::getContainerMachine() const
 PropertyElement * ObjectElement::getContainerProperty() const
 {
 	ObjectElement * container = getContainer();
-	for( ; container != NULL ; container = container->getContainer() )
+	for( ; container != nullptr ; container = container->getContainer() )
 	{
 		if( container->is< PropertyElement >() )
 		{
-			return( container->to< PropertyElement >() );
+			return( container->to_ptr< PropertyElement >() );
 		}
 	}
 
-	return( NULL );
+	return( nullptr );
+}
+
+
+/**
+ * Serialization
+ */
+void ObjectElement::toStreamStaticCom(OutStream & out, const BF & comBF)
+{
+	out << /*TAB <<*/ "{";
+
+	if( comBF.is< ObjectElement >() )
+	{
+AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , COMMUNICATION )
+
+		out << EOL_TAB2 << str_header( comBF.to_ptr< ObjectElement >() ) << EOL;
+
+AVM_ELSE
+
+		out << EOL_TAB2
+			<< comBF.to< BaseInstanceForm >().getFullyQualifiedNameID()
+			<< EOL;
+
+AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , COMMUNICATION )
+	}
+	else if( comBF.is< AvmCode >() )
+	{
+		if( comBF.to< AvmCode >().hasOperand() )
+		{
+			ScopeIncrIndent asii(out);
+
+			comBF.to< AvmCode >().toStreamRoutine( out );
+		}
+		else
+		{
+			//!! EMPTY
+		}
+	}
+	else
+	{
+		comBF.toStream( out << EOL_INCR_INDENT );
+		out << DECR_EOL;
+	}
+
+	out << TAB << "}" << EOL;
 }
 
 

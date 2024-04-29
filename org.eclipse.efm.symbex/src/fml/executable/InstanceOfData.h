@@ -18,9 +18,8 @@
 
 #include <fml/executable/BaseInstanceForm.h>
 
-#include <common/AvmPointer.h>
-
 #include <collection/BFContainer.h>
+#include <collection/TypedefCollection.h>
 
 #include <fml/lib/AvmLang.h>
 
@@ -48,21 +47,31 @@ class Symbol;
 
 class InstanceOfData :
 		public BaseInstanceForm,
-		public IPointerDataNature,
+		public IPointerVariableNature,
+		AVM_INJECT_STATIC_NULL_REFERENCE( InstanceOfData ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( InstanceOfData )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( InstanceOfData )
 
+	AVM_TYPEDEF_COLLECTION_CLASS( InstanceOfData )
+
+	AVM_TYPEDEF_TABLE_CLASS( InstanceOfData )
+
+public:
+	/**
+	 * DEFAULT NULL REFERENCE
+	 */
+//	static InstanceOfData _NULL_;
 
 protected:
 	/*
 	 * ATTRIBUTES
 	 */
-	POINTER_DATA_NATURE mPointerNature;
+	POINTER_VARIABLE_NATURE mPointerNature;
 
 	// Used to the container of store record/class or array data field instance
-	InstanceOfData * mParent;
+	const InstanceOfData * mParent;
 
 	// The Monitor Routine for Assignation
 	AvmProgram * mOnWriteRoutine;
@@ -79,7 +88,7 @@ protected:
 
 	// The Relative Data Path for an Instance from this Data Container
 	TableOfSymbol * mRelativeDataPath;
-	avm_size_t * mRelativeOffsetPath;
+	std::size_t * mRelativeOffsetPath;
 
 	// Mark use by some tools like Solver
 	avm_offset_t mMark;
@@ -111,7 +120,7 @@ public:
 	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
 
 	mRelativeDataPath( & NULL_TABLE_OF_SYMBOL ),
-	mRelativeOffsetPath( NULL ),
+	mRelativeOffsetPath( nullptr ),
 
 	mMark( aData.mMark )
 	{
@@ -126,15 +135,15 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	InstanceOfData(POINTER_DATA_NATURE aPointerNature,
-			BaseAvmProgram * aContainer, const ObjectElement * astElement,
-			BaseTypeSpecifier * aTypeSpecifier, avm_offset_t anOffset)
+	InstanceOfData(POINTER_VARIABLE_NATURE aPointerNature,
+			BaseAvmProgram * aContainer, const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier, avm_offset_t anOffset)
 	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer,
 			astElement, aTypeSpecifier, anOffset),
 	mPointerNature( aPointerNature ),
-	mParent( NULL ),
+	mParent( nullptr ),
 
-	mOnWriteRoutine( NULL ),
+	mOnWriteRoutine( nullptr ),
 
 	mValue( ),
 	mBufferValue( ),
@@ -142,27 +151,27 @@ public:
 	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
 
 	mRelativeDataPath( & NULL_TABLE_OF_SYMBOL ),
-	mRelativeOffsetPath( NULL ),
+	mRelativeOffsetPath( nullptr ),
 
 	mMark( 0 )
 	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aTypeSpecifier )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( aTypeSpecifier.isnotNullref() )
 				<< "InstanceOfData:> Unexpected an instance << "
 				<< this->getFullyQualifiedNameID()
 				<< " >>  without typeSpecifier !!!"
 				<< SEND_EXIT;
 	}
 
-	InstanceOfData(POINTER_DATA_NATURE aPointerNature,
-			BaseAvmProgram * aContainer, const ObjectElement * astElement,
-			BaseTypeSpecifier * aTypeSpecifier,
+	InstanceOfData(POINTER_VARIABLE_NATURE aPointerNature,
+			BaseAvmProgram * aContainer, const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier,
 			avm_offset_t anOffset, const Modifier & aModifier)
 	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer,
 			astElement, aTypeSpecifier, anOffset, aModifier),
 	mPointerNature( aPointerNature ),
-	mParent( NULL ),
+	mParent( nullptr ),
 
-	mOnWriteRoutine( NULL ),
+	mOnWriteRoutine( nullptr ),
 
 	mValue( ),
 	mBufferValue( ),
@@ -170,11 +179,11 @@ public:
 	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
 
 	mRelativeDataPath( & NULL_TABLE_OF_SYMBOL ),
-	mRelativeOffsetPath( NULL ),
+	mRelativeOffsetPath( nullptr ),
 
 	mMark( 0 )
 	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aTypeSpecifier )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( aTypeSpecifier.isnotNullref() )
 				<< "InstanceOfData:> Unexpected an instance << "
 				<< this->getFullyQualifiedNameID()
 				<< " >>  without typeSpecifier !!!"
@@ -185,17 +194,17 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	InstanceOfData(POINTER_DATA_NATURE aPointerNature,
-			BaseAvmProgram * aContainer, const ObjectElement * astElement,
-			BaseTypeSpecifier * aTypeSpecifier,
+	InstanceOfData(POINTER_VARIABLE_NATURE aPointerNature,
+			BaseAvmProgram * aContainer, const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier,
 			const std::string & aFullyQualifiedNameID, avm_offset_t anOffset,
 			const Modifier & aModifier = Modifier::PROPERTY_UNDEFINED_MODIFIER)
 	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer, astElement,
 			aTypeSpecifier, aFullyQualifiedNameID, anOffset, aModifier),
 	mPointerNature( aPointerNature ),
-	mParent( NULL ),
+	mParent( nullptr ),
 
-	mOnWriteRoutine( NULL ),
+	mOnWriteRoutine( nullptr ),
 
 	mValue( ),
 	mBufferValue( ),
@@ -203,11 +212,11 @@ public:
 	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
 
 	mRelativeDataPath( & NULL_TABLE_OF_SYMBOL ),
-	mRelativeOffsetPath( NULL ),
+	mRelativeOffsetPath( nullptr ),
 
 	mMark( 0 )
 	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aTypeSpecifier )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( aTypeSpecifier.isnotNullref() )
 				<< "InstanceOfData:> Unexpected an instance << "
 				<< this->getFullyQualifiedNameID()
 				<< " >>  without typeSpecifier !!!"
@@ -215,17 +224,17 @@ public:
 	}
 
 
-	InstanceOfData(POINTER_DATA_NATURE aPointerNature,
-			BaseAvmProgram * aContainer, const ObjectElement * astElement,
-			BaseTypeSpecifier * aTypeSpecifier,
+	InstanceOfData(POINTER_VARIABLE_NATURE aPointerNature,
+			BaseAvmProgram * aContainer, const ObjectElement & astElement,
+			const BaseTypeSpecifier & aTypeSpecifier,
 			const std::string & aFullyQualifiedNameID,
-			avm_offset_t anOffset, InstanceOfData * aParent)
+			avm_offset_t anOffset, const InstanceOfData & aParent)
 	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer, astElement,
 			aTypeSpecifier, aFullyQualifiedNameID, anOffset, aParent),
 	mPointerNature( aPointerNature ),
-	mParent( NULL ),
+	mParent( & aParent ),
 
-	mOnWriteRoutine( NULL ),
+	mOnWriteRoutine( nullptr ),
 
 	mValue( ),
 	mBufferValue( ),
@@ -233,27 +242,28 @@ public:
 	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
 
 	mRelativeDataPath( & NULL_TABLE_OF_SYMBOL ),
-	mRelativeOffsetPath( NULL ),
+	mRelativeOffsetPath( nullptr ),
 
 	mMark( 0 )
 	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aTypeSpecifier )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( aTypeSpecifier.isnotNullref() )
 				<< "InstanceOfData:> Unexpected an instance << "
-				<< this->getFullyQualifiedNameID() << " >>  without typeSpecifier !!!"
+				<< this->getFullyQualifiedNameID()
+				<< " >>  without typeSpecifier !!!"
 				<< SEND_EXIT;
 	}
 
 
-	InstanceOfData(POINTER_DATA_NATURE aPointerNature,
-			BaseTypeSpecifier * aTypeSpecifier,
+	InstanceOfData(POINTER_VARIABLE_NATURE aPointerNature,
+			const BaseTypeSpecifier & aTypeSpecifier,
 			const std::string & aFullyQualifiedNameID, avm_offset_t anOffset,
 			const Modifier & aModifier = Modifier::PROPERTY_UNDEFINED_MODIFIER)
-	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ),
+	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), Variable::nullref(),
 			aTypeSpecifier, aFullyQualifiedNameID, anOffset, aModifier),
 	mPointerNature( aPointerNature ),
-	mParent( NULL ),
+	mParent( nullptr ),
 
-	mOnWriteRoutine( NULL ),
+	mOnWriteRoutine( nullptr ),
 
 	mValue( ),
 	mBufferValue( ),
@@ -261,13 +271,14 @@ public:
 	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
 
 	mRelativeDataPath( & NULL_TABLE_OF_SYMBOL ),
-	mRelativeOffsetPath( NULL ),
+	mRelativeOffsetPath( nullptr ),
 
 	mMark( 0 )
 	{
-		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( aTypeSpecifier )
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( aTypeSpecifier.isnotNullref() )
 				<< "InstanceOfData:> Unexpected an instance << "
-				<< this->getFullyQualifiedNameID() << " >>  without typeSpecifier !!!"
+				<< this->getFullyQualifiedNameID()
+				<< " >>  without typeSpecifier !!!"
 				<< SEND_EXIT;
 	}
 
@@ -275,21 +286,48 @@ public:
 	 * CONSTRUCTOR
 	 * for UFI
 	 */
-	InstanceOfData(POINTER_DATA_NATURE aPointerNature,
-			BaseAvmProgram * aContainer, InstanceOfData * aParent,
-			const TableOfSymbol & aRelativeDataPath = NULL_TABLE_OF_SYMBOL)
-	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer, aParent),
+	InstanceOfData(POINTER_VARIABLE_NATURE aPointerNature,
+			BaseAvmProgram * aContainer, const InstanceOfData & aParent)
+	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer,
+			aParent.getAstElement(), aParent.getTypeSpecifier(), aParent),
 	mPointerNature( aPointerNature ),
-	mParent( aParent->mParent ),
+	mParent( aParent.mParent ),
 
-	mOnWriteRoutine( aParent->mOnWriteRoutine ),
+	mOnWriteRoutine( aParent.mOnWriteRoutine ),
 
-	mValue( aParent->mValue ),
-	mBufferValue( aParent->mBufferValue ),
+	mValue( aParent.mValue ),
+	mBufferValue( aParent.mBufferValue ),
 
-	mAttributeTable( NULL ),
+	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
+
+	mRelativeDataPath( & NULL_TABLE_OF_SYMBOL ),
+	mRelativeOffsetPath( nullptr ),
+
+	mMark( 0 )
+	{
+		setAliasTarget( aParent );
+
+		copyAttribute( aParent.mAttributeTable );
+	}
+
+	InstanceOfData(POINTER_VARIABLE_NATURE aPointerNature,
+			BaseAvmProgram * aContainer, const InstanceOfData & aParent,
+			const TableOfSymbol & aRelativeDataPath)
+	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer,
+			aRelativeDataPath.back().getAstElement(),
+			aRelativeDataPath.back().getTypeSpecifier(), aParent),
+	mPointerNature( aPointerNature ),
+	mParent( aParent.mParent ),
+
+	mOnWriteRoutine( aParent.mOnWriteRoutine ),
+
+	mValue( aParent.mValue ),
+	mBufferValue( aParent.mBufferValue ),
+
+	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
+
 	mRelativeDataPath( new TableOfSymbol(aRelativeDataPath) ),
-	mRelativeOffsetPath( NULL ),
+	mRelativeOffsetPath( nullptr ),
 
 	mMark( 0 )
 	{
@@ -297,42 +335,38 @@ public:
 
 		if( aRelativeDataPath.nonempty() )
 		{
-			setTypeSpecifier( aRelativeDataPath.back().getTypeSpecifier() );
-			setAstElement( aRelativeDataPath.back().getAstElement() );
-
 			setOnWriteRoutine(
-					aRelativeDataPath.back().data().getOnWriteRoutine() );
+					aRelativeDataPath.back().variable().getOnWriteRoutine() );
 
 			setValue( aRelativeDataPath.back().getValue() );
 
-			setBValue( aRelativeDataPath.back().data().getBValue() );
+			setBValue( aRelativeDataPath.back().variable().getBValue() );
 		}
 
 		setAliasTarget( aParent );
 	}
 
-	InstanceOfData(POINTER_DATA_NATURE aPointerNature,
-			BaseAvmProgram * aContainer, InstanceOfData * aParent,
+	InstanceOfData(POINTER_VARIABLE_NATURE aPointerNature,
+			BaseAvmProgram * aContainer, const InstanceOfData & aParent,
 			const TableOfSymbol & aRelativeDataPath, const Symbol & pathLeaf)
-	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer, aParent),
+	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer,
+			pathLeaf.getAstElement(), pathLeaf.getTypeSpecifier(), aParent),
 	mPointerNature( aPointerNature ),
-	mParent( aParent->mParent ),
+	mParent( aParent.mParent ),
 
-	mOnWriteRoutine( pathLeaf.data().mOnWriteRoutine ),
+	mOnWriteRoutine( pathLeaf.variable().mOnWriteRoutine ),
 
-	mValue( pathLeaf.data().mValue ),
-	mBufferValue( pathLeaf.data().mBufferValue ),
+	mValue( pathLeaf.variable().mValue ),
+	mBufferValue( pathLeaf.variable().mBufferValue ),
 
-	mAttributeTable( NULL ),
+	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
+
 	mRelativeDataPath( new TableOfSymbol(aRelativeDataPath, pathLeaf) ),
-	mRelativeOffsetPath( NULL ),
+	mRelativeOffsetPath( nullptr ),
 
 	mMark( 0 )
 	{
 		updateOffsetPath();
-
-		setTypeSpecifier( pathLeaf.getTypeSpecifier() );
-		setAstElement( pathLeaf.getAstElement() );
 
 		setAliasTarget( aParent );
 	}
@@ -343,27 +377,28 @@ public:
 	 * CONSTRUCTOR
 	 * for RUNTIME UFI OFFSET
 	 */
-	InstanceOfData(InstanceOfData * aModel,
-			InstanceOfData * aRoot, avm_size_t * aRelativeOffsetPath)
-	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ),
-			aModel->getContainer(), aRoot),
+	InstanceOfData(const InstanceOfData & aModel,
+			const InstanceOfData & aRoot, std::size_t * aRelativeOffsetPath)
+	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aModel.getContainer(),
+			aModel.getAstElement(), aRoot.getTypeSpecifier(), aRoot),
 	mPointerNature( POINTER_UFI_RUNTIME_NATURE ),
-	mParent( aModel ),
+	mParent( & aModel ),
 
-	mOnWriteRoutine( aModel->mOnWriteRoutine ),
+	mOnWriteRoutine( aModel.mOnWriteRoutine ),
 
-	mValue( aModel->mValue ),
-	mBufferValue( aModel->mBufferValue ),
+	mValue( aModel.mValue ),
+	mBufferValue( aModel.mBufferValue ),
 
-	mAttributeTable( aModel->getAttribute() ),
-	mRelativeDataPath( aModel->getDataPath() ),
+	mAttributeTable( aModel.getAttribute() ),
+
+	mRelativeDataPath( aModel.getDataPath() ),
 	mRelativeOffsetPath( aRelativeOffsetPath ),
 
 	mMark( 0 )
 	{
-		setAllNameID(aModel->getFullyQualifiedNameID(), aModel->getNameID());
+		setAllNameID(aModel.getFullyQualifiedNameID(), aModel.getNameID());
 
-		setRuntimeContainerRID( aRoot->getRuntimeContainerRID() );
+		setRuntimeContainerRID( aRoot.getRuntimeContainerRID() );
 	}
 
 
@@ -371,25 +406,26 @@ public:
 	 * CONSTRUCTOR
 	 * for Alias
 	 */
-	InstanceOfData(BaseAvmProgram * aContainer, InstanceOfData * aTarget,
-			VectorOfInstanceOfMachine & aRelativeMachinePath)
+	InstanceOfData(BaseAvmProgram * aContainer, const InstanceOfData & aTarget,
+			const VectorOfInstanceOfMachine & aRelativeMachinePath)
 	: BaseInstanceForm(CLASS_KIND_T( InstanceOfData ), aContainer, aTarget,
 			aRelativeMachinePath),
-	mPointerNature( aTarget->mPointerNature ),
-	mParent( aTarget->mParent ),
+	mPointerNature( aTarget.mPointerNature ),
+	mParent( aTarget.mParent ),
 
-	mOnWriteRoutine( aTarget->mOnWriteRoutine ),
+	mOnWriteRoutine( aTarget.mOnWriteRoutine ),
 
-	mValue( aTarget->mValue ),
-	mBufferValue( aTarget->mBufferValue ),
+	mValue( aTarget.mValue ),
+	mBufferValue( aTarget.mBufferValue ),
 
 	mAttributeTable( & NULL_TABLE_OF_SYMBOL ),
+
 	mRelativeDataPath( & NULL_TABLE_OF_SYMBOL ),
-	mRelativeOffsetPath( NULL ),
+	mRelativeOffsetPath( nullptr ),
 
 	mMark( 0 )
 	{
-		copyDataPath( aTarget->mRelativeDataPath );
+		copyDataPath( aTarget.mRelativeDataPath );
 	}
 
 
@@ -404,18 +440,18 @@ public:
 			(mPointerNature != POINTER_UFI_RUNTIME_NATURE) )
 		{
 			delete( mAttributeTable );
-			mAttributeTable = NULL;
+			mAttributeTable = nullptr;
 		}
 
 		if( (mRelativeDataPath != (& NULL_TABLE_OF_SYMBOL)) &&
 			(mPointerNature != POINTER_UFI_RUNTIME_NATURE) )
 		{
 			delete( mRelativeDataPath );
-			mRelativeDataPath = NULL;
+			mRelativeDataPath = nullptr;
 		}
 
 		delete( mRelativeOffsetPath );
-		mRelativeOffsetPath = NULL;
+		mRelativeOffsetPath = nullptr;
 
 //		AVM_OS_TRACE << "InstanceOfData::del :> "
 ////				<< "offset#" << getOffset() << FQN_ID_ROOT_SEPARATOR
@@ -425,16 +461,23 @@ public:
 
 	/**
 	 * GETTER
+	 * Unique Null Reference
+	 */
+	static InstanceOfData & nullref();
+
+
+	/**
+	 * GETTER
 	 * Compiled ObjectElement as Compiled Variable
 	 */
-	inline const Variable * getAstVariable() const
+	inline const Variable & getAstVariable() const
 	{
-		return( getAstElement()->as< Variable >() );
+		return( safeAstElement().as< Variable >() );
 	}
 
 	inline bool hasAstVariable() const
 	{
-		return( hasAstElement() && getAstElement()->is< Variable >() );
+		return( hasAstElement() && getAstElement().is< Variable >() );
 	}
 
 
@@ -443,7 +486,7 @@ public:
 	 * Qualified Name IDentifier
 	 * QualifiedNameID using mFullyQualifiedNameID & mNameID
 	 */
-	inline virtual std::string getQualifiedNameID() const
+	inline virtual std::string getQualifiedNameID() const override
 	{
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 
@@ -463,7 +506,9 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	 * mFullyQualifiedNameID
 	 * mNameID
 	 */
-	virtual void updateFullyQualifiedNameID();
+	virtual std::string getUniqNameID() const override;
+
+	virtual void updateFullyQualifiedNameID() override;
 
 	inline void updateFullyQualifiedNameID(
 			const std::string & aFullyQualifiedNameID, const std::string & id)
@@ -475,38 +520,39 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	 * GETTER - SETTER
 	 * mId
 	 */
-	void updateNameID();
+	void updateNameID() override;
+
 
 
 	/**
 	 * SETTER
 	 * the SharedData
 	 */
-	inline void setSharedData(InstanceOfData * sData)
+	inline void setSharedVariable(InstanceOfData * sharedVariable)
 	{
-		setOffset( sData->getOffset() );
+		setOffset( sharedVariable->getOffset() );
 
 //		setModifier( sData->getModifier() );
 
-		mOnWriteRoutine = sData->mOnWriteRoutine;
+		mOnWriteRoutine = sharedVariable->mOnWriteRoutine;
 
-		mValue = sData->mValue;
+		mValue = sharedVariable->mValue;
 
-		mBufferValue  = sData->mBufferValue;
+		mBufferValue  = sharedVariable->mBufferValue;
 	}
 
 	/**
 	 * GETTER - SETTER
 	 * mParent
 	 */
-	inline InstanceOfData * getParent() const
+	inline const InstanceOfData * getParent() const
 	{
 		return( mParent );
 	}
 
 	inline bool hasParent() const
 	{
-		return( mParent != NULL );
+		return( mParent != nullptr );
 	}
 
 	inline void setParent(InstanceOfData * aParent)
@@ -527,18 +573,18 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	inline bool hasAttribute() const
 	{
 		return( (mAttributeTable != (& NULL_TABLE_OF_SYMBOL)) &&
-				(mAttributeTable != NULL) && mAttributeTable->nonempty() );
+				(mAttributeTable != nullptr) && mAttributeTable->nonempty() );
 	}
 
 	inline void setAttribute(TableOfSymbol * anAttributeTable)
 	{
-		mAttributeTable = ( anAttributeTable != NULL ) ?
+		mAttributeTable = ( anAttributeTable != nullptr ) ?
 				anAttributeTable : (& NULL_TABLE_OF_SYMBOL);
 	}
 
 	inline void copyAttribute(TableOfSymbol * anAttributeTable)
 	{
-		mAttributeTable = ( anAttributeTable != NULL ) ?
+		mAttributeTable = ( anAttributeTable != nullptr ) ?
 			new TableOfSymbol(*anAttributeTable) : (& NULL_TABLE_OF_SYMBOL);
 	}
 
@@ -566,7 +612,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 
 	inline bool hasOnWriteRoutine() const
 	{
-		return( mOnWriteRoutine != NULL );
+		return( mOnWriteRoutine != nullptr );
 	}
 
 	inline void setOnWriteRoutine(AvmProgram * onWriteRoutine)
@@ -656,13 +702,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 
 	inline bool hasDataPath() const
 	{
-		return( (mRelativeDataPath != (& NULL_TABLE_OF_SYMBOL)) &&
-				(mRelativeDataPath != NULL) && mRelativeDataPath->nonempty() );
+		return( (mRelativeDataPath != (& NULL_TABLE_OF_SYMBOL))
+				&& (mRelativeDataPath != nullptr)
+				&& mRelativeDataPath->nonempty() );
 	}
 
 	inline void setDataPath(TableOfSymbol * aRelativeDataPath)
 	{
-		mRelativeDataPath = (aRelativeDataPath != NULL) ?
+		mRelativeDataPath = (aRelativeDataPath != nullptr) ?
 				aRelativeDataPath : (& NULL_TABLE_OF_SYMBOL);
 
 		updateOffsetPath();
@@ -670,7 +717,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 
 	inline void copyDataPath(TableOfSymbol * aRelativeDataPath)
 	{
-		mRelativeDataPath = (aRelativeDataPath != NULL) ?
+		mRelativeDataPath = (aRelativeDataPath != nullptr) ?
 			new TableOfSymbol(*aRelativeDataPath) : (& NULL_TABLE_OF_SYMBOL);
 
 		updateOffsetPath();
@@ -688,22 +735,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	 * GETTER - SETTER
 	 * mRelativeOffsetPath
 	 */
-	inline avm_size_t * getOffsetPath() const
+	inline std::size_t * getOffsetPath() const
 	{
 		return( mRelativeOffsetPath );
 	}
 
-	inline avm_size_t getOffsetPath(avm_size_t idx) const
+	inline std::size_t getOffsetPath(std::size_t idx) const
 	{
 		return( mRelativeOffsetPath[idx] );
 	}
 
 	bool hasOffsetPath() const
 	{
-		return( mRelativeOffsetPath != NULL );
+		return( mRelativeOffsetPath != nullptr );
 	}
 
-	inline void setOffsetPath(avm_size_t * anOffsetPath)
+	inline void setOffsetPath(std::size_t * anOffsetPath)
 	{
 		mRelativeOffsetPath = anOffsetPath;
 	}
@@ -718,21 +765,21 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	 * GETTER - SETTER
 	 * mPointerNature
 	 */
-	inline virtual POINTER_DATA_NATURE getPointerNature() const
+	inline virtual POINTER_VARIABLE_NATURE getPointerNature() const override
 	{
 		return( mPointerNature );
 	}
 
-	bool isConcreteArrayIndex();
+	bool isConcreteArrayIndex() const;
 
-	bool isConcreteStructAttribute();
+	bool isConcreteStructAttribute() const;
 
 
 	/**
 	 * GETTER - SETTER
 	 * mMark
 	 */
-	inline avm_offset_t getMark()
+	inline avm_offset_t getMark() const
 	{
 		return( mMark );
 	}
@@ -760,11 +807,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM, DATA )
 	/**
 	 * Serialization
 	 */
-	void strHeader(OutStream & os) const;
+	void strHeader(OutStream & os) const override;
 
 	std::string strHeaderId() const;
 
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & os) const override;
 
 
 	inline void strValue(OutStream & os, const BF & aValue) const

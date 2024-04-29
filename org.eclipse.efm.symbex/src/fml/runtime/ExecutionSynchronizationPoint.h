@@ -80,7 +80,7 @@ private:
 	mRID( ),
 	mRoutingData( ),
 	mMessage( ),
-	next( NULL )
+	next( nullptr )
 	{
 		//!! NOTHING
 	}
@@ -95,8 +95,8 @@ public:
 	mRID( anESP.mRID ),
 	mRoutingData( anESP.mRoutingData ),
 	mMessage( anESP.mMessage ),
-	next( (anESP.next != NULL) ?
-			new ExecutionSynchronizationPoint(*(anESP.next)) : NULL )
+	next( (anESP.next != nullptr) ?
+			new ExecutionSynchronizationPoint(*(anESP.next)) : nullptr )
 	{
 		//!! NOTHING
 	}
@@ -109,7 +109,7 @@ public:
 	ExecutionSynchronizationPoint(AWAITING_POINT_NATURE aWaitingPointNature,
 			const RuntimeID & aRoutingRID, const RoutingData & aRoutingData,
 			const Message & aMessage,
-			ExecutionSynchronizationPoint * nxt = NULL)
+			ExecutionSynchronizationPoint * nxt = nullptr)
 	: mAwaitingPointNature( aWaitingPointNature ),
 	mRID( aRoutingRID ),
 	mRoutingData( aRoutingData ),
@@ -121,7 +121,7 @@ public:
 
 	ExecutionSynchronizationPoint(AWAITING_POINT_NATURE aWaitingPointNature,
 			const RuntimeID & joinRID,
-			ExecutionSynchronizationPoint * nxt = NULL)
+			ExecutionSynchronizationPoint * nxt = nullptr)
 	: mAwaitingPointNature( aWaitingPointNature ),
 	mRID( joinRID ),
 	mRoutingData( ),
@@ -141,17 +141,17 @@ public:
 	}
 
 
-	bool isInput()
+	inline bool isInput() const
 	{
 		return( mAwaitingPointNature == AWAITING_POINT_INPUT_NATURE );
 	}
 
-	bool isOutput()
+	inline bool isOutput() const
 	{
 		return( mAwaitingPointNature == AWAITING_POINT_OUTPUT_NATURE );
 	}
 
-	bool isJoin()
+	inline bool isJoin() const
 	{
 		return( mAwaitingPointNature == AWAITING_POINT_JOIN_NATURE );
 	}
@@ -160,7 +160,9 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void toStream(OutStream & os) const;
+	virtual void toStream(OutStream & out) const override;
+
+	void printTrace(OutStream & out) const;
 
 };
 

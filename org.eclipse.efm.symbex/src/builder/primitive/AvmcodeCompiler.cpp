@@ -15,8 +15,6 @@
 
 #include "AvmcodeCompiler.h"
 
-#include <iostream>
-
 #include <builder/compiler/BaseCompiler.h>
 #include <builder/compiler/BaseCompilerTable.h>
 
@@ -102,7 +100,7 @@ AvmcodeCompiler::~AvmcodeCompiler()
 			AVMCODE_COMPILER_TABLE_FOR_DESTROY.begin();
 	std::vector< AbstractAvmcodeCompiler * >::iterator endIt =
 			AVMCODE_COMPILER_TABLE_FOR_DESTROY.end();
-	for( avm_size_t offset = 0 ; it != endIt ; ++it , ++offset )
+	for( std::size_t offset = 0 ; it != endIt ; ++it , ++offset )
 	{
 		delete( *it );
 	}
@@ -150,6 +148,8 @@ bool AvmcodeCompiler::configure()
 			NEW_COMPILER( AvmcodeUnaryPredicateExpressionCompiler );
 	BINARY_PREDICATE_EXPRESSION_COMPILER =
 			NEW_COMPILER( AvmcodeBinaryPredicateExpressionCompiler );
+	QUANTIFIED_PREDICATE_EXPRESSION_COMPILER =
+			NEW_COMPILER( AvmcodeQuantifiedPredicateExpressionCompiler );
 	ASSOCIATIVE_PREDICATE_EXPRESSION_COMPILER =
 			NEW_COMPILER( AvmcodeAssociativePredicateExpressionCompiler );
 
@@ -352,9 +352,20 @@ bool AvmcodeCompiler::configureLambdaPrimitive()
 bool AvmcodeCompiler::configureActivityPrimitive()
 {
 	////////////////////////////////////////////////////////////////////////////
+	// AVM MACHINE SELF
+	////////////////////////////////////////////////////////////////////////////
+	OPCODE_COMPILER( SELF  ) = NEW_COMPILER( AvmcodeSelfSuperStatementCompiler );
+	OPCODE_COMPILER( SUPER ) = NEW_COMPILER( AvmcodeSelfSuperStatementCompiler );
+
+	////////////////////////////////////////////////////////////////////////////
 	// AVM MACHINE MANAGING
 	////////////////////////////////////////////////////////////////////////////
 	OPCODE_COMPILER( CONTEXT_SWITCHER ) = NEW_COMPILER( AvmcodeContextSwitcherStatementCompiler );
+
+	OPCODE_COMPILER( PROCESS_STATE_GET ) = ACTIVITY_STATEMENT_COMPILER;
+
+	OPCODE_COMPILER( PROCESS_STATE_SET ) = NEW_COMPILER( AvmcodeProcessStateSetCompiler );
+
 
 	OPCODE_COMPILER( INIT    ) = ACTIVITY_STATEMENT_COMPILER;
 	OPCODE_COMPILER( FINAL   ) = ACTIVITY_STATEMENT_COMPILER;
@@ -456,12 +467,14 @@ bool AvmcodeCompiler::configureSchedulingPrimitive()
 	OPCODE_COMPILER( STRONG_SYNCHRONOUS ) = SCHEDULING_STATEMENT_COMPILER;
 	OPCODE_COMPILER( WEAK_SYNCHRONOUS   ) = SCHEDULING_STATEMENT_COMPILER;
 	OPCODE_COMPILER( INTERLEAVING       ) = SCHEDULING_STATEMENT_COMPILER;
+	OPCODE_COMPILER( PARTIAL_ORDER      ) = SCHEDULING_STATEMENT_COMPILER;
 	OPCODE_COMPILER( PARALLEL           ) = SCHEDULING_STATEMENT_COMPILER;
 
 	OPCODE_COMPILER( RDV_ASYNCHRONOUS       ) = SCHEDULING_STATEMENT_COMPILER;
 	OPCODE_COMPILER( RDV_STRONG_SYNCHRONOUS ) = SCHEDULING_STATEMENT_COMPILER;
 	OPCODE_COMPILER( RDV_WEAK_SYNCHRONOUS   ) = SCHEDULING_STATEMENT_COMPILER;
 	OPCODE_COMPILER( RDV_INTERLEAVING       ) = SCHEDULING_STATEMENT_COMPILER;
+	OPCODE_COMPILER( RDV_PARTIAL_ORDER      ) = SCHEDULING_STATEMENT_COMPILER;
 	OPCODE_COMPILER( RDV_PARALLEL           ) = SCHEDULING_STATEMENT_COMPILER;
 
 
@@ -590,6 +603,11 @@ bool AvmcodeCompiler::configureLogicPrimitive()
 	OPCODE_COMPILER( XOR  ) = BINARY_PREDICATE_EXPRESSION_COMPILER;
 	OPCODE_COMPILER( XNOR ) = BINARY_PREDICATE_EXPRESSION_COMPILER;
 
+	OPCODE_COMPILER( IMPLIES ) = BINARY_PREDICATE_EXPRESSION_COMPILER;
+
+	OPCODE_COMPILER( EXISTS ) = QUANTIFIED_PREDICATE_EXPRESSION_COMPILER;
+	OPCODE_COMPILER( FORALL ) = QUANTIFIED_PREDICATE_EXPRESSION_COMPILER;
+
 
 	////////////////////////////////////////////////////////////////////////////
 	// AVM COMPARISON EXPRESSION
@@ -619,7 +637,7 @@ bool AvmcodeCompiler::configureArithmeticPrimitive()
 	////////////////////////////////////////////////////////////////////////////
 
 	OPCODE_COMPILER( PLUS   ) = ASSOCIATIVE_ARITHMETIC_EXPRESSION_COMPILER;
-	OPCODE_COMPILER( MINUS  ) = BINARY_ARITHMETIC_EXPRESSION_COMPILER;
+	OPCODE_COMPILER( MINUS  ) = ASSOCIATIVE_ARITHMETIC_EXPRESSION_COMPILER;
 	OPCODE_COMPILER( UMINUS ) = UNARY_ARITHMETIC_EXPRESSION_COMPILER;
 
 	OPCODE_COMPILER( MULT   ) = ASSOCIATIVE_ARITHMETIC_EXPRESSION_COMPILER;
@@ -784,22 +802,23 @@ const BF & AvmcodeCompiler::postCompileSymbol(const BF & aSymbol)
 {
 	if( aSymbol.is< InstanceOfData >() )
 	{
-		InstanceOfData * anInstance = aSymbol.to_ptr< InstanceOfData >();
+		const InstanceOfData & anInstance = aSymbol.to< InstanceOfData >();
 
-		if( anInstance->getModifier().hasFeatureFinal()
-			&& anInstance->hasValue() )
+		if( anInstance.getModifier().hasFeatureFinal()
+			&& anInstance.hasValue() )
 		{
-			if( anInstance->isTypedEnum() )
+			if( anInstance.isTypedEnum() )
 			{
 				return( aSymbol );
 			}
-			else if( anInstance->getModifier().hasNatureParameter() )
+			else if( anInstance.getModifier().hasNatureParameter()
+					|| anInstance.hasArrayIndexPointer() )
 			{
 				return( aSymbol );
 			}
 			else
 			{
-				return( anInstance->getValue() );
+				return( anInstance.getValue() );
 			}
 		}
 		else
@@ -810,9 +829,9 @@ const BF & AvmcodeCompiler::postCompileSymbol(const BF & aSymbol)
 
 	else if( aSymbol.is< InstanceOfMachine >() )
 	{
-		if( aSymbol.to_ptr< InstanceOfMachine >()->hasRuntimeRID() )
+		if( aSymbol.to< InstanceOfMachine >().hasRuntimeRID() )
 		{
-			return( aSymbol.to_ptr< InstanceOfMachine >()->getRuntimeRID() );
+			return( aSymbol.to< InstanceOfMachine >().getRuntimeRID() );
 		}
 		return( aSymbol );
 	}
@@ -822,7 +841,6 @@ const BF & AvmcodeCompiler::postCompileSymbol(const BF & aSymbol)
 		return( aSymbol );
 	}
 }
-
 
 
 BF AvmcodeCompiler::compileUFI(
@@ -851,7 +869,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	else if( getSymbolTable().hasError() )
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << anUFI.errorLocation(aCTX->mCompileCtx->getAstElement())
+		AVM_OS_WARN << anUFI.errorLocation(aCTX->mCompileCtx->safeAstElement())
 				<< getSymbolTable().getErrorMessage()
 				<< std::endl << std::endl;
 
@@ -860,7 +878,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	else
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << anUFI.errorLocation(aCTX->mCompileCtx->getAstElement())
+		AVM_OS_WARN << anUFI.errorLocation(aCTX->mCompileCtx->safeAstElement())
 				<< "UFI compilation error : unfound symbol << "
 				<< anUFI.str() << " >>" << std::endl << std::endl;
 
@@ -882,9 +900,10 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 	if( aSymbol.invalid() )
 	{
-		UniFormIdentifier anUFI(aFullyQualifiedNameID);
+		UniFormIdentifier anFQN(aFullyQualifiedNameID);
 
-		aSymbol = getSymbolTable().searchSymbolByUFI(aCTX, anUFI);
+		aSymbol = getSymbolTable().searchSymbolByFQN(aCTX, anFQN);
+//		aSymbol = UFI_EXPRESSION_COMPILER->compileUfiExpression(aCTX, anFQN);
 	}
 
 	if( aSymbol.valid() )
@@ -991,15 +1010,16 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 		if( aSymbol.is< InstanceOfMachine >() )
 		{
-			ExecutableForm * anExec = aSymbol.to_ptr< InstanceOfMachine >()->getExecutable();
-			if( anExec != NULL )
+			ExecutableForm * anExecutable =
+					aSymbol.to< InstanceOfMachine >().getExecutable();
+			if( anExecutable != nullptr )
 			{
 				avm_offset_t aPositionOffset = aQualifiedNameID.
-						to_ptr< QualifiedIdentifier >()->getPositionOffset();
+						to< QualifiedIdentifier >().getPositionOffset();
 
-				if( aPositionOffset < anExec->getParamCount() )
+				if( aPositionOffset < anExecutable->getParamCount() )
 				{
-					return( anExec->getParam(aPositionOffset) );
+					return( anExecutable->getParam(aPositionOffset) );
 				}
 			}
 			return( aSymbol );
@@ -1055,8 +1075,8 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 	else
 	{
-		InstanceOfData * varCtx = aCTX->mVariableCtx;
-		for( ; varCtx != NULL ; varCtx = varCtx->getParent() )
+		const InstanceOfData * varCtx = aCTX->mVariableCtx;
+		for( ; varCtx != nullptr ; varCtx = varCtx->getParent() )
 		{
 			BF aFieldSymbol = getSymbolTable().searchSymbol(aCTX,
 					( OSS() << varCtx->getFullyQualifiedNameID()
@@ -1073,9 +1093,9 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 			}
 		}
 
-		Operator * opID = OperatorManager::getOp( aNameID );
+		const Operator * opID = OperatorManager::getOp( aNameID );
 
-		if( opID != NULL )
+		if( opID != nullptr )
 		{
 			return( CONST_BF_OP( opID ) );
 		}
@@ -1105,15 +1125,15 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 const BF & AvmcodeCompiler::compileElement(
 		COMPILE_CONTEXT * aCTX, const BF & anElement)
 {
-	ObjectElement * objElement = anElement.to_ptr< ObjectElement >();
+	const ObjectElement & astElement = anElement.to< ObjectElement >();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<| compiling<FORM>: & "
-			<< objElement->getFullyQualifiedNameID() << std::endl;
+			<< astElement.getFullyQualifiedNameID() << std::endl;
 	aCTX->debugContext( AVM_OS_TRACE << INCR_INDENT ) << DECR_INDENT;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
-	const BF & aSymbol = getSymbolTable().searchSymbol(aCTX, objElement);
+	const BF & aSymbol = getSymbolTable().searchSymbol(aCTX, astElement);
 
 	if( aSymbol.valid() )
 	{
@@ -1129,8 +1149,8 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	else if( getSymbolTable().hasError() )
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << objElement->errorLocation(
-					aCTX->mCompileCtx->getAstElement())
+		AVM_OS_WARN << astElement.errorLocation(
+					aCTX->mCompileCtx->safeAstElement())
 				<< getSymbolTable().getErrorMessage()
 				<< std::endl << std::endl;
 
@@ -1141,7 +1161,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 		getCompilerTable().incrErrorCount();
 		aCTX->errorContext( AVM_OS_WARN )
 				<< "Unfound data instance << & "
-				<< objElement->getFullyQualifiedNameID() << " >>"
+				<< astElement.getFullyQualifiedNameID() << " >>"
 				<< std::endl << std::endl;
 
 		return( anElement );
@@ -1152,17 +1172,17 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 const BF & AvmcodeCompiler::compileDataType(
 		COMPILE_CONTEXT * aCTX, const BF & aDataType)
 {
-	DataType * pType = aDataType.to_ptr< DataType >();
+	const DataType & astType = aDataType.to< DataType >();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<| compiling<DataType>: "
-			<< str_header( pType ) << std::endl;
+			<< str_header( astType ) << std::endl;
 	aCTX->debugContext( AVM_OS_TRACE << INCR_INDENT ) << DECR_INDENT;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 	const TypeSpecifier & aTypeSpecifier =
 			SymbolTable::searchTypeSpecifier(
-					getConfiguration().getExecutableSystem(), aCTX, pType);
+					getConfiguration().getExecutableSystem(), aCTX, astType);
 
 	if( aTypeSpecifier.valid() )
 	{
@@ -1178,7 +1198,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	else if( getSymbolTable().hasError() )
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << pType->errorLocation(aCTX->mCompileCtx->getAstElement())
+		AVM_OS_WARN << astType.errorLocation(aCTX->mCompileCtx->safeAstElement())
 				<< getSymbolTable().getErrorMessage()
 				<< std::endl << std::endl;
 
@@ -1188,7 +1208,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	{
 		getCompilerTable().incrErrorCount();
 		aCTX->errorContext( AVM_OS_WARN )
-				<< "Unfound typedef << & " << str_header( pType )
+				<< "Unfound typedef << & " << str_header( astType )
 				<< " >>" << std::endl << std::endl;
 
 		return( aDataType );
@@ -1199,48 +1219,50 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 const BF & AvmcodeCompiler::compileVariable(
 		COMPILE_CONTEXT * aCTX, const BF & aVariable)
 {
-	Variable * pVariable = aVariable.to_ptr< Variable >();
+	const Variable & astVariable = aVariable.to< Variable >();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<| compiling<Variable>: "
-			<< str_header( pVariable ) << std::endl;
+			<< str_header( astVariable ) << std::endl;
 	aCTX->debugContext( AVM_OS_TRACE << INCR_INDENT ) << DECR_INDENT;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
-	const BF & aSymbol = getSymbolTable().searchDataInstance(aCTX, pVariable);
+	const BF & aSymbol = getSymbolTable().searchDataInstance(aCTX, astVariable);
 
 	if( aSymbol.valid() )
 	{
-		InstanceOfData * anInstance = aSymbol.to_ptr< InstanceOfData >();
+		const InstanceOfData & anInstance = aSymbol.to< InstanceOfData >();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << TAB_DECR_INDENT
 			<< ">| result:> " << str_header( anInstance ) << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
-		if( anInstance->getModifier().hasFeatureFinal() )
+		if( anInstance.getModifier().hasFeatureFinal() )
 		{
-			if( (not anInstance->hasValue()) && pVariable->hasValue() )
+			if( (not anInstance.hasValue()) && astVariable.hasValue() )
 			{
-				anInstance->setValue( decode_compileExpression(
-						aCTX->clone(anInstance->getTypeSpecifier()),
-						pVariable->getValue() ) );
+				const_cast< InstanceOfData & >(anInstance).setValue(
+						decode_compileExpression(
+								aCTX->clone(anInstance.getTypeSpecifier()),
+								astVariable.getValue() ) );
 			}
 
-			if( anInstance->hasValue() )
+			if( anInstance.hasValue() )
 			{
-				if( anInstance->isEnumSymbolPointer()
-					&& anInstance->getModifier().hasFeatureUnsafe() )
+				if( anInstance.isEnumSymbolPointer()
+					&& anInstance.getModifier().hasFeatureUnsafe() )
 				{
 					return( aSymbol );
 				}
-				else if( anInstance->getModifier().hasNatureParameter() )
+				else if( anInstance.getModifier().hasNatureParameter()
+						|| anInstance.hasArrayIndexPointer() )
 				{
 					return( aSymbol );
 				}
 				else
 				{
-					return( anInstance->getValue() );
+					return( anInstance.getValue() );
 				}
 			}
 		}
@@ -1252,15 +1274,15 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	else if( getSymbolTable().hasError() )
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << pVariable->errorLocation(
-				aCTX->mCompileCtx->getAstElement() )
+		AVM_OS_WARN << astVariable.errorLocation(
+				aCTX->mCompileCtx->safeAstElement() )
 				<< getSymbolTable().getErrorMessage()
 				<< std::endl << std::endl;
 
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< ">| error:> " << str_header( pVariable ) << std::endl;
+			<< ">| error:> " << str_header( astVariable ) << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 		return( aVariable );
@@ -1270,12 +1292,12 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 		getCompilerTable().incrErrorCount();
 		aCTX->errorContext( AVM_OS_WARN )
 				<< "Unfound variable instance << "
-				<< pVariable->getFullyQualifiedNameID() << " >>"
+				<< astVariable.getFullyQualifiedNameID() << " >>"
 				<< std::endl << std::endl;
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << TAB_DECR_INDENT
-			<< ">| error:> " << str_header( pVariable ) << std::endl;
+			<< ">| error:> " << str_header( astVariable ) << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 		return( aVariable );
@@ -1286,16 +1308,16 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 const BF & AvmcodeCompiler::compileBuffer(
 		COMPILE_CONTEXT * aCTX, const BF & aBuffer)
 {
-	Buffer * pBuffer = aBuffer.to_ptr< Buffer >();
+	const Buffer & astBuffer = aBuffer.to< Buffer >();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<| compiling<Buffer>: "
-			<< str_header( pBuffer ) << std::endl;
+			<< str_header( astBuffer ) << std::endl;
 	aCTX->debugContext( AVM_OS_TRACE << INCR_INDENT ) << DECR_INDENT;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 	const BF & aSymbol = getSymbolTable().searchBufferInstance(
-			aCTX->mCompileCtx->getExecutable(), pBuffer);
+			aCTX->mCompileCtx->getExecutable(), astBuffer);
 
 	if( aSymbol.valid() )
 	{
@@ -1311,7 +1333,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	else if( getSymbolTable().hasError() )
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << pBuffer->errorLocation(aCTX->mCompileCtx->getAstElement())
+		AVM_OS_WARN << astBuffer.errorLocation(aCTX->mCompileCtx->safeAstElement())
 				<< getSymbolTable().getErrorMessage()
 				<< std::endl << std::endl;
 
@@ -1321,7 +1343,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	{
 		getCompilerTable().incrErrorCount();
 		aCTX->errorContext( AVM_OS_WARN )
-				<< "Unfound buffer instance << & " << str_header( pBuffer )
+				<< "Unfound buffer instance << & " << str_header( astBuffer )
 				<< " >>" << std::endl << std::endl;
 
 		return( aBuffer );
@@ -1332,22 +1354,22 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 const BF & AvmcodeCompiler::compilePort(
 		COMPILE_CONTEXT * aCTX, const BF & aPort)
 {
-	Port * pPort = aPort.to_ptr< Port >();
+	const Port & astPort = aPort.to< Port >();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<| compiling<Port>: "
-			<< str_header( pPort ) << std::endl;
+			<< str_header( astPort ) << std::endl;
 	aCTX->debugContext( AVM_OS_TRACE << INCR_INDENT ) << DECR_INDENT;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
-	const BF & aSymbol = getSymbolTable().
-			searchPortSymbolInstance(aCTX->mCompileCtx->getExecutable(), pPort);
+	const BF & aSymbol = getSymbolTable().searchPortSymbolInstance(
+			aCTX->mCompileCtx->getExecutable(), astPort);
 
 	if( aSymbol.valid() )
 	{
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << TAB_DECR_INDENT << ">| result:> "
-			<< str_header( aSymbol.to_ptr< InstanceOfPort >() ) << std::endl;
+			<< str_header( aSymbol.to< InstanceOfPort >() ) << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 		return( aSymbol );
@@ -1357,7 +1379,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	else if( getSymbolTable().hasError() )
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << pPort->errorLocation(aCTX->mCompileCtx->getAstElement())
+		AVM_OS_WARN << astPort.errorLocation(aCTX->mCompileCtx->safeAstElement())
 				<< getSymbolTable().getErrorMessage()
 				<< std::endl << std::endl;
 
@@ -1367,7 +1389,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	{
 		getCompilerTable().incrErrorCount();
 		aCTX->errorContext( AVM_OS_WARN )
-				<< "Unfound port instance << " << str_header( pPort ) << " >>"
+				<< "Unfound port instance << " << str_header( astPort ) << " >>"
 				<< std::endl << std::endl;
 
 		return( aPort );
@@ -1385,16 +1407,16 @@ const BF & AvmcodeCompiler::compileConnector(
 const BF & AvmcodeCompiler::compileMachine(
 		COMPILE_CONTEXT * aCTX, const BF & aMachine)
 {
-	Machine * pMachine = aMachine.to_ptr< Machine >();
+	const Machine & astMachine = aMachine.to< Machine >();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<| compiling<Machine>: "
-			<< str_header( pMachine ) << std::endl;
+			<< str_header( astMachine ) << std::endl;
 	aCTX->debugContext( AVM_OS_TRACE << INCR_INDENT ) << DECR_INDENT;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 	const BF & aSymbol =
-			getSymbolTable().searchInstanceStatic(aCTX, pMachine);
+			getSymbolTable().searchInstanceStatic(aCTX, astMachine);
 
 	if( aSymbol.valid() )
 	{
@@ -1418,17 +1440,17 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	}
 
 	const BF & aSymbolModel =
-			getSymbolTable().searchInstanceModel(aCTX, pMachine);
+			getSymbolTable().searchInstanceModel(aCTX, astMachine);
 
 	if( aSymbolModel.valid() )
 	{
 		return( aSymbolModel );
 	}
 
-	if( pMachine->getSpecifier().isDesignInstanceDynamic() )
+	if( astMachine.getSpecifier().isDesignInstanceDynamic() )
 	{
 		const BF & aSymbol =
-				getSymbolTable().searchInstanceDynamic(aCTX, pMachine);
+				getSymbolTable().searchInstanceDynamic(aCTX, astMachine);
 
 		if( aSymbol.valid() )
 		{
@@ -1440,8 +1462,8 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	if( getSymbolTable().hasError() )
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << pMachine->errorLocation(
-				aCTX->mCompileCtx->getAstElement() )
+		AVM_OS_WARN << astMachine.errorLocation(
+				aCTX->mCompileCtx->safeAstElement() )
 				<< getSymbolTable().getErrorMessage()
 				<< std::endl << std::endl;
 
@@ -1451,7 +1473,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	{
 		getCompilerTable().incrErrorCount();
 		aCTX->errorContext( AVM_OS_WARN )
-				<< "Unfound machine << " << str_header( pMachine )
+				<< "Unfound machine << " << str_header( astMachine )
 				<< " >>" << std::endl << std::endl;
 
 		return( aMachine );
@@ -1462,16 +1484,16 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 const BF & AvmcodeCompiler::compileRoutine(
 		COMPILE_CONTEXT * aCTX, const BF & aRoutine)
 {
-	Routine * pRoutine = aRoutine.to_ptr< Routine >();
+	const Routine & astRoutine = aRoutine.to< Routine >();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<| compiling<Routine>: "
-			<< str_header( pRoutine ) << std::endl;
+			<< str_header( astRoutine ) << std::endl;
 	aCTX->debugContext( AVM_OS_TRACE << INCR_INDENT ) << DECR_INDENT;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
 	const BF & aSymbol =
-			getSymbolTable().searchProgram(aCTX, pRoutine->getNameID());
+			getSymbolTable().searchProgram(aCTX, astRoutine.getNameID());
 
 	if( aSymbol.valid() )
 	{
@@ -1487,8 +1509,8 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	else if( getSymbolTable().hasError() )
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << pRoutine->errorLocation(
-				aCTX->mCompileCtx->getAstElement() )
+		AVM_OS_WARN << astRoutine.errorLocation(
+				aCTX->mCompileCtx->safeAstElement() )
 				<< getSymbolTable().getErrorMessage()
 				<< std::endl << std::endl;
 
@@ -1498,7 +1520,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	{
 		getCompilerTable().incrErrorCount();
 		aCTX->errorContext( AVM_OS_WARN )
-				<< "Unfound routine << & " << str_header( pRoutine )
+				<< "Unfound routine << & " << str_header( astRoutine )
 				<< " >>" << std::endl << std::endl;
 
 		return( aRoutine );
@@ -1509,15 +1531,15 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 const BF & AvmcodeCompiler::compileTransition(
 		COMPILE_CONTEXT * aCTX, const BF & aTransition)
 {
-	Transition * pTransition = aTransition.to_ptr< Transition >();
+	const Transition & astTransition = aTransition.to< Transition >();
 
 AVM_IF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<| compiling<Transition>: "
-			<< str_header( pTransition ) << std::endl;
+			<< str_header( astTransition ) << std::endl;
 	aCTX->debugContext( AVM_OS_TRACE << INCR_INDENT ) << DECR_INDENT;
 AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 
-	const BF & aSymbol = getSymbolTable().searchTransition(aCTX, pTransition);
+	const BF & aSymbol = getSymbolTable().searchTransition(aCTX, astTransition);
 
 	if( aSymbol.valid() )
 	{
@@ -1533,8 +1555,8 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	else if( getSymbolTable().hasError() )
 	{
 		getCompilerTable().incrErrorCount();
-		AVM_OS_WARN << pTransition->errorLocation(
-				aCTX->mCompileCtx->getAstElement() )
+		AVM_OS_WARN << astTransition.errorLocation(
+				aCTX->mCompileCtx->safeAstElement() )
 				<< getSymbolTable().getErrorMessage()
 				<< std::endl << std::endl;
 
@@ -1544,7 +1566,7 @@ AVM_ENDIF_DEBUG_FLAG2( COMPILING , QUALIFIED_NAME_ID )
 	{
 		getCompilerTable().incrErrorCount();
 		aCTX->errorContext( AVM_OS_WARN )
-				<< "Unfound transition << & " << str_header( pTransition )
+				<< "Unfound transition << & " << str_header( astTransition )
 				<< " >>" << std::endl << std::endl;
 
 		return( aTransition );
@@ -1594,7 +1616,7 @@ BF AvmcodeCompiler::decode_compileExpression(
 
 		case FORM_UFI_KIND:
 		{
-			return( compileUFI(aCTX, aCode.to_ref< UniFormIdentifier>()) );
+			return( compileUFI(aCTX, aCode.to< UniFormIdentifier>()) );
 		}
 
 		case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
@@ -1621,6 +1643,11 @@ BF AvmcodeCompiler::decode_compileExpression(
 		case FORM_XFSP_DATATYPE_KIND:
 		{
 			return( compileDataType(aCTX, aCode) );
+		}
+
+		case FORM_TYPE_SPECIFIER_KIND:
+		{
+			return( aCode );
 		}
 
 		case FORM_XFSP_MACHINE_KIND:
@@ -1688,24 +1715,24 @@ BF AvmcodeCompiler::decode_compileExpression(
 		case FORM_ARRAY_FLOAT_KIND:
 		case FORM_ARRAY_STRING_KIND:
 		{
-			BuiltinArray * aBuiltinArray = aCode.to_ptr< BuiltinArray >();
+			const BuiltinArray & aBuiltinArray = aCode.to< BuiltinArray >();
 
 			// Build the type specified container
-			if( (aCTX->mType != NULL)
+			if( (aCTX->mType != nullptr)
 				&& aCTX->mType->hasTypeCollection()
 				&& aCTX->mType->is< ContainerTypeSpecifier >() )
 			{
 				BuiltinContainer * containerValue = BuiltinContainer::create(
-						aCTX->mType->as< ContainerTypeSpecifier >() );
+						aCTX->mType->to< ContainerTypeSpecifier >() );
 
 				containerValue->copy( aBuiltinArray, std::min(
-						containerValue->capacity(), aBuiltinArray->size()) );
+						containerValue->capacity(), aBuiltinArray.size()) );
 
 				return( BF( containerValue ) );
 			}
 			else
 			{
-				return( BF( aBuiltinArray->getArrayBF() ) );
+				return( BF( aBuiltinArray.getArrayBF() ) );
 			}
 		}
 
@@ -1757,26 +1784,27 @@ BF AvmcodeCompiler::decode_compileExpression(
 BF AvmcodeCompiler::compileArrayOfIdentifier(
 		COMPILE_CONTEXT * aCTX, ArrayIdentifier * idArray)
 {
-	BaseTypeSpecifier * arrayType = ( (aCTX->mType != NULL) &&
-			aCTX->mType->hasTypeComposite()) ? aCTX->mType :
+	const BaseTypeSpecifier & arrayType = ( (aCTX->mType != nullptr)
+			&& aCTX->mType->hasTypeComposite()) ? (* aCTX->mType) :
 					idArray->getTypeSpecifier();
 
 	ArrayBF * compiledArray = new ArrayBF(arrayType, idArray->size());
 
+	compiledArray->setTypeSpecifier( arrayType );
+
 	bool isnotCompiled = false;
 
-	if( aCTX->mType != NULL )
+	if( aCTX->mType != nullptr )
 	{
-		COMPILE_CONTEXT * contentCTX = NULL;
+		COMPILE_CONTEXT * contentCTX = nullptr;
 
-		if( aCTX->mType->hasTypeCollection() &&
-			aCTX->mType->is< ContainerTypeSpecifier >() )
+		if( aCTX->mType->hasTypeCollection()
+			&& aCTX->mType->is< ContainerTypeSpecifier >() )
 		{
 			contentCTX = aCTX->clone( aCTX->mType->
-					to< ContainerTypeSpecifier >()->
-							getContentsTypeSpecifier() );
+					to< ContainerTypeSpecifier >().getContentsTypeSpecifier() );
 
-			for( avm_size_t index = 0; index < idArray->size() ; ++index )
+			for( std::size_t index = 0; index < idArray->size() ; ++index )
 			{
 				compiledArray->set( index,
 						compileIdentifier(contentCTX, idArray->get(index)) );
@@ -1784,18 +1812,17 @@ BF AvmcodeCompiler::compileArrayOfIdentifier(
 		}
 		else if( aCTX->mType->isTypedStructure() )
 		{
-			ClassTypeSpecifier * typeStruct =
-					aCTX->mType->to< ClassTypeSpecifier >();
+			const ClassTypeSpecifier * typeStruct =
+					aCTX->mType->to_ptr< ClassTypeSpecifier >();
 			TableOfSymbol::const_iterator itField =
 					typeStruct->getSymbolData().begin();
 			TableOfSymbol::const_iterator endField =
 					typeStruct->getSymbolData().end();
 
-			for( avm_size_t index = 0; (index < idArray->size()) &&
-					(itField != endField) ; ++index )
+			for( std::size_t index = 0; (index < idArray->size())
+					&& (itField != endField) ; ++index, ++itField )
 			{
-				contentCTX = aCTX->clone(
-						(*itField).getTypeSpecifier() );
+				contentCTX = aCTX->clone( (*itField).getTypeSpecifier() );
 
 				compiledArray->set( index,
 						compileIdentifier(contentCTX, idArray->get(index)) );
@@ -1809,7 +1836,7 @@ BF AvmcodeCompiler::compileArrayOfIdentifier(
 
 	if( isnotCompiled )
 	{
-		for( avm_size_t index = 0; index < idArray->size() ; ++index )
+		for( std::size_t index = 0; index < idArray->size() ; ++index )
 		{
 			compiledArray->set( index,
 					compileIdentifier(aCTX, idArray->get(index)) );
@@ -1817,13 +1844,13 @@ BF AvmcodeCompiler::compileArrayOfIdentifier(
 	}
 
 	// Build the type specified container
-	if( (aCTX->mType != NULL) && aCTX->mType->hasTypeCollection() &&
-		aCTX->mType->is< ContainerTypeSpecifier >() )
+	if( (aCTX->mType != nullptr) && aCTX->mType->hasTypeCollection()
+		&& aCTX->mType->is< ContainerTypeSpecifier >() )
 	{
 		BuiltinContainer * containerValue = BuiltinContainer::create(
-				aCTX->mType->as< ContainerTypeSpecifier >() );
+				aCTX->mType->to< ContainerTypeSpecifier >() );
 
-		containerValue->copy( compiledArray, std::min(
+		containerValue->copy( (* compiledArray), std::min(
 				containerValue->capacity(), compiledArray->size()) );
 
 		return( BF( containerValue ) );
@@ -1838,26 +1865,27 @@ BF AvmcodeCompiler::compileArrayOfIdentifier(
 BF AvmcodeCompiler::compileArrayOfQualifiedIdentifier(
 		COMPILE_CONTEXT * aCTX, ArrayQualifiedIdentifier * ufidArray)
 {
-	BaseTypeSpecifier * arrayType = ( (aCTX->mType != NULL) &&
-			aCTX->mType->hasTypeComposite()) ? aCTX->mType :
+	const BaseTypeSpecifier & arrayType = ( (aCTX->mType != nullptr)
+			&& aCTX->mType->hasTypeComposite()) ? (* aCTX->mType) :
 					ufidArray->getTypeSpecifier();
 
 	ArrayBF * compiledArray = new ArrayBF(arrayType, ufidArray->size());
 
+	compiledArray->setTypeSpecifier( arrayType );
+
 	bool isnotCompiled = false;
 
-	if( aCTX->mType != NULL )
+	if( aCTX->mType != nullptr )
 	{
-		COMPILE_CONTEXT * contentCTX = NULL;
+		COMPILE_CONTEXT * contentCTX = nullptr;
 
-		if( aCTX->mType->hasTypeCollection() &&
-			aCTX->mType->is< ContainerTypeSpecifier >() )
+		if( aCTX->mType->hasTypeCollection()
+			&& aCTX->mType->is< ContainerTypeSpecifier >() )
 		{
 			contentCTX = aCTX->clone( aCTX->mType->
-					to< ContainerTypeSpecifier >()->
-							getContentsTypeSpecifier() );
+					to< ContainerTypeSpecifier >().getContentsTypeSpecifier() );
 
-			for( avm_size_t index = 0; index < ufidArray->size() ; ++index )
+			for( std::size_t index = 0; index < ufidArray->size() ; ++index )
 			{
 				compiledArray->set( index,
 						compileFullyQualifiedNameID(
@@ -1866,15 +1894,15 @@ BF AvmcodeCompiler::compileArrayOfQualifiedIdentifier(
 		}
 		else if( aCTX->mType->isTypedStructure() )
 		{
-			ClassTypeSpecifier * typeStruct =
-					aCTX->mType->to< ClassTypeSpecifier >();
+			const ClassTypeSpecifier * typeStruct =
+					aCTX->mType->to_ptr< ClassTypeSpecifier >();
 			TableOfSymbol::const_iterator itField =
 					typeStruct->getSymbolData().begin();
 			TableOfSymbol::const_iterator endField =
 					typeStruct->getSymbolData().end();
 
-			for( avm_size_t index = 0; (index < ufidArray->size()) &&
-					(itField != endField) ; ++index )
+			for( std::size_t index = 0; (index < ufidArray->size())
+					&& (itField != endField) ; ++index , ++itField )
 			{
 				contentCTX = aCTX->clone(
 						(*itField).getTypeSpecifier() );
@@ -1892,7 +1920,7 @@ BF AvmcodeCompiler::compileArrayOfQualifiedIdentifier(
 
 	if( isnotCompiled )
 	{
-		for( avm_size_t index = 0; index < ufidArray->size() ; ++index )
+		for( std::size_t index = 0; index < ufidArray->size() ; ++index )
 		{
 			compiledArray->set( index,
 					compileFullyQualifiedNameID(aCTX, ufidArray->get(index)) );
@@ -1900,13 +1928,13 @@ BF AvmcodeCompiler::compileArrayOfQualifiedIdentifier(
 	}
 
 	// Build the type specified container
-	if( (aCTX->mType != NULL) && aCTX->mType->hasTypeCollection() &&
-		aCTX->mType->is< ContainerTypeSpecifier >() )
+	if( (aCTX->mType != nullptr) && aCTX->mType->hasTypeCollection()
+		&& aCTX->mType->is< ContainerTypeSpecifier >() )
 	{
 		BuiltinContainer * containerValue = BuiltinContainer::create(
-				aCTX->mType->as< ContainerTypeSpecifier >() );
+				aCTX->mType->to< ContainerTypeSpecifier >() );
 
-		containerValue->copy( compiledArray, std::min(
+		containerValue->copy( (* compiledArray), std::min(
 				containerValue->capacity(), compiledArray->size()) );
 
 		return( BF( containerValue ) );
@@ -1921,28 +1949,29 @@ BF AvmcodeCompiler::compileArrayOfQualifiedIdentifier(
 BF AvmcodeCompiler::compileArrayOfBF(
 		COMPILE_CONTEXT * aCTX, ArrayBF * bfarray)
 {
-	BaseTypeSpecifier * arrayType = ( (aCTX->mType != NULL) &&
-			aCTX->mType->hasTypeComposite() ) ?
-					aCTX->mType : bfarray->getTypeSpecifier();
+	const BaseTypeSpecifier & arrayType =
+			( (aCTX->mType != nullptr) && aCTX->mType->hasTypeComposite() ) ?
+					(* aCTX->mType) : bfarray->getTypeSpecifier();
 
 	ArrayBF * compiledArray = new ArrayBF(arrayType, bfarray->size());
+
+	compiledArray->setTypeSpecifier( arrayType );
 
 	BF bfCompiledArray( compiledArray );
 
 	bool isnotCompiled = false;
 
-	if( aCTX->mType != NULL )
+	if( aCTX->mType != nullptr )
 	{
-		COMPILE_CONTEXT * contentCTX = NULL;
+		COMPILE_CONTEXT * contentCTX = nullptr;
 
-		if( aCTX->mType->hasTypeCollection() &&
-			aCTX->mType->is< ContainerTypeSpecifier >() )
+		if( aCTX->mType->hasTypeCollection()
+			&& aCTX->mType->is< ContainerTypeSpecifier >() )
 		{
 			contentCTX = aCTX->clone( aCTX->mType->
-					to< ContainerTypeSpecifier >()->
-							getContentsTypeSpecifier() );
+					to< ContainerTypeSpecifier >().getContentsTypeSpecifier() );
 
-			for( avm_size_t index = 0; index < bfarray->size() ; ++index )
+			for( std::size_t index = 0; index < bfarray->size() ; ++index )
 			{
 				compiledArray->set( index , decode_compileExpression(
 						contentCTX, bfarray->at(index) ) );
@@ -1950,15 +1979,15 @@ BF AvmcodeCompiler::compileArrayOfBF(
 		}
 		else if( aCTX->mType->isTypedStructure() )
 		{
-			ClassTypeSpecifier * typeStruct =
-					aCTX->mType->to< ClassTypeSpecifier >();
+			const ClassTypeSpecifier * typeStruct =
+					aCTX->mType->to_ptr< ClassTypeSpecifier >();
 			TableOfSymbol::const_iterator itField =
 					typeStruct->getSymbolData().begin();
 			TableOfSymbol::const_iterator endField =
 					typeStruct->getSymbolData().end();
 
-			for( avm_size_t index = 0; (index < bfarray->size()) &&
-					(itField != endField) ; ++index )
+			for( std::size_t index = 0; (index < bfarray->size())
+					&& (itField != endField) ; ++index , ++itField )
 			{
 				contentCTX = aCTX->clone(
 						(*itField).getTypeSpecifier() );
@@ -1975,7 +2004,7 @@ BF AvmcodeCompiler::compileArrayOfBF(
 
 	if( isnotCompiled )
 	{
-		for( avm_size_t index = 0; index < bfarray->size() ; ++index )
+		for( std::size_t index = 0; index < bfarray->size() ; ++index )
 		{
 			compiledArray->set( index ,
 					decode_compileExpression(
@@ -1984,22 +2013,23 @@ BF AvmcodeCompiler::compileArrayOfBF(
 	}
 
 	// Build the type specified container
-	if( (aCTX->mType != NULL) && aCTX->mType->hasTypeCollection() &&
-		aCTX->mType->is< ContainerTypeSpecifier >() )
+	if( (aCTX->mType != nullptr) && aCTX->mType->hasTypeCollection()
+		&& aCTX->mType->is< ContainerTypeSpecifier >() )
 	{
 		if( AbstractAvmcodeCompiler::
 				mustBeEvaluatedArgumentArray( compiledArray ) )
 		{
 			return( ExpressionConstructor::newCode(
 					OperatorManager::OPERATOR_CTOR,
-					INCR_BF(aCTX->mType), bfCompiledArray) );
+					INCR_BF( const_cast< BaseTypeSpecifier * >(aCTX->mType) ),
+					bfCompiledArray) );
 		}
 		else
 		{
 			BuiltinContainer * containerValue = BuiltinContainer::create(
 					aCTX->mType->as< ContainerTypeSpecifier >() );
 
-			containerValue->copy( compiledArray, std::min(
+			containerValue->copy( (* compiledArray), std::min(
 					containerValue->capacity(), compiledArray->size()) );
 
 			return( BF( containerValue ) );
@@ -2020,15 +2050,15 @@ BF AvmcodeCompiler::decode_compileVariableMachine(
 	BF varCode = decode_compileExpression(aCTX, aCode);
 	if( varCode.is< InstanceOfMachine >() )
 	{
-		if( varCode.to_ptr< InstanceOfMachine >()->hasRuntimeRID() )
+		if( varCode.to< InstanceOfMachine >().hasRuntimeRID() )
 		{
-			return( varCode.to_ptr< InstanceOfMachine >()->getRuntimeRID() );
+			return( varCode.to< InstanceOfMachine >().getRuntimeRID() );
 		}
 		return( varCode );
 	}
 	else if( varCode.is< InstanceOfData >() )
 	{
-		if( varCode.to_ptr< InstanceOfData >()->isTypedMachine() )
+		if( varCode.to< InstanceOfData >().isTypedMachine() )
 		{
 			return( varCode );
 		}
@@ -2047,7 +2077,7 @@ BF AvmcodeCompiler::decode_compileVariablePort(
 	}
 	else if( varCode.is< InstanceOfData >() )
 	{
-		if( varCode.to_ptr< InstanceOfData >()->isTypedPort() )
+		if( varCode.to< InstanceOfData >().isTypedPort() )
 		{
 			return( varCode );
 		}
@@ -2066,7 +2096,7 @@ BF AvmcodeCompiler::decode_compileVariableBuffer(
 	}
 	else if( varCode.is< InstanceOfData >() )
 	{
-		if( varCode.to_ptr< InstanceOfData >()->isTypedBuffer() )
+		if( varCode.to< InstanceOfData >().isTypedBuffer() )
 		{
 			return( varCode );
 		}
@@ -2125,11 +2155,11 @@ BF AvmcodeCompiler::decode_optimizeExpression(
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			InstanceOfData * anInstance = aCode.to_ptr< InstanceOfData >();
-			if( anInstance->getModifier().hasModifierPublicFinalStatic()
-				&& anInstance->isTypedEnum() && anInstance->hasValue() )
+			const InstanceOfData & anInstance = aCode.to< InstanceOfData >();
+			if( anInstance.getModifier().hasModifierPublicFinalStatic()
+				&& anInstance.isTypedEnum() && anInstance.hasValue() )
 			{
-				return( anInstance->getValue() );
+				return( anInstance.getValue() );
 			}
 			else
 			{
@@ -2200,7 +2230,7 @@ BF AvmcodeCompiler::decode_compileStatement(
 
 		case FORM_UFI_KIND:
 		{
-			return( compileUFI(aCTX, aCode.to_ref< UniFormIdentifier>()) );
+			return( compileUFI(aCTX, aCode.to< UniFormIdentifier>()) );
 		}
 
 		case FORM_BUILTIN_QUALIFIED_IDENTIFIER_KIND:
@@ -2222,6 +2252,11 @@ BF AvmcodeCompiler::decode_compileStatement(
 		case FORM_XFSP_DATATYPE_KIND:
 		{
 			return( compileDataType(aCTX, aCode) );
+		}
+
+		case FORM_TYPE_SPECIFIER_KIND:
+		{
+			return( aCode );
 		}
 
 		case FORM_XFSP_VARIABLE_KIND:
@@ -2302,7 +2337,7 @@ BF AvmcodeCompiler::decode_compileStatement(
 			ArrayIdentifier * idArray = aCode.to_ptr< ArrayIdentifier >();
 			BFVector array;
 
-			for( avm_size_t index = 0; index < idArray->size() ; ++index )
+			for( std::size_t index = 0; index < idArray->size() ; ++index )
 			{
 				array.append( compileIdentifier(aCTX, idArray->get(index)) );
 			}
@@ -2316,7 +2351,7 @@ BF AvmcodeCompiler::decode_compileStatement(
 					aCode.to_ptr< ArrayQualifiedIdentifier >();
 			BFVector array;
 
-			for( avm_size_t index = 0; index < ufiArray->size() ; ++index )
+			for( std::size_t index = 0; index < ufiArray->size() ; ++index )
 			{
 				array.append( compileFullyQualifiedNameID(
 						aCTX, ufiArray->get(index)) );
@@ -2330,7 +2365,7 @@ BF AvmcodeCompiler::decode_compileStatement(
 			ArrayBF * bfarray = aCode.to_ptr< ArrayBF >();
 			BFVector array;
 
-			for( avm_size_t index = 0; index < bfarray->size() ; ++index )
+			for( std::size_t index = 0; index < bfarray->size() ; ++index )
 			{
 				array.append( decode_compileExpression(
 						aCTX, bfarray->at(index) ) );
@@ -2338,6 +2373,13 @@ BF AvmcodeCompiler::decode_compileStatement(
 
 			return( BuiltinArray::create(array) );
 		}
+
+
+		case FORM_AVMTRANSITION_KIND:
+		{
+			return( aCode );
+		}
+
 
 		default:
 		{ // TODO
@@ -2451,7 +2493,8 @@ BF AvmcodeCompiler::decode_optimizeStatement(
 		case FORM_AVMPROGRAM_KIND:
 		case FORM_AVMTRANSITION_KIND:
 		{
-			optimizeProgramRoutine( aCode.to_ptr< AvmProgram >() );
+			optimizeProgramRoutine( const_cast< AvmProgram & >(
+					aCode.to< AvmProgram >() ));
 
 			return( aCode );
 		}
@@ -2474,30 +2517,34 @@ BF AvmcodeCompiler::decode_optimizeStatement(
 
 
 AvmProgram * AvmcodeCompiler::compileRoutineStructure(
-		BaseCompiler * aCompiler, AvmProgram * aProgramCtx, Routine * aRoutine)
+		const BaseCompiler & aCompiler,
+		AvmProgram & aProgramCtx, const Routine & aRoutine)
 {
-	avm_size_t paramCount = aRoutine->getParameters().size();
-	avm_size_t returnCount = aRoutine->getReturns().size();
-	avm_size_t paramReturnCount = paramCount + returnCount;
+	const PropertyPart & aPropertyPart = aRoutine.getPropertyPart();
+	
+	std::size_t paramCount = aPropertyPart.getVariableParametersCount();
+	std::size_t returnCount = aPropertyPart.getVariableReturnsCount();
+	std::size_t paramReturnCount = paramCount + returnCount;
 
 	AvmProgram * aCompiledRoutine = new AvmProgram(
-			Specifier::SCOPE_ROUTINE_KIND,
-			aProgramCtx, aRoutine, paramReturnCount );
+			Specifier::SCOPE_ROUTINE_KIND, (& aProgramCtx),
+			aRoutine, paramReturnCount );
 
 	aCompiledRoutine->setParamOffsetCount(0, paramCount);
 	aCompiledRoutine->setReturnOffsetCount(paramCount, returnCount);
 
 
-	InstanceOfData * anInstance = NULL;
+	InstanceOfData * anInstance = nullptr;
 	TypeSpecifier bfTS;
 
-	avm_size_t offset = 0;
+	std::size_t offset = 0;
 
 	// Parameters
-	BFVector::raw_iterator< Variable > itVar = aRoutine->getParameters().begin();
+	BFVector::const_ref_iterator< Variable > itVar =
+			aPropertyPart.getVariableParameters().begin();
 	for( ; offset < paramCount ; ++itVar , ++offset )
 	{
-		bfTS = aCompiler->compileTypeSpecifier(aProgramCtx, itVar->getType());
+		bfTS = aCompiler.compileTypeSpecifier(aProgramCtx, itVar->getType());
 		if( bfTS.invalid() )
 		{
 			bfTS = TypeManager::UNIVERSAL;
@@ -2511,10 +2558,10 @@ AvmProgram * AvmcodeCompiler::compileRoutineStructure(
 		}
 
 		anInstance = new InstanceOfData(
-				IPointerDataNature::POINTER_STANDARD_NATURE,
+				IPointerVariableNature::POINTER_STANDARD_NATURE,
 				aCompiledRoutine, itVar, bfTS, offset);
 
-		aCompiledRoutine->setData(offset, anInstance);
+		aCompiledRoutine->setVariable(offset, anInstance);
 
 		if( itVar->hasValue() )
 		{
@@ -2525,15 +2572,15 @@ AvmProgram * AvmcodeCompiler::compileRoutineStructure(
 	}
 
 	// Returns
-	itVar = aRoutine->getReturns().begin();
+	itVar = aPropertyPart.getVariableReturns().begin();
 	for( ; offset < paramReturnCount ; ++itVar , ++offset )
 	{
-		bfTS = aCompiler->compileTypeSpecifier(aProgramCtx, itVar->getType());
+		bfTS = aCompiler.compileTypeSpecifier(aProgramCtx, itVar->getType());
 		if( bfTS.invalid() )
 		{
 			bfTS = TypeManager::UNIVERSAL;
 
-	//		incrErrorCount();
+//			incrErrorCount();
 			++AVM_ERROR_COUNT;
 
 			AVM_OS_ERROR_ALERT << "AvmcodeCompiler::compileRoutine : << "
@@ -2542,10 +2589,10 @@ AvmProgram * AvmcodeCompiler::compileRoutineStructure(
 		}
 
 		anInstance = new InstanceOfData(
-				IPointerDataNature::POINTER_STANDARD_NATURE,
+				IPointerVariableNature::POINTER_STANDARD_NATURE,
 				aCompiledRoutine, itVar, bfTS, offset);
 
-		aCompiledRoutine->setData(offset, anInstance);
+		aCompiledRoutine->setVariable(offset, anInstance);
 
 		if( itVar->hasValue() )
 		{
@@ -2555,29 +2602,29 @@ AvmProgram * AvmcodeCompiler::compileRoutineStructure(
 	}
 
 	// Finalize compiled data
-	aCompiledRoutine->updateDataTable();
+	aCompiledRoutine->updateVariableTable();
 
 	return( aCompiledRoutine );
 }
 
 
-AvmProgram * AvmcodeCompiler::compileRoutine(BaseCompiler * aCompiler,
-		AvmProgram * aProgramCtx, Routine * aRoutine)
+AvmProgram * AvmcodeCompiler::compileRoutine(const BaseCompiler & aCompiler,
+		AvmProgram & aProgramCtx, const Routine & aRoutine)
 {
 	AvmProgram * aCompiledRoutine =
 			compileRoutineStructure(aCompiler, aProgramCtx, aRoutine);
 
 	// Compile Routine -> Code
 	aCompiledRoutine->setCode(
-			compileStatement(aCompiledRoutine, aRoutine->getCode()) );
+			compileStatement((* aCompiledRoutine), aRoutine.getCode()) );
 
 	return( aCompiledRoutine );
 }
 
 
 AvmProgram * AvmcodeCompiler::compileRoutine(
-		BaseCompiler * aCompiler, AvmProgram * aProgramCtx,
-		InstanceOfData * aVarInstanceCtx, Routine * aRoutine)
+		const BaseCompiler & aCompiler, AvmProgram & aProgramCtx,
+		InstanceOfData * aVarInstanceCtx, const Routine & aRoutine)
 {
 	AvmProgram * aCompiledRoutine =
 			compileRoutineStructure(aCompiler, aProgramCtx, aRoutine);
@@ -2587,22 +2634,22 @@ AvmProgram * AvmcodeCompiler::compileRoutine(
 	CompilationEnvironment compilENV(aCompiledRoutine, aVarInstanceCtx);
 
 	aCompiledRoutine->setCode(
-			compileStatement(compilENV.mCTX, aRoutine->getCode()) );
+			compileStatement(compilENV.mCTX, aRoutine.getCode()) );
 
 	return( aCompiledRoutine );
 }
 
 
 AvmProgram * AvmcodeCompiler::compileRoutine(
-		BaseCompiler * aCompiler, AvmProgram * aProgramCtx,
-		const TypeSpecifier & aTypeSpecifierCtx, Routine * aRoutine)
+		const BaseCompiler & aCompiler, AvmProgram & aProgramCtx,
+		const TypeSpecifier & aTypeSpecifierCtx, const Routine & aRoutine)
 {
 	AvmProgram * aCompiledRoutine =
 			compileRoutineStructure(aCompiler, aProgramCtx, aRoutine);
 
 	// Compile Routine -> Code
 	aCompiledRoutine->setCode(
-			compileStatement(aCompiledRoutine, aRoutine->getCode()) );
+			compileStatement(*aCompiledRoutine, aRoutine.getCode()) );
 
 	return( aCompiledRoutine );
 }
@@ -2614,81 +2661,81 @@ AvmProgram * AvmcodeCompiler::compileRoutine(
  *******************************************************************************
  */
 
-void AvmcodeCompiler::optimizeDataRoutine(AvmProgram * aProgram)
+void AvmcodeCompiler::optimizeDataRoutine(AvmProgram & aProgram)
 {
 //AVM_OS_TRACE << TAB << "<| optimizing<program>: "
-//		<< aProgram->getFullyQualifiedNameID() << std::endl;
+//		<< aProgram.getFullyQualifiedNameID() << std::endl;
 
-	if( aProgram->hasConstData() )
+	if( aProgram.hasConstVariable() )
 	{
-		TableOfInstanceOfData::const_raw_iterator itData =
-				aProgram->getConstData().begin();
-		TableOfInstanceOfData::const_raw_iterator endData =
-				aProgram->getConstData().end();
-		for( ; itData != endData ; ++itData )
+		TableOfInstanceOfData::ref_iterator itVar =
+				aProgram.getConstVariable().begin();
+		TableOfInstanceOfData::ref_iterator endVar =
+				aProgram.getConstVariable().end();
+		for( ; itVar != endVar ; ++itVar )
 		{
 			/*
 			 * initial macro value
 			 */
-			if( (itData)->getModifier().hasNatureMacro()
-				&& (itData)->hasValue()
-				&& (itData)->getValue().is< AvmCode >() )
+			if( (itVar)->getModifier().hasNatureMacro()
+				&& (itVar)->hasValue()
+				&& (itVar)->getValue().is< AvmCode >() )
 			{
-				(itData)->setValue( optimizeExpression(
-						aProgram, (itData)->getValue().bfCode()) );
+				(itVar)->setValue( optimizeExpression(
+						aProgram, (itVar)->getValue().bfCode()) );
 			}
 		}
 	}
 
-	if( aProgram->hasData() )
+	if( aProgram.hasVariable() )
 	{
-		TableOfInstanceOfData::const_raw_iterator itData =
-				aProgram->getAllData().begin();
-		TableOfInstanceOfData::const_raw_iterator endData =
-				aProgram->getAllData().end();
-		for( ; itData != endData ; ++itData )
+		TableOfInstanceOfData::ref_iterator itVar =
+				aProgram.getAllVariables().begin();
+		TableOfInstanceOfData::ref_iterator endVar =
+				aProgram.getAllVariables().end();
+		for( ; itVar != endVar ; ++itVar )
 		{
 			/*
 			 * initial macro value
 			 */
-			if( (itData)->getModifier().hasNatureMacro()
-				&& (itData)->hasValue()
-				&& (itData)->getValue().is< AvmCode >() )
+			if( (itVar)->getModifier().hasNatureMacro()
+				&& (itVar)->hasValue()
+				&& (itVar)->getValue().is< AvmCode >() )
 			{
-				(itData)->setValue( optimizeExpression(
-						aProgram, (itData)->getValue().bfCode()) );
+				(itVar)->setValue( optimizeExpression(
+						aProgram, (itVar)->getValue().bfCode()) );
 			}
 
 			/*
 			 * onWrite
 			 */
-			if( (itData)->hasOnWriteRoutine())
+			if( (itVar)->hasOnWriteRoutine())
 			{
-				optimizeProgramRoutine( (itData)->getOnWriteRoutine() );
+				optimizeProgramRoutine( * (itVar)->getOnWriteRoutine() );
 			}
 		}
 	}
 
-	if( aProgram->hasDataAlias() )
+	if( aProgram.hasVariableAlias() )
 	{
-		TableOfInstanceOfData::const_raw_iterator itData =
-				aProgram->getDataAlias().begin();
-		TableOfInstanceOfData::const_raw_iterator endData =
-				aProgram->getDataAlias().end();
-		for( ; itData != endData ; ++itData )
+		TableOfInstanceOfData::const_raw_iterator itVar =
+				aProgram.getVariableAlias().begin();
+		TableOfInstanceOfData::const_raw_iterator endVar =
+				aProgram.getVariableAlias().end();
+		for( ; itVar != endVar ; ++itVar )
 		{
 			/*
 			 * Symbolic Array Index
 			 */
-			if( (itData)->hasArrayIndexPointer() )
+			if( (itVar)->hasArrayIndexPointer() )
 			{
-				TableOfSymbol::iterator itDP = (itData)->getDataPath()->begin();
-				TableOfSymbol::iterator endItDP = (itData)->getDataPath()->end();
+				TableOfSymbol::iterator itDP = (itVar)->getDataPath()->begin();
+				TableOfSymbol::iterator endItDP = (itVar)->getDataPath()->end();
 
 				for( ; itDP != endItDP ; ++itDP )
 				{
-					if( (*itDP).isFieldArrayIndexPointer() &&
-							(*itDP).getValue().is< AvmCode >() )
+					if( (*itDP).isFieldArrayIndexPointer()
+						&& (*itDP).getValue().is< AvmCode >() )
 					{
 						(*itDP).setValue( optimizeExpression(
 								aProgram, (*itDP).getValue().bfCode()) );
@@ -2700,27 +2747,27 @@ void AvmcodeCompiler::optimizeDataRoutine(AvmProgram * aProgram)
 
 
 //AVM_OS_TRACE << TAB << ">| optimizing<Program>: "
-//		<< aProgram->getFullyQualifiedNameID() << std::endl << std::endl;
+//		<< aProgram.getFullyQualifiedNameID() << std::endl << std::endl;
 }
 
 
-void AvmcodeCompiler::optimizeDataRoutine(ExecutableForm * theExecutable)
+void AvmcodeCompiler::optimizeDataRoutine(ExecutableForm & theExecutable)
 {
 //AVM_OS_TRACE << TAB << "<| optimizing<executable>: "
-//		<< theExecutable->getFullyQualifiedNameID() << std::endl;
+//		<< theExecutable.getFullyQualifiedNameID() << std::endl;
 
-	optimizeDataRoutine( static_cast< AvmProgram * >(theExecutable) );
+	optimizeDataRoutine( static_cast< AvmProgram & >(theExecutable) );
 
 //AVM_OS_TRACE << TAB << ">| optimizing<executable>: "
-//		<< theExecutable->getFullyQualifiedNameID() << std::endl << std::endl;
+//		<< theExecutable.getFullyQualifiedNameID() << std::endl << std::endl;
 }
 
 
 
-void AvmcodeCompiler::optimizeProgramRoutine(AvmProgram * aProgram)
+void AvmcodeCompiler::optimizeProgramRoutine(AvmProgram & aProgram)
 {
 //AVM_OS_TRACE << TAB << "<| optimizing<program>: "
-//		<< aProgram->getFullyQualifiedNameID() << std::endl;
+//		<< aProgram.getFullyQualifiedNameID() << std::endl;
 
 
 	/*
@@ -2729,33 +2776,33 @@ void AvmcodeCompiler::optimizeProgramRoutine(AvmProgram * aProgram)
 	optimizeDataRoutine( aProgram );
 
 
-	if( aProgram->hasCode() )
+	if( aProgram.hasCode() )
 	{
-		aProgram->setCode( optimizeStatement(aProgram, aProgram->getCode()) );
+		aProgram.setCode( optimizeStatement(aProgram, aProgram.getCode()) );
 
-		aProgram->updateOpcodeFamily();
+		aProgram.updateOpcodeFamily();
 	}
 
 
 	/*
 	 * onSynchronize
 	 */
-//	if( aProgram->hasOnSynchronize() )
+//	if( aProgram.hasOnSynchronize() )
 //	{
-//		aProgram->setOnSynchronize(
+//		aProgram.setOnSynchronize(
 //				theAvmcodeCompiler.optimizeStatement(
-//						aProgram, aProgram->getOnSynchronize()) );
+//						aProgram, aProgram.getOnSynchronize()) );
 //	}
 
 
 //AVM_OS_TRACE << TAB << ">| optimizing<program>: "
-//		<< aProgram->getFullyQualifiedNameID() << std::endl << std::endl;
+//		<< aProgram.getFullyQualifiedNameID() << std::endl << std::endl;
 }
 
 
 
 void AvmcodeCompiler::optimizeInstance(
-		ExecutableForm * theExecutableContainer, InstanceOfMachine * anInstance)
+		ExecutableForm & theExecutableContainer, InstanceOfMachine * anInstance)
 {
 	ExecutableForm * anExec = anInstance->getExecutable();
 
@@ -2764,7 +2811,8 @@ void AvmcodeCompiler::optimizeInstance(
 	 */
 	if( anInstance->hasOnCreate() )
 	{
-		CompilationEnvironment compilENV(NULL, anExec, theExecutableContainer);
+		CompilationEnvironment compilENV(nullptr,
+				anExec, (& theExecutableContainer) );
 
 		anInstance->setOnCreate( optimizeStatement(
 				compilENV.mCTX, anInstance->getOnCreate() ) );
@@ -2779,7 +2827,8 @@ void AvmcodeCompiler::optimizeInstance(
 	 */
 	if( anInstance->hasOnStart() )
 	{
-		CompilationEnvironment compilENV(NULL, anExec, theExecutableContainer);
+		CompilationEnvironment compilENV(nullptr,
+				anExec, (& theExecutableContainer) );
 
 		anInstance->setOnStart( optimizeStatement(
 				compilENV.mCTX, anInstance->getOnStart() ) );
@@ -2808,7 +2857,8 @@ void AvmcodeCompiler::optimizeInstance(
 	//!![MIGRATION] optimizeInstanceParameter
 	if( anInstance->hasParam() )
 	{
-		CompilationEnvironment compilENV(NULL, anExec, theExecutableContainer);
+		CompilationEnvironment compilENV(nullptr,
+				anExec, (& theExecutableContainer) );
 		COMPILE_CONTEXT * aCTX;
 
 		InstanceOfData * paramVar;
@@ -2819,7 +2869,7 @@ void AvmcodeCompiler::optimizeInstance(
 		{
 			if( (*it).is< AvmCode >() )
 			{
-				paramVar = anExec->rawParamData(offset);
+				paramVar = anExec->rawParamVariable(offset);
 
 				aCTX = compilENV.mCTX->clone( paramVar->getTypeSpecifier() );
 
@@ -2829,16 +2879,16 @@ void AvmcodeCompiler::optimizeInstance(
 //					&& (*it).is< AvmCode >() )
 //				{
 ////				setArgcodeLValue(aCTX,
-////					(*it).to_ptr< AvmCode >()->getGlobalArgcode(), (*it));
+////					(*it).to< AvmCode >().getGlobalArgcode(), (*it));
 //				}
 			}
 			else if( (*it).is< InstanceOfData >() )
 			{
-				InstanceOfData * anInstance = (*it).to_ptr< InstanceOfData >();
-				if( anInstance->getModifier().hasModifierPublicFinalStatic()
-					&& anInstance->isTypedEnum() && anInstance->hasValue() )
+				const InstanceOfData & anInstance = (*it).to< InstanceOfData >();
+				if( anInstance.getModifier().hasModifierPublicFinalStatic()
+					&& anInstance.isTypedEnum() && anInstance.hasValue() )
 				{
-					(*it) = anInstance->getValue();
+					(*it) = anInstance.getValue();
 				}
 			}
 		}
@@ -2853,7 +2903,7 @@ void AvmcodeCompiler::optimizeInstance(
 ////////////////////////////////////////////////////////////////////////////////
 
 
-BF AvmcodeCompiler::substituteUfiByInstance(ExecutableForm * theExecutable,
+BF AvmcodeCompiler::substituteUfiByInstance(ExecutableForm & theExecutable,
 		const BF & anElement, ListOfSymbol & usingInstance)
 {
 	if( anElement.invalid() )
@@ -2863,12 +2913,12 @@ BF AvmcodeCompiler::substituteUfiByInstance(ExecutableForm * theExecutable,
 	else if( anElement.is< Machine >() )
 	{
 		TableOfSymbol::const_iterator itMachine =
-				theExecutable->instance_static_begin();
+				theExecutable.instance_static_begin();
 		TableOfSymbol::const_iterator endMachine =
-				theExecutable->instance_static_end();
+				theExecutable.instance_static_end();
 		for(  ; itMachine != endMachine ; ++itMachine )
 		{
-			if( anElement.isTEQ( (*itMachine).getAstElement() ) )
+			if( anElement.isTEQ( (*itMachine).safeAstElement() ) )
 			{
 				usingInstance.append( (*itMachine) );
 
@@ -2878,9 +2928,9 @@ BF AvmcodeCompiler::substituteUfiByInstance(ExecutableForm * theExecutable,
 
 		AVM_OS_EXIT( FAILED )
 				<< "Undefined machine instance < "
-				<< anElement.to_ptr< Machine >()->getFullyQualifiedNameID()
+				<< anElement.to< Machine >().getFullyQualifiedNameID()
 				<< " > in executable machine < "
-				<< theExecutable->getFullyQualifiedNameID() << " > !!!"
+				<< theExecutable.getFullyQualifiedNameID() << " > !!!"
 				<< SEND_EXIT;
 
 		return( anElement );
@@ -2890,9 +2940,9 @@ BF AvmcodeCompiler::substituteUfiByInstance(ExecutableForm * theExecutable,
 		std::string strUFI = anElement.str();
 
 		TableOfSymbol::const_iterator itMachine =
-				theExecutable->instance_static_begin();
+				theExecutable.instance_static_begin();
 		TableOfSymbol::const_iterator endMachine =
-				theExecutable->instance_static_end();
+				theExecutable.instance_static_end();
 		for(  ; itMachine != endMachine ; ++itMachine )
 		{
 			if( (*itMachine).getAstFullyQualifiedNameID().find(strUFI,
@@ -2908,7 +2958,7 @@ BF AvmcodeCompiler::substituteUfiByInstance(ExecutableForm * theExecutable,
 		AVM_OS_EXIT( FAILED )
 		<< "Undefined machine instance < "
 				<< strUFI << " > in executable machine < "
-				<< theExecutable->getFullyQualifiedNameID() << " > !!!"
+				<< theExecutable.getFullyQualifiedNameID() << " > !!!"
 				<< SEND_EXIT;
 
 		return( anElement );
@@ -2916,13 +2966,12 @@ BF AvmcodeCompiler::substituteUfiByInstance(ExecutableForm * theExecutable,
 	else if( anElement.is< AvmCode >() )
 	{
 		BFCode aCode = anElement.bfCode();
-		BFCode aNewCode(aCode->getOperator());
+		BFCode aNewCode(aCode.getOperator());
 
-		AvmCode::iterator it = aCode->begin();
-		for( ; it != aCode->end() ; ++it )
+		for( const auto & itOperand : aCode.getOperands() )
 		{
 			aNewCode->append( substituteUfiByInstance(
-					theExecutable, *it, usingInstance) );
+					theExecutable, itOperand, usingInstance) );
 		}
 
 		return( aNewCode );

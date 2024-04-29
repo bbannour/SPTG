@@ -28,6 +28,28 @@ namespace sep
  * CONSTRAINT generation
  * for a given parameter
  */
+bool ContainerTypeSpecifier::couldGenerateConstraint() const
+{
+	switch( mSpecifierKind )
+	{
+		case TYPE_TIME_SPECIFIER:
+		case TYPE_CLOCK_SPECIFIER:
+		case TYPE_CONTINUOUS_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
+		case TYPE_DISCRETE_TIME_SPECIFIER:
+		{
+			return( mContentsTypeSpecifier.valid() &&
+					mContentsTypeSpecifier.couldGenerateConstraint() );
+		}
+
+		default:
+		{
+			return( false );
+		}
+	}
+}
+
+
 BF ContainerTypeSpecifier::genConstraint(const BF & aParam) const
 {
 	if( hasConstraint() )
@@ -42,8 +64,10 @@ BF ContainerTypeSpecifier::genConstraint(const BF & aParam) const
 	switch( mSpecifierKind )
 	{
 		case TYPE_TIME_SPECIFIER:
-		case TYPE_DISCRETE_TIME_SPECIFIER:
+		case TYPE_CLOCK_SPECIFIER:
 		case TYPE_CONTINUOUS_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
+		case TYPE_DISCRETE_TIME_SPECIFIER:
 		{
 			if( mContentsTypeSpecifier.valid() )
 			{
@@ -75,7 +99,7 @@ void ContainerTypeSpecifier::formatStream(
 	os << VALUE_CSS.BEGIN;
 
 	mContentsTypeSpecifier.formatStream(os, arrayValue[0]);
-	for( avm_size_t offset = 1 ; offset < arrayValue.size() ; ++offset )
+	for( std::size_t offset = 1 ; offset < arrayValue.size() ; ++offset )
 	{
 		os << VALUE_CSS.SEPARATOR;
 		mContentsTypeSpecifier.formatStream(os, arrayValue[offset]);
@@ -149,11 +173,15 @@ std::string ContainerTypeSpecifier::strSpecifierKing(
 		}
 		case TYPE_CONTINUOUS_TIME_SPECIFIER:
 		{
-			return( "ctime" );
+			return( "time#continuous" );
+		}
+		case TYPE_DENSE_TIME_SPECIFIER:
+		{
+			return( "time#dense" );
 		}
 		case TYPE_DISCRETE_TIME_SPECIFIER:
 		{
-			return( "dtime" );
+			return( "time#discrete" );
 		}
 
 		default:
@@ -171,7 +199,7 @@ std::string ContainerTypeSpecifier::strType() const
 	{
 		os << mContentsTypeSpecifier.strT() << "[ " << mMaximumSize << " ]";
 	}
-	else if( isTypedClockTime() && (mMaximumSize == 1) )
+	else if( hasTypedClockTime() && (mMaximumSize == 1) )
 	{
 		os  << ContainerTypeSpecifier::strSpecifierKing(mSpecifierKind)
 //			<< " " << mContentsTypeSpecifier.strT();
@@ -181,7 +209,7 @@ std::string ContainerTypeSpecifier::strType() const
 	{
 		os  << ContainerTypeSpecifier::strSpecifierKing(mSpecifierKind)
 			<< "< " << mContentsTypeSpecifier.strT();
-		if( mMaximumSize >= 0 )
+		if( mMaximumSize < AVM_NUMERIC_MAX_SIZE_T )
 		{
 			os << " , " << mMaximumSize;
 		}

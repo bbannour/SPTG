@@ -14,8 +14,9 @@
 #define CONTAINER_SET_H_
 
 #include <set>
+#include <vector>
 
-#include <base/SmartPointerUtil.h>
+#include <common/Element.h>
 
 
 namespace sep
@@ -73,17 +74,17 @@ public:
 	 * emptiness
 	 ***************************************************************************
 	 */
-	inline virtual bool empty() const
+	inline bool empty() const
 	{
 		return( BaseSet::empty() );
 	}
 
-	inline virtual bool nonempty() const
+	inline bool nonempty() const
 	{
 		return( not BaseSet::empty() );
 	}
 
-	inline virtual bool singleton() const
+	inline bool singleton() const
 	{
 		//return( size() == 1 );
 
@@ -92,7 +93,7 @@ public:
 		return( (it != itEnd) && ((++it) == itEnd) );
 	}
 
-	inline virtual bool populated() const
+	inline bool populated() const
 	{
 		//return( size() > 1 );
 
@@ -105,7 +106,7 @@ public:
 	/**
 	 * contains a particular element
 	 */
-	inline virtual bool contains(const T & arg) const
+	inline bool contains(const T & arg) const
 	{
 		typename BaseSet::const_iterator it = BaseSet::begin();
 		typename BaseSet::const_iterator itEnd = BaseSet::end();
@@ -167,7 +168,7 @@ void destroy(Set< T * > * & aSet)
 
 	delete( aSet );
 
-	aSet = NULL;
+	aSet = nullptr;
 }
 
 
@@ -181,7 +182,7 @@ void destroy(Set< T > * & aSet)
 
 	delete( aSet );
 
-	aSet = NULL;
+	aSet = nullptr;
 }
 
 

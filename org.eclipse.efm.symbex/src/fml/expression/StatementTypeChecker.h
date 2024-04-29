@@ -41,171 +41,202 @@ public:
 
 	inline static bool isStructured(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isStructured(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isStructured(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isStructured(AvmCode * aCode)
+	inline static bool isStructured(const AvmCode & aCode)
 	{
-		return( OperatorManager::isSchedule( aCode->getOperator() ) ||
-				OperatorManager::isConditionnal( aCode->getOperator() ) );
+		return( OperatorManager::isSchedule( aCode.getOperator() ) ||
+				OperatorManager::isConditionnal( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isAssign(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isAssign(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isAssign(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isAssign(AvmCode * aCode)
+	inline static bool isAssign(const AvmCode & aCode)
 	{
-		return( OperatorManager::isAssign( aCode->getOperator() ) );
+		return( OperatorManager::isAssign( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isSequence(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isSequence(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isSequence(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isSequence(AvmCode * aCode)
+	inline static bool isSequence(const AvmCode & aCode)
 	{
-		return( OperatorManager::isSequence( aCode->getOperator() ) );
+		return( OperatorManager::isSequence( aCode.getOperator() ) );
+	}
+
+	inline static bool isEmptySequence(const AvmCode & aCode)
+	{
+		return( aCode.noOperand()
+				&& OperatorManager::isSequence( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isSchedule(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isSchedule(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isSchedule(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isSchedule(AvmCode * aCode)
+	inline static bool isSchedule(const AvmCode & aCode)
 	{
-		return( OperatorManager::isSchedule( aCode->getOperator() ) );
+		return( OperatorManager::isSchedule( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isMachine(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isMachine(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isMachine(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isMachine(AvmCode * aCode)
+	inline static bool isMachine(const AvmCode & aCode)
 	{
-		return( OperatorManager::isMachine( aCode->getOperator() ) );
+		return( OperatorManager::isMachine( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isActivity(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isActivity(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isActivity(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isActivity(AvmCode * aCode)
+	inline static bool isActivity(const AvmCode & aCode)
 	{
-		return( OperatorManager::isActivity( aCode->getOperator() ) );
+		return( OperatorManager::isActivity( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isInvokeNew(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isInvokeNew(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isInvokeNew(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isInvokeNew(AvmCode * aCode)
+	inline static bool isInvokeNew(const AvmCode & aCode)
 	{
-		return( aCode->getOperator() == OperatorManager::OPERATOR_INVOKE_NEW );
+		return( aCode.getOperator() == OperatorManager::OPERATOR_INVOKE_NEW );
 	}
 
 
 	inline static bool isCommunication(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isCommunication(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isCommunication(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isCommunication(AvmCode * aCode)
+	inline static bool isCommunication(const AvmCode & aCode)
 	{
-		return( OperatorManager::isCommunication( aCode->getOperator() ) );
+		return( OperatorManager::isCommunication( aCode.getOperator() ) );
+	}
+
+
+	inline static bool isInput(const BF & aCode)
+	{
+		return( aCode.is< AvmCode >()
+				&& isInput(aCode.to< AvmCode >()) );
+	}
+
+	inline static bool isInput(const AvmCode & aCode)
+	{
+		return( OperatorManager::isInput( aCode.getOperator() ) );
+	}
+
+
+	inline static bool isOutput(const BF & aCode)
+	{
+		return( aCode.is< AvmCode >()
+				&& isOutput(aCode.to< AvmCode >()) );
+	}
+
+	inline static bool isOutput(const AvmCode & aCode)
+	{
+		return( OperatorManager::isOutput( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isConditionnal(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isConditionnal(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isConditionnal(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isConditionnal(AvmCode * aCode)
+	inline static bool isConditionnal(const AvmCode & aCode)
 	{
-		return( OperatorManager::isConditionnal( aCode->getOperator() ) );
+		return( OperatorManager::isConditionnal( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isStatement(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isStatement(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isStatement(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isStatement(AvmCode * aCode)
+	inline static bool isStatement(const AvmCode & aCode)
 	{
-		return( OperatorManager::isStatement( aCode->getOperator() ) );
+		return( OperatorManager::isStatement( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isAtomicStatement(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isAtomicStatement(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isAtomicStatement(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isAtomicStatement(AvmCode * aCode)
+	inline static bool isAtomicStatement(const AvmCode & aCode)
 	{
-		return( OperatorManager::isAtomicStatement( aCode->getOperator() ) );
+		return( OperatorManager::isAtomicStatement( aCode.getOperator() ) );
 	}
 
 
 	inline static bool isAtomicSequence(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isAtomicSequence(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isAtomicSequence(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isAtomicSequence(AvmCode * aCode)
+	inline static bool isAtomicSequence(const AvmCode & aCode)
 	{
-		return( aCode->isOpCode( AVM_OPCODE_ATOMIC_SEQUENCE ) );
+		return( aCode.isOpCode( AVM_OPCODE_ATOMIC_SEQUENCE ) );
 	}
 
 
 	inline static bool isStrongAtomicSequence(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isStrongAtomicSequence(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isStrongAtomicSequence(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isStrongAtomicSequence(AvmCode * aCode)
+	inline static bool isStrongAtomicSequence(const AvmCode & aCode)
 	{
-		return( aCode->isOpCode( AVM_OPCODE_ATOMIC_SEQUENCE ) &&
-				(aCode->empty() || isAtomicStatement(aCode->last()))  );
+		return( aCode.isOpCode( AVM_OPCODE_ATOMIC_SEQUENCE )
+				&& ( aCode.noOperand()
+					|| isAtomicStatement(aCode.last()) ) );
 	}
 
 
 	inline static bool isComment(const BF & aCode)
 	{
-		return( aCode.is< AvmCode >() &&
-				isComment(aCode.to_ptr< AvmCode >()) );
+		return( aCode.is< AvmCode >()
+				&& isComment(aCode.to< AvmCode >()) );
 	}
 
-	inline static bool isComment(AvmCode * aCode)
+	inline static bool isComment(const AvmCode & aCode)
 	{
-		return( aCode->isOpCode( AVM_OPCODE_COMMENT ) );
+		return( aCode.isOpCode( AVM_OPCODE_COMMENT ) );
 	}
 
 
@@ -213,19 +244,19 @@ public:
 	// EMPTYNESS CHECKER
 	////////////////////////////////////////////////////////////////////////////
 
-	inline static bool isEmptySchedule(AvmCode * aCode)
+	inline static bool isEmptySchedule(const AvmCode & aCode)
 	{
-		return( aCode->empty() &&
-				OperatorManager::isSchedule( aCode->getOperator() ) );
+		return( aCode.noOperand()
+				&& OperatorManager::isSchedule( aCode.getOperator() ) );
 	}
 
 	////////////////////////////////////////////////////////////////////////////
 	// DO SOMETHING CHECKER
 	////////////////////////////////////////////////////////////////////////////
 
-	inline static bool doSomething(AvmCode * aCode)
+	inline static bool doSomething(const AvmCode & aCode)
 	{
-		return( aCode->nonempty() || (! isSchedule(aCode)) );
+		return( aCode.hasOperand() || (not isSchedule(aCode)) );
 	}
 
 

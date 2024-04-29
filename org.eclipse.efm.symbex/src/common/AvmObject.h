@@ -18,8 +18,8 @@
 
 #include <util/avm_assert.h>
 #include <util/avm_debug.h>
-#include <util/avm_injector.h>
 
+#include <base/Injector.h>
 #include <base/ReferenceCounter.h>
 
 #include <printer/OutStream.h>
@@ -167,12 +167,27 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	 */
 	inline void dbgDestroy() const
 	{
-		AVM_OS_WARN << "destroy< @ " << avm_address_t( this )
+		AVM_OS_WARN << "destroy< @ " << std::intptr_t( this )
 				<< " , " << std::setw(16) << "AvmObject" << " > :"
 				<< std::flush << str_indent( this ) << std::endl;
 	}
 
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+//// DESTROY POLICY for SMART POINTER.
+////////////////////////////////////////////////////////////////////////////////
+
+struct DestroyObjectPolicy
+{
+	static void destroy(AvmObject * anObject);
+};
+
+inline void destroy(AvmObject * anObject)
+{
+	DestroyObjectPolicy::destroy(anObject);
+}
 
 
 }

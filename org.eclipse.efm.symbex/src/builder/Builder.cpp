@@ -16,6 +16,7 @@
 #include <builder/Loader.h>
 
 #include <builder/primitive/CompilationEnvironment.h>
+#include <builder/primitive/AvmcodeUfiCastExpressionCompiler.h>
 
 #include <computer/ExecutionEnvironment.h>
 
@@ -25,7 +26,7 @@
 #include <fml/executable/ExecutableQuery.h>
 #include <fml/executable/ExecutableSystem.h>
 #include <fml/executable/InstanceOfBuffer.h>
-#include <fml/executable/InstanceOfConnect.h>
+#include <fml/executable/InstanceOfConnector.h>
 #include <fml/executable/InstanceOfData.h>
 #include <fml/executable/InstanceOfMachine.h>
 #include <fml/executable/InstanceOfPort.h>
@@ -158,7 +159,7 @@ AVM_ENDIF_DEBUG_FLAG(COMPILING )
 	/*
 	 * Creating the first/initial execution data/context
 	 */
-	APExecutionData theInitialExecutionData = createInitialExecutionData();
+	ExecutionData theInitialExecutionData = createInitialExecutionData();
 
 	mConfiguration.setMainExecutionData( theInitialExecutionData );
 
@@ -178,22 +179,22 @@ AVM_ENDIF_DEBUG_FLAG(COMPILING )
 /*
  * Initial Execution Context creation
  */
-APExecutionData Builder::createInitialExecutionData()
+ExecutionData Builder::createInitialExecutionData()
 {
 	ExecutableSystem & anExecutableSystem =
 			mConfiguration.getExecutableSystem();
 
-	APExecutionData theInitialExecutionData( new ExecutionData(
-			anExecutableSystem.getMachineCount() + 1 /* for PARAMETERS */ ) );
+	ExecutionData theInitialExecutionData(
+			anExecutableSystem.getMachineCount() + 1 /* for PARAMETERS */ );
 
-	theInitialExecutionData->setNodeCondition(
+	theInitialExecutionData.setNodeCondition(
 			ExpressionConstant::BOOLEAN_TRUE );
-	theInitialExecutionData->setNodeTimedCondition(
+	theInitialExecutionData.setNodeTimedCondition(
 			ExpressionConstant::BOOLEAN_TRUE );
 
-	theInitialExecutionData->setPathCondition(
+	theInitialExecutionData.setPathCondition(
 			ExpressionConstant::BOOLEAN_TRUE );
-	theInitialExecutionData->setPathTimedCondition(
+	theInitialExecutionData.setPathTimedCondition(
 			ExpressionConstant::BOOLEAN_TRUE );
 
 	/*
@@ -213,10 +214,10 @@ APExecutionData Builder::createInitialExecutionData()
 
 	mConfiguration.appendRID( parametersRID );
 
-	theInitialExecutionData->saveRuntimeForm(parametersRID.getOffset(),
+	theInitialExecutionData.saveRuntimeForm(parametersRID.getOffset(),
 			new ParametersRuntimeForm( parametersRID ) );
 
-	theInitialExecutionData->setRuntimeFormState(
+	theInitialExecutionData.setRuntimeFormState(
 			parametersRID.getOffset(), PROCESS_UNDEFINED_STATE);
 
 	/*
@@ -244,9 +245,9 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , LOADING )
 
 	// WARNING Assume possible auto-destruction of <theSystemExecutable>
 	// after running< system->onCreate() > due to makeWritable... process !
-	const RuntimeID & theSystemRID = theInitialExecutionData->getSystemRID();
+	const RuntimeID & theSystemRID = theInitialExecutionData.getSystemRID();
 
-	ExecutableForm * theSystemExecutable = theSystemRID.getExecutable();
+	const ExecutableForm & theSystemExecutable = theSystemRID.refExecutable();
 
 
 //!![MIGRATION]:MONITOR --> onCreate Routine
@@ -260,22 +261,22 @@ AVM_ENDIF_DEBUG_FLAG( LOADING )
 	/*
 	 * Setting the main program
 	 */
-	theInitialExecutionData->setOnInit( theSystemExecutable->getOnInit() );
+	theInitialExecutionData.setOnInit( theSystemExecutable.getOnInit() );
 
-	theInitialExecutionData->setOnSchedule( theSystemExecutable->getOnRun() );
+	theInitialExecutionData.setOnSchedule( theSystemExecutable.getOnRun() );
 
-//	if( theInitialExecutionData->getOnSchedule()->nonempty()
-//		&& theInitialExecutionData->getOnSchedule()
+//	if( theInitialExecutionData.getOnSchedule()->nonempty()
+//		&& theInitialExecutionData.getOnSchedule()
 //				->isOpCode( AVM_OPCODE_SCHEDULE_INVOKE )
 //		&& theSystemExecutable->isMocKindAnd() )
 //	{
-//		theInitialExecutionData->setOnSchedule(
+//		theInitialExecutionData.setOnSchedule(
 //				theSystemExecutable->getOnSchedule() );
 //	}
 
-	theInitialExecutionData->setSystemRID();
+	theInitialExecutionData.setSystemRID();
 
-	theInitialExecutionData->setRuntimeFormState(
+	theInitialExecutionData.setRuntimeFormState(
 			theSystemRID, PROCESS_RUNNING_STATE );
 
 	return( theInitialExecutionData );
@@ -288,21 +289,6 @@ AVM_ENDIF_DEBUG_FLAG( LOADING )
  * BUILDER
  * Replace a qualified element by its runtime's counterpart
  */
-
-BF Builder::compileExpression(const BF & aCode)
-{
-	return( compileExpression( mConfiguration.
-			getExecutableSystem().defaultExecutableForm(), aCode) );
-}
-
-BFCode Builder::compileStatement(const BFCode & aCode)
-{
-	return( compileStatement( mConfiguration.
-			getExecutableSystem().defaultExecutableForm(), aCode) );
-}
-
-
-
 BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 		const ExecutionData & anED, UniFormIdentifier * anUFI)
 {
@@ -328,7 +314,7 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 				anED.getLocalRuntimes()->rend();
 		for(  ; it != itEnd ; ++it )
 		{
-			const BF & anInstance = (*it).getProgram()->getAllData().
+			const BF & anInstance = (*it).getProgram()->getAllVariables().
 					getByFQNameID( aFullyQualifiedNameID );
 			if( anInstance.valid() )
 			{
@@ -388,11 +374,11 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 
 		if( it != itEnd )
 		{
-			ExecutableForm * anExecutable = theMachineID.getExecutable();
+			const ExecutableForm & anExecutable = theMachineID.refExecutable();
 			osUFI.str( "" );
 
 			osUFI << "inst::"      // with std::strlen( "exec::" ) --> 6
-					<< anExecutable->getFullyQualifiedNameID().substr( 6 );
+					<< anExecutable.getFullyQualifiedNameID().substr( 6 );
 
 			for( ; it != itEnd ; ++it)
 			{
@@ -401,27 +387,27 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 
 
 			// The ORIGINAL INSTANCE
-			BF anInstance = anExecutable->getAllData().getByFQNameID(
+			BF anInstance = anExecutable.getAllVariables().getByFQNameID(
 					osUFI.str() );
 
 			if( anInstance.invalid() )
 			{
-				anInstance = anExecutable->getConstData().getByFQNameID(
+				anInstance = anExecutable.getConstVariable().getByFQNameID(
 						osUFI.str() );
 			}
 			if( anInstance.invalid() )
 			{
-				anInstance = anExecutable->getPort().getByFQNameID(
+				anInstance = anExecutable.getPort().getByFQNameID(
 						osUFI.str() );
 			}
 			if( anInstance.invalid() )
 			{
-				anInstance = anExecutable->getBuffer().getByFQNameID(
+				anInstance = anExecutable.getBuffer().getByFQNameID(
 						osUFI.str() );
 			}
 			if( anInstance.invalid() )
 			{
-				anInstance = anExecutable->getConnect().getByFQNameID(
+				anInstance = anExecutable.getConnector().getByFQNameID(
 						osUFI.str() );
 			}
 
@@ -435,7 +421,7 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 
 				if( aliasPath.nonempty() )
 				{
-					BaseInstanceForm * newInstance = NULL;
+					BaseInstanceForm * newInstance = nullptr;
 
 					switch ( anInstance.classKind() )
 					{
@@ -443,7 +429,7 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 						{
 							newInstance = new InstanceOfData(
 									theSystemRID.getExecutable(),
-									anInstance.to_ptr< InstanceOfData >(),
+									anInstance.to< InstanceOfData >(),
 									aliasPath);
 							newInstance->setCreatorContainerRID( theMachineID );
 							newInstance->setRuntimeContainerRID( theMachineID );
@@ -456,7 +442,7 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 						{
 							newInstance = new InstanceOfMachine(
 									theSystemRID.getExecutable(),
-									anInstance.to_ptr< InstanceOfMachine >(),
+									anInstance.to< InstanceOfMachine >(),
 									aliasPath);
 							newInstance->setCreatorContainerRID( theMachineID );
 							newInstance->setRuntimeContainerRID( theMachineID );
@@ -468,7 +454,7 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 						{
 							newInstance = new InstanceOfPort(
 									theSystemRID.getExecutable(),
-									anInstance.to_ptr< InstanceOfPort >(),
+									anInstance.to< InstanceOfPort >(),
 									aliasPath);
 							newInstance->setCreatorContainerRID( theMachineID );
 							newInstance->setRuntimeContainerRID( theMachineID );
@@ -480,7 +466,7 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 						{
 							newInstance = new InstanceOfBuffer(
 									theSystemRID.getExecutable(),
-									anInstance.to_ptr< InstanceOfBuffer >(),
+									anInstance.to< InstanceOfBuffer >(),
 									aliasPath);
 							newInstance->setCreatorContainerRID( theMachineID );
 							newInstance->setRuntimeContainerRID( theMachineID );
@@ -490,9 +476,9 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 
 						case FORM_INSTANCE_CONNECTOR_KIND:
 						{
-							newInstance = new InstanceOfConnect(
+							newInstance = new InstanceOfConnector(
 									theSystemRID.getExecutable(),
-									anInstance.to_ptr< InstanceOfConnect >(),
+									anInstance.to< InstanceOfConnector >(),
 									aliasPath);
 							newInstance->setCreatorContainerRID( theMachineID );
 							newInstance->setRuntimeContainerRID( theMachineID );
@@ -532,7 +518,7 @@ BF Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 
 
 const BF & Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
-		const ExecutionData & anED, const ObjectElement * astElement)
+		const ExecutionData & anED, const ObjectElement & astElement)
 {
 	{
 		const BF & foundInstance = aliasTable.getByAstElement(astElement);
@@ -551,7 +537,7 @@ const BF & Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 		for( ; it != itEnd ; ++it )
 		{
 			const BF & anInstance =
-					(*it).getProgram()->getAllData().getByAstElement(astElement);
+					(*it).getProgram()->getAllVariables().getByAstElement(astElement);
 			if( anInstance.valid() )
 			{
 				return( anInstance );
@@ -585,7 +571,7 @@ const BF & Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 				anED.getLocalRuntimes()->rend();
 		for( ; it != itEnd ; ++it )
 		{
-			if( (*it).getProgram()->containsData( aBaseInstance ) )
+			if( (*it).getProgram()->containsVariable( aBaseInstance ) )
 			{
 				return( aBaseInstance );
 			}
@@ -606,14 +592,14 @@ const BF & Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 		{
 			case FORM_INSTANCE_DATA_KIND:
 			{
-				if( itRID.getExecutable()->containsData(
+				if( itRID.refExecutable().containsVariable(
 						aBaseInstance.to_ptr< InstanceOfData >() ) )
 				{
 					aliasPath.append( itRID.getInstance() );
 
 					InstanceOfData * newInstance = new InstanceOfData(
 							theSystemRID.getExecutable(),
-							aBaseInstance.to_ptr< InstanceOfData >(), aliasPath);
+							aBaseInstance.to< InstanceOfData >(), aliasPath);
 					newInstance->setCreatorContainerRID( itRID );
 					newInstance->setRuntimeContainerRID( itRID );
 
@@ -625,14 +611,14 @@ const BF & Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 
 			case FORM_INSTANCE_MACHINE_KIND:
 			{
-				if( itRID.getExecutable()->
+				if( itRID.refExecutable().
 						getInstanceStatic().contains(aBaseInstance) )
 				{
 					aliasPath.append( itRID.getInstance() );
 
 					InstanceOfMachine * newInstance = new InstanceOfMachine(
 							theSystemRID.getExecutable(),
-							aBaseInstance.to_ptr< InstanceOfMachine >(),
+							aBaseInstance.to< InstanceOfMachine >(),
 							aliasPath );
 					newInstance->setCreatorContainerRID( itRID );
 					newInstance->setRuntimeContainerRID( itRID );
@@ -644,13 +630,13 @@ const BF & Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 
 			case FORM_INSTANCE_PORT_KIND:
 			{
-				if( itRID.getExecutable()->getPort().contains(aBaseInstance) )
+				if( itRID.refExecutable().getPort().contains(aBaseInstance) )
 				{
 					aliasPath.append( itRID.getInstance() );
 
 					InstanceOfPort * newInstance = new InstanceOfPort(
 							theSystemRID.getExecutable(),
-							aBaseInstance.to_ptr< InstanceOfPort >(), aliasPath);
+							aBaseInstance.to< InstanceOfPort >(), aliasPath);
 					newInstance->setCreatorContainerRID( itRID );
 					newInstance->setRuntimeContainerRID( itRID );
 
@@ -661,10 +647,10 @@ const BF & Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 
 			case FORM_INSTANCE_BUFFER_KIND:
 			{
-				InstanceOfBuffer * bufferInstance =
-						aBaseInstance.to_ptr< InstanceOfBuffer >();
+				const InstanceOfBuffer & bufferInstance =
+						aBaseInstance.to< InstanceOfBuffer >();
 
-				if( itRID.getExecutable()->getBuffer().contains(bufferInstance) )
+				if( itRID.refExecutable().getBuffer().contains(& bufferInstance) )
 				{
 					aliasPath.append( itRID.getInstance() );
 
@@ -681,14 +667,15 @@ const BF & Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 
 			case FORM_INSTANCE_CONNECTOR_KIND:
 			{
-				InstanceOfConnect * connectInstance =
-						aBaseInstance.to_ptr< InstanceOfConnect >();
+				const InstanceOfConnector & connectInstance =
+						aBaseInstance.to< InstanceOfConnector >();
 
-				if( itRID.getExecutable()->getConnect().contains(connectInstance) )
+				if( itRID.refExecutable().
+						getConnector().contains(& connectInstance) )
 				{
 					aliasPath.append( itRID.getInstance() );
 
-					InstanceOfConnect * newInstance = new InstanceOfConnect(
+					InstanceOfConnector * newInstance = new InstanceOfConnector(
 							theSystemRID.getExecutable(),
 							connectInstance, aliasPath );
 					newInstance->setCreatorContainerRID( itRID );
@@ -714,7 +701,7 @@ const BF & Builder::searchSymbolInstance(TableOfSymbol & aliasTable,
 BF Builder::build(TableOfSymbol & aliasTable,
 		const ExecutionData & anED, const AvmProgram & aProgram, const BF & aCode)
 {
-	if( aProgram.hasData() )
+	if( aProgram.hasVariable() )
 	{
 		bool destroyLocalRuntimeStackFlag = false;
 
@@ -764,8 +751,8 @@ BF Builder::build(TableOfSymbol & aliasTable,
 	if( compileCode.is< AvmCode >() )
 	{
 		compileCode = mAvmcodeCompiler.optimizeExpression(
-				mConfiguration.getExecutableSystem().rawSystemInstance()
-						->getExecutable(), compileCode.bfCode());
+				mConfiguration.getExecutableSystem()
+				.rawSystemInstance()->refExecutable(), compileCode.bfCode() );
 	}
 
 	return( ExpressionConstructor::newExpr( compileCode ) );
@@ -779,28 +766,27 @@ BF Builder::compile(TableOfSymbol & aliasTable,
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			BFCode anAvmCode = aCode.bfCode();
-			Operator * mainOperator = anAvmCode->getOperator();
+			const AvmCode & anAvmCode = aCode.to< AvmCode >();
+
+			const Operator * mainOperator = anAvmCode.getOperator();
 
 			BFCode newCode( mainOperator );
 
-			AvmCode::iterator itArg = anAvmCode->begin();
-			AvmCode::iterator itEndArg = anAvmCode->end();
-			for( ; itArg != itEndArg ; ++itArg )
+			for( const auto & itOperand : anAvmCode.getOperands() )
 			{
-				switch( (*itArg).classKind() )
+				switch( itOperand.classKind() )
 				{
 					case FORM_AVMCODE_KIND:
 					{
-						BF bf = compile(aliasTable, anED, *itArg);
+						BF bf = compile(aliasTable, anED, itOperand);
 
 						if( bf.is< AvmCode >() )
 						{
-							anAvmCode = bf.bfCode();
-							if( anAvmCode->isOpCode( mainOperator ) &&
-								mainOperator->isAssociative() )
+							const AvmCode & bfAvmCode = bf.to< AvmCode >();
+							if( bfAvmCode.isOpCode( mainOperator )
+								&& mainOperator->isAssociative() )
 							{
-								newCode->append( anAvmCode->getArgs() );
+								newCode->append( bfAvmCode.getOperands() );
 							}
 							else
 							{
@@ -818,7 +804,7 @@ BF Builder::compile(TableOfSymbol & aliasTable,
 
 					default:
 					{
-						newCode->append( compile(aliasTable, anED, *itArg) );
+						newCode->append( compile(aliasTable, anED, itOperand) );
 
 						break;
 					}
@@ -834,12 +820,25 @@ BF Builder::compile(TableOfSymbol & aliasTable,
 		{
 			BF anInstance = searchSymbolInstance(aliasTable,
 					anED, aCode.to_ptr< UniFormIdentifier>());
+
+			if( anInstance.invalid() )
+			{
+				CompilationEnvironment compilENV(
+						anED.getSystemRID().getExecutable());
+
+				anInstance = getAvmcodeCompiler().UFI_EXPRESSION_COMPILER
+						->compileUfiExpression(compilENV.mCTX,
+								aCode.to< UniFormIdentifier>());
+			}
+
 			if( anInstance.valid() )
 			{
 				if( anInstance.is< InstanceOfData >() )
 				{
-					InstanceOfData * aData = anInstance.to_ptr< InstanceOfData >();
-					if( aData->getModifier().hasFeatureFinal() && aData->hasValue() )
+					InstanceOfData * aData =
+							anInstance.to_ptr< InstanceOfData >();
+					if( aData->getModifier().hasFeatureFinal()
+						&& aData->hasValue() )
 					{
 						return( aData->getValue() );
 					}
@@ -851,7 +850,8 @@ BF Builder::compile(TableOfSymbol & aliasTable,
 			{
 				ExecutableQuery XQuery( mConfiguration );
 
-				const BF & aProgram = XQuery.getExecutableOrProgram(aCode.str());
+				const BF & aProgram =
+						XQuery.getExecutableOrProgram(aCode.str());
 				if( aProgram.valid() )
 				{
 					return( aProgram );
@@ -881,7 +881,7 @@ BF Builder::compile(TableOfSymbol & aliasTable,
 		case FORM_XFSP_VARIABLE_KIND:
 		{
 			const BF & anInstance = searchSymbolInstance(
-					aliasTable, anED, aCode.to_ptr< ObjectElement >() );
+					aliasTable, anED, aCode.to< ObjectElement >() );
 			if( anInstance.valid() )
 			{
 				if( anInstance.is< InstanceOfData >() )
@@ -900,7 +900,7 @@ BF Builder::compile(TableOfSymbol & aliasTable,
 				ExecutableQuery XQuery( mConfiguration );
 
 				const BF & aProgram = XQuery.getExecutableOrProgram(
-						aCode.to_ptr< ObjectElement >() );
+						aCode.to< ObjectElement >() );
 				if( aProgram.valid() )
 				{
 					return( aProgram );
@@ -964,9 +964,6 @@ BF Builder::compile(TableOfSymbol & aliasTable,
 			return( aCode );
 		}
 
-
-		//@deprecated
-		//case FORM_EXPRESSION_GINAC_KIND:
 
 		case FORM_BUILTIN_BOOLEAN_KIND:
 		case FORM_BUILTIN_CHARACTER_KIND:

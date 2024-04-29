@@ -39,6 +39,8 @@ AvmPrimitiveProcessor & SymbexDispatcher::getPrimitiveProcessor() const
  */
 bool SymbexDispatcher::configure()
 {
+	mConfigFlag = RunnableElement::configure();
+
 	if( not mSymbexProcessor.configure() )
 	{
 		AVM_OS_ERROR_ALERT << "SymbexDispatcher::SymbexProcessor: configure failed !!!"
@@ -56,9 +58,9 @@ bool SymbexDispatcher::configure()
 	}
 
 	// Registration to handler DestroyCtx event
-	mSymbexEventManager.registerHandlerEventDestroyCtx(this);
+	mSymbexControllerEventManager.registerHandlerEventDestroyCtx(this);
 
-	return( true );
+	return( mConfigFlag );
 }
 
 
@@ -123,6 +125,7 @@ void SymbexDispatcher::start()
 
 	mSymbexController.analyseReady();
 
+	incrSymbexStepCount();
 	mSymbexProcessor.initStep();
 
 	mSymbexController.analyseResult();
@@ -131,6 +134,7 @@ void SymbexDispatcher::start()
 	{
 		mSymbexController.analyseReady();
 
+		incrSymbexStepCount();
 		mSymbexProcessor.runStep();
 
 		mSymbexController.analyseResult();
@@ -138,6 +142,75 @@ void SymbexDispatcher::start()
 
 	// Last step-eval trace
 	reportEval();
+}
+
+
+
+void SymbexDispatcher::initStep()
+{
+	mSymbexProcessor.setLifecycleStarted();
+	mSymbexController.setLifecycleStarted();
+
+	mSymbexController.analyseReady();
+
+	incrSymbexStepCount();
+
+	mLastEvalContexts.clear();
+	mLastEvalContexts.append( mSymbexProcessor.getSymbexContexts() );
+
+	mSymbexProcessor.initStep();
+
+	mLastResultContexts.clear();
+	mLastResultContexts.append( mSymbexController.getSymbexContexts() );
+
+	mSymbexController.analyseResult();
+}
+
+void SymbexDispatcher::runStep()
+{
+	mSymbexProcessor.setLifecycleStarted();
+	mSymbexController.setLifecycleStarted();
+
+	mSymbexController.analyseReady();
+
+	incrSymbexStepCount();
+
+	mLastEvalContexts.clear();
+	mLastEvalContexts.append( mSymbexProcessor.getSymbexContexts() );
+
+	mSymbexProcessor.runStep();
+
+	mLastResultContexts.clear();
+	mLastResultContexts.append( mSymbexController.getSymbexContexts() );
+
+	mSymbexController.analyseResult();
+}
+
+
+void SymbexDispatcher::runStep(ExecutionContext & anEC)
+{
+	mSymbexProcessor.setLifecycleStarted();
+	mSymbexController.setLifecycleStarted();
+
+//	mSymbexController.analyseReady();
+	getExecutionWorkingQueue().append(& anEC);
+
+	incrSymbexStepCount();
+
+	mLastEvalContexts.clear();
+	mLastEvalContexts.append( mSymbexProcessor.getSymbexContexts() );
+
+	mSymbexProcessor.runStep();
+
+	mLastResultContexts.clear();
+	mLastResultContexts.append( mSymbexController.getSymbexContexts() );
+
+	mSymbexController.analyseResult();
+}
+
+void SymbexDispatcher::runStep(ExecutionContext & anEC, const BF & aRunnableElement)
+{
+	mSymbexProcessor.runStep(anEC, aRunnableElement);
 }
 
 

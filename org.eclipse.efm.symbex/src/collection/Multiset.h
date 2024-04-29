@@ -15,10 +15,9 @@
 
 #include <set>
 
-#include <base/SmartPointerUtil.h>
-
 #include <collection/Collection.h>
 
+#include <common/Element.h>
 
 namespace sep
 {
@@ -112,17 +111,17 @@ public:
 	 * emptiness
 	 ***************************************************************************
 	 */
-	inline virtual bool empty() const
+	inline bool empty() const
 	{
 		return( BaseMultiset::empty() );
 	}
 
-	inline virtual bool nonempty() const
+	inline bool nonempty() const
 	{
 		return( not BaseMultiset::empty() );
 	}
 
-	inline virtual bool singleton() const
+	inline bool singleton() const
 	{
 		typename
 		BaseMultiset::const_iterator it = BaseMultiset::begin();
@@ -131,7 +130,7 @@ public:
 		return( (it != itEnd) && ((++it) == itEnd) );
 	}
 
-	inline virtual bool populated() const
+	inline bool populated() const
 	{
 		typename
 		BaseMultiset::const_iterator it = BaseMultiset::begin();
@@ -141,7 +140,7 @@ public:
 	}
 
 
-	//	inline virtual avm_size_t size() const
+	//	inline virtual std::size_t size() const override
 	//	{
 	//		return( BaseMultiset::size() );
 	//	}
@@ -150,13 +149,11 @@ public:
 	/**
 	 * contains a particular element
 	 */
-	inline virtual bool contains(const T & arg) const
+	inline bool contains(const T & arg) const
 	{
-		typename
-		BaseMultiset::const_iterator it = BaseMultiset::begin();
-		typename
-		BaseMultiset::const_iterator itEnd = BaseMultiset::end();
-		for( ; it != itEnd ; ++it )
+		typename BaseMultiset::const_iterator it = BaseMultiset::begin();
+		typename BaseMultiset::const_iterator itEnd = BaseMultiset::end();
+		for( const auto & it : (*this) )
 		{
 			if( (*it) == arg )
 			{
@@ -174,7 +171,7 @@ public:
 	 * append
 	 ***************************************************************************
 	 */
-	inline virtual void append(const T & arg)
+	inline void append(const T & arg)
 	{
 		BaseMultiset::push_back(arg);
 	}
@@ -185,14 +182,14 @@ public:
 		append(arg2);
 	}
 
-	inline virtual void append(const T & arg1, const T & arg2, const T & arg3)
+	inline void append(const T & arg1, const T & arg2, const T & arg3)
 	{
 		append(arg1);
 		append(arg2);
 		append(arg3);
 	}
 
-	inline virtual void append(const T & arg1, const T & arg2,
+	inline void append(const T & arg1, const T & arg2,
 			const T & arg3, const T & arg4)
 	{
 		append(arg1);
@@ -201,7 +198,7 @@ public:
 		append(arg4);
 	}
 
-	inline virtual void append(const T & arg1, const T & arg2,
+	inline void append(const T & arg1, const T & arg2,
 			const T & arg3, const T & arg4, const T & arg5)
 	{
 		append(arg1);
@@ -251,7 +248,7 @@ void destroy(Multiset< T * > * & aMultiset)
 
 	delete( aMultiset );
 
-	aMultiset = NULL;
+	aMultiset = nullptr;
 }
 
 
@@ -265,7 +262,7 @@ void destroy(Multiset< T > * & aMultiset)
 
 	delete( aMultiset );
 
-	aMultiset = NULL;
+	aMultiset = nullptr;
 }
 
 

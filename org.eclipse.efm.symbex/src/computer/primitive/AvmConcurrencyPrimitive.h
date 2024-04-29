@@ -29,31 +29,47 @@ namespace sep
 
 class RdvConfigurationData;
 
+AVM_PRIMITIVE_CLASS_HEADER(AvmBaseRdvPrimitive, BaseAvmPrimitive)
+
+	bool buildRdvConfiguration(RdvConfigurationData & aRdvConf,
+			avm_offset_t idx, ListOfExecutionData & syncEDS,
+			bool & hasPossibleRdv, bool & hasPossibleMultiRdv);
+
+	void computeRdv(ExecutionEnvironment & ENV,
+			RdvConfigurationData & aRdvConf, avm_offset_t idx,
+			bool & hasPossibleRdv, bool & hasPossibleMultiRdv);
+
+};
+
+
 
 AVM_PRIMITIVE_RUN_CLASS(Interleaving, BaseAvmPrimitive)
-AVM_PRIMITIVE_RUN_CLASS(RdvInterleaving, BaseAvmPrimitive)
+AVM_PRIMITIVE_RUN_CLASS(RdvInterleaving, AvmBaseRdvPrimitive)
+
+AVM_PRIMITIVE_RUN_CLASS(PartialOrder, BaseAvmPrimitive)
+AVM_PRIMITIVE_RUN_CLASS(RdvPartialOrder, AvmBaseRdvPrimitive)
 
 AVM_PRIMITIVE_RUN_CLASS(Asynchronous, BaseAvmPrimitive)
-AVM_PRIMITIVE_RUN_CLASS(RdvAsynchronous, BaseAvmPrimitive)
+AVM_PRIMITIVE_RUN_CLASS(RdvAsynchronous, AvmBaseRdvPrimitive)
 
 AVM_PRIMITIVE_RUN_CLASS(StrongSynchronous, BaseAvmPrimitive)
-AVM_PRIMITIVE_RUN_CLASS(RdvStrongSynchronous, BaseAvmPrimitive)
+AVM_PRIMITIVE_RUN_CLASS(RdvStrongSynchronous, AvmBaseRdvPrimitive)
 
 
 AVM_PRIMITIVE_RUN_CLASS_HEADER(WeakSynchronous, AvmBaseConcurrencyPrimitive)
-	bool computeWeakSynchronous(APExecutionData & anInputED,
-			APExecutionData & oneED, APExecutionData & otherED,
-			CollectionOfAPExecutionData & listOfOutputED);
+	bool computeWeakSynchronous(ExecutionData & anInputED,
+			ExecutionData & oneED, ExecutionData & otherED,
+			CollectionOfExecutionData & listOfOutputED);
 
 	bool computeWeakSynchronous(
-			APExecutionData & anInputED, APExecutionData & oneED,
-			ListOfAPExecutionData & listOfOtherED,
-			CollectionOfAPExecutionData & listOfOutputED);
+			ExecutionData & anInputED, ExecutionData & oneED,
+			ListOfExecutionData & listOfOtherED,
+			CollectionOfExecutionData & listOfOutputED);
 
-	bool computeWeakSynchronous(APExecutionData & anInputED,
-			ListOfAPExecutionData & oneListOfED,
-			ListOfAPExecutionData & otherListOfED,
-			ListOfAPExecutionData & resultListOfED);
+	bool computeWeakSynchronous(ExecutionData & anInputED,
+			ListOfExecutionData & oneListOfED,
+			ListOfExecutionData & otherListOfED,
+			ListOfExecutionData & resultListOfED);
 };
 
 AVM_PRIMITIVE_RUN_CLASS(RdvWeakSynchronous, AvmPrimitive_WeakSynchronous)
@@ -61,34 +77,34 @@ AVM_PRIMITIVE_RUN_CLASS(RdvWeakSynchronous, AvmPrimitive_WeakSynchronous)
 
 
 AVM_PRIMITIVE_RUN_CLASS_HEADER(Parallel, BaseAvmPrimitive)
-	void computeParallel(APExecutionData & refED,
-			ListOfAPExecutionData & outEDS,
-			ListOfAPExecutionData & parallelListOfOutputED,
-			ListOfAPExecutionData & listOfOutputED);
+	void computeParallel(ExecutionData & refED,
+			ListOfExecutionData & outEDS,
+			ListOfExecutionData & parallelListOfOutputED,
+			ListOfExecutionData & listOfOutputED);
 };
 
 AVM_PRIMITIVE_RUN_CLASS_HEADER(RdvParallel, AvmPrimitive_Parallel)
 	void configureRdv(RdvConfigurationData & aRdvConf,
-			ListOfAPExecutionData & syncEDS, bool & checkRdv,
-			bool & checkMultiRdv, bool & hasCom, avm_offset_t & idx);
+			ListOfExecutionData & syncEDS,
+			bool & checkRdv, bool & hasMultiRdv, avm_offset_t idx);
 };
 
 
 
 
 AVM_PRIMITIVE_RUN_CLASS_HEADER(Product, AvmBaseConcurrencyPrimitive)
-	bool computeProduct(APExecutionData & anInputED, APExecutionData & oneED,
-			APExecutionData & otherED,
-			CollectionOfAPExecutionData & listOfOutputED);
+	bool computeProduct(ExecutionData & anInputED, ExecutionData & oneED,
+			ExecutionData & otherED,
+			CollectionOfExecutionData & listOfOutputED);
 
-	bool computeProduct(APExecutionData & anInputED, APExecutionData & oneED,
-			ListOfAPExecutionData & listOfOtherED,
-			CollectionOfAPExecutionData & listOfOutputED);
+	bool computeProduct(ExecutionData & anInputED, ExecutionData & oneED,
+			ListOfExecutionData & listOfOtherED,
+			CollectionOfExecutionData & listOfOutputED);
 
-	bool computeProduct(APExecutionData & anInputED,
-			ListOfAPExecutionData & oneListOfED,
-			ListOfAPExecutionData & otherListOfED,
-			ListOfAPExecutionData & resultListOfED);
+	bool computeProduct(ExecutionData & anInputED,
+			ListOfExecutionData & oneListOfED,
+			ListOfExecutionData & otherListOfED,
+			ListOfExecutionData & resultListOfED);
 };
 
 

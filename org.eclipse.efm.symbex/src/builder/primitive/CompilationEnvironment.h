@@ -72,16 +72,31 @@ public:
 	}
 
 
+	CompilationEnvironment(AvmProgram & aCompileCtx,
+			InstanceOfData * aVariableCtx = nullptr)
+	: mCTX( newCTX(nullptr, (& aCompileCtx),
+			aCompileCtx.getExecutable(), aVariableCtx) )
+	{
+		//!! NOTHING
+	}
+
 	CompilationEnvironment(AvmProgram * aCompileCtx,
-			InstanceOfData * aVariableCtx = NULL)
-	: mCTX( newCTX(NULL, aCompileCtx,
+			InstanceOfData * aVariableCtx = nullptr)
+	: mCTX( newCTX(nullptr, aCompileCtx,
 			aCompileCtx->getExecutable(), aVariableCtx) )
 	{
 		//!! NOTHING
 	}
 
+
+	CompilationEnvironment(ExecutableForm & aCompileCtx)
+	: mCTX( newCTX(nullptr, & aCompileCtx, & aCompileCtx) )
+	{
+		//!! NOTHING
+	}
+
 	CompilationEnvironment(ExecutableForm * aCompileCtx)
-	: mCTX( newCTX(NULL, aCompileCtx, aCompileCtx) )
+	: mCTX( newCTX(nullptr, aCompileCtx, aCompileCtx) )
 	{
 		//!! NOTHING
 	}
@@ -115,8 +130,8 @@ public:
 
 	static COMPILE_CONTEXT * newCTX(COMPILE_CONTEXT * PREV,
 			BaseAvmProgram * aCompileCtx, ExecutableForm * aRuntimeCtx,
-			InstanceOfData * aVariableCtx = NULL,
-			BaseTypeSpecifier * aType = TypeManager::UNIVERSAL,
+			InstanceOfData * aVariableCtx = nullptr,
+			const BaseTypeSpecifier * aType = TypeManager::UNIVERSAL,
 			bool needTypeChecking = true,
 			const Modifier & aModifier = Modifier::PROPERTY_UNDEFINED_MODIFIER);
 
@@ -154,7 +169,7 @@ public:
 
 	InstanceOfData * mVariableCtx;
 
-	BaseTypeSpecifier * mType;
+	const BaseTypeSpecifier * mType;
 
 	bool mNeedTypeChecking;
 
@@ -166,10 +181,10 @@ public:
 	 */
 	COMPILE_CONTEXT(COMPILE_CONTEXT * aCTX, BaseAvmProgram * aCompileCtx,
 			ExecutableForm * aRuntimeCtx, InstanceOfData * aVariableCtx,
-			BaseTypeSpecifier * aType = TypeManager::UNIVERSAL,
+			const BaseTypeSpecifier * aType = TypeManager::UNIVERSAL,
 			const Modifier & aModifier = Modifier::PROPERTY_UNDEFINED_MODIFIER)
 	: ModifierImpl( aModifier ),
-	PREV( aCTX ), NEXT( NULL ),
+	PREV( aCTX ), NEXT( nullptr ),
 
 	mCompileCtx ( aCompileCtx  ),
 	mRuntimeCtx ( aRuntimeCtx  ),
@@ -191,22 +206,23 @@ public:
 	}
 
 
-	COMPILE_CONTEXT * newCTX(BaseAvmProgram * aCompileCtx,
-			ExecutableForm * aRuntimeCtx, InstanceOfData * aVariableCtx = NULL)
+	inline COMPILE_CONTEXT * newCTX(BaseAvmProgram * aCompileCtx,
+			ExecutableForm * aRuntimeCtx,
+			InstanceOfData * aVariableCtx = nullptr)
 	{
 		return( CompilationEnvironment::newCTX(this,
 				aCompileCtx, aRuntimeCtx, aVariableCtx,
 				mType, mNeedTypeChecking, getModifier()) );
 	}
 
-	COMPILE_CONTEXT * newCTX(BaseAvmProgram * aCompileCtx)
+	inline COMPILE_CONTEXT * newCTX(BaseAvmProgram * aCompileCtx)
 	{
 		return( CompilationEnvironment::newCTX(this,
 				aCompileCtx, aCompileCtx->getExecutable(), mVariableCtx,
 				mType, mNeedTypeChecking, getModifier()) );
 	}
 
-	COMPILE_CONTEXT * newCompileCTX(BaseAvmProgram * aCompileCtx)
+	inline COMPILE_CONTEXT * newCompileCTX(BaseAvmProgram * aCompileCtx)
 	{
 		return( CompilationEnvironment::newCTX(this,
 				aCompileCtx, mRuntimeCtx, mVariableCtx,
@@ -214,7 +230,7 @@ public:
 	}
 
 
-	COMPILE_CONTEXT * newCTX(ExecutableForm * aRuntimeCtx)
+	inline COMPILE_CONTEXT * newCTX(ExecutableForm * aRuntimeCtx)
 	{
 		return( CompilationEnvironment::newCTX(this,
 				mCompileCtx, aRuntimeCtx, mVariableCtx,
@@ -222,7 +238,7 @@ public:
 	}
 
 
-	COMPILE_CONTEXT * newCTX(ExecutableForm * aRuntimeCtx,
+	inline COMPILE_CONTEXT * newCTX(ExecutableForm * aRuntimeCtx,
 			const Modifier & aModifier)
 	{
 		return( CompilationEnvironment::newCTX(this,
@@ -230,7 +246,7 @@ public:
 				mType, mNeedTypeChecking, aModifier) );
 	}
 
-	COMPILE_CONTEXT * newCTX(const Modifier & aModifier)
+	inline COMPILE_CONTEXT * newCTX(const Modifier & aModifier)
 	{
 		return( CompilationEnvironment::newCTX(this,
 				mCompileCtx, mRuntimeCtx, mVariableCtx,
@@ -238,25 +254,24 @@ public:
 	}
 
 
-	COMPILE_CONTEXT * clone()
+	inline COMPILE_CONTEXT * clone()
 	{
 		return( CompilationEnvironment::newCTX(this,
 				mCompileCtx, mRuntimeCtx, mVariableCtx,
 				mType, mNeedTypeChecking, getModifier()) );
 	}
 
-	COMPILE_CONTEXT * clone(const TypeSpecifier & aType)
+	inline COMPILE_CONTEXT * clone(const TypeSpecifier & aType)
 	{
-		return( CompilationEnvironment::newCTX(this,
-				mCompileCtx, mRuntimeCtx, mVariableCtx,
-				aType.rawType(), mNeedTypeChecking, getModifier()) );
+		return( CompilationEnvironment::newCTX(this, mCompileCtx, mRuntimeCtx,
+				mVariableCtx, aType, mNeedTypeChecking, getModifier()) );
 	}
 
-	COMPILE_CONTEXT * clone(BaseTypeSpecifier * aType)
+	inline COMPILE_CONTEXT * clone(const BaseTypeSpecifier & aType)
 	{
 		return( CompilationEnvironment::newCTX(this,
 				mCompileCtx, mRuntimeCtx, mVariableCtx,
-				aType, mNeedTypeChecking, getModifier()) );
+				(& aType), mNeedTypeChecking, getModifier()) );
 	}
 
 
@@ -265,27 +280,27 @@ public:
 	 */
 	inline bool hasType() const
 	{
-		return( (mType != NULL) && (mType != TypeManager::UNIVERSAL) );
+		return( (mType != nullptr) && (mType != TypeManager::UNIVERSAL) );
 	}
 
 
 	inline avm_type_specifier_kind_t getTypeFamily() const
 	{
-		return( ( mType != NULL ) ?
+		return( ( mType != nullptr ) ?
 				mType->getTypeSpecifierKind() : TYPE_UNDEFINED_SPECIFIER );
 	}
 
 
 	inline bool typeMustBeMachineFamily() const
 	{
-		return( (mType == NULL)
+		return( (mType == nullptr)
 				|| mType->hasTypeSpecifierKind(TYPE_MACHINE_SPECIFIER,
 						TYPE_UNIVERSAL_SPECIFIER, TYPE_UNDEFINED_SPECIFIER) );
 	}
 
 	inline bool typeMustBePortFamily() const
 	{
-		return( (mType == NULL)
+		return( (mType == nullptr)
 				|| mType->hasTypeSpecifierKind(TYPE_PORT_SPECIFIER,
 						TYPE_SIGNAL_SPECIFIER,TYPE_MESSAGE_SPECIFIER)
 				|| mType->hasTypeSpecifierKind(TYPE_UNIVERSAL_SPECIFIER,
@@ -294,21 +309,21 @@ public:
 
 	inline bool typeMustBeChannelFamily() const
 	{
-		return( (mType == NULL)
+		return( (mType == nullptr)
 				|| mType->hasTypeSpecifierKind(TYPE_CHANNEL_SPECIFIER,
 						TYPE_UNIVERSAL_SPECIFIER, TYPE_UNDEFINED_SPECIFIER) );
 	}
 
 	inline bool typeMustBeBufferFamily() const
 	{
-		return( (mType == NULL)
+		return( (mType == nullptr)
 				|| mType->hasTypeSpecifierKind(TYPE_BUFFER_SPECIFIER,
 						TYPE_UNIVERSAL_SPECIFIER, TYPE_UNDEFINED_SPECIFIER) );
 	}
 
 	inline bool typeMustBeConnectorFamily() const
 	{
-		return( (mType == NULL)
+		return( (mType == nullptr)
 				|| mType->hasTypeSpecifierKind(TYPE_CONNECTOR_SPECIFIER,
 						TYPE_UNIVERSAL_SPECIFIER, TYPE_UNDEFINED_SPECIFIER) );
 	}
@@ -316,7 +331,7 @@ public:
 
 	inline bool typeCouldBeOherFamily() const
 	{
-		if( mType != NULL )
+		if( mType != nullptr )
 		{
 			switch( mType->getTypeSpecifierKind() )
 			{
@@ -380,12 +395,12 @@ public:
 	/**
 	 * mCompileCtx
 	 */
-	bool isCompileTransitionCtx()
+	inline bool isCompileTransitionCtx()
 	{
 		return( mCompileCtx->is< AvmTransition >() );
 	}
 
-	bool isInlineEnable(ExecutableForm * anExecutable)
+	inline bool isInlineEnable(ExecutableForm * anExecutable)
 	{
 		return( INLINE_ENABLE_MASK
 				&& isCompileTransitionCtx()
@@ -393,7 +408,7 @@ public:
 	}
 
 
-	bool isInlineProcedure(ExecutableForm * anExecutable)
+	inline bool isInlineProcedure(ExecutableForm * anExecutable)
 	{
 		return( INLINE_PROCEDURE_MASK
 				&& isCompileTransitionCtx()
@@ -403,12 +418,18 @@ public:
 	/**
 	 * mCompileCtx
 	 */
-	bool isSpecificRuntimeCtx()
+	inline bool isSpecificRuntimeCtx()
 	{
 		return( (mRuntimeCtx != mCompileCtx)
 				&& (mRuntimeCtx != mCompileCtx->getContainer()) );
 	}
 
+
+	/**
+	 * Runtime Executable Context
+	 */
+	ExecutableForm * getRuntimeExecutableCxt(
+			const InstanceOfData & aConsVarInstance);
 
 	/**
 	 * report debug Context

@@ -26,17 +26,17 @@ namespace sep
 {
 
 
-std::map< std::string , Operator * > AvmOperationVariable::theVariableMap;
+std::map< std::string , const Operator * > AvmOperationVariable::theVariableMap;
 
-std::map< std::string , Operator * > AvmOperationVariable::theContainerMap;
+std::map< std::string , const Operator * > AvmOperationVariable::theContainerMap;
 
-std::map< std::string , Operator * > AvmOperationVariable::theQueueMap;
+std::map< std::string , const Operator * > AvmOperationVariable::theQueueMap;
 
-std::map< std::string , Operator * > AvmOperationVariable::theTimeMap;
+std::map< std::string , const Operator * > AvmOperationVariable::theTimeMap;
 
-std::map< std::string , Operator * > AvmOperationVariable::theActivityMap;
+std::map< std::string , const Operator * > AvmOperationVariable::theActivityMap;
 
-std::map< std::string , Operator * > AvmOperationVariable::theOtherMap;
+std::map< std::string , const Operator * > AvmOperationVariable::theOtherMap;
 
 
 
@@ -122,31 +122,31 @@ void AvmOperationVariable::dispose()
 /**
  * GETTER - SETTER
  */
-Operator * AvmOperationVariable::get(const std::string & method)
+const Operator * AvmOperationVariable::get(const std::string & method)
 {
-	Operator * op = NULL;
+	const Operator * op = nullptr;
 
-	if( (op = getContainer(method)) != NULL )
+	if( (op = getContainer(method)) != nullptr )
 	{
 		return( op );
 	}
 
-	if( (op = getQueue(method)) != NULL )
+	if( (op = getQueue(method)) != nullptr )
 	{
 		return( op );
 	}
 
-	if( (op = getTime(method)) != NULL )
+	if( (op = getTime(method)) != nullptr )
 	{
 		return( op );
 	}
 
-	if( (op = getActivity(method)) != NULL )
+	if( (op = getActivity(method)) != nullptr )
 	{
 		return( op );
 	}
 
-	if( (op = getVariable(method)) != NULL )
+	if( (op = getVariable(method)) != nullptr )
 	{
 		return( op );
 	}
@@ -155,7 +155,7 @@ Operator * AvmOperationVariable::get(const std::string & method)
 }
 
 
-Operator * AvmOperationVariable::get(const BF & aReceiver,
+const Operator * AvmOperationVariable::get(const BF & aReceiver,
 		const std::string & method)
 {
 	if( aReceiver.is< Variable >() )
@@ -172,56 +172,56 @@ Operator * AvmOperationVariable::get(const BF & aReceiver,
 
 
 
-Operator * AvmOperationVariable::get(
+const Operator * AvmOperationVariable::get(
 		Variable * aVariable, const std::string & method)
 {
-	if( (aVariable->hasTypeSpecifier() &&
-		(aVariable->getTypeSpecifier()->hasTypeContainer() ||
-		aVariable->getTypeSpecifier()->isTypedBuffer()     ||
-		aVariable->getTypeSpecifier()->hasTypeContainer()  ||
-		aVariable->getTypeSpecifier()->isTypedString() ) ) )
+	if( aVariable->hasTypeSpecifier()
+		&& ( aVariable->getTypeSpecifier().hasTypeContainer()
+			|| aVariable->getTypeSpecifier().isTypedBuffer()
+			|| aVariable->getTypeSpecifier().hasTypeContainer()
+			|| aVariable->getTypeSpecifier().isTypedString() ) )
 	{
-		Operator * opContainer = getContainer(method);
-		if( opContainer != NULL )
+		const Operator * opContainer = getContainer(method);
+		if( opContainer != nullptr )
 		{
 			return( opContainer );
 		}
 	}
 
-	if( aVariable->hasTypeSpecifier() &&
-			aVariable->getTypeSpecifier()->hasTypeQueue() )
+	if( aVariable->hasTypeSpecifier()
+		&& aVariable->getTypeSpecifier().hasTypeQueue() )
 	{
-		Operator * opQueue = getQueue(method);
-		if( opQueue != NULL )
+		const Operator * opQueue = getQueue(method);
+		if( opQueue != nullptr )
 		{
 			return( opQueue );
 		}
 	}
 
-	if( aVariable->hasTypeSpecifier() &&
-		(aVariable->getTypeSpecifier()->isTypedMachine()   ||
-		aVariable->getTypeSpecifier()->weaklyTypedInteger() ) )
+	if( aVariable->hasTypeSpecifier()
+		&& ( aVariable->getTypeSpecifier().isTypedMachine()
+			|| aVariable->getTypeSpecifier().weaklyTypedInteger() ) )
 	{
-		Operator * opActivity = getActivity(method);
-		if( opActivity != NULL )
+		const Operator * opActivity = getActivity(method);
+		if( opActivity != nullptr )
 		{
 			return( opActivity );
 		}
 	}
 
 	if( aVariable->hasTypeSpecifier()
-		&& aVariable->getTypeSpecifier()->hasTypedClockTime() )
+		&& aVariable->getTypeSpecifier().hasTypedClockTime() )
 	{
-		Operator * opTime = getTime(method);
-		if( opTime != NULL )
+		const Operator * opTime = getTime(method);
+		if( opTime != nullptr )
 		{
 			return( opTime );
 		}
 	}
 	else
 	{
-		Operator * opVar = getVariable(method);
-		if( opVar != NULL )
+		const Operator * opVar = getVariable(method);
+		if( opVar != nullptr )
 		{
 			return( opVar );
 		}
@@ -231,15 +231,15 @@ Operator * AvmOperationVariable::get(
 }
 
 
-Operator * AvmOperationVariable::get(
+const Operator * AvmOperationVariable::get(
 		BaseInstanceForm * anInstance, const std::string & method)
 {
 	if( anInstance->hasTypeContainer()    ||
 		anInstance->isTypedBuffer()       ||
 		anInstance->isTypedString() )
 	{
-		Operator * opContainer = getContainer(method);
-		if( opContainer != NULL )
+		const Operator * opContainer = getContainer(method);
+		if( opContainer != nullptr )
 		{
 			return( opContainer );
 		}
@@ -247,19 +247,19 @@ Operator * AvmOperationVariable::get(
 
 	if( anInstance->hasTypeQueue() )
 	{
-		Operator * opQueue = getQueue(method);
-		if( opQueue != NULL )
+		const Operator * opQueue = getQueue(method);
+		if( opQueue != nullptr )
 		{
 			return( opQueue );
 		}
 	}
 
 	if( anInstance->hasTypeSpecifier() && (
-		anInstance->getTypeSpecifier()->isTypedMachine() ||
-		anInstance->getTypeSpecifier()->weaklyTypedInteger() ) )
+		anInstance->getTypeSpecifier().isTypedMachine() ||
+		anInstance->getTypeSpecifier().weaklyTypedInteger() ) )
 	{
-		Operator * opActivity = getActivity(method);
-		if( opActivity != NULL )
+		const Operator * opActivity = getActivity(method);
+		if( opActivity != nullptr )
 		{
 			return( opActivity );
 		}
@@ -267,16 +267,16 @@ Operator * AvmOperationVariable::get(
 
 	if( anInstance->hasTypedClockTime() )
 	{
-		Operator * opTime = getTime(method);
-		if( opTime != NULL )
+		const Operator * opTime = getTime(method);
+		if( opTime != nullptr )
 		{
 			return( opTime );
 		}
 	}
 	else
 	{
-		Operator * opVar = getVariable(method);
-		if( opVar != NULL )
+		const Operator * opVar = getVariable(method);
+		if( opVar != nullptr )
 		{
 			return( opVar );
 		}
@@ -286,51 +286,51 @@ Operator * AvmOperationVariable::get(
 }
 
 
-Operator * AvmOperationVariable::get(
-		BaseTypeSpecifier * aTypeSpecifier, const std::string & method)
+const Operator * AvmOperationVariable::get(
+		const BaseTypeSpecifier & aTypeSpecifier, const std::string & method)
 {
-	if( aTypeSpecifier->hasTypeContainer() ||
-		aTypeSpecifier->isTypedBuffer()    ||
-		aTypeSpecifier->isTypedString() )
+	if( aTypeSpecifier.hasTypeContainer() ||
+		aTypeSpecifier.isTypedBuffer()    ||
+		aTypeSpecifier.isTypedString() )
 	{
-		Operator * opContainer = getContainer(method);
-		if( opContainer != NULL )
+		const Operator * opContainer = getContainer(method);
+		if( opContainer != nullptr )
 		{
 			return( opContainer );
 		}
 	}
 
-	if( aTypeSpecifier->hasTypeQueue() )
+	if( aTypeSpecifier.hasTypeQueue() )
 	{
-		Operator * opQueue = getQueue(method);
-		if( opQueue != NULL )
+		const Operator * opQueue = getQueue(method);
+		if( opQueue != nullptr )
 		{
 			return( opQueue );
 		}
 	}
 
-	if( aTypeSpecifier->isTypedMachine() ||
-		aTypeSpecifier->weaklyTypedInteger() )
+	if( aTypeSpecifier.isTypedMachine() ||
+		aTypeSpecifier.weaklyTypedInteger() )
 	{
-		Operator * opActivity = getActivity(method);
-		if( opActivity != NULL )
+		const Operator * opActivity = getActivity(method);
+		if( opActivity != nullptr )
 		{
 			return( opActivity );
 		}
 	}
 
-	if( aTypeSpecifier->hasTypedTime() )
+	if( aTypeSpecifier.hasTypedTime() )
 	{
-		Operator * opTime = getTime(method);
-		if( opTime != NULL )
+		const Operator * opTime = getTime(method);
+		if( opTime != nullptr )
 		{
 			return( opTime );
 		}
 	}
 	else
 	{
-		Operator * opVar = getVariable(method);
-		if( opVar != NULL )
+		const Operator * opVar = getVariable(method);
+		if( opVar != nullptr )
 		{
 			return( opVar );
 		}
@@ -340,7 +340,7 @@ Operator * AvmOperationVariable::get(
 }
 
 
-bool AvmOperationVariable::exist(BaseInstanceForm * anInstance,
+bool AvmOperationVariable::exists(BaseInstanceForm * anInstance,
 			const std::string & method)
 {
 	if( (anInstance->hasTypeContainer() || anInstance->isTypedBuffer()) &&
@@ -355,8 +355,8 @@ bool AvmOperationVariable::exist(BaseInstanceForm * anInstance,
 	}
 
 	if( isActivity(method) && anInstance->hasTypeSpecifier() && (
-		anInstance->getTypeSpecifier()->isTypedMachine() ||
-		anInstance->getTypeSpecifier()->weaklyTypedInteger() ) )
+		anInstance->getTypeSpecifier().isTypedMachine() ||
+		anInstance->getTypeSpecifier().weaklyTypedInteger() ) )
 	{
 		return( true );
 	}
@@ -372,7 +372,7 @@ bool AvmOperationVariable::exist(BaseInstanceForm * anInstance,
 
 
 void AvmOperationVariable::put(BaseInstanceForm * anInstance,
-		const std::string & method, Operator * anOperator)
+		const std::string & method, const Operator * anOperator)
 {
 	if( anInstance->hasTypedClockTime() )
 	{
@@ -388,8 +388,8 @@ void AvmOperationVariable::put(BaseInstanceForm * anInstance,
 		putContainer(method, anOperator);
 	}
 	else if( anInstance->hasTypeSpecifier() && (
-			anInstance->getTypeSpecifier()->isTypedMachine() ||
-			anInstance->getTypeSpecifier()->weaklyTypedInteger() ) )
+			anInstance->getTypeSpecifier().isTypedMachine() ||
+			anInstance->getTypeSpecifier().weaklyTypedInteger() ) )
 	{
 		putActivity(method, anOperator);
 	}

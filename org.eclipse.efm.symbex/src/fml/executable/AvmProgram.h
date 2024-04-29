@@ -15,8 +15,6 @@
 
 #include <fml/executable/BaseAvmProgram.h>
 
-#include <common/AvmPointer.h>
-
 #include <collection/List.h>
 
 #include <fml/expression/AvmCode.h>
@@ -63,12 +61,12 @@ protected:
 
 
 	avm_offset_t mParamOffset;
-	avm_size_t   mParamCount;
+	std::size_t   mParamCount;
 
 	avm_offset_t mReturnOffset;
-	avm_size_t   mReturnCount;
+	std::size_t   mReturnCount;
 
-	TableOfInstanceOfData mConstData;
+	TableOfInstanceOfData mConstVariables;
 
 	TableOfTypeSpecifier mTableOfTypeSpecifier;
 
@@ -105,7 +103,7 @@ public:
 	 * Default
 	 */
 	AvmProgram(Specifier::SCOPE_KIND aScope, AvmProgram * aContainer,
-			const ObjectElement * astProgram, avm_size_t aSize)
+			const ObjectElement & astProgram, std::size_t aSize)
 	: BaseAvmProgram(CLASS_KIND_T( AvmProgram ), aContainer, astProgram, aSize),
 	IStatementFamily( AVM_STATEMENT_UNDEFINED_FAMILY ),
 
@@ -117,7 +115,7 @@ public:
 	mReturnOffset( 0 ),
 	mReturnCount( 0 ),
 
-	mConstData( ),
+	mConstVariables( ),
 	mTableOfTypeSpecifier( ),
 
 	mCode( ),
@@ -146,9 +144,11 @@ public:
 	 * CONSTRUCTOR
 	 * Default for Routine
 	 */
-	AvmProgram(Specifier::SCOPE_KIND aScope, AvmProgram * aContainer,
-			const std::string & id, avm_size_t aSize)
-	: BaseAvmProgram(CLASS_KIND_T( AvmProgram ), aContainer, id, aSize),
+	AvmProgram(Specifier::SCOPE_KIND aScope,
+			AvmProgram & aContainer, const ObjectElement & astProgram,
+			const std::string & id, std::size_t aSize)
+	: BaseAvmProgram(CLASS_KIND_T( AvmProgram ),
+			(& aContainer), astProgram, id, aSize),
 	IStatementFamily( AVM_STATEMENT_UNDEFINED_FAMILY ),
 
 	mOffset( 0 ),
@@ -159,7 +159,7 @@ public:
 	mReturnOffset( 0 ),
 	mReturnCount( 0 ),
 
-	mConstData( ),
+	mConstVariables( ),
 	mTableOfTypeSpecifier( ),
 
 	mCode( ),
@@ -200,7 +200,7 @@ public:
 	mReturnOffset( aProgram.mReturnOffset ),
 	mReturnCount( aProgram.mReturnCount ),
 
-	mConstData( aProgram.mConstData ),
+	mConstVariables( aProgram.mConstVariables ),
 	mTableOfTypeSpecifier( aProgram.mTableOfTypeSpecifier ),
 
 	mCode( aProgram.mCode ),
@@ -231,8 +231,8 @@ public:
 	 */
 	AvmProgram(class_kind_t aClassKind,
 			Specifier::SCOPE_KIND aScope, AvmProgram * aContainer,
-			ObjectElement * aCompiled, avm_size_t aSize)
-	: BaseAvmProgram(aClassKind, aContainer, aCompiled, aSize),
+			const ObjectElement & astProgram, std::size_t aSize)
+	: BaseAvmProgram(aClassKind, aContainer, astProgram, aSize),
 	IStatementFamily( AVM_STATEMENT_UNDEFINED_FAMILY ),
 
 	mOffset( 0 ),
@@ -243,7 +243,7 @@ public:
 	mReturnOffset( 0 ),
 	mReturnCount( 0 ),
 
-	mConstData( ),
+	mConstVariables( ),
 	mTableOfTypeSpecifier( ),
 
 	mCode( ),
@@ -362,12 +362,12 @@ public:
 	 */
 	inline const BF & getParam(avm_offset_t offset) const
 	{
-		return( getData().at(offset) );
+		return( getVariables().at(offset) );
 	}
 
-	inline BaseTypeSpecifier * getParamTypeSpecifier(avm_offset_t offset) const
+	inline const BaseTypeSpecifier & getParamTypeSpecifier(avm_offset_t offset) const
 	{
-		return( getData().rawAt(offset)->getTypeSpecifier() );
+		return( getVariables().rawAt(offset)->getTypeSpecifier() );
 	}
 
 
@@ -376,19 +376,28 @@ public:
 		return( mParamOffset );
 	}
 
-	inline avm_size_t getParamCount() const
+	inline std::size_t getParamCount() const
 	{
 		return( mParamCount );
 	}
 
 
-	inline InstanceOfData * rawParamData(avm_offset_t offset) const
+	inline InstanceOfData * rawParamVariable(avm_offset_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_OFFSET_EXIT( offset , mParamCount )
 				<< "Unbound Instance parameter offset !!!"
 				<< SEND_EXIT;
 
-		return( mData.rawAt(mParamOffset + offset) );
+		return( mVariables.rawAt(mParamOffset + offset) );
+	}
+
+	inline const InstanceOfData & refParamVariable(avm_offset_t offset) const
+	{
+		AVM_OS_ASSERT_FATAL_ARRAY_OFFSET_EXIT( offset , mParamCount )
+				<< "Unbound Instance parameter offset !!!"
+				<< SEND_EXIT;
+
+		return( mVariables.refAt(mParamOffset + offset) );
 	}
 
 	inline bool hasParam() const
@@ -397,7 +406,7 @@ public:
 	}
 
 	inline void setParamOffsetCount(avm_offset_t aParamOffset,
-			avm_size_t aParamCount)
+			std::size_t aParamCount)
 	{
 		mParamOffset = aParamOffset;
 		mParamCount  = aParamCount;
@@ -411,12 +420,12 @@ public:
 	 */
 	inline const BF & getReturn(avm_offset_t offset) const
 	{
-		return( getData().at(mReturnOffset + offset) );
+		return( getVariables().at(mReturnOffset + offset) );
 	}
 
-	inline BaseTypeSpecifier * getReturnTypeSpecifier(avm_offset_t offset) const
+	inline const BaseTypeSpecifier & getReturnTypeSpecifier(avm_offset_t offset) const
 	{
-		return( getData().rawAt(mReturnOffset + offset)->getTypeSpecifier() );
+		return( getVariables().rawAt(mReturnOffset + offset)->getTypeSpecifier() );
 	}
 
 
@@ -430,19 +439,19 @@ public:
 		return( mReturnOffset + offset );
 	}
 
-	inline avm_size_t getReturnCount() const
+	inline std::size_t getReturnCount() const
 	{
 		return( mReturnCount );
 	}
 
 
-	inline InstanceOfData * rawReturnData(avm_offset_t offset) const
+	inline InstanceOfData * rawReturnVariable(avm_offset_t offset) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_OFFSET_EXIT( offset , mReturnCount )
 				<< "Unbound Instance parameter offset !!!"
 				<< SEND_EXIT;
 
-		return( mData.rawAt(mReturnOffset + offset) );
+		return( mVariables.rawAt(mReturnOffset + offset) );
 	}
 
 
@@ -452,7 +461,7 @@ public:
 	}
 
 	inline void setReturnOffsetCount(avm_offset_t aReturnOffset,
-			avm_size_t aReturnCount)
+			std::size_t aReturnCount)
 	{
 		mReturnOffset = aReturnOffset;
 		mReturnCount  = aReturnCount;
@@ -464,7 +473,7 @@ public:
 	 * mParamCount
 	 * mReturnCount
 	 */
-	inline avm_size_t getParamReturnCount() const
+	inline std::size_t getParamReturnCount() const
 	{
 		return( mParamCount + mReturnCount );
 	}
@@ -479,7 +488,7 @@ public:
 	 * SETTER
 	 * mFullyQualifiedNameID
 	 */
-	virtual void updateFullyQualifiedNameID();
+	virtual void updateFullyQualifiedNameID() override;
 
 	inline bool isAnonym() const
 	{
@@ -490,18 +499,18 @@ public:
 	/*
 	 * contains DATA
 	 */
-	inline bool containsData(InstanceOfData * anInstance) const
+	inline bool containsVariable(InstanceOfData * anInstance) const
 	{
-		return( BaseAvmProgram::containsData(anInstance) ||
-				mConstData.contains(anInstance) );
+		return( BaseAvmProgram::containsVariable(anInstance)
+				|| mConstVariables.contains(anInstance) );
 	}
 
 
 	/**
 	 * GETTER - SETTER
-	 * mConstData
+	 * mConstVariables
 	 */
-	inline void appendConstData(const BF & anInstance)
+	inline void appendConstVariable(const BF & anInstance)
 	{
 		AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( anInstance )
 				<< "InstanceOfData !!!"
@@ -509,10 +518,10 @@ public:
 
 		anInstance.to_ptr< InstanceOfData >()->setContainer(this);
 
-		mConstData.append(anInstance);
+		mConstVariables.append(anInstance);
 	}
 
-	inline void saveConstData(InstanceOfData * anInstance)
+	inline void saveConstVariable(InstanceOfData * anInstance)
 	{
 		AVM_OS_ASSERT_FATAL_NULL_POINTER_EXIT( anInstance )
 				<< "InstanceOfData !!!"
@@ -520,18 +529,23 @@ public:
 
 		anInstance->setContainer(this);
 
-		mConstData.save(anInstance);
+		mConstVariables.save(anInstance);
 	}
 
-	inline const TableOfInstanceOfData & getConstData() const
+	inline const TableOfInstanceOfData & getConstVariable() const
 	{
-		return( mConstData );
+		return( mConstVariables );
+	}
+
+	inline TableOfInstanceOfData & getConstVariable()
+	{
+		return( mConstVariables );
 	}
 
 
-	inline bool hasConstData() const
+	inline bool hasConstVariable() const
 	{
-		return( mConstData.nonempty() );
+		return( mConstVariables.nonempty() );
 	}
 
 
@@ -573,7 +587,7 @@ public:
 
 
 	inline const TypeSpecifier & getTypeSpecifier(
-			const ObjectElement * astElement) const
+			const ObjectElement & astElement) const
 	{
 		return( mTableOfTypeSpecifier.getByAstElement(astElement) );
 	}
@@ -609,7 +623,7 @@ public:
 	}
 
 	inline const BF & getSymbolDataByAstElement(
-			const ObjectElement * astElement) const
+			const ObjectElement & astElement) const
 	{
 		return( mTableOfTypeSpecifier.getSymbolDataByAstElement(astElement) );
 	}
@@ -619,12 +633,17 @@ public:
 	 * GETTER - SETTER
 	 * mCode
 	 */
-	inline BFCode & getCode()
+	inline const AvmCode & getAvmCode() const
+	{
+		return( * mCode );
+	}
+
+	inline const BFCode & getCode() const
 	{
 		return( mCode );
 	}
 
-	inline const BFCode & getCode() const
+	inline BFCode & getCode()
 	{
 		return( mCode );
 	}
@@ -646,7 +665,7 @@ public:
 	 */
 	inline virtual void updateOpcodeFamily()
 	{
-		IStatementFamily::updateStatementFamily( mCode );
+		IStatementFamily::updateStatementFamily( mCode.to< AvmCode >() );
 	}
 
 
@@ -656,17 +675,17 @@ public:
 	 */
 	virtual const BF & getSymbol(
 			const std::string & aFullyQualifiedNameID,
-			avm_type_specifier_kind_t typeFamily) const;
+			avm_type_specifier_kind_t typeFamily) const override;
 
 	virtual const BF & getSymbolByQualifiedNameID(
 			const std::string & aQualifiedNameID,
-			avm_type_specifier_kind_t typeFamily) const;
+			avm_type_specifier_kind_t typeFamily) const override;
 
 	virtual const BF & getSymbolByNameID(const std::string & aNameID,
-			avm_type_specifier_kind_t typeFamily) const;
+			avm_type_specifier_kind_t typeFamily) const override;
 
 
-	virtual const BF & getymbolByAstElement(const ObjectElement * astElement,
+	virtual const BF & getymbolByAstElement(const ObjectElement & astElement,
 			avm_type_specifier_kind_t typeFamily) const;
 
 
@@ -726,12 +745,12 @@ public:
 	 */
 	inline void addInputCom(InstanceOfPort * aPort)
 	{
-		mInputCom.add_union( aPort );
+		mInputCom.add_unique( aPort );
 	}
 
 	inline void addInputCom(ListOfInstanceOfPort & inputEnabledPort)
 	{
-		mInputCom.add_union( inputEnabledPort );
+		mInputCom.add_unique( inputEnabledPort );
 	}
 
 
@@ -761,7 +780,7 @@ public:
 	{
 		mInputCom.clear();
 
-		mInputCom.add_union( inputEnabledPort );
+		mInputCom.add_unique( inputEnabledPort );
 	}
 
 
@@ -771,12 +790,12 @@ public:
 	 */
 	inline void addOutputCom(InstanceOfPort * aPort)
 	{
-		mOutputCom.add_union( aPort );
+		mOutputCom.add_unique( aPort );
 	}
 
 	inline void addOutputCom(ListOfInstanceOfPort & inputEnabledPort)
 	{
-		mOutputCom.add_union( inputEnabledPort );
+		mOutputCom.add_unique( inputEnabledPort );
 	}
 
 
@@ -806,7 +825,7 @@ public:
 	{
 		mOutputCom.clear();
 
-		mOutputCom.add_union( inputEnabledPort );
+		mOutputCom.add_unique( inputEnabledPort );
 	}
 
 
@@ -816,14 +835,8 @@ public:
 	 */
 	inline void addInputEnabledBuffer(InstanceOfBuffer * aBuffer)
 	{
-		mInputEnabledBuffer.add_union( aBuffer );
+		mInputEnabledBuffer.add_unique( aBuffer );
 	}
-
-	inline void addInputEnabledBuffer(ListOfInstanceOfBuffer & inputEnabledBuffer)
-	{
-		mInputEnabledBuffer.add_union( inputEnabledBuffer );
-	}
-
 
 	inline ListOfInstanceOfBuffer & getInputEnabledBuffer()
 	{
@@ -835,23 +848,9 @@ public:
 		return( mInputEnabledBuffer );
 	}
 
-
-	bool containsInputEnabledBuffer(InstanceOfBuffer * aBuffer) const
-	{
-		return( mInputEnabledBuffer.contains(aBuffer) );
-	}
-
 	inline bool hasInputEnabledBuffer() const
 	{
 		return( mInputEnabledBuffer.nonempty() );
-	}
-
-
-	inline void setInputEnabledBuffer(ListOfInstanceOfBuffer & inputEnabledBuffer)
-	{
-		mInputEnabledBuffer.clear();
-
-		mInputEnabledBuffer.add_union( inputEnabledBuffer );
 	}
 
 
@@ -859,17 +858,6 @@ public:
 	 * GETTER - SETTER
 	 * mInputEnabledCom
 	 */
-	inline void addInputEnabledCom(InstanceOfPort * aPort)
-	{
-		mInputEnabledCom.add_union( aPort );
-	}
-
-	inline void addInputEnabledCom(ListOfInstanceOfPort & inputEnabledPort)
-	{
-		mInputEnabledCom.add_union( inputEnabledPort );
-	}
-
-
 	inline ListOfInstanceOfPort & getInputEnabledCom()
 	{
 		return( mInputEnabledCom );
@@ -880,23 +868,9 @@ public:
 		return( mInputEnabledCom );
 	}
 
-
-	bool containsInputEnabledCom(InstanceOfPort * aPort) const
-	{
-		return( mInputEnabledCom.contains(aPort) );
-	}
-
 	inline bool hasInputEnabledCom() const
 	{
 		return( mInputEnabledCom.nonempty() );
-	}
-
-
-	inline void setInputEnabledCom(ListOfInstanceOfPort & inputEnabledPort)
-	{
-		mInputEnabledCom.clear();
-
-		mInputEnabledCom.add_union( inputEnabledPort );
 	}
 
 
@@ -904,17 +878,6 @@ public:
 	 * GETTER - SETTER
 	 * mInputEnabledSave
 	 */
-	inline void addInputEnabledSave(InstanceOfPort * aPort)
-	{
-		mInputEnabledSave.add_union( aPort );
-	}
-
-	inline void addInputEnabledSave(ListOfInstanceOfPort & inputEnabledSavePort)
-	{
-		mInputEnabledSave.add_union( inputEnabledSavePort );
-	}
-
-
 	inline ListOfInstanceOfPort & getInputEnabledSave()
 	{
 		return( mInputEnabledSave );
@@ -925,23 +888,9 @@ public:
 		return( mInputEnabledSave );
 	}
 
-
-	bool containsInputEnabledSave(InstanceOfPort * aPort) const
-	{
-		return( mInputEnabledSave.contains(aPort) );
-	}
-
 	inline bool hasInputEnabledSave() const
 	{
 		return( mInputEnabledSave.nonempty() );
-	}
-
-
-	inline void setInputEnabledSave(ListOfInstanceOfPort & inputEnabledSavePort)
-	{
-		mInputEnabledSave.clear();
-
-		mInputEnabledSave.add_union( inputEnabledSavePort );
 	}
 
 
@@ -1039,13 +988,13 @@ public:
 	/**
 	 * Serialization
 	 */
-	virtual void strHeader(OutStream & out) const;
+	virtual void strHeader(OutStream & out) const override;
 
-	void toStreamData(OutStream & out) const;
+	void toStreamVariables(OutStream & out) const;
 
 	void toStreamStaticCom(OutStream & out) const;
 
-	virtual void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
 
 };
 
@@ -1118,7 +1067,7 @@ public:
 		{
 			if( itProg->isScope(aScope)
 				&& static_cast< AvmProgram *>(
-						itProg )->compareID(aQualifiedNameID, op) )
+						itProg )->isEqualsID(aQualifiedNameID, op) )
 			{
 				return( *itProg );
 			}
@@ -1138,13 +1087,13 @@ public:
 		{
 			if( itProg->isScope(aScope)
 				&& static_cast< AvmProgram *>(
-						itProg )->compareID(aQualifiedNameID, op) )
+						itProg )->isEqualsID(aQualifiedNameID, op) )
 			{
 				return( itProg );
 			}
 		}
 
-		return( NULL );
+		return( nullptr );
 	}
 
 
@@ -1187,11 +1136,11 @@ public:
 	}
 
 
-	inline avm_size_t getByQualifiedNameID(
+	inline std::size_t getByQualifiedNameID(
 			const std::string & aQualifiedNameID,
 			Specifier::SCOPE_KIND aScope, BFList & listofProgram) const
 	{
-		avm_size_t count = 0;
+		std::size_t count = 0;
 
 		BaseTableOfAvmProgram::const_raw_iterator itProg = begin();
 		BaseTableOfAvmProgram::const_raw_iterator endProg = end();
@@ -1227,7 +1176,7 @@ public:
 	}
 
 
-	inline const BF & getByAstElement(const ObjectElement * astElement) const
+	inline const BF & getByAstElement(const ObjectElement & astElement) const
 	{
 		BaseTableOfAvmProgram::const_raw_iterator it = begin();
 		BaseTableOfAvmProgram::const_raw_iterator endIt = end();
@@ -1246,7 +1195,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
 		BaseTableOfAvmProgram::const_raw_iterator itProg = begin();
 		BaseTableOfAvmProgram::const_raw_iterator endProg = end();

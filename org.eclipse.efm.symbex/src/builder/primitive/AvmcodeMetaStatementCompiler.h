@@ -27,9 +27,9 @@ AVMCODE_COMPILER_OPTIMIZER_CLASS(Nothing, AbstractAvmcodeCompiler)
 
 AVMCODE_COMPILER_CLASS(InformalExpression, AbstractAvmcodeCompiler)
 
-AVMCODE_COMPILER_CLASS(TraceExpression, AbstractAvmcodeCompiler)
+AVMCODE_COMPILER_OPTIMIZER_CLASS(TraceExpression, AbstractAvmcodeCompiler)
 
-AVMCODE_COMPILER_CLASS(DebugExpression, AbstractAvmcodeCompiler)
+AVMCODE_COMPILER_OPTIMIZER_CLASS(DebugExpression, AbstractAvmcodeCompiler)
 
 AVMCODE_COMPILER_CLASS(CommentExpression, AbstractAvmcodeCompiler)
 

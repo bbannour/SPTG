@@ -15,6 +15,8 @@
 
 #include "CompilationEnvironment.h"
 
+#include <fml/executable/ExecutableLib.h>
+
 
 namespace sep
 {
@@ -33,6 +35,58 @@ bool COMPILE_CONTEXT::INLINE_ENABLE_MASK = false;
 bool COMPILE_CONTEXT::INLINE_PROCEDURE_MASK = true;
 
 
+/**
+ * Runtime Executable Context
+ */
+ExecutableForm * COMPILE_CONTEXT::getRuntimeExecutableCxt(
+		const InstanceOfData & aConsVarInstance)
+{
+	if( mRuntimeCtx != nullptr )
+	{
+		if( ExecutableLib::MACHINE_THIS == aConsVarInstance )
+		{
+			return( mRuntimeCtx );
+		}
+		else if( ExecutableLib::MACHINE_SELF == aConsVarInstance )
+		{
+			return( mRuntimeCtx );
+		}
+		else if( ExecutableLib::MACHINE_PARENT == aConsVarInstance )
+		{
+			return( mRuntimeCtx->getExecutableContainer() );
+		}
+		else if( ExecutableLib::MACHINE_COMMUNICATOR == aConsVarInstance )
+		{
+			return( mRuntimeCtx->getExcutableCommunicator() );
+		}
+
+		else if( ExecutableLib::MACHINE_SYSTEM == aConsVarInstance )
+		{
+			return( mRuntimeCtx->getExcutableSystem() );
+		}
+
+//		else if( ExecutableLib::MACHINE_COMPONENT_SELF == aConsVarInstance )
+//		{
+//			return( mRuntimeCtx );
+//		}
+//		else if( ExecutableLib::MACHINE_COMPONENT_PARENT == aConsVarInstance )
+//		{
+//			return( mRuntimeCtx );
+//		}
+//		else if( ExecutableLib::MACHINE_COMPONENT_COMMUNICATOR
+//				== aConsVarInstance )
+//		{
+//			return( mRuntimeCtx );
+//		}
+//
+//		else if( ExecutableLib::MACHINE_ENVIRONMENT == aConsVarInstance )
+//		{
+//			return( nullptr );
+//		}
+	}
+
+	return( nullptr );
+}
 
 /**
  * report debug Context
@@ -48,7 +102,7 @@ OutStream & COMPILE_CONTEXT::debugContext(OutStream & os)
 				<< mRuntimeCtx->getFullyQualifiedNameID() << std::endl;
 	}
 
-	if( mVariableCtx != NULL )
+	if( mVariableCtx != nullptr )
 	{
 		os << TAB << "DataVar:> "
 				<< mVariableCtx->getFullyQualifiedNameID() << std::endl;
@@ -69,9 +123,9 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 	BaseAvmProgram * errorCtx =
 			( mCompileCtx == mRuntimeCtx )? mCompileCtx : mRuntimeCtx;
-	errorCtx->getAstElement()->errorLocation(os,
+	errorCtx->getAstElement().errorLocation(os,
 			errorCtx->hasContainer() ?
-					errorCtx->getContainer()->getAstElement() : NULL);
+					&( errorCtx->getContainer()->getAstElement() ) : nullptr);
 
 	return( os );
 }
@@ -84,9 +138,9 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 	BaseAvmProgram * errorCtx =
 			( mCompileCtx == mRuntimeCtx )? mCompileCtx : mRuntimeCtx;
-	errorCtx->getAstElement()->errorLocation(os,
+	errorCtx->getAstElement().errorLocation(os,
 			errorCtx->hasContainer() ?
-					errorCtx->getContainer()->getAstElement() : NULL);
+					&( errorCtx->getContainer()->getAstElement() ) : nullptr);
 
 	return( os );
 }
@@ -99,9 +153,9 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 	BaseAvmProgram * errorCtx =
 			( mCompileCtx == mRuntimeCtx )? mCompileCtx : mRuntimeCtx;
-	errorCtx->getAstElement()->errorLocation(os,
+	errorCtx->getAstElement().errorLocation(os,
 			errorCtx->hasContainer() ?
-					errorCtx->getContainer()->getAstElement() : NULL);
+					&( errorCtx->getContainer()->getAstElement() ) : nullptr);
 
 	return( os );
 }
@@ -118,9 +172,9 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 	BaseAvmProgram * warningCtx =
 			( mCompileCtx == mRuntimeCtx )? mCompileCtx : mRuntimeCtx;
-	warningCtx->getAstElement()->warningLocation(os,
+	warningCtx->getAstElement().warningLocation(os,
 			warningCtx->hasContainer() ?
-					warningCtx->getContainer()->getAstElement() : NULL);
+					&( warningCtx->getContainer()->getAstElement() ) : nullptr);
 
 	return( os );
 }
@@ -133,9 +187,9 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 	BaseAvmProgram * warningCtx =
 			( mCompileCtx == mRuntimeCtx )? mCompileCtx : mRuntimeCtx;
-	warningCtx->getAstElement()->warningLocation(os,
+	warningCtx->getAstElement().warningLocation(os,
 			warningCtx->hasContainer() ?
-					warningCtx->getContainer()->getAstElement() : NULL);
+					&( warningCtx->getContainer()->getAstElement() ) : nullptr);
 
 	return( os );
 }
@@ -148,9 +202,9 @@ AVM_ENDIF_DEBUG_FLAG( COMPILING )
 
 	BaseAvmProgram * warningCtx =
 			( mCompileCtx == mRuntimeCtx )? mCompileCtx : mRuntimeCtx;
-	warningCtx->getAstElement()->warningLocation(os,
+	warningCtx->getAstElement().warningLocation(os,
 			warningCtx->hasContainer() ?
-					warningCtx->getContainer()->getAstElement() : NULL);
+					&( warningCtx->getContainer()->getAstElement() ) : nullptr);
 
 	return( os );
 }
@@ -167,7 +221,7 @@ void COMPILE_CONTEXT::strHeader(OutStream & os) const
 	{
 		os << " , run: " << mRuntimeCtx->getFullyQualifiedNameID();
 	}
-	if( (mType != NULL) && (mType != TypeManager::UNIVERSAL) )
+	if( (mType != nullptr) && (mType != TypeManager::UNIVERSAL) )
 	{
 		os << " , type " << ( mNeedTypeChecking ? "?:" : ":" )
 				<< str_header( mType );
@@ -183,7 +237,7 @@ void COMPILE_CONTEXT::toStream(OutStream & os) const
 			<< TAB2 << "context = " << str_header( mCompileCtx ) << EOL
 			<< TAB2 << "runtime = " << str_header( mRuntimeCtx ) << EOL;
 
-	if( mType != NULL )
+	if( mType != nullptr )
 	{
 		os << TAB2 << ( mNeedTypeChecking ? "check_" : "" )
 				<< "type = " << str_header( mType ) << EOL;
@@ -203,42 +257,42 @@ List< COMPILE_CONTEXT * > CompilationEnvironment::COMPILE_CONTEXT_CACHE;
 
 void CompilationEnvironment::initCache()
 {
-	for( avm_size_t i = 0 ; i < COMPILE_CONTEXT_INITIAL_COUNT ; ++i )
+	for( std::size_t i = 0 ; i < COMPILE_CONTEXT_INITIAL_COUNT ; ++i )
 	{
 		COMPILE_CONTEXT_CACHE.append(
-				new COMPILE_CONTEXT(NULL, NULL, NULL, NULL) );
+				new COMPILE_CONTEXT(nullptr, nullptr, nullptr, nullptr) );
 	}
 }
 
 void CompilationEnvironment::finalizeCache()
 {
-	avm_size_t finalCacheSize = 0;
+	std::size_t finalCacheSize = 0;
 
 	while( COMPILE_CONTEXT_CACHE.nonempty() )
 	{
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
 		AVM_OS_TRACE << "COMPILE_CONTEXT::finalize:> @"
-				<< avm_address_t( COMPILE_CONTEXT_CACHE.last() ) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+				<< std::addressof( COMPILE_CONTEXT_CACHE.last() ) << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
 
 		++finalCacheSize;
 		delete( COMPILE_CONTEXT_CACHE.pop_last() );
 	}
 
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
 	AVM_OS_TRACE << "COMPILE_CONTEXT::finalize#cache:> count = "
 			<< finalCacheSize << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
 }
 
 
 
 COMPILE_CONTEXT * CompilationEnvironment::newCTX(COMPILE_CONTEXT * PREV,
 		BaseAvmProgram * aCompileCtx, ExecutableForm * aRuntimeCtx,
-		InstanceOfData * aVariableCtx, BaseTypeSpecifier * aType,
+		InstanceOfData * aVariableCtx, const BaseTypeSpecifier * aType,
 		bool needTypeChecking, const Modifier & aModifier)
 {
-	COMPILE_CONTEXT * newCTX = NULL;
+	COMPILE_CONTEXT * newCTX = nullptr;
 
 	if( COMPILE_CONTEXT_CACHE.nonempty() )
 	{
@@ -247,14 +301,14 @@ COMPILE_CONTEXT * CompilationEnvironment::newCTX(COMPILE_CONTEXT * PREV,
 		newCTX->PREV = PREV;
 
 		// Used for safe memory management !!!
-		if( PREV != NULL )
+		if( PREV != nullptr )
 		{
 			newCTX->NEXT = PREV->NEXT;
 			PREV->NEXT   = newCTX;
 		}
 		else
 		{
-			newCTX->NEXT = NULL;
+			newCTX->NEXT = nullptr;
 		}
 
 		newCTX->mCompileCtx  = aCompileCtx;
@@ -276,10 +330,10 @@ COMPILE_CONTEXT * CompilationEnvironment::newCTX(COMPILE_CONTEXT * PREV,
 				<< SEND_EXIT;
 	}
 
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
-	AVM_OS_TRACE << "COMPILE_CONTEXT::new:> @" << avm_address_t( newCTX )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
+	AVM_OS_TRACE << "COMPILE_CONTEXT::new:> @" << std::addressof( newCTX )
 			<< std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
 
 	return( newCTX );
 }
@@ -287,27 +341,27 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
 
 void CompilationEnvironment::freeCTX(COMPILE_CONTEXT * & CTX)
 {
-	if( CTX->NEXT == NULL )
+	if( CTX->NEXT == nullptr )
 	{
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
 		AVM_OS_TRACE << "COMPILE_CONTEXT::free:> @"
-				<< avm_address_t( CTX ) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+				<< std::addressof( CTX ) << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
 		COMPILE_CONTEXT_CACHE.append( CTX );
 
-		CTX = NULL;
+		CTX = nullptr;
 	}
 	else
 	{
-		for( COMPILE_CONTEXT * nextCTX = CTX ; CTX != NULL ; CTX = nextCTX )
+		for( COMPILE_CONTEXT * nextCTX = CTX ; CTX != nullptr ; CTX = nextCTX )
 		{
-AVM_IF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+AVM_IF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
 			AVM_OS_TRACE << "COMPILE_CONTEXT::free:> @"
-					<< avm_address_t( CTX ) << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , COMPILING )
+					<< std::addressof( CTX ) << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( HIGH , COMPILING , MEMORY_MANAGEMENT )
 
 			nextCTX = CTX->NEXT;
-//			CTX->NEXT = NULL;
+//			CTX->NEXT = nullptr;
 			COMPILE_CONTEXT_CACHE.append( CTX );
 		}
 	}

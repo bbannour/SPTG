@@ -16,8 +16,7 @@
 #include <common/Element.h>
 #include <fml/runtime/ExecutionContextFlags.h>
 
-#include <collection/List.h>
-#include <collection/Vector.h>
+#include <collection/TypedefCollection.h>
 
 #include <common/BF.h>
 
@@ -46,8 +45,7 @@ typedef List  < const ExecutionContext * >  ListOfConstExecutionContext;
 typedef Vector< const ExecutionContext * >  VectorOfConstExecutionContext;
 
 
-class ExecutionContextHeader :
-		public Element ,
+class ExecutionContextHeader : public Element ,
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( ExecutionContextHeader )
 {
 
@@ -55,23 +53,23 @@ class ExecutionContextHeader :
 
 
 public:
-   /**
+	/**
 	* ATTRIBUTES
 	* static
 	*/
-	static avm_uint32_t ID_NUMBER;
+	static std::uint32_t ID_NUMBER;
 
 protected:
 	/**
 	 * ATTRIBUTES
 	 */
-	avm_uint32_t mIdNumber;
-	avm_uint32_t mEvalNumber;
+	std::uint32_t mIdNumber;
+	std::uint32_t mEvalNumber;
 
-	avm_uint32_t mHeight;
-	avm_uint32_t mWidth;
+	std::uint32_t mHeight;
+	std::uint32_t mWidth;
 
-	avm_uint8_t  mWeight;
+	std::uint8_t  mWeight;
 
 
 
@@ -111,7 +109,7 @@ public:
 	 * CONSTRUCTOR
 	 * Other
 	 */
-	ExecutionContextHeader(avm_uint32_t aHeight, avm_uint32_t aWidth)
+	ExecutionContextHeader(std::uint32_t aHeight, std::uint32_t aWidth)
 	: Element( CLASS_KIND_T( ExecutionContextHeader ) ),
 	mIdNumber( ID_NUMBER++ ),
 	mEvalNumber( 0 ),
@@ -136,12 +134,12 @@ public:
 	 * GETTER - SETTER
 	 * ID_NUMBER
 	 */
-	inline static avm_uint32_t getCreateCounter()
+	inline static std::uint32_t getCreateCounter()
 	{
 		return( ID_NUMBER );
 	}
 
-	inline static void setCreateCounter(avm_uint32_t aCreateCounter)
+	inline static void setCreateCounter(std::uint32_t aCreateCounter)
 	{
 		ID_NUMBER = aCreateCounter;
 	}
@@ -151,12 +149,12 @@ public:
 	 * GETTER - SETTER
 	 * mIdNumber
 	 */
-	inline avm_uint32_t getIdNumber() const
+	inline std::uint32_t getIdNumber() const
 	{
 		return( mIdNumber );
 	}
 
-	inline void setIdNumber(avm_uint32_t anIdNumber)
+	inline void setIdNumber(std::uint32_t anIdNumber)
 	{
 		mIdNumber = anIdNumber;
 	}
@@ -166,12 +164,12 @@ public:
 	 * GETTER - SETTER
 	 *
 	 */
-	inline avm_uint32_t getEvalNumber() const
+	inline std::uint32_t getEvalNumber() const
 	{
 		return( mEvalNumber );
 	}
 
-	inline void setEvalNumber(avm_uint32_t anEvalNumber)
+	inline void setEvalNumber(std::uint32_t anEvalNumber)
 	{
 		mEvalNumber = anEvalNumber;
 	}
@@ -181,12 +179,12 @@ public:
 	 * GETTER - SETTER
 	 * mHeight
 	 */
-	inline avm_uint32_t getHeight() const
+	inline std::uint32_t getHeight() const
 	{
 		return( mHeight );
 	}
 
-	inline void setHeight(avm_uint32_t aHeight)
+	inline void setHeight(std::uint32_t aHeight)
 	{
 		mHeight = aHeight;
 	}
@@ -196,12 +194,12 @@ public:
 	 * GETTER - SETTER
 	 * mWidth
 	 */
-	inline avm_uint32_t getWidth() const
+	inline std::uint32_t getWidth() const
 	{
 		return( mWidth );
 	}
 
-	inline void setWidth(avm_uint32_t aWidth)
+	inline void setWidth(std::uint32_t aWidth)
 	{
 		mWidth = aWidth;
 	}
@@ -211,33 +209,33 @@ public:
 	 * GETTER - SETTER
 	 * mWeight
 	 */
-	inline avm_uint8_t getWeight() const
+	inline std::uint8_t getWeight() const
 	{
 		return( mWeight );
 	}
 
-	inline avm_uint32_t getStrWeight() const
+	inline std::uint32_t getStrWeight() const
 	{
 		return( mWeight );
 	}
 
-	inline static avm_uint8_t getWeightMax()
+	inline static std::uint8_t getWeightMax()
 	{
-		return( AVM_NUMERIC_MAX_UINT8 );
+		return( UINT8_MAX );
 	}
 
 	inline bool isWeightMax() const
 	{
-		return( mWeight == AVM_NUMERIC_MAX_UINT8 );
+		return( mWeight == UINT8_MAX );
 	}
 
-	inline bool isWeight(avm_uint8_t aWeight) const
+	inline bool isWeight(std::uint8_t aWeight) const
 	{
 		return( mWeight == aWeight );
 	}
 
 
-	inline void setWeight(avm_uint8_t aWeight)
+	inline void setWeight(std::uint8_t aWeight)
 	{
 		mWeight = aWeight;
 	}
@@ -245,21 +243,21 @@ public:
 
 	inline void setWeightMax()
 	{
-		mWeight = AVM_NUMERIC_MAX_UINT8;
+		mWeight = UINT8_MAX;
 	}
 
 
-	inline void decrWeight(avm_uint8_t aWeight = 1)
+	inline void decrWeight(std::uint8_t aWeight = 1)
 	{
-		if( mWeight != AVM_NUMERIC_MAX_UINT8 )
+		if( mWeight != UINT8_MAX )
 		{
 			mWeight -= aWeight;
 		}
 	}
 
-	inline void incrWeight(avm_uint8_t aWeight = 1)
+	inline void incrWeight(std::uint8_t aWeight = 1)
 	{
-		if( mWeight != AVM_NUMERIC_MAX_UINT8 )
+		if( mWeight != UINT8_MAX )
 		{
 			mWeight += aWeight;
 		}
@@ -272,7 +270,7 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		StringOutStream oss;
 
@@ -286,7 +284,7 @@ public:
 		return( oss.str() );
 	}
 
-	virtual void toStream(OutStream & out) const
+	virtual void toStream(OutStream & out) const override
 	{
 		out << TAB
 			<<    "Id:" << getIdNumber() << " , Ev:" << getEvalNumber()
@@ -301,54 +299,44 @@ public:
 
 class ExecutionContext : public Element ,
 		public ExecutionContextFlagsImpl ,
+		AVM_INJECT_STATIC_NULL_REFERENCE( ExecutionContext ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( ExecutionContext )
 {
 
 	AVM_DECLARE_CLONABLE_CLASS( ExecutionContext )
 
+	AVM_TYPEDEF_COLLECTION_CLASS( ExecutionContext )
+
 public:
 	/**
 	 * TRACE CONSTANT
 	 */
-	static avm_size_t EC_CHILD_TRACE_DEFAULT_SIZE;
+	static std::size_t EC_CHILD_TRACE_DEFAULT_SIZE;
 
-	static avm_size_t EXECUTION_CONTEXT_CHILD_TRACE_MAX;
+	static std::size_t EXECUTION_CONTEXT_CHILD_TRACE_MAX;
 
 	/*
-	 * DEFAULT NULL REFERENCE
+	 * DEFAULT NO CHILD EMPTY LIST
 	 */
-	static ExecutionContext _NULL_;
+	static ListOfExecutionContext NO_CHILD;
 
-
-protected:
-	/**
-	 * TYPEDEF
-	 */
-	typedef APList < ExecutionContext * >  APListOfExecutionContext;
 
 public:
-	typedef APListOfExecutionContext::iterator        rw_child_iterator;
+	typedef ListOfExecutionContext::iterator        rw_child_iterator;
 
-	typedef APListOfExecutionContext::const_iterator  child_iterator;
+	typedef ListOfExecutionContext::const_iterator  child_iterator;
 
 
    /**
 	* ATTRIBUTES
 	*/
 	ExecutionContext * mContainer;
-	APListOfExecutionContext mChildContexts;
 
-	BF mHeader;
+	ListOfExecutionContext mChildContexts;
 
-	APExecutionData mExecutionData;
+	AvmPointer< ExecutionContextHeader > mHeader;
 
-	BF mNodeCondition;
-	BF mNodeTimedCondition;
-
-	BF mRunnableElementTrace;
-	BF mIOElementTrace;
-
-	TableOfRuntimeFormState::TableOfAssignedFlag mTableOfAssignedFlag;
+	ExecutionData mExecutionData;
 
 	BF mInformation;
 
@@ -360,15 +348,11 @@ public:
 	 */
 	ExecutionContext()
 	: Element( CLASS_KIND_T( ExecutionContext ) ),
-	mContainer( NULL ),
+	ExecutionContextFlagsImpl( ),
+	mContainer( nullptr ),
 	mChildContexts( ),
 	mHeader(),
 	mExecutionData( ),
-	mNodeCondition( ),
-	mNodeTimedCondition( ),
-	mRunnableElementTrace( ),
-	mIOElementTrace( ),
-	mTableOfAssignedFlag( NULL ),
 	mInformation( )
 	{
 		//!! NOTHING
@@ -380,16 +364,26 @@ public:
 	 */
 	ExecutionContext(const ExecutionContext & aContext)
 	: Element( aContext ),
+	ExecutionContextFlagsImpl( aContext ),
 	mContainer( aContext.mContainer ),
 	mChildContexts( aContext.mChildContexts ),
 
-	mHeader( aContext.mHeader ),
+	mHeader( new ExecutionContextHeader(aContext.getHeader()) ),
 	mExecutionData( aContext.mExecutionData ),
-	mNodeCondition( aContext.mNodeCondition ),
-	mNodeTimedCondition( aContext.mNodeTimedCondition ),
-	mRunnableElementTrace( aContext.mRunnableElementTrace ),
-	mIOElementTrace( aContext.mIOElementTrace ),
-	mTableOfAssignedFlag( aContext.mTableOfAssignedFlag ),
+	mInformation( aContext.mInformation )
+	{
+		//!! NOTHING
+	}
+
+	ExecutionContext(ExecutionContext * aContainer,
+			const ExecutionContext & aContext, bool withChild)
+	: Element( aContext ),
+	ExecutionContextFlagsImpl( aContext ),
+	mContainer( aContainer ),
+	mChildContexts( withChild ? aContext.mChildContexts : NO_CHILD ),
+
+	mHeader( new ExecutionContextHeader(aContext.getHeader()) ),
+	mExecutionData( aContext.mExecutionData ),
 	mInformation( aContext.mInformation )
 	{
 		//!! NOTHING
@@ -400,41 +394,33 @@ public:
 	 * CONSTRUCTOR
 	 * Others
 	 */
-	ExecutionContext(APExecutionData & anExecutionData,
-			avm_uint32_t aHeight, avm_uint32_t aWidth)
+	ExecutionContext(ExecutionData & anExecutionData,
+			std::uint32_t aHeight, std::uint32_t aWidth)
 	: Element( CLASS_KIND_T( ExecutionContext ) ),
-	mContainer( NULL ),
+	ExecutionContextFlagsImpl( ),
+	mContainer( nullptr ),
 	mChildContexts( ),
 
 	mHeader( new ExecutionContextHeader(aHeight , aWidth) ),
 	mExecutionData( anExecutionData ),
-	mNodeCondition( anExecutionData->getNodeCondition() ),
-	mNodeTimedCondition( anExecutionData->getNodeTimedCondition() ),
-	mRunnableElementTrace( anExecutionData->getRunnableElementTrace() ),
-	mIOElementTrace( anExecutionData->getIOElementTrace() ),
-	mTableOfAssignedFlag( anExecutionData->getTableOfAssignedFlag() ),
 	mInformation( )
 	{
-		anExecutionData->setExecutionContext( this );
+		anExecutionData.setExecutionContext( this );
 	}
 
 	ExecutionContext(const ExecutionContext & aContainer,
-			APExecutionData & anExecutionData,
-			avm_uint32_t aHeight, avm_uint32_t aWidth)
+			ExecutionData & anExecutionData,
+			std::uint32_t aHeight, std::uint32_t aWidth)
 	: Element( CLASS_KIND_T( ExecutionContext ) ),
+	ExecutionContextFlagsImpl( ),
 	mContainer( const_cast< ExecutionContext * >(& aContainer) ),
 	mChildContexts( ),
 
 	mHeader( new ExecutionContextHeader(aHeight , aWidth) ),
 	mExecutionData( anExecutionData ),
-	mNodeCondition( anExecutionData->getNodeCondition() ),
-	mNodeTimedCondition( anExecutionData->getNodeTimedCondition() ),
-	mRunnableElementTrace( anExecutionData->getRunnableElementTrace() ),
-	mIOElementTrace( anExecutionData->getIOElementTrace() ),
-	mTableOfAssignedFlag( anExecutionData->getTableOfAssignedFlag() ),
 	mInformation( )
 	{
-		anExecutionData->setExecutionContext( this );
+		anExecutionData.setExecutionContext( this );
 	}
 
 
@@ -443,6 +429,8 @@ public:
 	 */
 	virtual ~ExecutionContext()
 	{
+		sep::destroy( mChildContexts );
+
 		if( hasContainer() )
 		{
 			//getContainer()->remove(this);
@@ -451,41 +439,27 @@ public:
 
 	inline void destroy()
 	{
-		mChildContexts.clear();
+		sep::destroy( mChildContexts );
 
 		mHeader.destroy();
 
 		mExecutionData.destroy();
 
-		mNodeCondition.destroy();
-		mNodeTimedCondition.destroy();
-
-		mRunnableElementTrace.destroy();
-		mIOElementTrace.destroy();
-
 		mInformation.destroy();
 	}
 
-	/**
-	 * _NULL_
-	 */
-	inline bool isNull() const
-	{
-		return( this == (& ExecutionContext::_NULL_) );
-	}
-
-	inline bool isnotNull() const
-	{
-		return( this != (& ExecutionContext::_NULL_) );
-	}
 
 	/**
-	 * cast to reference
+	 * GETTER
+	 * Unique Null Reference
 	 */
-	inline static const ExecutionContext & REF(const ExecutionContext * anEC)
+	inline static ExecutionContext & nullref()
 	{
-		return( ( anEC != NULL ) ?  (* anEC) : ExecutionContext::_NULL_ );
+		static ExecutionContext _NULL_;
+
+		return( _NULL_ );
 	}
+
 
 	/**
 	 * GETTER - SETTER
@@ -504,7 +478,7 @@ public:
 
 	inline bool hasContainer() const
 	{
-		return( mContainer != NULL );
+		return( mContainer != nullptr );
 	}
 
 	inline void setContainer(ExecutionContext * anEC)
@@ -514,14 +488,71 @@ public:
 
 
 	/**
-	 * CLONE
+	 * CLONE ALL DATA
+	 * CHILD EMPTY
 	 */
-	inline virtual ExecutionContext * cloneData() const
+	inline ExecutionContext * cloneData(
+			ExecutionContext * aContainer, bool requireWritableExecData) const
 	{
-		ExecutionContext * mCloneEC = new ExecutionContext( *this );
-		mCloneEC->getAPExecutionData().makeWritable();
+		ExecutionContext * aCloneEC =
+				new ExecutionContext( aContainer, *this , false );
 
-		return( mCloneEC );
+		if( requireWritableExecData )
+		{
+			aCloneEC->makeWritableExecutionData();
+
+			aCloneEC->getwExecutionData().setExecutionContext(aCloneEC);
+		}
+
+		return( aCloneEC );
+	}
+
+	/**
+	 * CLONE LEVEL ONE
+	 */
+	inline ExecutionContext * cloneNode(
+			ExecutionContext * aContainer, bool requireWritableExecData) const
+	{
+		ExecutionContext * aCloneEC =
+				new ExecutionContext( aContainer, *this , true );
+
+		if( requireWritableExecData )
+		{
+			aCloneEC->makeWritableExecutionData();
+		}
+
+		return( aCloneEC );
+	}
+
+	inline ExecutionContext * cloneNode(bool requireWritableExecData) const
+	{
+		ExecutionContext * aCloneEC =
+				new ExecutionContext( getContainer(), *this , true );
+
+		if( requireWritableExecData )
+		{
+			aCloneEC->makeWritableExecutionData();
+		}
+
+		return( aCloneEC );
+	}
+
+	/**
+	 * RECURSIVE CLONE
+	 */
+	ExecutionContext * cloneGraph(
+			ExecutionContext * aContainer, bool requireWritableExecData) const
+	{
+		ExecutionContext * aCloneEC =
+				cloneData( aContainer, requireWritableExecData );
+
+		for( const auto & itChildEC : getChildContexts() )
+		{
+			aCloneEC->appendChildContext(
+					itChildEC->cloneGraph( aCloneEC, requireWritableExecData ) );
+		}
+
+		return( aCloneEC );
 	}
 
 
@@ -536,69 +567,17 @@ public:
 		mHeader = anInitialContext.mHeader;
 		mExecutionData = anInitialContext.mExecutionData;
 
-		mNodeCondition = anInitialContext.mNodeCondition;
-		mNodeTimedCondition = anInitialContext.mNodeTimedCondition;
-
-		mRunnableElementTrace = anInitialContext.mRunnableElementTrace;
-		mIOElementTrace = anInitialContext.mIOElementTrace;
-
-		mTableOfAssignedFlag = anInitialContext.mTableOfAssignedFlag;
-
 		mInformation = anInitialContext.mInformation;
 	}
 
-	inline void initialize(const APExecutionData & anInitialData,
-			avm_uint32_t aHeight = 0, avm_uint32_t aWidth = 1)
+	inline void initialize(const ExecutionData & anInitialData,
+			std::uint32_t aHeight = 0, std::uint32_t aWidth = 1)
 	{
-		mContainer = NULL;
+		mContainer = nullptr;
 
 		mHeader = new ExecutionContextHeader(aHeight, aWidth);
 		mExecutionData = anInitialData;
-
-		if( anInitialData.valid() )
-		{
-			mNodeCondition = anInitialData->getNodeCondition();
-			mNodeTimedCondition = anInitialData->getNodeTimedCondition();
-
-			mRunnableElementTrace = anInitialData->getRunnableElementTrace();
-			mIOElementTrace = anInitialData->getIOElementTrace();
-
-			mTableOfAssignedFlag = anInitialData->getTableOfAssignedFlag();
-		}
 	}
-
-
-	/**
-	 * RESET DATA BEFORE EVALUATION
-	 */
-	inline void resetDataBeforeEvaluation()
-	{
-		mExecutionData->setNodeCondition( ExpressionConstant::BOOLEAN_TRUE );
-		mExecutionData->setNodeTimedCondition( ExpressionConstant::BOOLEAN_TRUE );
-
-		mExecutionData->setRunnableElementTrace( BF::REF_NULL );
-		mExecutionData->setIOElementTrace( BF::REF_NULL );
-
-		// Due to basic pointer, not smart pointer
-		mTableOfAssignedFlag = mExecutionData->getTableOfAssignedFlag();
-		mExecutionData->setTableOfAssignedFlag( NULL );
-	}
-
-
-	/**
-	 * RESTORE DATA AFTER EVALUATION
-	 */
-	inline void restoreDataAfterEvaluation()
-	{
-		mExecutionData->setNodeCondition( mNodeCondition );
-		mExecutionData->setNodeTimedCondition( mNodeTimedCondition );
-
-		mExecutionData->setRunnableElementTrace( mRunnableElementTrace );
-		mExecutionData->setIOElementTrace( mIOElementTrace );
-
-		mExecutionData->setTableOfAssignedFlag( mTableOfAssignedFlag );
-	}
-
 
 
 	/**
@@ -675,7 +654,7 @@ public:
 		return( mChildContexts.empty() );
 	}
 
-	inline avm_size_t size() const
+	inline virtual std::size_t size() const override
 	{
 		return( mChildContexts.size() );
 	}
@@ -687,7 +666,25 @@ public:
 	 */
 	inline void appendChildContext(ExecutionContext * anEC)
 	{
+		if( anEC->getContainer() == nullptr )
+		{
+			anEC->setContainer( this );
+		}
+		else
+		{
+			AVM_OS_ASSERT_FATAL_ERROR_EXIT( anEC->getContainer() == this )
+				<< "The Execution Context< " << anEC->str()
+				<< " > has a parent < " << anEC->getContainer()->str()
+				<< " > different of his new one < " << this->str() << " > !"
+				<< SEND_EXIT;
+		}
+
 		mChildContexts.append( anEC );
+	}
+
+	inline void spliceChildContext(ListOfExecutionContext & newChildsEC)
+	{
+		mChildContexts.splice( newChildsEC );
 	}
 
 	inline void clearChildContext()
@@ -707,7 +704,17 @@ public:
 
 
 
-	inline APListOfExecutionContext & getNext()
+	inline ListOfExecutionContext & getChildContexts()
+	{
+		return( mChildContexts );
+	}
+
+	inline const ListOfExecutionContext & getChildContexts() const
+	{
+		return( mChildContexts );
+	}
+
+	inline const ListOfExecutionContext & getNext() const
 	{
 		return( mChildContexts );
 	}
@@ -722,14 +729,19 @@ public:
 	 * GETTER - SETTER
 	 * mHeader
 	 */
-	inline const BF & getHeader() const
+	inline const AvmPointer< ExecutionContextHeader > & rawHeader() const
 	{
 		return( mHeader );
 	}
 
-	inline ExecutionContextHeader * rawHeader() const
+	inline ExecutionContextHeader & getHeader()
 	{
-		return( mHeader.to_ptr< ExecutionContextHeader >() );
+		return( *mHeader );
+	}
+
+	inline const ExecutionContextHeader & getHeader() const
+	{
+		return( *mHeader );
 	}
 
 
@@ -754,16 +766,6 @@ public:
 	}
 
 
-	inline APExecutionData & getPreviousExecutionData()
-	{
-		return( getContainer()->getAPExecutionData() );
-	}
-
-	inline const APExecutionData & getPreviousExecutionData() const
-	{
-		return( getContainer()->getAPExecutionData() );
-	}
-
 	inline bool hasPrevious() const
 	{
 		return( hasContainer() );
@@ -774,113 +776,113 @@ public:
 	 * GETTER - SETTER
 	 * mHeader trace indices
 	 */
-	inline static avm_uint32_t getCreateCounter()
+	inline static std::uint32_t getCreateCounter()
 	{
 		return( ExecutionContextHeader::ID_NUMBER );
 	}
 
-	inline avm_uint32_t getIdNumber() const
+	inline std::uint32_t getIdNumber() const
 	{
-		return( rawHeader()->getIdNumber() );
+		return( getHeader().getIdNumber() );
 	}
 
 
-	inline avm_uint32_t getEvalNumber() const
+	inline std::uint32_t getEvalNumber() const
 	{
-		return( rawHeader()->getEvalNumber() );
+		return( getHeader().getEvalNumber() );
 	}
 
 	inline bool isEvaluated() const
 	{
-		return( rawHeader()->getEvalNumber() > 0 );
+		return( getHeader().getEvalNumber() > 0 );
 	}
 
-	inline void setEvalNumber(avm_uint32_t anEvalNumber)
+	inline void setEvalNumber(std::uint32_t anEvalNumber)
 	{
-		rawHeader()->setEvalNumber(anEvalNumber);
+		getHeader().setEvalNumber(anEvalNumber);
 	}
 
 
-	inline avm_uint32_t getHeight() const
+	inline std::uint32_t getHeight() const
 	{
-		return( rawHeader()->getHeight() );
+		return( getHeader().getHeight() );
 	}
 
-	inline void setHeight(avm_uint32_t aHeight)
+	inline void setHeight(std::uint32_t aHeight)
 	{
-		rawHeader()->setHeight(aHeight);
+		getHeader().setHeight(aHeight);
 	}
 
 
-	inline avm_uint32_t getWidth() const
+	inline std::uint32_t getWidth() const
 	{
-		return( rawHeader()->getWidth() );
+		return( getHeader().getWidth() );
 	}
 
-	inline void setWidth(avm_uint32_t aWidth)
+	inline void setWidth(std::uint32_t aWidth)
 	{
-		rawHeader()->setWidth(aWidth);
+		getHeader().setWidth(aWidth);
 	}
 
 
-	inline avm_uint8_t getWeight() const
+	inline std::uint8_t getWeight() const
 	{
-		return( rawHeader()->getWeight() );
+		return( getHeader().getWeight() );
 	}
 
-	inline avm_uint32_t getStrWeight() const
+	inline std::uint32_t getStrWeight() const
 	{
-		return( rawHeader()->getStrWeight() );
+		return( getHeader().getStrWeight() );
 	}
 
-	inline static avm_uint8_t getWeightMax()
+	inline static std::uint8_t getWeightMax()
 	{
 		return( ExecutionContextHeader::getWeightMax() );
 	}
 
 	inline bool isWeightMax() const
 	{
-		return( rawHeader()->isWeightMax() );
+		return( getHeader().isWeightMax() );
 	}
 
-	inline bool isWeight(avm_uint8_t aWeight) const
+	inline bool isWeight(std::uint8_t aWeight) const
 	{
-		return( rawHeader()->isWeight(aWeight) );
+		return( getHeader().isWeight(aWeight) );
 	}
 
 
-	inline void setWeight(avm_uint8_t aWeight)
+	inline void setWeight(std::uint8_t aWeight)
 	{
-		rawHeader()->setWeight(aWeight);
+		getHeader().setWeight(aWeight);
 	}
 
 	inline void setWeightMax()
 	{
-		rawHeader()->setWeightMax();
+		getHeader().setWeightMax();
 	}
 
 
-	inline avm_uint32_t getPrevEvalNumber() const
+	inline std::uint32_t getPrevEvalNumber() const
 	{
 		return( isRoot() ? 0 : getContainer()->getEvalNumber() );
 	}
 
-	inline avm_uint32_t getPrevHeight() const
+	inline std::uint32_t getPrevHeight() const
 	{
 		return( isRoot() ? 0 : getContainer()->getHeight() );
 	}
 
-	inline avm_uint32_t getPrevIdNumber() const
+	inline std::uint32_t getPrevIdNumber() const
 	{
 		return( isRoot() ? 0 : getContainer()->getIdNumber() );
 	}
 
-	inline avm_uint32_t getPrevWidth() const
+	inline std::uint32_t getPrevWidth() const
 	{
 		return( isRoot() ? 0 : getContainer()->getWidth() );
 	}
 
-	inline avm_uint8_t getPrevsWeight() const
+	inline std::uint8_t getPrevsWeight() const
 	{
 		return( isRoot() ? 0 : getContainer()->getWeight() );
 	}
@@ -895,29 +897,14 @@ public:
 	 * GETTER - SETTER
 	 * mExecutionData
 	 */
-	inline APExecutionData & getAPExecutionData()
+	inline const ExecutionData & getExecutionData() const
 	{
 		return( mExecutionData );
 	}
 
-	inline const APExecutionData & getAPExecutionData() const
+	inline ExecutionData & getwExecutionData()
 	{
 		return( mExecutionData );
-	}
-
-	inline ExecutionData * getExecutionData() const
-	{
-		return( mExecutionData );
-	}
-
-	inline const ExecutionData & refExecutionData() const
-	{
-		return( * mExecutionData );
-	}
-
-	inline ExecutionData & rwExecutionData() const
-	{
-		return( * mExecutionData );
 	}
 
 
@@ -926,7 +913,7 @@ public:
 		return( mExecutionData.valid() );
 	}
 
-	inline void setExecutionData(const APExecutionData & anExecutionData)
+	inline void setExecutionData(const ExecutionData & anExecutionData)
 	{
 		mExecutionData = anExecutionData;
 	}
@@ -937,144 +924,88 @@ public:
 	}
 
 
+	/**
+	 * TRIVIAL EQUALITY
+	 */
+	inline bool edTEQ(const ExecutionContext & anEC) const
+	{
+		return( mExecutionData.isTEQ( anEC.getExecutionData() ) );
+	}
+
 
 	/**
 	 * GETTER - SETTER
 	 * mRunnableElementTrace
 	 */
-	inline BF & getRunnableElementTrace()
-	{
-		return( mRunnableElementTrace );
-	}
-
 	inline const BF & getRunnableElementTrace() const
 	{
-		return( mRunnableElementTrace );
+		return( mExecutionData.getRunnableElementTrace() );
 	}
 
 	inline bool hasRunnableElementTrace() const
 	{
-		return( mRunnableElementTrace.valid() );
+		return( mExecutionData.hasRunnableElementTrace() );
 	}
-
-	inline void setRunnableElementTrace(const BF & aRunnableElementTrace)
-	{
-		mRunnableElementTrace = aRunnableElementTrace;
-	}
-
-
-	/**
-	 * GETTER
-	 * tableOfRuntimeFormState
-	 */
-
-	bool checkRunningForm(const RuntimeID & aRID)
-	{
-		return( getAPExecutionData()->checkRunningForm(
-				getRunnableElementTrace(), aRID) );
-	}
-
-
-	/**
-	 * GETTER
-	 * mTableOfAssignedFlag
-	 */
-	TableOfRuntimeFormState::TableOfAssignedFlag getTableOfAssignedFlag() const
-	{
-		return( mTableOfAssignedFlag );
-	}
-
-	void setTableOfAssignedFlag(
-			TableOfRuntimeFormState::TableOfAssignedFlag aTableOfAssignedFlag)
-	{
-		mTableOfAssignedFlag = aTableOfAssignedFlag;
-	}
-
-
-
-	/**
-	 * GETTER
-	 * mNodeCondition  &&  mNodeTimedCondition
-	 */
-	inline BF getAllNodeCondition() const
-	{
-		return( ExpressionConstructor::andExpr(
-				mNodeCondition, mNodeTimedCondition) );
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * mNodeCondition
-	 */
-	inline BF & getNodeCondition()
-	{
-		return( mNodeCondition );
-	}
-
-	inline const BF & getNodeCondition() const
-	{
-		return( mNodeCondition );
-	}
-
-	inline bool hasNodeCondition() const
-	{
-		return( mNodeCondition.valid() );
-	}
-
-	inline void setNodeCondition(const BF & aCondition)
-	{
-		mNodeCondition = aCondition;
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * mNodeTimedCondition
-	 */
-	inline BF & getNodeTimedCondition()
-	{
-		return( mNodeTimedCondition );
-	}
-
-	inline const BF & getNodeTimedCondition() const
-	{
-		return( mNodeTimedCondition );
-	}
-
-	inline bool hasNodeTimedCondition() const
-	{
-		return( mNodeTimedCondition.valid() );
-	}
-
-	inline void setNodeTimedCondition(const BF & aTimedCondition)
-	{
-		mNodeTimedCondition = aTimedCondition;
-	}
-
 
 	/**
 	 * GETTER - SETTER
 	 * mIOElementTrace
 	 */
-	inline BF & getIOElementTrace()
-	{
-		return( mIOElementTrace );
-	}
-
 	inline const BF & getIOElementTrace() const
 	{
-		return( mIOElementTrace );
+		return( mExecutionData.getIOElementTrace() );
 	}
 
 	inline bool hasIOElementTrace() const
 	{
-		return( mIOElementTrace.valid() );
+		return( mExecutionData.hasIOElementTrace() );
 	}
 
-	inline void setIOElementTrace(const BF & anIOElementTrace)
+
+	/**
+	 * GETTER - SETTER
+	 * ExecutionData::mPathCondition
+	 */
+	inline const BF & getPathCondition() const
 	{
-		mIOElementTrace = anIOElementTrace;
+		return( mExecutionData.getPathCondition() );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * ExecutionData::mPathTimedCondition
+	 */
+	inline const BF & getPathTimedCondition() const
+	{
+		return( mExecutionData.getPathTimedCondition() );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * mNodeCondition
+	 */
+	inline const BF & getNodeCondition() const
+	{
+		return( mExecutionData.getNodeCondition() );
+	}
+
+	inline bool hasNodeCondition() const
+	{
+		return( mExecutionData.hasNodeCondition() );
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * mNodeTimedCondition
+	 */
+	inline const BF & getNodeTimedCondition() const
+	{
+		return( mExecutionData.getNodeTimedCondition() );
+	}
+
+	inline bool hasNodeTimedCondition() const
+	{
+		return( mExecutionData.hasNodeTimedCondition() );
 	}
 
 
@@ -1097,19 +1028,17 @@ public:
 	inline static void addInfo(ListOfExecutionContext & listOfEC,
 			const AbstractProcessorUnit & aProcessor, const BF & aData)
 	{
-		ListOfExecutionContext::iterator it = listOfEC.begin();
-		ListOfExecutionContext::iterator itEnd = listOfEC.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itEC : listOfEC )
 		{
-			(*it)->addInfo(aProcessor,aData);
+			itEC->addInfo(aProcessor,aData);
 		}
 	}
 
 	inline GenericInfoData * getInfo(
 			const AbstractProcessorUnit & aProcessor, const BF & anID) const
 	{
-		return( mInformation.invalid() ?  NULL :
-				mInformation.to_ptr< ExecutionInformation >()->
+		return( mInformation.invalid() ?  nullptr :
+				mInformation.to< ExecutionInformation >().
 				getInfo(aProcessor, anID) );
 	}
 
@@ -1118,14 +1047,14 @@ public:
 			const IProcessorUnitRegistration & aRegisterTool) const
 	{
 		return( mInformation.invalid() ?  BF::REF_NULL :
-				mInformation.to_ptr< ExecutionInformation >()->
+				mInformation.to< ExecutionInformation >().
 				getInfoData(aRegisterTool) );
 	}
 
 	inline const BF & getInfoData(const AbstractProcessorUnit & aProcessor) const
 	{
 		return( mInformation.invalid() ?  BF::REF_NULL :
-				mInformation.to_ptr< ExecutionInformation >()->
+				mInformation.to< ExecutionInformation >().
 				getInfoData(aProcessor) );
 	}
 
@@ -1133,7 +1062,7 @@ public:
 			const AbstractProcessorUnit & aProcessor, const BF & anID) const
 	{
 		return( mInformation.invalid() ?  BF::REF_NULL :
-				mInformation.to_ptr< ExecutionInformation >()->
+				mInformation.to< ExecutionInformation >().
 				getInfoData(aProcessor, anID) );
 	}
 
@@ -1150,46 +1079,46 @@ public:
 	inline bool hasInfo() const
 	{
 		return( mInformation.valid() &&
-				mInformation.to_ptr< ExecutionInformation >()->hasInfo() );
+				mInformation.to< ExecutionInformation >().hasInfo() );
 	}
 
 	inline bool hasInfo(const AbstractProcessorUnit & aProcessor) const
 	{
-		return( mInformation.valid() && mInformation.to_ptr<
-				ExecutionInformation >()->hasInfo(aProcessor) );
+		return( mInformation.valid() && mInformation.to<
+				ExecutionInformation >().hasInfo(aProcessor) );
 	}
 
 	inline bool noneInfo(const AbstractProcessorUnit & aProcessor) const
 	{
-		return( mInformation.invalid() || mInformation.to_ptr<
-				ExecutionInformation >()->noneInfo(aProcessor) );
+		return( mInformation.invalid() || mInformation.to<
+				ExecutionInformation >().noneInfo(aProcessor) );
 	}
 
 	inline bool hasInfo(
 			const AbstractProcessorUnit & aProcessor, const BF & anID) const
 	{
-		return( mInformation.valid() && mInformation.to_ptr<
-				ExecutionInformation >()-> hasInfo(aProcessor, anID) );
+		return( mInformation.valid() && mInformation.to<
+				ExecutionInformation >().hasInfo(aProcessor, anID) );
 	}
 
 
 	inline bool hasInfoWithData(
 			const AbstractProcessorUnit & aProcessor, const BF & aData) const
 	{
-		return( mInformation.valid() && mInformation.to_ptr<
-				ExecutionInformation >()->hasInfoWithData(aProcessor, aData) );
+		return( mInformation.valid() && mInformation.to<
+				ExecutionInformation >().hasInfoWithData(aProcessor, aData) );
 	}
 
 	inline bool hasInfo(const BF & anID) const
 	{
 		return( mInformation.valid() &&
-				mInformation.to_ptr< ExecutionInformation >()->hasInfo(anID) );
+				mInformation.to< ExecutionInformation >().hasInfo(anID) );
 	}
 
 	inline bool hasInfo(Element * anID) const
 	{
 		return( mInformation.valid() &&
-				mInformation.to_ptr< ExecutionInformation >()->hasInfo(anID) );
+				mInformation.to< ExecutionInformation >().hasInfo(anID) );
 	}
 
 
@@ -1215,6 +1144,11 @@ public:
 	inline void setInformation(ExecutionInformation * anInformation)
 	{
 		mInformation.setPointer( anInformation );
+	}
+
+	inline void unsetInformation()
+	{
+		mInformation.setPointer( nullptr );
 	}
 
 
@@ -1249,22 +1183,29 @@ public:
 	}
 
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
 		return( osStrPosition( OSS() << "EC< " ) << " > "
-				<< refExecutionData().strStateConf() );
+				<< getExecutionData().strStateConf() );
 	}
 
-	virtual void toStream(OutStream & out) const;
+	virtual void toStream(OutStream & out) const override;
 
 	virtual void toFscn(OutStream & out,
-			const ExecutionData * aPreviousExecData) const;
+			const ExecutionData & aPreviousExecData) const;
 
 	std::string str_min() const;
 	std::string str_position() const;
 
 	void traceMinimum(OutStream & out) const;
+
 	void traceDefault(OutStream & out) const;
+
+	inline void traceDefault(PairOutStream & out) const
+	{
+		traceDefault(out.OS1);
+		traceDefault(out.OS2);
+	}
 	void debugDefault(OutStream & out) const;
 
 
@@ -1304,11 +1245,11 @@ public:
 	void writeTraceBeforeExec(OutStream & out) const;
 
 	void writeTraceForDeadlock(OutStream & out,
-			avm_uint32_t nDeadlockCounter) const;
+			std::uint32_t nDeadlockCounter) const;
 
 	void writeTraceForRedundancy(OutStream & out,
 			ExecutionContext * aRedundantExecContext,
-			avm_uint32_t nRedundancyCounter) const;
+			std::uint32_t nRedundancyCounter) const;
 
 };
 

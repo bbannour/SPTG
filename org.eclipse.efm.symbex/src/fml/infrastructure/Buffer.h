@@ -32,6 +32,7 @@ class PropertyPart;
 
 
 class Buffer : public PropertyElement ,
+		AVM_INJECT_STATIC_NULL_REFERENCE( Buffer ),
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( Buffer )
 {
 
@@ -44,7 +45,7 @@ protected:
 	 */
 	avm_type_specifier_kind_t mPolicySpecifierKind;
 
-	int mSize;
+	std::size_t mCapacity;
 
 	BFList mMessage;
 
@@ -56,10 +57,10 @@ public:
 	 * Default
 	 */
 	Buffer(Machine * aContainer, const std::string & id,
-			avm_type_specifier_kind_t aSpecifierKind, int aSize);
+			avm_type_specifier_kind_t aSpecifierKind, long aCapacity);
 
 	Buffer(const PropertyPart & aPropertyPart, const std::string & id,
-			avm_type_specifier_kind_t aSpecifierKind, int aSize);
+			avm_type_specifier_kind_t aSpecifierKind, long aCapacity);
 
 	/**
 	 * DESTRUCTOR
@@ -67,6 +68,19 @@ public:
 	virtual ~Buffer()
 	{
 		//!! NOTHING
+	}
+
+
+	/**
+	 * GETTER
+	 * Unique Null Reference
+	 */
+	inline static Buffer & nullref()
+	{
+		static Buffer _NULL_(nullptr, "$null<Buffer>", TYPE_NULL_SPECIFIER, 0);
+		_NULL_.setModifier( Modifier::OBJECT_NULL_MODIFIER );
+
+		return( _NULL_ );
 	}
 
 
@@ -87,21 +101,31 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * mSize
+	 * mCapacity
 	 */
-	inline avm_size_t getCapacity() const
+	inline std::size_t getCapacity() const
 	{
-		return( ( mSize < 0 ) ?  AVM_NUMERIC_MAX_SIZE_T : mSize );
+		return( mCapacity );
 	}
 
-	inline int getSize() const
+	inline long realCapacity() const
 	{
-		return( mSize );
+		return( (mCapacity == AVM_NUMERIC_MAX_SIZE_T)? -1 : mCapacity );
 	}
 
-	inline void setSize(int aSize)
+	inline void setCapacity(long aCapacity)
 	{
-		mSize = aSize;
+		mCapacity = ( (aCapacity < 0) ? AVM_NUMERIC_MAX_SIZE_T : aCapacity );
+	}
+
+	inline bool isFinite() const
+	{
+		return( mCapacity < AVM_NUMERIC_MAX_SIZE_T );
+	}
+
+	inline bool isInfinite() const
+	{
+		return( mCapacity == AVM_NUMERIC_MAX_SIZE_T );
 	}
 
 
@@ -131,11 +155,14 @@ public:
 	static std::string str(avm_type_specifier_kind_t aSpecifierKind);
 	static std::string str(avm_type_specifier_kind_t aSpecifierKind, long aSize);
 
-	void strMessage(OutStream & os) const;
+	// Due to [-Woverloaded-virtual=]
+	using NamedElement::str;
 
-	void strHeader(OutStream & os) const;
+	void strMessage(OutStream & out) const;
 
-	void toStream(OutStream & os) const;
+	void strHeader(OutStream & out) const override;
+
+	void toStream(OutStream & out) const override;
 
 
 public:

@@ -51,7 +51,7 @@ public:
 			const std::string & aSymbolQEPCAD);
 
 
-	static inline Operator * newOperatorAssocCom(AVM_OPCODE anAvmOpCode,
+	inline static Operator * newOperatorAssocCom(AVM_OPCODE anAvmOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID,
 			const std::string & aStandardSymbol,
@@ -64,7 +64,7 @@ public:
 				aStandardSymbol, aSyntaxMIXFIX, aSymbolQEPCAD) );
 	}
 
-	static inline Operator * newOperatorAssocCom(AVM_OPCODE anAvmOpCode,
+	inline static Operator * newOperatorAssocCom(AVM_OPCODE anAvmOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID,
 			const std::string & aStandardSymbol)
@@ -75,7 +75,7 @@ public:
 				aStandardSymbol, "_" + aStandardSymbol + "_", aStandardSymbol) );
 	}
 
-	static inline Operator * newOperatorAssocCom(
+	inline static Operator * newOperatorAssocCom(
 			AVM_OPCODE anAvmOpCode, AVM_OPCODE anOptimizedOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID,
@@ -88,7 +88,7 @@ public:
 	}
 
 
-	static inline Operator * newOperatorAssoc(AVM_OPCODE anAvmOpCode,
+	inline static Operator * newOperatorAssoc(AVM_OPCODE anAvmOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID,
 			const std::string & aStandardSymbol)
@@ -99,7 +99,7 @@ public:
 				aStandardSymbol, "_" + aStandardSymbol + "_", aStandardSymbol) );
 	}
 
-	static inline Operator * newOperatorLeftAssoc(AVM_OPCODE anAvmOpCode,
+	inline static Operator * newOperatorLeftAssoc(AVM_OPCODE anAvmOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID,
 			const std::string & aStandardSymbol)
@@ -110,7 +110,7 @@ public:
 				aStandardSymbol, "_" + aStandardSymbol + "_", aStandardSymbol) );
 	}
 
-	static inline Operator * newOperatorRightAssoc(AVM_OPCODE anAvmOpCode,
+	inline static Operator * newOperatorRightAssoc(AVM_OPCODE anAvmOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID,
 			const std::string & aStandardSymbol)
@@ -122,7 +122,7 @@ public:
 	}
 
 
-	static inline Operator * newOperatorStdInfix(AVM_OPCODE anAvmOpCode,
+	inline static Operator * newOperatorStdInfix(AVM_OPCODE anAvmOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID,
 			const std::string & aStandardSymbol,
@@ -135,7 +135,7 @@ public:
 				aStandardSymbol, aSyntaxMIXFIX, aSymbolQEPCAD) );
 	}
 
-	static inline Operator * newOperatorStdInfix(AVM_OPCODE anAvmOpCode,
+	inline static Operator * newOperatorStdInfix(AVM_OPCODE anAvmOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID,
 			const std::string & aStandardSymbol)
@@ -147,7 +147,7 @@ public:
 	}
 
 
-	static inline Operator * newOperatorStdPrefix(AVM_OPCODE anAvmOpCode,
+	inline static Operator * newOperatorStdPrefix(AVM_OPCODE anAvmOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID,
 			const std::string & aStandardSymbol,
@@ -160,7 +160,7 @@ public:
 				aStandardSymbol, aSyntaxMIXFIX, aSymbolQEPCAD) );
 	}
 
-	static inline Operator * newOperatorStdPrefix(AVM_OPCODE anAvmOpCode,
+	inline static Operator * newOperatorStdPrefix(AVM_OPCODE anAvmOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID, const std::string & aStandardSymbol)
 	{
@@ -171,7 +171,7 @@ public:
 	}
 
 
-	static inline Operator * newOpStatement(
+	inline static Operator * newOpStatement(
 			AVM_OPCODE anAvmOpCode, AVM_OPCODE anOptimizedOpCode,
 			const std::string & aFullyQualifiedNameID,
 			const std::string & aNameID)
@@ -193,7 +193,7 @@ public:
 	static bool isMetaRun(const Operator * anOperator);
 
 
-	static inline bool isAssign(const Operator * anOperator)
+	inline static bool isAssign(const Operator * anOperator)
 	{
 		return( isAssignBinary(anOperator) || isAssignUnary(anOperator) );
 	}
@@ -217,7 +217,15 @@ public:
 
 	static bool isActivity(const Operator * anOperator);
 
-	static bool isCommunication(const Operator * anOperator);
+	static bool isScheduledActivity(const Operator * anOperator);
+
+	static inline bool isCommunication(const Operator * anOperator)
+	{
+		return( isInput(anOperator) || isOutput(anOperator) );
+	}
+
+	static bool isInput(const Operator * anOperator);
+	static bool isOutput(const Operator * anOperator);
 
 	static bool isConditionnal(const Operator * anOperator);
 
@@ -231,6 +239,7 @@ public:
 	static bool isBoolean(const Operator * anOperator);
 	static bool isRelational(const Operator * anOperator);
 	static bool isPropositional(const Operator * anOperator);
+	static bool isQuantifier(const Operator * anOperator);
 
 	static bool isTemporalLogic(const Operator * anOperator);
 
@@ -294,9 +303,11 @@ public:
 
 	/*
 	 ***************************************************************************
-	 * AVM NOP STATEMENT
+	 * AVM NULL / NOP STATEMENT
 	 ***************************************************************************
 	 */
+	static Operator * OPERATOR_NULL;
+
 	static Operator * OPERATOR_NOP;
 
 
@@ -336,10 +347,23 @@ public:
 
 	/*
 	 ***************************************************************************
+	 * AVM MACHINE SELF
+	 ***************************************************************************
+	 */
+	static Operator * OPERATOR_SELF;
+
+	static Operator * OPERATOR_SUPER;
+
+
+	/*
+	 ***************************************************************************
 	 * AVM MACHINE MANAGING
 	 ***************************************************************************
 	 */
 	static Operator * OPERATOR_CONTEXT_SWITCHER;
+
+	static Operator * OPERATOR_PROCESS_STATE_GET;
+	static Operator * OPERATOR_PROCESS_STATE_SET;
 
 	static Operator * OPERATOR_INIT;
 	static Operator * OPERATOR_FINAL;
@@ -439,7 +463,7 @@ public:
 	static Operator * OPERATOR_WEAK_SYNCHRONOUS;
 
 	static Operator * OPERATOR_INTERLEAVING;
-	static Operator * OPERATOR_PARTIAL_ORDER_REDUCTION;
+	static Operator * OPERATOR_PARTIAL_ORDER;
 
 	static Operator * OPERATOR_PARALLEL;
 
@@ -448,7 +472,7 @@ public:
 	static Operator * OPERATOR_RDV_WEAK_SYNCHRONOUS;
 
 	static Operator * OPERATOR_RDV_INTERLEAVING;
-	static Operator * OPERATOR_RDV_PARTIAL_ORDER_REDUCTION;
+	static Operator * OPERATOR_RDV_PARTIAL_ORDER;
 
 	static Operator * OPERATOR_RDV_PARALLEL;
 
@@ -574,7 +598,7 @@ public:
 	 * AVM PREDICAT EXPRESSION
 	 ***************************************************************************
 	 */
-	static Operator * OPERATOR_EXIST;
+	static Operator * OPERATOR_EXISTS;
 	static Operator * OPERATOR_FORALL;
 
 	static Operator * OPERATOR_NOT;
@@ -593,6 +617,8 @@ public:
 
 	static Operator * OPERATOR_XOR;
 	static Operator * OPERATOR_XNOR;
+
+	static Operator * OPERATOR_IMPLIES;
 
 
 	/*

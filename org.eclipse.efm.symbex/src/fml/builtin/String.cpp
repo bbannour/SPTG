@@ -20,11 +20,13 @@ namespace sep
 /**
  * GLOBALS
  */
-char String::DEFAULT_DELIMITER = DOUBLE_QUOTE_DELIMITER;
+char String::DEFAULT_DELIMITER     = DOUBLE_QUOTE_DELIMITER;
 
-bool String::USE_BACKSLASH_QUOTE  = false;
+bool String::USE_BACKSLASH_QUOTE   = false;
 
-const char String::BACKSLASH_CHAR = '\\';
+bool String::ENABLE_QUOTE_PRINTING = true;
+
+const char String::BACKSLASH_CHAR  = '\\';
 
 
 /**

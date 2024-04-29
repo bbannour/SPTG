@@ -13,9 +13,9 @@
  *   - Initial API and implementation
  ******************************************************************************/
 
+#include <fml/infrastructure/Connector.h>
 #include "ComRoute.h"
 
-#include <fml/infrastructure/Connector.h>
 #include <fml/infrastructure/Port.h>
 
 
@@ -37,24 +37,6 @@ mComPoints( )
 
 
 /**
- * SETTER
- * mComPoints
- */
-void ComRoute::setComPoint(ComPoint * aComPoint,
-		Modifier::DIRECTION_KIND ioDirection)
-{
-	mComPoints.append( BF(aComPoint) );
-
-	if( getModifier().isDirectionUndefined() )
-	{
-		getwModifier().setDirectionKind( aComPoint->hasPort()
-				? aComPoint->getPort()->getModifier().getDirectionKind()
-				: ioDirection );
-	}
-}
-
-
-/**
  * Serialization
  */
 void ComRoute::toStream(OutStream & out) const
@@ -63,21 +45,16 @@ void ComRoute::toStream(OutStream & out) const
 
 	toStreamProtocolCast( out ) << " " ;
 
-	if( mComPoints.singleton() )
+	if( mComPoints.size() == 1 )
 	{
-		out << mComPoints.first().to_ptr< ComPoint >()->str() << ";" << EOL;
+		out << mComPoints.front().str() << ";" << EOL;
 	}
 	else
 	{
 		out << "{" << EOL;
-		if( mComPoints.nonempty() )
+		for( const auto & itComPoint : mComPoints )
 		{
-			BFList::const_raw_iterator< ComPoint > it = mComPoints.begin();
-			BFList::const_raw_iterator< ComPoint > endIt = mComPoints.end();
-			for( ; it != endIt ; ++it )
-			{
-				out << TAB2 << (it)->str() << ";" << EOL;
-			}
+			out << TAB2 << itComPoint.str() << ";" << EOL;
 		}
 		out << TAB << "}" << EOL_FLUSH;
 	}

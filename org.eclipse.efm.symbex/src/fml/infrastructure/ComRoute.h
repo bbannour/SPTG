@@ -19,10 +19,12 @@
 #include <fml/common/ObjectElement.h>
 #include <fml/infrastructure/ComProtocol.h>
 
-#include <collection/BFContainer.h>
-
 #include <fml/infrastructure/ComPoint.h>
 #include <fml/infrastructure/Port.h>
+
+#include <fml/lib/AvmLang.h>
+
+#include <list>
 
 
 namespace sep
@@ -40,12 +42,18 @@ class ComRoute :
 
 	AVM_DECLARE_CLONABLE_CLASS( ComRoute )
 
+public:
+	/**
+	 * TYPEDEF
+	 */
+	typedef std::list< ComPoint > CollectionOfComComPoint_t;
+
 
 protected:
 	/**
 	 * ATTRIBUTES
 	 */
-	BFList mComPoints;
+	CollectionOfComComPoint_t mComPoints;
 
 
 public:
@@ -70,29 +78,49 @@ public:
 	 * GETTER - SETTER
 	 * mComPoints
 	 */
-	inline const BFList & getComPoints() const
+	inline const CollectionOfComComPoint_t & getComPoints() const
 	{
 		return( mComPoints );
 	}
 
-	inline void appendComPoint(const BF & aComPoint)
+
+	ComPoint & appendComPoint()
 	{
-		mComPoints.append( aComPoint );
+		return( mComPoints.emplace_back() );
 	}
 
-	inline void saveComPoint(ComPoint * aComPoint)
+	ComPoint & appendComPoint(Machine * aMachine, Port * aPort)
 	{
-		mComPoints.append( BF(aComPoint) );
+		return mComPoints.emplace_back(aMachine, aPort);
 	}
 
-	void setComPoint(ComPoint * aComPoint,
-			Modifier::DIRECTION_KIND ioDirection);
+	ComPoint & appendComPoint(
+			Machine * aMachine, const BF & aPortQualifiedNameID)
+	{
+		return mComPoints.emplace_back(aMachine, aPortQualifiedNameID);
+	}
+
+	ComPoint & appendComPoint(Port * aPort)
+	{
+		return mComPoints.emplace_back(aPort->getContainerMachine(), aPort);
+	}
+
+	ComPoint & appendAllComPoint(Machine * aMachine)
+	{
+		if( getModifier().isDirectionUndefined() )
+		{
+			getwModifier().setDirectionKind(
+					sep::Modifier::DIRECTION_INOUT_KIND );
+		}
+
+		return mComPoints.emplace_back(aMachine, XLIA_SYNTAX::ID_ALL);;
+	}
 
 
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & out) const;
+	void toStream(OutStream & out) const override;
 
 };
 

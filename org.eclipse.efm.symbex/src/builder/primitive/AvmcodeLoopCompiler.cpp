@@ -35,8 +35,8 @@ BFCode AvmcodeForCompiler::compileStatement(
 	return( StatementConstructor::newCode(aCode->getOperator(),
 			AVMCODE_COMPILER.decode_compileStatement(aCTX, aCode->first()),
 			compileArgRvalue(aCTX, TypeManager::BOOLEAN, aCode->second()),
-			AVMCODE_COMPILER.decode_compileStatement(aCTX, aCode->third()),
-			AVMCODE_COMPILER.decode_compileStatement(aCTX, aCode->fourth())) );
+			AVMCODE_COMPILER.decode_compileStatement(aCTX, aCode->operand(2)),
+			AVMCODE_COMPILER.decode_compileStatement(aCTX, aCode->operand(3))) );
 }
 
 
@@ -46,8 +46,8 @@ BFCode AvmcodeForCompiler::optimizeStatement(
 	BFCode optimizedCode(aCode->getOperator(),
 			AVMCODE_COMPILER.decode_optimizeStatement(aCTX, aCode->first()),
 			AVMCODE_COMPILER.decode_optimizeExpression(aCTX, aCode->second()),
-			AVMCODE_COMPILER.decode_optimizeStatement(aCTX, aCode->third()),
-			AVMCODE_COMPILER.decode_optimizeStatement(aCTX, aCode->fourth()) );
+			AVMCODE_COMPILER.decode_optimizeStatement(aCTX, aCode->operand(2)),
+			AVMCODE_COMPILER.decode_optimizeStatement(aCTX, aCode->operand(3)) );
 
 	AvmInstruction * argsInstruction = optimizedCode->genInstruction();
 
@@ -56,9 +56,9 @@ BFCode AvmcodeForCompiler::optimizeStatement(
 	argsInstruction->at(1).dtype = TypeManager::BOOLEAN;
 	setArgcodeRValue(aCTX, argsInstruction->at(1), optimizedCode->second());
 
-	setArgcodeStatement(aCTX, argsInstruction->at(2), optimizedCode->third());
+	setArgcodeStatement(aCTX, argsInstruction->at(2), optimizedCode->operand(2));
 
-	setArgcodeStatement(aCTX, argsInstruction->at(3), optimizedCode->fourth());
+	setArgcodeStatement(aCTX, argsInstruction->at(3), optimizedCode->operand(3));
 
 	argsInstruction->setMainBytecode(
 			/*operation*/ AVM_ARG_NOPS,
@@ -78,7 +78,7 @@ BFCode AvmcodeForeachCompiler::compileStatement(
 	return( StatementConstructor::newCode( aCode->getOperator(),
 			compileArgLvalue(aCTX, aCode->first()),
 			compileArgRvalue(aCTX, aCode->second()),
-			AVMCODE_COMPILER.decode_compileStatement(aCTX, aCode->third()) ) );
+			AVMCODE_COMPILER.decode_compileStatement(aCTX, aCode->operand(2)) ) );
 }
 
 
@@ -88,7 +88,7 @@ BFCode AvmcodeForeachCompiler::optimizeStatement(
 	BFCode optimizedCode(aCode->getOperator(),
 			AVMCODE_COMPILER.decode_optimizeExpression(aCTX, aCode->first()),
 			AVMCODE_COMPILER.decode_optimizeExpression(aCTX, aCode->second()),
-			AVMCODE_COMPILER.decode_optimizeStatement(aCTX, aCode->third()) );
+			AVMCODE_COMPILER.decode_optimizeStatement(aCTX, aCode->operand(2)) );
 
 	AvmInstruction * argsInstruction = optimizedCode->genInstruction();
 
@@ -96,7 +96,7 @@ BFCode AvmcodeForeachCompiler::optimizeStatement(
 
 	setArgcodeRValue(aCTX, argsInstruction->at(1), optimizedCode->second());
 
-	setArgcodeStatement(aCTX, argsInstruction->at(2), optimizedCode->third());
+	setArgcodeStatement(aCTX, argsInstruction->at(2), optimizedCode->operand(2));
 
 	argsInstruction->computeMainBytecode(
 			/*context  */ AVM_ARG_STANDARD_CTX,

@@ -45,15 +45,13 @@ void InteractionPart::toStream(OutStream & out) const
 
 	toStreamProtocolCast( out ) << ":" << EOL_FLUSH;
 
-	if( mConnectors.nonempty() )
+	if( not mConnectors.empty() )
 	{
 		ScopeIncrIndent asdii(out);
 
-		const_connector_iterator it = mConnectors.begin();
-		const_connector_iterator endIt = mConnectors.end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itConnector : mConnectors )
 		{
-			(it)->toStream(out);
+			itConnector.toStream(out);
 		}
 	}
 }

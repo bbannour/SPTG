@@ -60,7 +60,7 @@ bool AvmPrimitive_APPEND::run(ExecutionEnvironment & ENV)
 			{
 				ENV.mARG->begin(1);
 			}
-			aMsg = Message(ENV.mARG->outED->mRID, aPort);
+			aMsg = Message(ENV.mARG->outED.getRID(), aPort);
 
 			// get other parameters
 			for( ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -75,7 +75,7 @@ AVM_ENDIF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 		}
 
 		// append the message in the buffer
-		if( ENV.mARG->at(0).to_ptr< BaseBufferForm >()->push(aMsg) )
+		if( ENV.mARG->at(0).to< BaseBufferForm >().push(aMsg) )
 		{
 			ENV.appendOutput( ENV.mARG->outED );
 
@@ -98,7 +98,7 @@ AVM_ENDIF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 			{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << APPEND >> : "
-			<<  ENV.mARG->outED->mRID.strUniqId() << " |=> "
+			<<  ENV.mARG->outED.getRID().strUniqId() << " |=> "
 			<< ENV.inCODE->str() << std::endl;
 	AVM_OS_TRACE << "\t" << "<capacity:" << bc->capacity()
 			<< "> " << bc->str() << " <=< "
@@ -142,7 +142,7 @@ AVM_IF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 	AVM_OS_TRACE << TAB << "Output Message to remove in buffer:>"
 			<< std::endl << TAB2 << "buffer: " << str_header( bbf->getInstance() )
 			<< std::endl << TAB2 << "port  : "
-			<< str_header( ENV.mARG->at(1).to_ptr< InstanceOfPort >() )
+			<< str_header( ENV.mARG->at(1).to< InstanceOfPort >() )
 			<< std::endl << TAB2 << "buffer:av>" << bbf->str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 
@@ -191,12 +191,12 @@ bool AvmPrimitive_CLEAR::run(ExecutionEnvironment & ENV)
 {
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
-		ENV.mARG->at(0).to_ptr< BaseBufferForm >()->clear();
+		ENV.mARG->at(0).to< BaseBufferForm >().clear();
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinContainer >() )
 	{
-		ENV.mARG->at(0).to_ptr< BuiltinContainer >()->clear();
+		ENV.mARG->at(0).to< BuiltinContainer >().clear();
 	}
 
 	ENV.appendOutput( ENV.mARG->outED );
@@ -215,13 +215,13 @@ bool AvmPrimitive_RESIZE::run(ExecutionEnvironment & ENV)
 {
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
-		ENV.mARG->at(0).to_ptr< BaseBufferForm >()->resize(
+		ENV.mARG->at(0).to< BaseBufferForm >().resize(
 				ENV.mARG->at(1).toInteger());
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinCollection >() )
 	{
-		ENV.mARG->at(0).to_ptr< BuiltinCollection >()->resize(
+		ENV.mARG->at(0).to< BuiltinCollection >().resize(
 				ENV.mARG->at(1).toInteger());
 	}
 
@@ -259,7 +259,7 @@ bool AvmPrimitive_PUSH::run(ExecutionEnvironment & ENV)
 			{
 				ENV.mARG->begin(1);
 			}
-			aMsg = Message(ENV.mARG->outED->mRID, aPort);
+			aMsg = Message(ENV.mARG->outED.getRID(), aPort);
 
 			// get other parameters
 			for( ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -274,7 +274,7 @@ AVM_ENDIF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 		}
 
 		// append the message in the buffer
-		if( ENV.mARG->at(0).to_ptr< BaseBufferForm >()->push(aMsg) )
+		if( ENV.mARG->at(0).to< BaseBufferForm >().push(aMsg) )
 		{
 			ENV.appendOutput( ENV.mARG->outED );
 
@@ -285,7 +285,7 @@ AVM_ENDIF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 	else if( ENV.mARG->at(0).is< BuiltinQueue >() )
 	{
 		BuiltinQueue * queue = ENV.mARG->at(0).to_ptr< BuiltinQueue >();
-		if( queue != NULL )
+		if( queue != nullptr )
 		{
 			bool isAppend = false;
 			for( ENV.mARG->begin(1) ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -298,7 +298,7 @@ AVM_ENDIF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 				{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << PUSH >> : "
-			<<  ENV.mARG->outED->mRID.strUniqId() << " |=> "
+			<<  ENV.mARG->outED.getRID().strUniqId() << " |=> "
 			<< ENV.inCODE->str() << std::endl;
 	AVM_OS_TRACE << "\t" << "<capacity:" << queue->capacity()
 			<< "> " << queue->str() << " <=< "
@@ -323,7 +323,7 @@ AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 		{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << PUSH >> : "
-			<<  ENV.mARG->outED->mRID.strUniqId() << " |=> "
+			<<  ENV.mARG->outED.getRID().strUniqId() << " |=> "
 			<< ENV.inCODE->str() << std::endl;
 	AVM_OS_TRACE << "\t" << "Unfound queue for << "
 			<< ENV.mARG->at(0).str() << " >>" << std::endl;
@@ -346,7 +346,7 @@ AVM_ENDIF_DEBUG_FLAG( STATEMENT)
 			{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << PUSH >> : "
-			<<  ENV.mARG->outED->mRID.strUniqId() << " |=> "
+			<<  ENV.mARG->outED.getRID().strUniqId() << " |=> "
 			<< ENV.inCODE->str() << std::endl;
 	AVM_OS_TRACE << "\t" << "<capacity:" << bc->capacity()
 			<< "> " << bc->str() << " <=< "
@@ -401,7 +401,7 @@ bool AvmPrimitive_ASSIGN_TOP::run(ExecutionEnvironment & ENV)
 			{
 				ENV.mARG->begin(1);
 			}
-			aMsg = Message(ENV.mARG->outED->mRID, aPort);
+			aMsg = Message(ENV.mARG->outED.getRID(), aPort);
 
 			// get other parameters
 			for( ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -416,7 +416,7 @@ AVM_ENDIF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 		}
 
 		// append the message in the buffer
-		if( ENV.mARG->at(0).to_ptr< BaseBufferForm >()->top( aMsg) )
+		if( ENV.mARG->at(0).to< BaseBufferForm >().top( aMsg) )
 		{
 			ENV.appendOutput( ENV.mARG->outED );
 
@@ -467,7 +467,7 @@ bool AvmPrimitive_ASSIGN_TOP::seval(EvaluationEnvironment & ENV)
 			{
 				aPort = ENV.mARG->at(1);
 			}
-			aMsg = Message(ENV.mARG->outED->mRID, aPort);
+			aMsg = Message(ENV.mARG->outED.getRID(), aPort);
 
 			// get other parameters
 			for( ENV.mARG->begin(2) ; ENV.mARG->hasNext() ; ENV.mARG->next() )
@@ -482,7 +482,7 @@ AVM_ENDIF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 		}
 
 		// append the message in the buffer
-		if( ENV.mARG->at(0).to_ptr< BaseBufferForm >()->top( aMsg) )
+		if( ENV.mARG->at(0).to< BaseBufferForm >().top( aMsg) )
 		{
 			ENV.outVAL = aMsg;
 
@@ -492,7 +492,7 @@ AVM_ENDIF_DEBUG_FLAG2( BUFFER , COMMUNICATION )
 	else if( ENV.mARG->at(0).is< BuiltinQueue >() )
 	{
 		BuiltinQueue * queue = ENV.mARG->at(0).to_ptr< BuiltinQueue >();
-		if( (queue != NULL) && queue->nonempty() )
+		if( (queue != nullptr) && queue->nonempty() )
 		{
 AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 	AVM_OS_TRACE << "lvalue:queue> " << queue->str() << std::endl
@@ -510,11 +510,11 @@ AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 				return( true );
 			}
 		}
-		else if( queue == NULL )
+		else if( queue == nullptr )
 		{
 AVM_IF_DEBUG_FLAG( STATEMENT)
 	AVM_OS_TRACE << "THROW UNSATISFIED << ASSING#TOP >> : "
-			<<  ENV.inED->mRID.strUniqId() << " |=> "
+			<<  ENV.inED.getRID().strUniqId() << " |=> "
 			<< ENV.inCODE->str() << std::endl;
 	AVM_OS_TRACE << "\t" << "Unfound builtin queue for << "
 			<< ENV.mARG->at(0).str() << " >>" << std::endl;
@@ -537,19 +537,19 @@ bool AvmPrimitive_TOP::run(ExecutionEnvironment & ENV)
 {
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
-		Message aMsg = ENV.mARG->at(0).to_ptr< BaseBufferForm >()->top();
+		Message aMsg = ENV.mARG->at(0).to< BaseBufferForm >().top();
 
 		if( aMsg.valid() && (ENV.mARG->count > 1) )
 		{
 			if( ENV.mARG->at(1).is< InstanceOfData >() &&
-					ENV.mARG->at(1).to_ptr< InstanceOfData >()->isTypedMessage() )
+					ENV.mARG->at(1).to< InstanceOfData >().isTypedMessage() )
 			{
 AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 	AVM_OS_TRACE << "rvalue:msg> " << aMsg.str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
 				if( not ENV.setRvalue(ENV.mARG->outED,
-						ENV.mARG->at(1).to_ptr< InstanceOfData >(), aMsg) )
+						ENV.mARG->at(1).to< InstanceOfData >(), aMsg) )
 				{
 					return( false );
 				}
@@ -568,8 +568,9 @@ AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 			<< "rvalue:> " << (*itValue).str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
-					if( not ENV.setRvalue(ENV.mARG->outED, ENV.mARG->current().
-							to_ptr< InstanceOfData >(), (*itValue)) )
+					if( not ENV.setRvalue(ENV.mARG->outED,
+							ENV.mARG->current().to< InstanceOfData >(),
+							(*itValue)) )
 					{
 						return( false );
 					}
@@ -603,8 +604,9 @@ AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 	AVM_OS_TRACE << "rvalue:> " << popValue.str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
-					if( not ENV.setRvalue(ENV.mARG->outED, ENV.mARG->current().
-							to_ptr< InstanceOfData >(), popValue) )
+					if( not ENV.setRvalue(ENV.mARG->outED,
+							ENV.mARG->current().to< InstanceOfData >(),
+							popValue) )
 					{
 						return( false );
 					}
@@ -629,7 +631,7 @@ bool AvmPrimitive_TOP::seval(EvaluationEnvironment & ENV)
 {
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
-		ENV.outVAL = ENV.mARG->at(0).to_ptr< BaseBufferForm >()->top();
+		ENV.outVAL = ENV.mARG->at(0).to< BaseBufferForm >().top();
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinQueue >() )
@@ -638,7 +640,7 @@ bool AvmPrimitive_TOP::seval(EvaluationEnvironment & ENV)
 //				<< " = " << ENV.getWritableQueue(ENV.mARG->outED,
 //						ENV.mARG->at(0)).str() << std::endl;
 
-		ENV.outVAL = ENV.mARG->at(0).to_ptr< BuiltinQueue >()->top();
+		ENV.outVAL = ENV.mARG->at(0).to< BuiltinQueue >().top();
 	}
 
 	return( ENV.outVAL.valid() );
@@ -656,19 +658,19 @@ bool AvmPrimitive_POP::run(ExecutionEnvironment & ENV)
 {
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
-		Message aMsg = ENV.mARG->at(0).to_ptr< BaseBufferForm >()->pop();
+		Message aMsg = ENV.mARG->at(0).to< BaseBufferForm >().pop();
 
 		if( aMsg.valid() && (ENV.mARG->count > 1) )
 		{
 			if( ENV.mARG->at(1).is< InstanceOfData >() &&
-					ENV.mARG->at(1).to_ptr< InstanceOfData >()->isTypedMessage() )
+					ENV.mARG->at(1).to< InstanceOfData >().isTypedMessage() )
 			{
 AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 	AVM_OS_TRACE << "rvalue:msg> " << aMsg.str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
 				if( not ENV.setRvalue(ENV.mARG->outED,
-						ENV.mARG->at(1).to_ptr< InstanceOfData >(), aMsg) )
+						ENV.mARG->at(1).to< InstanceOfData >(), aMsg) )
 				{
 					return( false );
 				}
@@ -687,8 +689,9 @@ AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 			<< "rvalue:> " << (*itValue).str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
-					if( not ENV.setRvalue(ENV.mARG->outED, ENV.mARG->current().
-							to_ptr< InstanceOfData >(), (*itValue)) )
+					if( not ENV.setRvalue(ENV.mARG->outED,
+							ENV.mARG->current().to< InstanceOfData >(),
+							(*itValue)) )
 					{
 						return( false );
 					}
@@ -702,6 +705,7 @@ AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
 		return( aMsg.valid() );
 	}
+
 	else if( ENV.mARG->at(0).is< BuiltinQueue >() )
 	{
 		BuiltinQueue * queue = ENV.mARG->at(0).to_ptr< BuiltinQueue >();
@@ -729,8 +733,9 @@ AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 			<< "rvalue:> " << popValue.str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
-					if( not ENV.setRvalue(ENV.mARG->outED, ENV.mARG->current().
-							to_ptr< InstanceOfData >(), popValue) )
+					if( not ENV.setRvalue(ENV.mARG->outED,
+							ENV.mARG->current().to< InstanceOfData >(),
+							popValue) )
 					{
 						return( false );
 					}
@@ -747,6 +752,32 @@ AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 		return( true );
 	}
 
+	else if( ENV.mARG->at(0).is< BuiltinContainer >() )
+	{
+		BuiltinContainer * bc = ENV.mARG->at(0).to_ptr< BuiltinContainer >();
+
+		if( bc->nonempty() )
+		{
+			BF popValue = bc->pop_first();
+
+			if( popValue.valid()
+				&& ENV.setRvalue(ENV.mARG->outED,
+						ENV.mARG->at(1).to< InstanceOfData >(), popValue) )
+			{
+AVM_IF_DEBUG_FLAG( ASSIGNMENT )
+	AVM_OS_TRACE << "lvalue:> "
+			<< str_header( ENV.mARG->at(1).to_ptr< InstanceOfData >() )
+			<< std::endl
+			<< "pop$rvalue:> " << popValue.str() << std::endl;
+AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
+
+				ENV.appendOutput( ENV.mARG->outED );
+
+				return( true );
+			}
+		}
+	}
+
 	return( false );
 }
 
@@ -755,16 +786,17 @@ bool AvmPrimitive_POP::seval(EvaluationEnvironment & ENV)
 {
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
-		ENV.outVAL = ENV.mARG->at(0).to_ptr< BaseBufferForm >()->pop();
+		ENV.outVAL = ENV.mARG->at(0).to< BaseBufferForm >().pop();
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinQueue >() )
 	{
-//		AVM_OS_TRACE << "queue :> " << ENV.mARG->at(0).str() << std::endl;
+		ENV.outVAL = ENV.mARG->at(0).to< BuiltinQueue >().pop();
+	}
 
-		ENV.outVAL = ENV.mARG->at(0).to_ptr< BuiltinQueue >()->pop();
-
-//		AVM_OS_TRACE << "queue->pop :> " << ENV.mARG->at(0).str() << std::endl;
+	else if( ENV.mARG->at(0).is< BuiltinContainer >() )
+	{
+		ENV.outVAL = ENV.mARG->at(0).to< BuiltinContainer >().pop();
 	}
 
 	return( ENV.outVAL.valid() );
@@ -782,19 +814,19 @@ bool AvmPrimitive_POP_FROM::run(ExecutionEnvironment & ENV)
 {
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
-		Message aMsg = ENV.mARG->at(0).to_ptr< BaseBufferForm >()->pop();
+		Message aMsg = ENV.mARG->at(0).to< BaseBufferForm >().pop();
 
 		if( aMsg.valid() && (ENV.mARG->count > 1) )
 		{
 			if( ENV.mARG->at(1).is< InstanceOfData >() &&
-					ENV.mARG->at(1).to_ptr< InstanceOfData >()->isTypedMessage() )
+					ENV.mARG->at(1).to< InstanceOfData >().isTypedMessage() )
 			{
 AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 	AVM_OS_TRACE << "rvalue:msg> " << aMsg.str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
 				if( not ENV.setRvalue(ENV.mARG->outED,
-						ENV.mARG->at(1).to_ptr< InstanceOfData >(), aMsg) )
+						ENV.mARG->at(1).to< InstanceOfData >(), aMsg) )
 				{
 					return( false );
 				}
@@ -813,8 +845,9 @@ AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 			<< "rvalue:> " << (*itValue).str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
-					if( not ENV.setRvalue(ENV.mARG->outED, ENV.mARG->current().
-							to_ptr< InstanceOfData >(), (*itValue)) )
+					if( not ENV.setRvalue(ENV.mARG->outED,
+							ENV.mARG->current().to< InstanceOfData >(),
+							(*itValue)) )
 					{
 						return( false );
 					}
@@ -852,8 +885,9 @@ AVM_IF_DEBUG_FLAG( ASSIGNMENT )
 	AVM_OS_TRACE << "rvalue:> " << popValue.str() << std::endl;
 AVM_ENDIF_DEBUG_FLAG( ASSIGNMENT )
 
-					if( not ENV.setRvalue(ENV.mARG->outED, ENV.mARG->current().
-							to_ptr< InstanceOfData >(), popValue) )
+					if( not ENV.setRvalue(ENV.mARG->outED,
+							ENV.mARG->current().to< InstanceOfData >(),
+							popValue) )
 					{
 						return( false );
 					}
@@ -878,14 +912,14 @@ bool AvmPrimitive_POP_FROM::seval(EvaluationEnvironment & ENV)
 {
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
-		ENV.outVAL = ENV.mARG->at(0).to_ptr< BaseBufferForm >()->pop();
+		ENV.outVAL = ENV.mARG->at(0).to< BaseBufferForm >().pop();
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinQueue >() )
 	{
 //		AVM_OS_TRACE << "queue :> " << ENV.mARG->at(0).str() << std::endl;
 
-		ENV.outVAL = ENV.mARG->at(0).to_ptr< BuiltinQueue >()->pop();
+		ENV.outVAL = ENV.mARG->at(0).to< BuiltinQueue >().pop();
 
 //		AVM_OS_TRACE << "queue->pop :> " << ENV.mARG->at(0).str() << std::endl;
 	}
@@ -906,13 +940,13 @@ bool AvmPrimitive_EMPTY::seval(EvaluationEnvironment & ENV)
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BaseBufferForm >()->empty() );
+				ENV.mARG->at(0).to< BaseBufferForm >().empty() );
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinCollection >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BuiltinCollection >()->empty() );
+				ENV.mARG->at(0).to< BuiltinCollection >().empty() );
 	}
 
 	else
@@ -941,13 +975,13 @@ bool AvmPrimitive_NONEMPTY::seval(EvaluationEnvironment & ENV)
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BaseBufferForm >()->nonempty() );
+				ENV.mARG->at(0).to< BaseBufferForm >().nonempty() );
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinCollection >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BuiltinCollection >()->nonempty() );
+				ENV.mARG->at(0).to< BuiltinCollection >().nonempty() );
 	}
 
 	else
@@ -976,13 +1010,13 @@ bool AvmPrimitive_SINGLETON::seval(EvaluationEnvironment & ENV)
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BaseBufferForm >()->singleton() );
+				ENV.mARG->at(0).to< BaseBufferForm >().singleton() );
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinCollection >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BuiltinCollection >()->singleton() );
+				ENV.mARG->at(0).to< BuiltinCollection >().singleton() );
 	}
 
 	else
@@ -1011,13 +1045,13 @@ bool AvmPrimitive_POPULATED::seval(EvaluationEnvironment & ENV)
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BaseBufferForm >()->populated() );
+				ENV.mARG->at(0).to< BaseBufferForm >().populated() );
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinCollection >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BuiltinCollection >()->populated() );
+				ENV.mARG->at(0).to< BuiltinCollection >().populated() );
 	}
 
 	else
@@ -1046,13 +1080,13 @@ bool AvmPrimitive_FULL::seval(EvaluationEnvironment & ENV)
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BaseBufferForm >()->full() );
+				ENV.mARG->at(0).to< BaseBufferForm >().full() );
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinCollection >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BuiltinCollection >()->full() );
+				ENV.mARG->at(0).to< BuiltinCollection >().full() );
 	}
 
 	else
@@ -1080,13 +1114,13 @@ bool AvmPrimitive_SIZE::seval(EvaluationEnvironment & ENV)
 	if( ENV.mARG->at(0).is< BaseBufferForm >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newInteger(
-				ENV.mARG->at(0).to_ptr< BaseBufferForm >()->size() );
+				ENV.mARG->at(0).to< BaseBufferForm >().size() );
 	}
 
 	else if( ENV.mARG->at(0).is< BuiltinCollection >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newInteger(
-				ENV.mARG->at(0).to_ptr< BuiltinCollection >()->size() );
+				ENV.mARG->at(0).to< BuiltinCollection >().size() );
 	}
 
 	else
@@ -1114,14 +1148,14 @@ bool AvmPrimitive_CONTAINS::seval(EvaluationEnvironment & ENV)
 	/*if( container.is< BaseBufferForm >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(0).to_ptr< BaseBufferForm >()->
+				ENV.mARG->at(0).to< BaseBufferForm >().
 						contains( ENV.mARG->at(1) ) );
 	}
 
 	else*/ if( ENV.mARG->at(0).is< BuiltinCollection >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean( ENV.mARG->at(0).
-				to_ptr< BuiltinCollection >()->contains( ENV.mARG->at(1) ) );
+				to< BuiltinCollection >().contains( ENV.mARG->at(1) ) );
 	}
 
 	else
@@ -1150,14 +1184,14 @@ bool AvmPrimitive_IN::seval(EvaluationEnvironment & ENV)
 	/*if( container.is< BaseBufferForm >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				ENV.mARG->at(1).to_ptr< BaseBufferForm >()->
+				ENV.mARG->at(1).to< BaseBufferForm >().
 						contains( ENV.mARG->at(0) ) );
 	}
 
 	else*/ if( ENV.mARG->at(1).is< BuiltinCollection >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean( ENV.mARG->at(1).
-				to_ptr< BuiltinCollection >()->contains( ENV.mARG->at(0) ) );
+				to< BuiltinCollection >().contains( ENV.mARG->at(0) ) );
 	}
 
 	else
@@ -1186,14 +1220,14 @@ bool AvmPrimitive_NOTIN::seval(EvaluationEnvironment & ENV)
 	/*if( container.is< BaseBufferForm >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean(
-				! ENV.mARG->at(1).to_ptr< BaseBufferForm >()->
+				! ENV.mARG->at(1).to< BaseBufferForm >().
 						contains( ENV.mARG->at(0) ) );
 	}
 
 	else*/ if( ENV.mARG->at(1).is< BuiltinCollection >() )
 	{
 		ENV.outVAL = ExpressionConstructor::newBoolean( not ENV.mARG->at(1).
-				to_ptr< BuiltinCollection >()->contains( ENV.mARG->at(0) ) );
+				to< BuiltinCollection >().contains( ENV.mARG->at(0) ) );
 	}
 
 	else

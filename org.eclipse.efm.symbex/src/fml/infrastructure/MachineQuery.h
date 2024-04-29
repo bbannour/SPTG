@@ -16,7 +16,7 @@
 #ifndef FML_INFRASTRUCTURE_MACHINEQUERY_H_
 #define FML_INFRASTRUCTURE_MACHINEQUERY_H_
 
-#include <cstddef>
+#include <list>
 #include <string>
 #include <vector>
 
@@ -30,7 +30,7 @@ class CompositePart;
 class PropertyPart;
 class Machine;
 class Routine;
-
+class System;
 
 class MachineQuery
 {
@@ -60,7 +60,11 @@ public:
 
 	virtual const PropertyPart & getPropertyPart() const = 0;
 
+
 	virtual const CompositePart * getCompositePart() const = 0;
+
+	virtual bool hasCompositePart() const = 0;
+
 
 	virtual BehavioralPart * getBehaviorPart() const = 0;
 
@@ -69,16 +73,18 @@ public:
 
 	/**
 	 * GETTER for PARSER / COMPILER
-	 * any Object Element
+	 * any Property Element
 	 */
-
 	const BF & getPropertyByNameID(const std::string & aNameID) const;
-	const BF & getrecFormByNameID(const std::string & aNameID) const;
-	const BF & getsemFormByNameID(const std::string & aNameID) const;
+	const BF & getrecPropertyByNameID(const std::string & aNameID) const;
+	const BF & getsemPropertyByNameID(const std::string & aNameID) const;
 
-	const BF & getPropertyByQualifiedNameID(const std::string & aQualifiedNameID) const;
-	const BF & getrecFormByQualifiedNameID(const std::string & aQualifiedNameID) const;
-	const BF & getsemFormByQualifiedNameID(const std::string & aQualifiedNameID) const;
+	const BF & getPropertyByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
+	const BF & getrecPropertyByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
+	const BF & getsemPropertyByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
 
 
 	/**
@@ -93,6 +99,9 @@ public:
 	const BF & getrecDataType(const std::string & aQualifiedNameID) const;
 	const BF & getsemDataType(const std::string & aQualifiedNameID) const;
 
+	std::vector< std::string> getVariableNames() const;
+
+
 	/**
 	 * GETTER for PARSER / COMPILER
 	 * Buffer
@@ -100,6 +109,9 @@ public:
 	const BF & getBuffer(const std::string & aQualifiedNameID) const;
 	const BF & getrecBuffer(const std::string & aQualifiedNameID) const;
 	const BF & getsemBuffer(const std::string & aQualifiedNameID) const;
+
+	std::vector< std::string> getBufferNames() const;
+
 
 	/**
 	 * GETTER for PARSER / COMPILER
@@ -109,6 +121,9 @@ public:
 	const BF & getrecChannel(const std::string & aQualifiedNameID) const;
 	const BF & getsemChannel(const std::string & aQualifiedNameID) const;
 
+	std::vector< std::string> getChannelNames() const;
+
+
 	/**
 	 * GETTER for PARSER / COMPILER
 	 * Port
@@ -116,6 +131,8 @@ public:
 	const BF & getPort(const std::string & aQualifiedNameID) const;
 	const BF & getrecPort(const std::string & aQualifiedNameID) const;
 	const BF & getsemPort(const std::string & aQualifiedNameID) const;
+
+	std::vector< std::string> getPortNames() const;
 
 
 	/**
@@ -125,6 +142,8 @@ public:
 	const BF & getSignal(const std::string & aQualifiedNameID) const;
 	const BF & getrecSignal(const std::string & aQualifiedNameID) const;
 	const BF & getsemSignal(const std::string & aQualifiedNameID) const;
+
+	std::vector< std::string> getSignalNames() const;
 
 
 	/**
@@ -138,10 +157,35 @@ public:
 
 	/**
 	 * GETTER for PARSER / COMPILER
+	 * any Behavior Element
+	 */
+	const BF & getBehaviorByNameID(const std::string & aNameID) const;
+	const BF & getrecBehaviorByNameID(const std::string & aNameID) const;
+	const BF & getsemBehaviorByNameID(const std::string & aNameID) const;
+
+	const BF & getBehaviorByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
+	const BF & getrecBehaviorByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
+	const BF & getsemBehaviorByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
+
+	/**
+	 * GETTER for PARSER / COMPILER
+	 * Transition
+	 */
+	std::vector< std::string> getTransitionNames() const;
+
+
+	/**
+	 * GETTER for PARSER / COMPILER
 	 * Routine
 	 */
 	Routine * rawRoutineByNameID(const std::string & aNameID) const;
 	Routine * rawsemRoutineByNameID(const std::string & aNameID) const;
+
+	std::vector< std::string> getRoutineNames() const;
+
 
 	/**
 	 * GETTER for PARSER / COMPILER
@@ -149,6 +193,9 @@ public:
 	 */
 	Machine * rawProcedureByNameID(const std::string & aNameID) const;
 	Machine * rawsemProcedureByNameID(const std::string & aNameID) const;
+
+	std::vector< std::string> getProcedureNames() const;
+
 
 	/**
 	 * GETTER for PARSER / COMPILER
@@ -159,7 +206,7 @@ public:
 
 	Machine * getMachine(const std::string & aQualifiedNameID) const;
 	Machine * getrecMachine(const std::string & aQualifiedNameID,
-			Machine * ignoreChildMachine = NULL) const;
+			Machine * ignoreChildMachine = nullptr) const;
 	Machine * getsemMachine(const std::string & aQualifiedNameID) const;
 
 	Machine * getsemMachine(const std::vector< std::string > & aQualifiedNameID) const;
@@ -167,6 +214,32 @@ public:
 	Machine * getExecutableMachine(const std::string & aQualifiedNameID) const;
 	Machine * getrecExecutableMachine(const std::string & aQualifiedNameID) const;
 	Machine * getsemExecutableMachine(const std::string & aQualifiedNameID) const;
+
+	Machine * getSelfExecutableMachine(const std::string & aQualifiedNameID) const;
+
+	System * getContainerSystem() const;
+
+	std::vector< std::string> getMachineNames() const;
+
+	std::vector< std::string> getStateNames() const;
+
+	std::vector< std::string> getInstanceNames() const;
+
+
+	/**
+	 * GETTER for PARSER / COMPILER
+	 * any Object Element
+	 */
+	const BF & getObjectByNameID(const std::string & aNameID) const;
+	const BF & getrecObjectByNameID(const std::string & aNameID) const;
+	const BF & getsemObjectByNameID(const std::string & aNameID) const;
+
+	const BF & getObjectByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
+	const BF & getrecObjectByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
+	const BF & getsemObjectByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
 
 };
 

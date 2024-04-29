@@ -18,6 +18,7 @@
 #include <computer/EvaluationEnvironment.h>
 
 #include <fml/type/BaseTypeSpecifier.h>
+#include <fml/type/EnumTypeSpecifier.h>
 
 
 namespace sep
@@ -26,22 +27,112 @@ namespace sep
 
 bool AvmPrimitive_Ctor::seval(EvaluationEnvironment & ENV)
 {
-	switch( ENV.inCODE->first().to_ptr<
-			BaseTypeSpecifier >()->getTypeSpecifierKind() )
+	const BF & type = ENV.inCODE->first();
+
+	const BaseTypeSpecifier & typeSpecifier = type.to< BaseTypeSpecifier >();
+
+	if( ENV.seval( ENV.inCODE->second() ) )
 	{
-		case TYPE_OPERATOR_SPECIFIER:
-		case TYPE_AVMCODE_SPECIFIER:
-		case TYPE_PORT_SPECIFIER:
-		case TYPE_BUFFER_SPECIFIER:
-		case TYPE_CONNECTOR_SPECIFIER:
-		case TYPE_MACHINE_SPECIFIER:
-			return( false );
+		switch( typeSpecifier.getTypeSpecifierKind() )
+		{
+			case TYPE_STRING_SPECIFIER:
+			{
+				ENV.outVAL = ExpressionConstructor::newString( ENV.outVAL.str() );
 
-		case TYPE_MESSAGE_SPECIFIER:
-			return( false );
+				return( true );
+			}
+			case TYPE_ENUM_SPECIFIER:
+			{
+				const EnumTypeSpecifier & enumT =
+						typeSpecifier.to< EnumTypeSpecifier >();
 
-		default:
-			return( false );
+				ENV.outVAL = enumT.getSymbolDataByValue( ENV.outVAL );
+
+				if( ENV.outVAL.invalid() )
+				{
+					ENV.outVAL = BFCode(
+							OperatorManager::OPERATOR_CTOR, type, ENV.outVAL);
+				}
+
+				return( true );
+			}
+			case TYPE_CHARACTER_SPECIFIER:
+			{
+				const std::string & value = ENV.outVAL.is< String >()
+						? ENV.outVAL.to< String >().getValue()
+						: ENV.outVAL.str();
+
+				if( not value.empty() )
+				{
+					ENV.outVAL = ExpressionConstructor::newChar(value[0]);
+
+					return true;
+				}
+
+				return false;
+			}
+
+			case TYPE_BOOLEAN_SPECIFIER:
+			{
+				ENV.outVAL = ExpressionConstructor::newBoolean(
+						ENV.outVAL.valid() && (not  ENV.outVAL.isEqualZero()) );
+
+				return( true );
+			}
+			case AVM_ARG_INTEGER_KIND:
+			{
+				if( ENV.outVAL.isNumeric() )
+				{
+					ENV.outVAL = ExpressionConstructor::newInteger(
+							ENV.outVAL.toInteger() );
+				}
+				else
+				{
+					ENV.outVAL = BFCode(
+							OperatorManager::OPERATOR_CTOR, type, ENV.outVAL);
+				}
+
+				return true;
+			}
+			case AVM_ARG_RATIONAL_KIND:
+			{
+				if( ENV.outVAL.isNumeric() )
+				{
+					ENV.outVAL = ExpressionConstructor::newExprRational(
+							ENV.outVAL.str() );
+				}
+				else
+				{
+					ENV.outVAL = BFCode(
+							OperatorManager::OPERATOR_CTOR, type, ENV.outVAL);
+				}
+
+				return true;
+			}
+			case AVM_ARG_FLOAT_KIND:
+			{
+				if( ENV.outVAL.isNumeric() )
+				{
+					ENV.outVAL = ExpressionConstructor::newFloat(
+							ENV.outVAL.toFloat() );
+				}
+				else
+				{
+					ENV.outVAL = BFCode(
+							OperatorManager::OPERATOR_CTOR, type, ENV.outVAL);
+				}
+
+				return true;
+			}
+
+			default:
+			{
+				ENV.outVAL = BFCode(
+						OperatorManager::OPERATOR_CTOR, type, ENV.outVAL);
+
+				return true;
+			}
+		}
 	}
 
 	return( false );

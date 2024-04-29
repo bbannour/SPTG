@@ -45,6 +45,8 @@
 
 #include <computer/instruction/InstructionEnvironment.h>
 
+#include <fml/common/ObjectElement.h>
+
 #include <fml/executable/ExecutableLib.h>
 
 #include <fml/operator/Operator.h>
@@ -65,15 +67,13 @@ namespace sep
  */
 AvmPrimitiveProcessor::~AvmPrimitiveProcessor()
 {
-	VectorOfAvmPrimitive::iterator it = AVM_PRIMITIVE_TABLE.begin();
-	VectorOfAvmPrimitive::iterator endIt = AVM_PRIMITIVE_TABLE.end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itPrimitive : AVM_PRIMITIVE_TABLE )
 	{
-		if( ((*it) != DEFAULT_AVM_PRIMITIVE) &&
-			((*it) != DEFAULT_INVOKE_ROUTINE) &&
-			((*it) != DEFAULT_EVAL_EXPRESSION_ALU) )
+		if( (itPrimitive != DEFAULT_AVM_PRIMITIVE) &&
+			(itPrimitive != DEFAULT_INVOKE_ROUTINE) &&
+			(itPrimitive != DEFAULT_EVAL_EXPRESSION_ALU) )
 		{
-			delete( *it );
+			delete( itPrimitive );
 		}
 	}
 
@@ -265,9 +265,16 @@ bool AvmPrimitiveProcessor::configureLambdaPrimitive()
 bool AvmPrimitiveProcessor::configureActivityPrimitive()
 {
 	////////////////////////////////////////////////////////////////////////////
+	// AVM MACHINE SELF
+	////////////////////////////////////////////////////////////////////////////
+	OPCODE_COMPUTER( SELF ) = new AvmPrimitive_Self( *this );
+
+	////////////////////////////////////////////////////////////////////////////
 	// AVM MACHINE MANAGING
 	////////////////////////////////////////////////////////////////////////////
 	OPCODE_COMPUTER( CONTEXT_SWITCHER ) = new AvmPrimitive_ContextSwitcher( *this );
+
+	OPCODE_COMPUTER( PROCESS_STATE_SET) = new AvmPrimitive_ProcessStateSet( *this );
 
 	OPCODE_COMPUTER( INIT        ) = new AvmPrimitive_Init( *this );
 	OPCODE_COMPUTER( FINAL       ) = new AvmPrimitive_Final( *this );
@@ -376,12 +383,14 @@ bool AvmPrimitiveProcessor::configureConcurrencyPrimitive()
 	OPCODE_COMPUTER( STRONG_SYNCHRONOUS ) = new AvmPrimitive_StrongSynchronous( *this );
 	OPCODE_COMPUTER( WEAK_SYNCHRONOUS   ) = new AvmPrimitive_WeakSynchronous( *this );
 	OPCODE_COMPUTER( INTERLEAVING       ) = new AvmPrimitive_Interleaving( *this );
+	OPCODE_COMPUTER( PARTIAL_ORDER      ) = new AvmPrimitive_PartialOrder( *this );
 	OPCODE_COMPUTER( PARALLEL           ) = new AvmPrimitive_Parallel( *this );
 
 	OPCODE_COMPUTER( RDV_ASYNCHRONOUS       ) = new AvmPrimitive_RdvAsynchronous( *this );
 	OPCODE_COMPUTER( RDV_STRONG_SYNCHRONOUS ) = new AvmPrimitive_RdvStrongSynchronous( *this );
 	OPCODE_COMPUTER( RDV_WEAK_SYNCHRONOUS   ) = new AvmPrimitive_RdvWeakSynchronous( *this );
 	OPCODE_COMPUTER( RDV_INTERLEAVING       ) = new AvmPrimitive_RdvInterleaving( *this );
+	OPCODE_COMPUTER( RDV_PARTIAL_ORDER      ) = new AvmPrimitive_RdvPartialOrder( *this );
 	OPCODE_COMPUTER( RDV_PARALLEL           ) = new AvmPrimitive_RdvParallel( *this );
 
 
@@ -524,6 +533,8 @@ bool AvmPrimitiveProcessor::configureLogicPrimitive()
 
 	OPCODE_COMPUTER( XOR      ) = DEFAULT_EVAL_EXPRESSION_ALU;
 	OPCODE_COMPUTER( XNOR     ) = DEFAULT_EVAL_EXPRESSION_ALU;
+
+	OPCODE_COMPUTER( IMPLIES  ) = DEFAULT_EVAL_EXPRESSION_ALU;
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -724,38 +735,36 @@ bool AvmPrimitiveProcessor::configureIoltPrimitive()
 
 
 void AvmPrimitiveProcessor::postRun(
-		ExecutionContext & anEC, ListOfAPExecutionData & runEDS)
+		ExecutionContext & anEC, ListOfExecutionData & runEDS)
 {
 	if( runEDS.nonempty() )
 	{
-		avm_uint32_t nHeight = anEC.getHeight() + 1;
-		avm_uint32_t aWidth  = anEC.getWidth();
+		std::uint32_t nHeight = anEC.getHeight() + 1;
+		std::uint32_t aWidth  = anEC.getWidth();
 
-		ListOfAPExecutionData::iterator itED = runEDS.begin();
-		ListOfAPExecutionData::iterator endED = runEDS.end();
-		for( ; itED != endED ; ++itED )
+		for( auto & itED : runEDS )
 		{
-			switch( (*itED)->mAEES )
+			switch( itED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				{
-					if( not (*itED)->hasRunnableElementTrace() )
+					if( not itED.hasRunnableElementTrace() )
 					{
 						//!! NOTHING
 						break;
 					}
 
-					//!! NO BREAk
+					[[fallthrough]]; //!! No BREAK for that CASE statement
 				}
 
 				default:
 				{
-//					if( ((*itED)->getExecutionContext() ==
-//										theED->getExecutionContext())
-//							/* || (not (*itED)->hasExecutionContext()) */ )
+//					if( ((*itED).getExecutionContext() ==
+//										theED.getExecutionContext())
+//							/* || (not (*itED).hasExecutionContext()) */ )
 					{
 						anEC.appendChildContext(
-							new ExecutionContext(anEC, *itED, nHeight, aWidth) );
+							new ExecutionContext(anEC, itED, nHeight, aWidth) );
 					}
 					break;
 				}
@@ -785,18 +794,27 @@ void AvmPrimitiveProcessor::postRun(
 void AvmPrimitiveProcessor::init(ExecutionContext & anEC)
 {
 AVM_IF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
-	BaseCompiledForm::USE_ONLY_ID = true;
+	ObjectElement::USE_ONLY_ID = true;
 AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 
 //	anEC.writeTraceBeforeExec(AVM_OS_TRACE);
 //	anEC.writeTraceBeforeExec(AVM_OS_COUT);
 
 	// SAVE AND UNSET THE ASSIGN TABLE
-	anEC.resetDataBeforeEvaluation();
+	BF aNodeCondition;
+	BF aNodeTimedCondition;
+	BF aRunnableElementTrace;
+	BF aIOElementTrace;
+	TableOfRuntimeFormState::TableOfAssignedFlag aTableOfAssignedFlag;
+
+//	anEC.resetDataBeforeEvaluation();
+	anEC.getwExecutionData().storeVariantBeforeEvaluation(
+			aNodeCondition, aNodeTimedCondition,
+			aRunnableElementTrace, aIOElementTrace, aTableOfAssignedFlag);
 
 	ExecutionEnvironment ENV(*this, (& anEC));
 
-	if( ENV.run(ENV.inED->getOnInit()) )
+	if( ENV.run(ENV.inED.getOnInit()) )
 	{
 	}
 
@@ -804,14 +822,17 @@ AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 	postRun(anEC, ENV);
 
 	// RESTORE THE ASSIGN TABLE
-	anEC.restoreDataAfterEvaluation();
+//	anEC.restoreDataAfterEvaluation();
+	anEC.getwExecutionData().restoreVariantAfterEvaluation(
+			aNodeCondition, aNodeTimedCondition,
+			aRunnableElementTrace, aIOElementTrace, aTableOfAssignedFlag);
 
 
 //	anEC.writeTraceAfterExec(AVM_OS_TRACE);
 //	anEC.writeTraceAfterExec(AVM_OS_COUT);
 
 AVM_IF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
-	BaseCompiledForm::USE_ONLY_ID = false;
+	ObjectElement::USE_ONLY_ID = false;
 AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 
 }
@@ -830,19 +851,28 @@ AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 void AvmPrimitiveProcessor::run(ExecutionContext & anEC)
 {
 AVM_IF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
-	BaseCompiledForm::USE_ONLY_ID = true;
+	ObjectElement::USE_ONLY_ID = true;
 AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 
 //	anEC.writeTraceBeforeExec(AVM_OS_TRACE);
 //	anEC.writeTraceBeforeExec(AVM_OS_COUT);
 
 	// SAVE AND UNSET THE ASSIGN TABLE
-	anEC.resetDataBeforeEvaluation();
+	BF aNodeCondition;
+	BF aNodeTimedCondition;
+	BF aRunnableElementTrace;
+	BF aIOElementTrace;
+	TableOfRuntimeFormState::TableOfAssignedFlag aTableOfAssignedFlag;
+
+//	anEC.resetDataBeforeEvaluation();
+	anEC.getwExecutionData().storeVariantBeforeEvaluation(
+			aNodeCondition, aNodeTimedCondition,
+			aRunnableElementTrace, aIOElementTrace, aTableOfAssignedFlag);
 
 
 	ExecutionEnvironment ENV(*this, (& anEC));
 
-	switch( ENV.inED->mAEES )
+	switch( ENV.inED.getAEES() )
 	{
 		case AEES_STEP_MARK:
 		{
@@ -859,24 +889,25 @@ AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 		case AEES_STMNT_FINAL:
 		case AEES_STMNT_DESTROY:
 		{
-			if( not ENV.inED->isFinalizedOrDestroyed(ENV.inED->getSystemRID()) )
+			if( not ENV.inED.isFinalizedOrDestroyed(ENV.inED.getSystemRID()) )
 			{
 				ENV.inED.mwsetAEES(AEES_OK);
 			}
-			//!! NO BREAk
+
+			[[fallthrough]]; //!! No BREAK for that CASE statement
 		}
 
 		case AEES_OK:
 		{
-			ENV.inED->setSystemRID();
-			if( ENV.inED->getOnSchedule()->empty() &&
-				(ENV.inED->getOnSchedule()->isOpCode(AVM_OPCODE_SCHEDULE_INVOKE)) )
+			ENV.inED.setSystemRID();
+			if( ENV.inED.getOnSchedule()->noOperand() &&
+				(ENV.inED.getOnSchedule()->isOpCode(AVM_OPCODE_SCHEDULE_INVOKE)) )
 			{
-				if( ENV.run(ENV.inED->getSystemRuntime().getOnSchedule()) )
+				if( ENV.run(ENV.inED.getSystemRuntime().getOnSchedule()) )
 				{
 				}
 			}
-			else if( ENV.run(ENV.inED->getOnSchedule()) )
+			else if( ENV.run(ENV.inED.getOnSchedule()) )
 			{
 			}
 
@@ -902,7 +933,7 @@ AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 			AVM_OS_FATAL_ERROR_EXIT
 					<< "Unexpected an input Execution Context for running"
 						" with the AVM EXECECUTION ENDING STATUS << "
-					<< RuntimeDef::strAEES( ENV.inED->mAEES ) << " >> !!!"
+					<< RuntimeDef::strAEES( ENV.inED.getAEES() ) << " >> !!!"
 					<< SEND_EXIT;
 			break;
 		}
@@ -911,8 +942,12 @@ AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 	// POST-RUN
 	postRun(anEC, ENV);
 
+
 	// RESTORE THE ASSIGN TABLE
-	anEC.restoreDataAfterEvaluation();
+//	anEC.restoreDataAfterEvaluation();
+	anEC.getwExecutionData().restoreVariantAfterEvaluation(
+			aNodeCondition, aNodeTimedCondition,
+			aRunnableElementTrace, aIOElementTrace, aTableOfAssignedFlag);
 
 
 //	anEC.writeTraceAfterExec(AVM_OS_TRACE);
@@ -920,8 +955,58 @@ AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 
 
 AVM_IF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
-	BaseCompiledForm::USE_ONLY_ID = false;
+	ObjectElement::USE_ONLY_ID = false;
 AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
+}
+
+
+void AvmPrimitiveProcessor::run(ExecutionContext & anEC, const BF & aRunnableElement)
+{
+	AVM_IF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
+		ObjectElement::USE_ONLY_ID = true;
+	AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
+
+	//	anEC.writeTraceBeforeExec(AVM_OS_TRACE);
+	//	anEC.writeTraceBeforeExec(AVM_OS_COUT);
+
+		// SAVE AND UNSET THE ASSIGN TABLE
+		BF aNodeCondition;
+		BF aNodeTimedCondition;
+		BF aRunnableElementTrace;
+		BF aIOElementTrace;
+		TableOfRuntimeFormState::TableOfAssignedFlag aTableOfAssignedFlag;
+
+	//	anEC.resetDataBeforeEvaluation();
+		anEC.getwExecutionData().storeVariantBeforeEvaluation(
+				aNodeCondition, aNodeTimedCondition,
+				aRunnableElementTrace, aIOElementTrace, aTableOfAssignedFlag);
+
+
+		ExecutionEnvironment ENV(*this, (& anEC));
+
+
+		if( ENV.run(aRunnableElement) )
+		{
+		}
+
+		// POST-RUN
+		postRun(anEC, ENV);
+
+
+		// RESTORE THE ASSIGN TABLE
+	//	anEC.restoreDataAfterEvaluation();
+		anEC.getwExecutionData().restoreVariantAfterEvaluation(
+				aNodeCondition, aNodeTimedCondition,
+				aRunnableElementTrace, aIOElementTrace, aTableOfAssignedFlag);
+
+
+	//	anEC.writeTraceAfterExec(AVM_OS_TRACE);
+	//	anEC.writeTraceAfterExec(AVM_OS_COUT);
+
+
+	AVM_IF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
+		ObjectElement::USE_ONLY_ID = false;
+	AVM_ENDIF_DEBUG_NOT_FLAG( QUALIFIED_NAME_ID )
 }
 
 
@@ -1066,7 +1151,7 @@ bool AvmPrimitiveProcessor::run(avm_offset_t opOffset, ExecutionEnvironment & EN
 {
 	const AvmCode * aCode = ENV.inCODE;
 
-	if( aCode == NULL )
+	if( aCode == nullptr )
 	{
 		return( false );
 	}
@@ -1076,16 +1161,16 @@ AVM_IF_DEBUG_FLAG_AND( COMPUTING , AVM_DEBUG_FLAG_OR( STATEMENT,
 				isDebugProgram(aCode->getOperator()) ) ) )
 
 		AVM_OS_TRACE << INCR_INDENT_TAB << "<< "
-				<< ENV.inED->mRID.strUniqId() << " |=> ";
+				<< ENV.inED.getRID().strUniqId() << " |=> ";
 		aCode->toStream( AVM_OS_TRACE << IGNORE_FIRST_TAB );
 
 	AVM_IF_DEBUG_LEVEL_FLAG( HIGH , DATA )
-		ENV.inED->toStreamData(AVM_OS_TRACE);
+		ENV.inED.toStreamData(AVM_OS_TRACE);
 	AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , DATA )
 
 	AVM_IF_DEBUG_LEVEL_GT_HIGH
 		AVM_OS_COUT << AVM_OS_TRACE.INDENT.TABS << "<< "
-				<< ENV.inED->mRID.strUniqId() << " |=> ";
+				<< ENV.inED.getRID().strUniqId() << " |=> ";
 		aCode->toStream( AVM_OS_COUT << IGNORE_FIRST_TAB );
 	AVM_ENDIF_DEBUG_LEVEL_GT_HIGH
 
@@ -1100,9 +1185,10 @@ AVM_ENDIF_DEBUG_FLAG_AND( COMPUTING  )
 		if( ENV.inCODE->hasInstruction() )
 		{
 			InstructionEnvironment INSTRUCTION_ENV(ENV);
-			if( (ENV.mARG = INSTRUCTION_ENV.itARG)->main_decode_eval_args(ENV.inCODE) )
+			if( (ENV.mARG = INSTRUCTION_ENV.itARG)
+					->main_decode_eval_args(ENV.inCODE.to< AvmCode >()) )
 			{
-//				while( ENV.mARG != NULL )
+//				while( ENV.mARG != nullptr )
 				{
 					ENV.inED = ENV.mARG->outED;
 
@@ -1142,16 +1228,16 @@ AVM_IF_DEBUG_FLAG_AND( COMPUTING , AVM_DEBUG_FLAG_OR( STATEMENT,
 	AVM_IF_DEBUG_LEVEL_GTE_HIGH
 
 		AVM_OS_TRACE << TAB_DECR_INDENT
-				<< ">> " << ENV.inED->mRID.strUniqId()
+				<< ">> " << ENV.inED.getRID().strUniqId()
 				<< " |=> " <<  aCode->str() << std::endl;
 
 		AVM_IF_DEBUG_FLAG( DATA )
-			ENV.inED->toStreamData(AVM_OS_TRACE);
+			ENV.inED.toStreamData(AVM_OS_TRACE);
 		AVM_ENDIF_DEBUG_FLAG( DATA )
 
 		AVM_IF_DEBUG_LEVEL_GT_HIGH
 			AVM_OS_COUT << AVM_OS_TRACE.INDENT.TABS << "  >> "
-					<< ENV.inED->mRID.strUniqId()
+					<< ENV.inED.getRID().strUniqId()
 					<< " |=> " << aCode->str() << std::endl;
 		AVM_ENDIF_DEBUG_LEVEL_GT_HIGH
 
@@ -1173,16 +1259,16 @@ bool AvmPrimitiveProcessor::invokeRoutine(ExecutionEnvironment & ENV,
 {
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<< "
-			<< ENV.inED->mRID.strUniqId() << " |=> invoke#routine "
+			<< ENV.inED.getRID().strUniqId() << " |=> invoke#routine "
 			<< aRoutine->getFullyQualifiedNameID() << " " << aParam.str() << std::endl;
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , DATA )
-		ENV.inED->toStreamData(AVM_OS_TRACE);
+		ENV.inED.toStreamData(AVM_OS_TRACE);
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , DATA )
 
 AVM_IF_DEBUG_LEVEL_GT_HIGH
 		AVM_OS_COUT << AVM_OS_TRACE.INDENT.TABS << "<< "
-				<< ENV.inED->mRID.strUniqId()
+				<< ENV.inED.getRID().strUniqId()
 				<< " |=> invoke#routine " << aRoutine->getFullyQualifiedNameID()
 				<< " " << aParam.str() << std::flush;
 AVM_ENDIF_DEBUG_LEVEL_GT_HIGH
@@ -1198,16 +1284,16 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 AVM_IF_DEBUG_LEVEL_GTE_HIGH
 		AVM_OS_TRACE << TAB_DECR_INDENT << ">> "
-				<< ENV.inED->mRID.strUniqId() << " |=> invoke#routine "
+				<< ENV.inED.getRID().strUniqId() << " |=> invoke#routine "
 				<<  aRoutine->getFullyQualifiedNameID() << " " << aParam.str() << std::endl;
 
 AVM_IF_DEBUG_FLAG( DATA )
-			ENV.inED->toStreamData(AVM_OS_TRACE);
+			ENV.inED.toStreamData(AVM_OS_TRACE);
 AVM_ENDIF_DEBUG_FLAG( DATA )
 
 AVM_IF_DEBUG_LEVEL_GT_HIGH
 			AVM_OS_COUT << AVM_OS_TRACE.INDENT.TABS << "  >> "
-					<< ENV.inED->mRID.strUniqId()
+					<< ENV.inED.getRID().strUniqId()
 					<< " |=> invoke#routine " << aRoutine->getFullyQualifiedNameID()
 					<< " " << aParam.str() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_GT_HIGH
@@ -1235,26 +1321,26 @@ bool AvmPrimitiveProcessor::resume(ExecutionEnvironment & ENV)
 {
 	const AvmCode * aCode = ENV.inCODE;
 
-	if( aCode == NULL )
+	if( aCode == nullptr )
 	{
 		return( false );
 	}
 
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<<|| pos:"
-			<< static_cast< avm_size_t >(
+			<< static_cast< std::size_t >(
 					ENV.inEXEC_LOCATION->itCode - aCode->begin())
 //			<< " ?!? |=> " << aProgram->->str() << std::endl
-			<< " " << ENV.inED->mRID.strUniqId() << " |=> ";
+			<< " " << ENV.inED.getRID().strUniqId() << " |=> ";
 	aCode->toStream( AVM_OS_TRACE << IGNORE_FIRST_TAB );
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , DATA )
-		ENV.inED->toStreamData(AVM_OS_TRACE);
+		ENV.inED.toStreamData(AVM_OS_TRACE);
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , DATA )
 
 AVM_IF_DEBUG_LEVEL_GT_HIGH
 		AVM_OS_COUT << AVM_OS_TRACE.INDENT.TABS << "<<|| "
-				<< ENV.inED->mRID.strUniqId() << " |=> ";
+				<< ENV.inED.getRID().strUniqId() << " |=> ";
 		aCode->toStream( AVM_OS_COUT << IGNORE_FIRST_TAB );
 AVM_ENDIF_DEBUG_LEVEL_GT_HIGH
 
@@ -1268,16 +1354,16 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 AVM_IF_DEBUG_LEVEL_GTE_HIGH
 		AVM_OS_TRACE << TAB_DECR_INDENT << "||>> "
-				<< ENV.inED->mRID.strUniqId()
+				<< ENV.inED.getRID().strUniqId()
 				<< " |=> " <<  aCode->str() << std::endl;
 
 AVM_IF_DEBUG_FLAG( DATA )
-			ENV.inED->toStreamData(AVM_OS_TRACE);
+			ENV.inED.toStreamData(AVM_OS_TRACE);
 AVM_ENDIF_DEBUG_FLAG( DATA )
 
 AVM_IF_DEBUG_LEVEL_GT_HIGH
 			AVM_OS_COUT << AVM_OS_TRACE.INDENT.TABS << "  ||>> "
-					<< ENV.inED->mRID.strUniqId()
+					<< ENV.inED.getRID().strUniqId()
 					<< " |=> " << aCode->str() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_GT_HIGH
 
@@ -1296,11 +1382,11 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 
 bool AvmPrimitiveProcessor::decode_resume(ExecutionEnvironment & ENV)
 {
-	APExecutionData tmpED = ENV.inED;
+	ExecutionData tmpED = ENV.inED;
 	tmpED.makeWritable();
-	tmpED->mSTATEMENT_QUEUE.pushCache();
+	tmpED.pushExecutionLocationhCache();
 
-	ListOfAPExecutionData tmpListOfInputED( tmpED );
+	ListOfExecutionData tmpListOfInputED( tmpED );
 
 	ExecutionEnvironment tmpENV(ENV.PRIMITIVE_PROCESSOR);
 
@@ -1321,7 +1407,7 @@ bool AvmPrimitiveProcessor::decode_resume(ExecutionEnvironment & ENV)
 		{
 			tmpENV.outEDS.pop_last_to( tmpED );
 
-			switch( tmpED->getAEES() )
+			switch( tmpED.getAEES() )
 			{
 				case AEES_STMNT_NOTHING:
 				case AEES_STMNT_FINAL:
@@ -1329,12 +1415,12 @@ bool AvmPrimitiveProcessor::decode_resume(ExecutionEnvironment & ENV)
 				{
 					tmpED.mwsetAEES( AEES_OK );
 
-					//!!! NO << break >> for these statement
+					[[fallthrough]]; //!! No BREAK for that CASE statement
 				}
 
 				case AEES_STEP_RESUME:
 				{
-					if( tmpED->mSTATEMENT_QUEUE.nonempty() )
+					if( tmpED.hasExecutionLocation() )
 					{
 						tmpListOfInputED.append( tmpED );
 					}
@@ -1350,7 +1436,7 @@ bool AvmPrimitiveProcessor::decode_resume(ExecutionEnvironment & ENV)
 				case AEES_OK:
 				case AEES_STMNT_RETURN:
 				{
-					if( tmpED->mSTATEMENT_QUEUE.nonempty() )
+					if( tmpED.hasExecutionLocation() )
 					{
 						tmpListOfInputED.append( tmpED );
 					}
@@ -1366,7 +1452,7 @@ bool AvmPrimitiveProcessor::decode_resume(ExecutionEnvironment & ENV)
 				{
 					AVM_OS_FATAL_ERROR_EXIT
 							<< "Unexpected ENDIND EXECUTION STATUS :> "
-							<< RuntimeDef::strAEES( tmpED->mAEES ) << " !!!"
+							<< RuntimeDef::strAEES( tmpED.getAEES() ) << " !!!"
 							<< SEND_EXIT;
 
 					return( false );
@@ -1378,7 +1464,7 @@ bool AvmPrimitiveProcessor::decode_resume(ExecutionEnvironment & ENV)
 	// Sync EDS traitement
 	while( tmpENV.syncEDS.nonempty() )
 	{
-		tmpENV.syncEDS.first()->mSTATEMENT_QUEUE.pushCache();
+		tmpENV.syncEDS.first().pushExecutionLocationhCache();
 
 		ENV.appendSync( tmpENV.syncEDS.pop_first() );
 	}
@@ -1408,11 +1494,11 @@ bool AvmPrimitiveProcessor::seval(EvaluationEnvironment & ENV)
 
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 	AVM_OS_TRACE << INCR_INDENT_TAB << "<< "
-			<< ENV.inED->mRID.strUniqId() << " , ED |-> ";
+			<< ENV.inED.getRID().strUniqId() << " , ED |-> ";
 	anExpression->toStream( AVM_OS_TRACE << IGNORE_FIRST_TAB );
 
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , DATA )
-		ENV.outED->toStreamData(AVM_OS_TRACE);
+		ENV.outED.toStreamData(AVM_OS_TRACE);
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , DATA )
 
 AVM_IF_DEBUG_LEVEL_GT_HIGH
@@ -1434,7 +1520,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 				InstructionEnvironment INSTRUCTION_ENV(ENV);
 
 				if( (ENV.mARG = INSTRUCTION_ENV.itARG)
-						->main_decode_eval_args(ENV.inCODE) )
+						->main_decode_eval_args(ENV.inCODE.to< AvmCode >()) )
 				{
 					ENV.outED = ENV.mARG->outED;
 
@@ -1482,16 +1568,16 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , COMPUTING , STATEMENT )
 AVM_IF_DEBUG_LEVEL_GTE_HIGH
 		AVM_OS_TRACE << TAB_DECR_INDENT << ">> "
-				<< ENV.inED->mRID.strUniqId() << " , ED |-> "
+				<< ENV.inED.getRID().strUniqId() << " , ED |-> "
 				<<  anExpression->str() << std::endl;
 
 AVM_IF_DEBUG_FLAG( DATA )
-			ENV.inED->toStreamData(AVM_OS_TRACE);
+			ENV.inED.toStreamData(AVM_OS_TRACE);
 AVM_ENDIF_DEBUG_FLAG( DATA )
 
 AVM_IF_DEBUG_LEVEL_GT_HIGH
 			AVM_OS_COUT << AVM_OS_TRACE.INDENT.TABS << "  >> " <<
-					ENV.inED->mRID.strUniqId() << " , ED |-> "
+					ENV.inED.getRID().strUniqId() << " , ED |-> "
 					<< anExpression->str() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_GT_HIGH
 
@@ -1532,39 +1618,40 @@ bool AvmPrimitiveProcessor::decode_seval(EvaluationEnvironment & ENV)
 
 		case FORM_INSTANCE_DATA_KIND:
 		{
-			InstanceOfData * anInstance = ENV.inFORM.to_ptr< InstanceOfData >();
+			const InstanceOfData & anInstance =
+					ENV.inFORM.to< InstanceOfData >();
 
-			if( (anInstance->getModifier().hasNatureReference()) )
+			if( (anInstance.getModifier().hasNatureReference()) )
 			{
 				ENV.outVAL = ENV.getRvalue(ENV.outED, ENV.getRvalue(
-						ENV.outED, anInstance).to_ptr< InstanceOfData >() );
+						ENV.outED, anInstance).to< InstanceOfData >() );
 			}
-			else if( (anInstance->getModifier().hasNatureMacro()) )
+			else if( (anInstance.getModifier().hasNatureMacro()) )
 			{
 				ENV.inFORM = ENV.getRvalue(ENV.outED, anInstance);
 
 				return( decode_seval(ENV) );
 			}
-			else if( anInstance->getModifier().hasFeatureMutable() )
+			else if( anInstance.getModifier().hasFeatureMutable() )
 			{
 				ENV.outVAL = ENV.getRvalue(ENV.outED, anInstance);
 			}
 
-			else if( anInstance->isEnumSymbolPointer() )
+			else if( anInstance.isEnumSymbolPointer() )
 			{
-				ENV.outVAL = ( anInstance->hasValue() &&
-						(not anInstance->getModifier().hasFeatureUnsafe()) )
-						? anInstance->getValue() : ENV.inFORM;
+				ENV.outVAL = ( anInstance.hasValue() &&
+						(not anInstance.getModifier().hasFeatureUnsafe()) )
+						? anInstance.getValue() : ENV.inFORM;
 			}
 
 			else if( ExecutableLib::MACHINE_SELF == anInstance )
 			{
-				ENV.outVAL = ENV.inED->mRID;
+				ENV.outVAL = ENV.inED.getRID();
 			}
 
 			else if( ExecutableLib::MACHINE_PARENT == anInstance )
 			{
-				ENV.outVAL = ENV.inED->mRID.getPRID();
+				ENV.outVAL = ENV.inED.getRID().getPRID();
 			}
 
 			else
@@ -1606,12 +1693,12 @@ bool AvmPrimitiveProcessor::decode_seval(EvaluationEnvironment & ENV)
 
 		case FORM_INSTANCE_MACHINE_KIND:
 		{
-			InstanceOfMachine * anInstance =
-					ENV.inFORM.to_ptr< InstanceOfMachine >();
+			const InstanceOfMachine & anInstance =
+					ENV.inFORM.to< InstanceOfMachine >();
 
-			if( anInstance->hasRuntimeRID() )
+			if( anInstance.hasRuntimeRID() )
 			{
-				ENV.outVAL = anInstance->getRuntimeRID();
+				ENV.outVAL = anInstance.getRuntimeRID();
 			}
 
 			else if( ExecutableLib::MACHINE_NULL == anInstance )
@@ -1626,7 +1713,7 @@ bool AvmPrimitiveProcessor::decode_seval(EvaluationEnvironment & ENV)
 
 			else
 			{
-				ENV.outVAL = ENV.outED->getRuntimeID(anInstance);
+				ENV.outVAL = ENV.outED.getRuntimeID(anInstance);
 			}
 
 			return( true );
@@ -1654,7 +1741,7 @@ bool AvmPrimitiveProcessor::decode_seval(EvaluationEnvironment & ENV)
 		case FORM_ARRAY_STRING_KIND:
 		case FORM_ARRAY_QUALIFIED_IDENTIFIER_KIND:
 		{
-			ENV.outVAL.renew( ENV.inFORM.to_ptr< BuiltinArray >()->getArrayBF() );
+			ENV.outVAL.renew( ENV.inFORM.to< BuiltinArray >().getArrayBF() );
 
 			return( true );
 		}
@@ -1667,7 +1754,7 @@ bool AvmPrimitiveProcessor::decode_seval(EvaluationEnvironment & ENV)
 			ArrayBF * outArrayBF = new ArrayBF(
 					inArray->getTypeSpecifier(), inArray->size());
 
-			for( avm_size_t i = 0 ; i < inArray->size() ; ++i )
+			for( std::size_t i = 0 ; i < inArray->size() ; ++i )
 			{
 				if( ENV.seval( inArray->at(i) ) )
 				{
@@ -1725,7 +1812,7 @@ bool AvmPrimitiveProcessor::decode_seval(EvaluationEnvironment & ENV)
 						inContainer->classKind(),
 						((BuiltinContainer *)inContainer)->capacity());
 
-				for( avm_size_t i = 0 ; i < inContainer->size() ; ++i )
+				for( std::size_t i = 0 ; i < inContainer->size() ; ++i )
 				{
 					if( ENV.seval( inContainer->at(i) ) )
 					{

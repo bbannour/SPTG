@@ -17,9 +17,10 @@
 
 #include <util/avm_assert.h>
 #include <util/avm_numeric.h>
-#include <base/SmartPointerUtil.h>
 
 #include <collection/Collection.h>
+
+#include <common/Element.h>
 
 
 namespace sep
@@ -69,13 +70,13 @@ public:
 	 * CONSTRUCTOR
 	 * Others
 	 */
-	explicit Vector(avm_size_t count)
+	explicit Vector(std::size_t count)
 	: BaseVector(count)
 	{
 		//!! NOTHING
 	}
 
-	explicit Vector(avm_size_t count, const T & elem)
+	explicit Vector(std::size_t count, const T & elem)
 	: BaseVector(count, elem)
 	{
 		//!! NOTHING
@@ -129,13 +130,13 @@ public:
 	 * push back & front
 	 ***************************************************************************
 	 */
-	inline virtual void push_back(const T & arg)
+	inline virtual void push_back(const T & arg) override
 	{
 		BaseVector::push_back(arg);
 	}
 
 
-	inline virtual void push_back(const std::list< T > & aCollection)
+	inline virtual void push_back(const std::list< T > & aCollection) override
 	{
 		BaseVector::insert(BaseVector::end(),
 				aCollection.begin(), aCollection.end());
@@ -149,7 +150,7 @@ public:
 	}
 
 
-	inline virtual void push_back(const std::vector< T > & aCollection)
+	inline virtual void push_back(const std::vector< T > & aCollection) override
 	{
 		BaseVector::insert(BaseVector::end(),
 				aCollection.begin(), aCollection.end());
@@ -164,12 +165,12 @@ public:
 
 
 
-	inline virtual void push_front(const T & arg)
+	inline virtual void push_front(const T & arg) override
 	{
 		BaseVector::insert(BaseVector::begin(), arg);
 	}
 
-	inline virtual void push_front(const std::list< T > & aCollection)
+	inline virtual void push_front(const std::list< T > & aCollection) override
 	{
 		BaseVector::insert(BaseVector::begin(),
 				aCollection.begin(), aCollection.end());
@@ -183,7 +184,8 @@ public:
 	}
 
 
-	inline virtual void push_front(const std::vector< T > & aCollection)
+	inline virtual void push_front(
+			const std::vector< T > & aCollection) override
 	{
 		BaseVector::insert(BaseVector::begin(),
 				aCollection.begin(), aCollection.end());
@@ -203,22 +205,22 @@ public:
 	 * emptiness
 	 ***************************************************************************
 	 */
-	inline virtual bool empty() const
+	inline virtual bool empty() const override
 	{
 		return( BaseVector::empty() );
 	}
 
-	inline virtual bool nonempty() const
+	inline virtual bool nonempty() const override
 	{
 		return( not BaseVector::empty() );
 	}
 
-	inline virtual bool singleton() const
+	inline virtual bool singleton() const override
 	{
 		return( BaseVector::size() == 1 );
 	}
 
-	inline virtual bool populated() const
+	inline virtual bool populated() const override
 	{
 		return( BaseVector::size() > 1 );
 	}
@@ -227,38 +229,37 @@ public:
 	/**
 	 * contains a particular element
 	 */
-	inline virtual bool contains(const T & arg) const
+	inline virtual bool contains(const T & arg) const override
 	{
-		typename
-		BaseVector::const_iterator it = BaseVector::begin();
-		typename
-		BaseVector::const_iterator itEnd = BaseVector::end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & it : (*this) )
 		{
-			if( (*it) == arg )
+			if( it == arg )
 			{
 				return( true );
 			}
 		}
 
-		//		for( avm_size_t it = 0 ; it != BaseVector::size() ; ++it )
-		//		{
-		//			if( BaseVector::at(it) == arg )
-		//			{
-		//				return( true );
-		//			}
-		//		}
+		return( false );
+	}
+
+	inline virtual bool contains(const T * arg) const override
+	{
+		for( const auto & it : (*this) )
+		{
+			if( it == *arg )
+			{
+				return( true );
+			}
+		}
 
 		return( false );
 	}
 
 
-	inline virtual bool contains(const std::vector< T > & aCollection)
+	inline bool contains(const std::vector< T > & aCollection)
 	{
-		typename
-		std::vector< T >::const_iterator it = aCollection.begin();
-		typename
-		std::vector< T >::const_iterator itEnd = aCollection.end();
+		typename std::vector< T >::const_iterator it = aCollection.begin();
+		typename std::vector< T >::const_iterator itEnd = aCollection.end();
 		for( ; it != itEnd ; ++it )
 		{
 			if( not contains( (*it) ) )
@@ -278,10 +279,13 @@ public:
 	}
 
 
+	/**
+	 * find index of  a particular element
+	 */
 	template< typename U >
 	inline int find(U arg) const
 	{
-		for( avm_size_t it = 0 ; it != BaseVector::size() ; ++it )
+		for( std::size_t it = 0 ; it != BaseVector::size() ; ++it )
 		{
 			if( BaseVector::at(it) == arg )
 			{
@@ -300,51 +304,11 @@ public:
 	 * append
 	 ***************************************************************************
 	 */
-	inline virtual void append(const T & arg)
+	inline virtual void append(const T & arg) override
 	{
 		BaseVector::push_back(arg);
 	}
 
-	inline virtual void append(const T & arg1, const T & arg2)
-	{
-		append(arg1);
-		append(arg2);
-	}
-
-	inline virtual void append(const T & arg1, const T & arg2, const T & arg3)
-	{
-		append(arg1);
-		append(arg2);
-		append(arg3);
-	}
-
-	inline virtual void append(const T & arg1,
-			const T & arg2, const T & arg3, const T & arg4)
-	{
-		append(arg1);
-		append(arg2);
-		append(arg3);
-		append(arg4);
-	}
-
-	inline virtual void append(const T & arg1, const T & arg2,
-			const T & arg3, const T & arg4, const T & arg5)
-	{
-		append(arg1);
-		append(arg2);
-		append(arg3);
-		append(arg4);
-		append(arg5);
-	}
-
-
-	inline virtual void append(T * anArrayOfArgument, int anArgSize)
-	{
-		for (int i = 0 ; i < anArgSize ; ++i)
-		{
-			push_back(anArrayOfArgument[i]);
-		}
-	}
 
 	template< typename _TOE >
 	inline void append(const std::list< _TOE > & aCollection)
@@ -360,6 +324,16 @@ public:
 				aCollection.begin(), aCollection.end());
 	}
 
+	using Collection<T>::append;
+
+
+	/*
+	 ***************************************************************************
+	 * SETTER
+	 * appendTail
+	 * splice
+	 ***************************************************************************
+	 */
 	template< typename _TOE >
 	inline void appendTail(const std::vector< _TOE > & aCollection)
 	{
@@ -379,10 +353,10 @@ public:
 	/*
 	 ***************************************************************************
 	 * SETTER
-	 * add_union
+	 * add_unique
 	 ***************************************************************************
 	 */
-	inline virtual void add_union(const T & arg)
+	inline virtual void add_unique(const T & arg) override
 	{
 		if( not contains(arg) )
 		{
@@ -390,39 +364,35 @@ public:
 		}
 	}
 
-	inline virtual void add_union(const T & arg1, const T & arg2)
-	{
-		add_union(arg1);
-		add_union(arg2);
-	}
+	using Collection<T>::add_unique;
 
 
-	inline virtual void add_union(T * anArrayOfArgument, int anArgSize)
-	{
-		for (int i = 0 ; i < anArgSize ; ++i)
-		{
-			add_union( anArrayOfArgument[i] );
-		}
-	}
-
-
-	inline virtual void add_union(const std::list< T > & aCollection)
-	{
-		typename std::list< T >::const_iterator it = aCollection.begin();
-		for( ; it != aCollection.end() ; ++it )
-		{
-			add_union( (*it) );
-		}
-	}
-
-	inline virtual void add_union(const std::vector< T > & aCollection)
-	{
-		typename std::vector< T >::const_iterator it = aCollection.begin();
-		for( ; it != aCollection.end() ; ++it )
-		{
-			add_union( (*it) );
-		}
-	}
+//	inline virtual void add_unique(T * arg) override
+//	{
+//		if( not contains(arg) )
+//		{
+//			BaseVector::push_back(*arg);
+//		}
+//	}
+//
+//
+//	inline virtual void add_unique(const std::list< T > & aCollection) override
+//	{
+//		typename std::list< T >::const_iterator it = aCollection.begin();
+//		for( ; it != aCollection.end() ; ++it )
+//		{
+//			add_unique( (*it) );
+//		}
+//	}
+//
+//	inline virtual void add_unique(const std::vector< T > & aCollection) override
+//	{
+//		typename std::vector< T >::const_iterator it = aCollection.begin();
+//		for( ; it != aCollection.end() ; ++it )
+//		{
+//			add_unique( (*it) );
+//		}
+//	}
 
 
 	/*
@@ -431,34 +401,34 @@ public:
 	 * first & ... & last
 	 ***************************************************************************
 	 */
-	inline virtual reference first()
+	inline virtual reference first() override
 	{
 		return( BaseVector::front() );
 	}
 
-	inline virtual const_reference first() const
+	inline virtual const_reference first() const override
 	{
 		return( BaseVector::front() );
 	}
 
-	inline virtual reference getArg1()
+	inline reference getArg1()
 	{
 		return  get(0);
 	}
 
-	inline virtual const_reference getArg1() const
+	inline const_reference getArg1() const
 	{
 		return  get(0);
 	}
 
 
-	inline virtual void pop_front()
+	inline void pop_front()
 	{
 		BaseVector::erase(BaseVector::begin());
 	}
 
 
-	inline virtual T pop_first()
+	inline virtual T pop_first() override
 	{
 		T theFirst = BaseVector::front();
 
@@ -467,157 +437,157 @@ public:
 		return( theFirst );
 	}
 
-	inline virtual void pop_first_to(T & theFirst)
+	inline virtual void pop_first_to(T & theFirst) override
 	{
 		theFirst = BaseVector::front();
 
 		BaseVector::erase( BaseVector::begin() );
 	}
 
-	inline virtual void remove_first()
+	inline void remove_first()
 	{
 		BaseVector::erase( BaseVector::begin() );
 	}
 
 
-	inline virtual reference second()
+	inline virtual reference second() override
 	{
 		return( get(1) );
 	}
 
-	inline virtual const_reference second() const
+	inline virtual const_reference second() const override
 	{
 		return( get(1) );
 	}
 
-	inline virtual reference getArg2()
+	inline reference getArg2()
 	{
 		return  get(1);
 	}
 
-	inline virtual const_reference getArg2() const
+	inline const_reference getArg2() const
 	{
 		return  get(1);
 	}
 
 
-	inline virtual reference third()
+	inline reference third()
 	{
 		return( get(2) );
 	}
 
-	inline virtual const_reference third() const
+	inline const_reference third() const
 	{
 		return( get(2) );
 	}
 
-	inline virtual reference getArg3()
+	inline reference getArg3()
 	{
 		return  get(2);
 	}
 
-	inline virtual const_reference getArg3() const
+	inline const_reference getArg3() const
 	{
 		return  get(2);
 	}
 
 
-	inline virtual reference fourth()
+	inline reference fourth()
 	{
 		return( get(3) );
 	}
 
-	inline virtual const_reference fourth() const
+	inline const_reference fourth() const
 	{
 		return( get(3) );
 	}
 
-	inline virtual reference getArg4()
+	inline reference getArg4()
 	{
 		return  get(3);
 	}
 
-	inline virtual const_reference getArg4() const
+	inline const_reference getArg4() const
 	{
 		return  get(3);
 	}
 
 
-	inline virtual reference fifth()
+	inline reference fifth()
 	{
 		return( get(4) );
 	}
 
-	inline virtual const_reference fifth() const
+	inline const_reference fifth() const
 	{
 		return( get(4) );
 	}
 
-	inline virtual reference getArg5()
+	inline reference getArg5()
 	{
 		return  get(4);
 	}
 
-	inline virtual const_reference getArg5() const
+	inline const_reference getArg5() const
 	{
 		return  get(4);
 	}
 
 
-	inline virtual reference sixth()
+	inline reference sixth()
 	{
 		return( get(5) );
 	}
 
-	inline virtual const_reference sixth() const
+	inline const_reference sixth() const
 	{
 		return( get(5) );
 	}
 
-	inline virtual reference getArg6()
+	inline reference getArg6()
 	{
 		return  get(5);
 	}
 
-	inline virtual const_reference getArg6() const
+	inline const_reference getArg6() const
 	{
 		return  get(5);
 	}
 
 
-	inline virtual reference seventh()
+	inline reference seventh()
 	{
 		return  get(6);
 	}
 
-	inline virtual const_reference seventh() const
+	inline const_reference seventh() const
 	{
 		return  get(6);
 	}
 
-	inline virtual reference getArg7()
+	inline reference getArg7()
 	{
 		return  get(6);
 	}
 
-	inline virtual const_reference getArg7() const
+	inline const_reference getArg7() const
 	{
 		return  get(6);
 	}
 
 
-	inline virtual reference last()
+	inline virtual reference last() override
 	{
 		return( BaseVector::back() );
 	}
 
-	inline virtual const_reference last() const
+	inline virtual const_reference last() const override
 	{
 		return( BaseVector::back() );
 	}
 
 
-	inline virtual T pop_last()
+	inline virtual T pop_last() override
 	{
 		T theLast = BaseVector::back();
 
@@ -626,19 +596,19 @@ public:
 		return( theLast );
 	}
 
-	inline virtual void pop_last_to(T & theLast)
+	inline virtual void pop_last_to(T & theLast) override
 	{
 		theLast = BaseVector::back();
 
 		BaseVector::pop_back();
 	}
 
-	inline virtual void remove_last()
+	inline void remove_last()
 	{
 		BaseVector::pop_back();
 	}
 
-	inline virtual reference get(avm_size_t index)
+	inline reference get(std::size_t index)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 				<< SEND_EXIT;
@@ -646,7 +616,7 @@ public:
 		return( BaseVector::at(index) );
 	}
 
-	inline virtual const_reference get(avm_size_t index) const
+	inline const_reference get(std::size_t index) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 				<< SEND_EXIT;
@@ -658,7 +628,7 @@ public:
 //////// UNCOMMENT FOR << vector::_M_range_check >> EXCEPTION DEBUGGING ////////
 ////////////////////////////////////////////////////////////////////////////////
 //
-//	inline virtual reference at(avm_size_t index)
+//	inline reference at(std::size_t index)
 //	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 //				<< SEND_EXIT;
@@ -666,7 +636,7 @@ public:
 //		return( BaseVector::at(index) );
 //	}
 //
-//	inline virtual const_reference at(avm_size_t index) const
+//	inline const_reference at(std::size_t index) const
 //	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 //				<< SEND_EXIT;
@@ -675,7 +645,7 @@ public:
 //	}
 //
 //
-//	inline virtual reference operator[](avm_size_t index)
+//	inline reference operator[](std::size_t index)
 //	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 //				<< SEND_EXIT;
@@ -683,7 +653,7 @@ public:
 //		return( BaseVector::operator[](index) );
 //	}
 //
-//	inline virtual const_reference operator[](avm_size_t index) const
+//	inline const_reference operator[](std::size_t index) const
 //	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 //				<< SEND_EXIT;
@@ -693,7 +663,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
 
-	inline virtual void set(avm_size_t index, const T & arg)
+	inline void set(std::size_t index, const T & arg)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 				<< SEND_EXIT;
@@ -709,7 +679,7 @@ public:
 	 ***************************************************************************
 	 */
 
-	inline virtual reference reverse_at(avm_size_t index)
+	inline reference reverse_at(std::size_t index)
 	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 //				<< SEND_EXIT;
@@ -718,7 +688,7 @@ public:
 				at(BaseVector::size() - 1 - index) );
 	}
 
-	inline virtual const_reference reverse_at(avm_size_t index) const
+	inline const_reference reverse_at(std::size_t index) const
 	{
 //		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 //				<< SEND_EXIT;
@@ -728,7 +698,7 @@ public:
 	}
 
 
-	inline virtual reference reverse_get(avm_size_t index)
+	inline reference reverse_get(std::size_t index)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 				<< SEND_EXIT;
@@ -737,7 +707,7 @@ public:
 				at(BaseVector::size() - 1 - index) );
 	}
 
-	inline virtual const_reference reverse_get(avm_size_t index) const
+	inline const_reference reverse_get(std::size_t index) const
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 				<< SEND_EXIT;
@@ -748,7 +718,7 @@ public:
 
 
 
-	inline virtual void reverse_set(avm_size_t index, const T & arg)
+	inline void reverse_set(std::size_t index, const T & arg)
 	{
 		AVM_OS_ASSERT_FATAL_ARRAY_INDEX_EXIT(index, BaseVector::size())
 				<< SEND_EXIT;
@@ -762,103 +732,18 @@ public:
 	 ***************************************************************************
 	 * SETTER
 	 * reset
+	 * erase - remove (<=> erase all)
+	 * rremove
 	 ***************************************************************************
 	 */
-	inline virtual void reset(const T & arg)
+	inline virtual void reset() override
 	{
 		BaseVector::clear();
-
-		append(arg);
 	}
 
-	inline virtual void reset(const T & arg1, const T & arg2)
-	{
-		BaseVector::clear();
+	using Collection<T>::reset;
 
-		append(arg1);
-		append(arg2);
-	}
-
-	inline virtual void reset(const T & arg1, const T & arg2, const T & arg3)
-	{
-		BaseVector::clear();
-
-		append(arg1);
-		append(arg2);
-		append(arg3);
-	}
-
-	inline virtual void reset(const T & arg1,
-			const T & arg2, const T & arg3, const T & arg4)
-	{
-		BaseVector::clear();
-
-		append(arg1);
-		append(arg2);
-		append(arg3);
-		append(arg4);
-	}
-
-	inline virtual void reset(const T & arg1, const T & arg2,
-			const T & arg3, const T & arg4, const T & arg5)
-	{
-		BaseVector::clear();
-
-		append(arg1);
-		append(arg2);
-		append(arg3);
-		append(arg4);
-		append(arg5);
-	}
-
-
-	inline virtual void reset(T* anArrayOfArgument, int anArgSize)
-	{
-		BaseVector::clear();
-
-		for (int i = 0 ; i < anArgSize ; ++i)
-		{
-			push_back(anArrayOfArgument[i]);
-		}
-	}
-
-
-	inline virtual void reset(const std::list< T > & aCollection)
-	{
-		BaseVector::clear();
-
-		push_back(aCollection);
-	}
-
-	inline virtual void reset(const std::vector< T > & aCollection)
-	{
-		BaseVector::clear();
-
-		push_back(aCollection);
-	}
-
-
-	template< typename _TOE >
-	inline void reset(const std::list< _TOE > & aCollection)
-	{
-		BaseVector::clear();
-
-		push_back(aCollection);
-	}
-
-	template< typename _TOE >
-	inline void reset(const std::vector< _TOE > & aCollection)
-	{
-		BaseVector::clear();
-
-		push_back(aCollection);
-	}
-
-	/**
-	 * erase - remove (<=> erase all)
-	 *
-	 */
-	inline virtual void remove(const T & arg)
+	inline virtual void remove(const T & arg) override
 	{
 		typename BaseVector::iterator it = BaseVector::begin();
 		for( ; it != BaseVector::end() ; ++it )
@@ -871,7 +756,7 @@ public:
 		}
 
 
-		//		for( avm_size_t it = 0 ; it != BaseVector::size() ; ++it )
+		//		for( std::size_t it = 0 ; it != BaseVector::size() ; ++it )
 		//		{
 		//			if( BaseVector::at(it) == arg )
 		//			{
@@ -881,7 +766,10 @@ public:
 		//		}
 	}
 
-	inline virtual void rremove(const T & arg)
+	using Collection<T>::remove;
+
+
+	inline void rremove(const T & arg)
 	{
 		typename
 		BaseVector::reverse_iterator it =BaseVector::rbegin();
@@ -898,85 +786,10 @@ public:
 };
 
 
-
-
-
-template< typename T >
-class APVector  :  public Vector< T >
-{
-public:
-	/**
-	 * TYPEDEF
-	 */
-	typedef T       & reference;
-	typedef const T & const_reference;
-
-	typedef Vector< T >  BaseAPVector;
-
-
-	/**
-	 * CONSTRUCTOR
-	 * Default
-	 */
-	APVector()
-	: BaseAPVector()
-	{
-		//!! NOTHING
-	}
-
-	/**
-	 * CONSTRUCTOR
-	 * Copy
-	 */
-	APVector(const APVector & aVector)
-	: BaseAPVector( )
-	{
-		typename BaseAPVector::const_iterator it = aVector.begin();
-		typename BaseAPVector::const_iterator itEnd = aVector.end();
-		for( ; it != itEnd ; ++it )
-		{
-			BaseAPVector::push_back( sep::incrReferenceCount( *it ) );
-		}
-	}
-
-
-	/**
-	 * DESTRUCTOR
-	 */
-	virtual ~APVector()
-	{
-		typename
-		BaseAPVector::const_iterator it = BaseAPVector::begin();
-		typename
-		BaseAPVector::const_iterator itEnd = BaseAPVector::end();
-		for( ; it != itEnd ; ++it )
-		{
-			sep::destroy( *it );
-		}
-	}
-
-	/**
-	 * CLEAR
-	 */
-	void clear()
-	{
-		while( BaseAPVector::nonempty() )
-		{
-			sep::destroy( BaseAPVector::pop_last() );
-		}
-
-		BaseAPVector::clear();
-	}
-
-};
-
-
-
 /**
  * MEMORY MANAGEMENT
  * DESTROY
  */
-
 template< class T >
 void destroy(Vector< T * > * & aVector)
 {
@@ -989,7 +802,7 @@ void destroy(Vector< T * > * & aVector)
 
 	delete( aVector );
 
-	aVector = NULL;
+	aVector = nullptr;
 }
 
 
@@ -998,7 +811,7 @@ void destroy(Vector< T > * & aVector)
 {
 	delete( aVector );
 
-	aVector = NULL;
+	aVector = nullptr;
 }
 
 

@@ -1,0 +1,26 @@
+@xlia< system , 1.0 >:
+
+system<and> mySystem {
+
+	@property:
+		var string s;
+		
+	@machine:
+		statemachine printer {
+			@region:
+				
+				state<initial> s0 {
+					transition --> s1;
+				}
+				
+				state s1 {
+					transition --> s2 {
+						s = "Hello World!";
+					}
+				}
+				
+				state<final> s2 {}
+				
+		}
+
+}

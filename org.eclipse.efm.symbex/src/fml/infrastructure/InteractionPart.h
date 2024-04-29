@@ -24,6 +24,7 @@
 
 #include <fml/infrastructure/Connector.h>
 
+#include <list>
 
 namespace sep
 {
@@ -45,17 +46,14 @@ public:
 	/**
 	 * TYPEDEF
 	 */
-	typedef TableOfBF_T< Connector >  TableOfConnector;
-
-	typedef TableOfConnector::raw_iterator        connector_iterator;
-	typedef TableOfConnector::const_raw_iterator  const_connector_iterator;
+	typedef std::list< Connector > CollectionOfConnector_t;
 
 
 protected:
 	/**
 	 * ATTRIBUTES
 	 */
-	TableOfConnector mConnectors;
+	CollectionOfConnector_t mConnectors;
 
 
 public:
@@ -76,47 +74,38 @@ public:
 
 	/**
 	 * GETTER - SETTER
-	 * mConnectors
+	 * mConnectorsOLD
 	 */
-	inline const TableOfConnector & getConnectors() const
+	inline const CollectionOfConnector_t & getConnectors() const
 	{
 		return( mConnectors );
 	}
 
 	inline bool hasConnector() const
 	{
+		return( not mConnectors.empty() );
+	}
+
+	inline Connector & appendConnector(
+			PROTOCOL_KIND aProtocol = PROTOCOL_UNDEFINED_KIND)
+	{
+		Connector & newConnector =  mConnectors.emplace_back( this );
+
+		newConnector.setProtocol(aProtocol);
+
+		return( newConnector );
+	}
+
+	inline bool empty() const
+	{
 		return( mConnectors.empty() );
-	}
-
-	inline void appendConnector(const BF & aConnector)
-	{
-		mConnectors.append( aConnector );
-	}
-
-	inline void saveConnector(Connector * aConnector)
-	{
-		mConnectors.append( BF(aConnector) );
-	}
-
-
-	/**
-	 * [ CONST ] ITERATOR
-	 */
-	inline const_connector_iterator connector_begin() const
-	{
-		return( mConnectors.begin() );
-	}
-
-	inline const_connector_iterator connector_end() const
-	{
-		return( mConnectors.end() );
 	}
 
 
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & out) const;
+	void toStream(OutStream & out) const override;
 
 };
 

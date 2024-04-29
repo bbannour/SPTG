@@ -20,14 +20,16 @@ namespace sep
 
 
 const Symbol & TableOfSymbol::getByFQNameID(
-		const std::string & aFullyQualifiedNameID) const
+		const std::string & aFullyQualifiedNameID,
+		bool enabledOnlyLocationComparisonElse) const
 {
 	ContainerOfSymbol::const_iterator it = ContainerOfSymbol::begin();
 	ContainerOfSymbol::const_iterator endIt = ContainerOfSymbol::end();
 	for( ; it != endIt ; ++it )
 	{
 		// STRICT:> compare LOCATOR & LOCATION [true:- retry only only LOCATION]
-		if( (*it).fqnEquals( aFullyQualifiedNameID , true ) )
+		if( (*it).fqnEquals( aFullyQualifiedNameID ,
+				enabledOnlyLocationComparisonElse ) )
 		{
 			return( *it );
 		}
@@ -52,10 +54,10 @@ const Symbol & TableOfSymbol::getByQualifiedNameID(
 }
 
 
-avm_size_t TableOfSymbol::getByQualifiedNameID(
+std::size_t TableOfSymbol::getByQualifiedNameID(
 		const std::string & aQualifiedNameID, ListOfSymbol & listofFound) const
 {
-	avm_size_t count = 0;
+	std::size_t count = 0;
 
 	ContainerOfSymbol::const_iterator it = ContainerOfSymbol::begin();
 	ContainerOfSymbol::const_iterator endIt = ContainerOfSymbol::end();
@@ -73,13 +75,13 @@ avm_size_t TableOfSymbol::getByQualifiedNameID(
 }
 
 
-const Symbol & TableOfSymbol::getByNameID(const std::string & id) const
+const Symbol & TableOfSymbol::getByNameID(const std::string & aNameID) const
 {
 	ContainerOfSymbol::const_iterator it = ContainerOfSymbol::begin();
 	ContainerOfSymbol::const_iterator endIt = ContainerOfSymbol::end();
 	for( ; it != endIt ; ++it )
 	{
-		if( (*it).getNameID() == id )
+		if( (*it).getNameID() == aNameID )
 		{
 			return( *it );
 		}
@@ -88,16 +90,16 @@ const Symbol & TableOfSymbol::getByNameID(const std::string & id) const
 }
 
 
-avm_size_t TableOfSymbol::getByNameID(
-		const std::string & id, ListOfSymbol & listofFound) const
+std::size_t TableOfSymbol::getByNameID(
+		const std::string & aNameID, ListOfSymbol & listofFound) const
 {
-	avm_size_t count = 0;
+	std::size_t count = 0;
 
 	ContainerOfSymbol::const_iterator it = ContainerOfSymbol::begin();
 	ContainerOfSymbol::const_iterator endIt = ContainerOfSymbol::end();
 	for( ; it != endIt ; ++it )
 	{
-		if( (*it).getNameID() == id )
+		if( (*it).getNameID() == aNameID )
 		{
 			listofFound.append( *it );
 
@@ -110,7 +112,7 @@ avm_size_t TableOfSymbol::getByNameID(
 
 
 const Symbol & TableOfSymbol::getByAstElement(
-		const ObjectElement * astElement) const
+		const ObjectElement & astElement) const
 {
 	ContainerOfSymbol::const_iterator it = ContainerOfSymbol::begin();
 	ContainerOfSymbol::const_iterator endIt = ContainerOfSymbol::end();
@@ -126,22 +128,65 @@ const Symbol & TableOfSymbol::getByAstElement(
 
 
 /**
+ * GETTER
+ * Element by aREGEX
+ */
+std::size_t TableOfSymbol::getByQualifiedNameREGEX(
+		const std::string & aREGEX, ListOfSymbol & listofFound) const
+{
+	std::size_t count = 0;
+
+	ContainerOfSymbol::const_iterator it = ContainerOfSymbol::begin();
+	ContainerOfSymbol::const_iterator endIt = ContainerOfSymbol::end();
+	for( ; it != endIt ; ++it )
+	{
+		if( (*it).fqnRegexMatch(aREGEX) )
+		{
+			listofFound.append( *it );
+
+			++count;
+		}
+	}
+
+	return( count );
+}
+
+std::size_t TableOfSymbol::getByNameREGEX(
+		const std::string & aREGEX, ListOfSymbol & listofFound) const
+{
+	std::size_t count = 0;
+
+	ContainerOfSymbol::const_iterator it = ContainerOfSymbol::begin();
+	ContainerOfSymbol::const_iterator endIt = ContainerOfSymbol::end();
+	for( ; it != endIt ; ++it )
+	{
+		if( (*it).nameRegexMatch(aREGEX) )
+		{
+			listofFound.append( *it );
+
+			++count;
+		}
+	}
+
+	return( count );
+}
+
+
+/**
  * contains a particular element
  */
 bool TableOfSymbol::contains(ConstPointerBaseT aSymbol) const
 {
 	if( (aSymbol->getOffset() < size())
-		&& (get(aSymbol->getOffset()) == aSymbol) )
+		&& (get(aSymbol->getOffset()).isTEQ( aSymbol ) ) )
 	{
 		return( true );
 	}
 	else
 	{
-		ContainerOfSymbol::const_iterator it = BaseVector::begin();
-		ContainerOfSymbol::const_iterator endIt = BaseVector::end();
-		for( ; it != endIt ; ++it )
+		for( const auto & itSymbol : (* this) )
 		{
-			if( (*it) == aSymbol )
+			if( itSymbol.isTEQ( aSymbol ) )
 			{
 				return( true );
 			}
@@ -154,11 +199,9 @@ bool TableOfSymbol::contains(ConstPointerBaseT aSymbol) const
 
 bool TableOfSymbol::contains(const BF & aSymbol) const
 {
-	ContainerOfSymbol::const_iterator it = BaseVector::begin();
-	ContainerOfSymbol::const_iterator endIt = BaseVector::end();
-	for( ; it != endIt ; ++it )
+	for( const auto & itSymbol : (* this) )
 	{
-		if( (*it).rawSymbol() == aSymbol.raw_pointer() )
+		if( itSymbol.isTEQ( aSymbol ) )
 		{
 			return( true );
 		}

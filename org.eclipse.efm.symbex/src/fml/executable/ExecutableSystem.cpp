@@ -26,7 +26,6 @@
 namespace sep
 {
 
-
 /**
  * SETTER
  * updateFullyQualifiedNameID()
@@ -96,12 +95,21 @@ void ExecutableSystem::toStream(OutStream & os) const
 
 	mParametersExecutable.toStream(os);
 
-	TableOfExecutableForm::const_raw_iterator itExec = mExecutables.begin();
-	for( ; itExec != mExecutables.end() ; ++itExec )
+	TableOfExecutableForm::const_raw_iterator itExecutable = mExecutables.begin();
+	TableOfExecutableForm::const_raw_iterator endExecutable = mExecutables.end();
+	for( ; itExecutable != endExecutable ; ++itExecutable )
 	{
 		os << EOL;
-		(itExec)->toStream(os);
+		(itExecutable)->toStream(os);
 	}
+
+//	auto itExecutable = mExecutables.rbegin();
+//	auto endExecutable = mExecutables.rend();
+//	for( ; itExecutable != endExecutable ; ++itExecutable )
+//	{
+//		os << EOL;
+//		(itExecutable)->toStream(os);
+//	}
 
 	os << EOL_DECR_INDENT << "// " << TAB << "}" << EOL_FLUSH;
 }

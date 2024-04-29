@@ -48,7 +48,7 @@ public:
 	 * Default
 	 */
 	SymbexProcessor(SymbexDispatcher & aSymbexDispatcher,
-			WObject * wfParameterObject,
+			const WObject * wfParameterObject,
 			SymbexControllerUnitManager & aControllerUnitManager);
 
 
@@ -61,10 +61,17 @@ public:
 	}
 
 
+	////////////////////////////////////////////////////////////////////////////
+	// CONFIGURE API
+	////////////////////////////////////////////////////////////////////////////
+
+	bool configure() override;
+
+
 	/**
 	 * Thread main Run Method
 	 */
-	virtual void operator()();
+	virtual void operator()() override;
 
 
 	/**
@@ -75,6 +82,7 @@ public:
 
 	void runStep();
 	void runStep(ExecutionContext & anEC);
+	void runStep(ExecutionContext & anEC, const BF & aRunnableElement);
 
 
 	/**

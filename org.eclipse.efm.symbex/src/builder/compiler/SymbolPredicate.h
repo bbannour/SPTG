@@ -16,6 +16,7 @@
 #ifndef BUILDER_COMPILER_SYMBOLPREDICATE_H_
 #define BUILDER_COMPILER_SYMBOLPREDICATE_H_
 
+#include <fml/common/ObjectElement.h>
 #include <fml/executable/BaseCompiledForm.h>
 
 #include <fml/symbol/Symbol.h>
@@ -44,7 +45,7 @@ public:
 	/**
 	 * OPERATOR API
 	 */
-	virtual bool operator() (const BaseCompiledForm * aSymbol) const = 0;
+	virtual bool operator() (const ObjectElement & aSymbol) const = 0;
 
 	virtual bool operator() (const Symbol & aSymbol) const = 0;
 
@@ -81,12 +82,13 @@ public:
 	/**
 	 * OPERATOR
 	 */
-	inline virtual bool operator() (const BaseCompiledForm * aSymbol) const
+	inline virtual bool operator() (
+			const ObjectElement & aSymbol) const override
 	{
-		return( aSymbol->fqnEndsWith(mQualifiedNameID) );
+		return( aSymbol.fqnEndsWith(mQualifiedNameID) );
 	}
 
-	inline virtual bool operator() (const Symbol & aSymbol) const
+	inline virtual bool operator() (const Symbol & aSymbol) const override
 	{
 		return( aSymbol.fqnEndsWith(mQualifiedNameID) );
 	}
@@ -110,12 +112,13 @@ public:
 	/**
 	 * OPERATOR
 	 */
-	inline virtual bool operator() (const BaseCompiledForm * aSymbol) const
+	inline virtual bool operator() (
+			const ObjectElement & aSymbol) const override
 	{
-		return( aSymbol->getNameID() == mQualifiedNameID );
+		return( aSymbol.getNameID() == mQualifiedNameID );
 	}
 
-	inline virtual bool operator() (const Symbol & aSymbol) const
+	inline virtual bool operator() (const Symbol & aSymbol) const override
 	{
 		return( aSymbol.getNameID() == mQualifiedNameID );
 	}
@@ -140,12 +143,14 @@ public:
 	/**
 	 * OPERATOR
 	 */
-	inline virtual bool operator() (const BaseCompiledForm * aSymbol) const
+	inline virtual bool operator() (
+			const ObjectElement & aSymbol) const override
 	{
-		return( aSymbol->getAstFullyQualifiedNameID() == mQualifiedNameID );
+		return( static_cast< const BaseCompiledForm & >(aSymbol)
+				.getAstFullyQualifiedNameID() == mQualifiedNameID );
 	}
 
-	inline virtual bool operator() (const Symbol & aSymbol) const
+	inline virtual bool operator() (const Symbol & aSymbol) const override
 	{
 		return( aSymbol.getAstFullyQualifiedNameID() == mQualifiedNameID );
 	}
@@ -161,12 +166,12 @@ protected:
 	/**
 	 * ATTRIBUTE
 	 */
-	const ObjectElement * mElement;
+	const ObjectElement & mAstElement;
 
 public:
-	SymbolPredicateByCompiledElement(const ObjectElement * anElement)
+	SymbolPredicateByCompiledElement(const ObjectElement & anElement)
 	: SymbolPredicate( ),
-	  mElement(anElement)
+	  mAstElement(anElement)
 	{
 		//!! NOTHING
 	}
@@ -178,14 +183,16 @@ public:
 	/**
 	 * OPERATOR
 	 */
-	inline virtual bool operator() (const BaseCompiledForm * aSymbol) const
+	inline virtual bool operator() (
+			const ObjectElement & aSymbol) const override
 	{
-		return( aSymbol->isAstElement( mElement ) );
+		return( static_cast< const BaseCompiledForm & >(aSymbol)
+				.isAstElement( mAstElement ) );
 	}
 
-	inline virtual bool operator() (const Symbol & aSymbol) const
+	inline virtual bool operator() (const Symbol & aSymbol) const override
 	{
-		return( aSymbol.isAstElement( mElement ) );
+		return( aSymbol.isAstElement( mAstElement ) );
 	}
 
 };

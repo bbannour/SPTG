@@ -60,14 +60,14 @@ public:
 	 */
 	void postcompileExecutableSystem();
 
-	void optimizeExecutable(ExecutableForm * anExecutableForm);
+	void optimizeExecutable(ExecutableForm & anExecutableForm);
 
-	void optimizeAllBehavioralRoutines(ExecutableForm * anExecutableForm);
+	void optimizeAllBehavioralRoutines(ExecutableForm & anExecutableForm);
 
-	void optimizeInstance(ExecutableForm * anExecutableForm);
+	void optimizeInstance(ExecutableForm & anExecutableForm);
 
 	void optimizeInstance(
-			ExecutableForm * theExecutableContainer,
+			ExecutableForm & theExecutableContainer,
 			InstanceOfMachine * anInstance);
 
 
@@ -75,20 +75,18 @@ public:
 	/**
 	 * COMPILING EXECUTABLE SCHEDULER
 	 */
-	BFCode compileSchedulerRoutine(
-			ExecutableForm * anExecutableForm,
-			ListOfInstanceOfMachine & usedInstance,
-			const BFCode & aSchedulerCode);
+	BFCode compileSchedulerRoutine(ExecutableForm & anExecutableForm,
+			ListOfInstanceOfMachine & usedInstance, BFCode & aSchedulerCode);
 
-	void compileSchedulerRoutine(ExecutableForm * anExecutableForm,
+	void compileSchedulerRoutine(ExecutableForm & anExecutableForm,
 			ListOfInstanceOfMachine & usedInstance,
-			const BFCode & aSchedulerCode, BFCode & compilCode);
+			BFCode & aSchedulerCode, BFCode & compilCode);
 
 	BFCode compileSchedulerRoutine(
-			ExecutableForm * anExecutableForm, const BFCode & aCode);
+			ExecutableForm & anExecutableForm, BFCode & aCode);
 
 	BFCode optimizeSchedulingRoutine(
-			ExecutableForm * anExecutableForm, const BFCode & aSchedulerCode);
+			ExecutableForm & anExecutableForm, BFCode & aSchedulerCode);
 
 };
 

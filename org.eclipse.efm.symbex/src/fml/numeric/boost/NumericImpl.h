@@ -699,6 +699,16 @@ inline Float inverse(const Float & num)
 }
 
 
+/**
+ * operator%
+ */
+// Integer % Integer
+inline Integer operator%(const Integer & num1, const Integer & num2)
+{
+	return( Integer(num1.getValue() % num2.getValue()) );
+}
+
+
 } /* namespace numeric */
 } /* namespace sep */
 

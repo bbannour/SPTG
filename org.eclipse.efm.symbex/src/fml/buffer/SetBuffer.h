@@ -19,19 +19,24 @@ namespace sep
 {
 
 
-class SetBuffer : public BaseBufferQueue
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// BaseSetQueue for SetBuffer and MultisetBuffer
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+
+class BaseSetQueue : public BaseBufferQueue
 {
-
-	AVM_DECLARE_CLONABLE_CLASS( SetBuffer )
-
 
 public:
 	/**
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	SetBuffer(InstanceOfBuffer * aBuffer)
-	: BaseBufferQueue(CLASS_KIND_T( SetBuffer ), aBuffer)
+	BaseSetQueue(class_kind_t aClassKind, const InstanceOfBuffer & aBuffer)
+	: BaseBufferQueue(aClassKind, aBuffer)
 	{
 		//!! NOTHING
 	}
@@ -40,8 +45,8 @@ public:
 	 * CONSTRUCTOR
 	 * Copy
 	 */
-	SetBuffer(const SetBuffer & aSet )
-	: BaseBufferQueue( aSet )
+	BaseSetQueue(const BaseSetQueue & aBuffer )
+	: BaseBufferQueue( aBuffer )
 	{
 		//!! NOTHING
 	}
@@ -50,32 +55,7 @@ public:
 	/**
 	 * BUFFER MANAGEMENT
 	 */
-	inline virtual bool push(const Message & aMsg)
-	{
-		if( size() < capacity() )
-		{
-			// Assume that is a set
-			ListOfMessage::const_iterator it = mMessages.begin();
-			ListOfMessage::const_iterator itEnd = mMessages.end();
-			for( ; it != itEnd ; ++it )
-			{
-				if( (*it).equals(aMsg) )
-				{
-					return( true );
-				}
-			}
-
-			mMessages.push_back(aMsg);
-
-			return( true );
-		}
-
-		return( false );
-	}
-
-
-
-	inline virtual bool top(const Message & aMsg)
+	inline virtual bool top(const Message & aMsg) override
 	{
 		if( nonempty() )
 		{
@@ -87,7 +67,7 @@ public:
 		return( false );
 	}
 
-	inline virtual const Message & top() const
+	inline virtual const Message & top() const override
 	{
 		if( nonempty() )
 		{
@@ -97,16 +77,16 @@ public:
 		return( Message::_NULL_ );
 	}
 
-	inline virtual const Message & top(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const
+	inline virtual const Message & top(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) const override
 	{
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; it != itEnd ; ++it )
+		ListOfMessage::const_iterator itMessage = mMessages.begin();
+		ListOfMessage::const_iterator endMessage = mMessages.end();
+		for( ; itMessage != endMessage ; ++itMessage )
 		{
-			if( (*it).isCompatible(mid, aReceiverRID) )
+			if( (*itMessage).isCompatible(mid, aReceiverRID) )
 			{
-				return( (*it) );
+				return( (*itMessage) );
 			}
 		}
 
@@ -114,7 +94,7 @@ public:
 	}
 
 
-	inline virtual Message pop()
+	inline virtual Message pop() override
 	{
 		if( nonempty() )
 		{
@@ -127,18 +107,40 @@ public:
 	}
 
 
-	inline virtual Message pop(avm_size_t mid,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+	inline virtual Message pop(std::size_t mid,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
-		ListOfMessage::iterator it = mMessages.begin();
-		ListOfMessage::iterator itEnd = mMessages.end();
-		for( ; it != itEnd ; ++it )
+		ListOfMessage::iterator itMessage = mMessages.begin();
+		ListOfMessage::iterator endMessage = mMessages.end();
+		for( ; itMessage != endMessage ; ++itMessage )
 		{
-			if( (*it).isCompatible(mid, aReceiverRID) )
+			if( (*itMessage).isCompatible(mid, aReceiverRID) )
 			{
-				Message aMsg = (*it);
+				Message aMsg = (*itMessage);
 
-				mMessages.erase(it);
+				mMessages.erase(itMessage);
+
+				return( aMsg );
+			}
+		}
+
+		return( Message::_NULL_ );
+	}
+
+	inline virtual Message pop(std::size_t mid, std::size_t minOccurrence,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
+	{
+		std::size_t occurrence = 0;
+		ListOfMessage::iterator itMessage = mMessages.begin();
+		ListOfMessage::iterator endMessage = mMessages.end();
+		for( ; itMessage != endMessage ; ++itMessage , ++occurrence )
+		{
+			if(  (occurrence >= minOccurrence)
+				&& (*itMessage).isCompatible(mid, aReceiverRID) )
+			{
+				Message aMsg = (*itMessage);
+
+				mMessages.erase(itMessage);
 
 				return( aMsg );
 			}
@@ -148,19 +150,38 @@ public:
 	}
 
 
-	inline virtual void popBefore(const RuntimeID & aReceiverRID)
+	inline virtual void pop(std::size_t mid, List< Message > & messages,
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
+	{
+		ListOfMessage::iterator itMessage = mMessages.begin();
+		ListOfMessage::iterator endMessage = mMessages.end();
+		for( ; itMessage != endMessage ; )
+		{
+			if( (*itMessage).isCompatible(mid, aReceiverRID) )
+			{
+				messages.append( *itMessage );
+
+				itMessage = mMessages.erase(itMessage);
+			}
+			else
+			{
+				++itMessage;
+			}
+		}
+	}
+
+
+	inline virtual void popBefore(const RuntimeID & aReceiverRID) override
 	{
 		remove(aReceiverRID);
 	}
 
 	inline virtual void popBefore(const ListOfInstanceOfPort & ieComs,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itMessage : mMessages )
 		{
-			if( (*it).isCompatible(ieComs, aReceiverRID) )
+			if( itMessage.isCompatible(ieComs, aReceiverRID) )
 			{
 				return;
 			}
@@ -170,13 +191,11 @@ public:
 	}
 
 	inline virtual void popBefore(const ListOfSizeT & ieComs,
-			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL)
+			const RuntimeID & aReceiverRID = RuntimeID::REF_NULL) override
 	{
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itMessage : mMessages )
 		{
-			if( (*it).isCompatible(ieComs, aReceiverRID) )
+			if( itMessage.isCompatible(ieComs, aReceiverRID) )
 			{
 				return;
 			}
@@ -190,21 +209,128 @@ public:
 	 * copyTo
 	 * restore
 	 */
-	inline virtual void copyTo(BaseBufferForm & aBuffer) const
+	inline virtual void copyTo(BaseBufferForm & aBuffer) const override
 	{
-		ListOfMessage::const_iterator it = mMessages.begin();
-		ListOfMessage::const_iterator itEnd = mMessages.end();
-		for( ; it != itEnd ; ++it )
+		for( const auto & itMessage : mMessages )
 		{
-			aBuffer.push( *it );
+			aBuffer.push( itMessage );
 		}
 	}
 
-	inline virtual void restore(ListOfMessage & listOfMessage)
+	inline virtual void restore(ListOfMessage & listOfMessage) override
 	{
 		mMessages.splice( listOfMessage );
 	}
 
+
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// SetBuffer
+////////////////////////////////////////////////////////////////////////////////
+
+class SetBuffer : public BaseSetQueue
+{
+
+	AVM_DECLARE_CLONABLE_CLASS( SetBuffer )
+
+
+public:
+	/**
+	 * CONSTRUCTOR
+	 * Default
+	 */
+	SetBuffer(const InstanceOfBuffer & aBuffer)
+	: BaseSetQueue(CLASS_KIND_T( SetBuffer ), aBuffer)
+	{
+		//!! NOTHING
+	}
+
+	/**
+	 * CONSTRUCTOR
+	 * Copy
+	 */
+	SetBuffer(const SetBuffer & aSet )
+	: BaseSetQueue( aSet )
+	{
+		//!! NOTHING
+	}
+
+
+	/**
+	 * BUFFER MANAGEMENT
+	 */
+	inline virtual bool push(const Message & aMsg) override
+	{
+		if( size() < capacity() )
+		{
+			// Assume that is a set
+			for( const auto & itMessage : mMessages )
+			{
+				if( itMessage.equals(aMsg) )
+				{
+					return( true );
+				}
+			}
+
+			mMessages.push_back(aMsg);
+
+			return( true );
+		}
+
+		return( false );
+	}
+
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// MultisetBuffer
+////////////////////////////////////////////////////////////////////////////////
+
+class MultisetBuffer : public BaseSetQueue
+{
+
+	AVM_DECLARE_CLONABLE_CLASS( MultisetBuffer )
+
+
+public:
+	/**
+	 * CONSTRUCTOR
+	 * Default
+	 */
+	MultisetBuffer(const InstanceOfBuffer & aBuffer)
+	: BaseSetQueue(CLASS_KIND_T( MultisetBuffer ), aBuffer)
+	{
+		//!! NOTHING
+	}
+
+	/**
+	 * CONSTRUCTOR
+	 * Copy
+	 */
+	MultisetBuffer(const MultisetBuffer & aMultiset )
+	: BaseSetQueue( aMultiset )
+	{
+		//!! NOTHING
+	}
+
+
+	/**
+	 * BUFFER MANAGEMENT
+	 */
+	inline virtual bool push(const Message & aMsg) override
+	{
+		if( size() < capacity() )
+		{
+			mMessages.push_back(aMsg);
+
+			return( true );
+		}
+
+		return( false );
+	}
 
 };
 

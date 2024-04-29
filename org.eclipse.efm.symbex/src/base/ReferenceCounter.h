@@ -31,7 +31,7 @@ protected:
 	/**
 	 * ATTRIBUTE
 	 */
-	avm_uint32_t mReferenceCount;
+	std::uint32_t mReferenceCount;
 
 
 public:
@@ -39,7 +39,7 @@ public:
 	 * CONSTRUCTOR
 	 * Default
 	 */
-	ReferenceCounter( avm_uint32_t count = 1 )
+	ReferenceCounter( std::uint32_t count = 1 )
 	: mReferenceCount( count )
 	{
 			//!! NOTHING
@@ -83,12 +83,12 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	 * GETTER - SETTER
 	 * mReferenceCount
 	 */
-	inline avm_uint32_t getRefCount() const
+	inline std::uint32_t getRefCount() const
 	{
 		return( mReferenceCount );
 	}
 
-	inline void setRefCount(avm_uint32_t count)
+	inline void setRefCount(std::uint32_t count)
 	{
 		mReferenceCount = count;
 	}
@@ -98,12 +98,12 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	 * REFERCENCE COUNT
 	 * MANAGEMENT
 	 */
-	inline virtual void decrRefCount()
+	inline void decrRefCount()
 	{
 		--mReferenceCount;
 	}
 
-	inline virtual void incrRefCount()
+	inline void incrRefCount()
 	{
 		++mReferenceCount;
 	}
@@ -150,6 +150,25 @@ AVM_ENDIF_DEBUG_FLAG( REFERENCE_COUNTING )
 	}
 
 };
+
+
+/**
+ * MEMORY MANAGEMENT
+ * INCR - DECR
+ * REFCOUNT
+ */
+
+template< class T >
+T * incrReferenceCount(T * anElement)
+{
+	if( anElement != nullptr )
+	{
+		anElement->incrRefCount();
+	}
+
+	return( anElement );
+}
+
 
 
 } /* namespace sep */

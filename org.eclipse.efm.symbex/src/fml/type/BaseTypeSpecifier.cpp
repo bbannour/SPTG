@@ -85,14 +85,28 @@ bool BaseTypeSpecifier::couldGenerateConstraint() const
 		}
 
 		case TYPE_POS_INTEGER_SPECIFIER:
+		case TYPE_POS_RATIONAL_SPECIFIER:
+		case TYPE_POS_FLOAT_SPECIFIER:
+		case TYPE_POS_REAL_SPECIFIER:
+
 		case TYPE_UINTEGER_SPECIFIER:
 		case TYPE_URATIONAL_SPECIFIER:
-//		case TYPE_CONTINUOUS_TIME_SPECIFIER:
-//		case TYPE_DISCRETE_TIME_SPECIFIER:
 		case TYPE_UFLOAT_SPECIFIER:
 		case TYPE_UREAL_SPECIFIER:
+
+		case TYPE_CLOCK_SPECIFIER:
+		case TYPE_TIME_SPECIFIER:
+
+		case TYPE_CONTINUOUS_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
+		case TYPE_DISCRETE_TIME_SPECIFIER:
 		{
 			return( true );
+		}
+
+		case TYPE_ALIAS_SPECIFIER:
+		{
+			return( referedTypeSpecifier().couldGenerateConstraint() );
 		}
 
 		default:
@@ -103,25 +117,9 @@ bool BaseTypeSpecifier::couldGenerateConstraint() const
 }
 
 
-
-
-inline static avm_integer_t pow2(avm_size_t n)
+BF BaseTypeSpecifier::minIntegerValue() const
 {
-	return( 1 << n );
-
-//	avm_integer_t res = 1;
-//	for( ; 0 < n; --n )
-//	{
-//		res *= 2;
-//	}
-//	return( res );
-}
-
-
-
-avm_integer_t BaseTypeSpecifier::minIntegerValue() const
-{
-	const avm_size_t dim = getBitSize();
+	const std::size_t dim = getBitSize();
 
 	switch( mSpecifierKind )
 	{
@@ -130,36 +128,42 @@ avm_integer_t BaseTypeSpecifier::minIntegerValue() const
 //			if( hasBitSizeConstraint() )
 			if( (dim > 0) && (dim <= 64) )
 			{
-				return( - pow2(dim - 1) );
+				return( ExpressionConstructorNative::uminusExpr(
+						ExpressionConstructorNative::newUInteger(2, (dim - 1))) );
 			}
 			else
 			{
-				return( AVM_NUMERIC_MIN_INTEGER );
+				return( ExpressionConstant::INTEGER_MIN );
 			}
 		}
 
 		case TYPE_POS_INTEGER_SPECIFIER:
 		{
-			return( 1 );
+			return( ExpressionConstant::INTEGER_ONE);
 		}
 
 		case TYPE_UINTEGER_SPECIFIER:
 		case TYPE_DISCRETE_TIME_SPECIFIER:
 		{
-			return( 0 );
+			return( ExpressionConstant::INTEGER_ZERO );
+		}
+
+		case TYPE_ALIAS_SPECIFIER:
+		{
+			return( thisTypeSpecifier().referedTypeSpecifier().minIntegerValue() );
 		}
 
 		default:
 		{
-			return( AVM_NUMERIC_MIN_INTEGER );
+			return( ExpressionConstant::INTEGER_MIN );
 		}
 	}
 }
 
 
-avm_uinteger_t BaseTypeSpecifier::maxIntegerValue() const
+BF BaseTypeSpecifier::maxIntegerValue() const
 {
-	const avm_size_t dim = getBitSize();
+	const std::size_t dim = getBitSize();
 
 	switch( mSpecifierKind )
 	{
@@ -168,11 +172,13 @@ avm_uinteger_t BaseTypeSpecifier::maxIntegerValue() const
 //			if( hasBitSizeConstraint() )
 			if( (dim > 0) && (dim <= 64) )
 			{
-				return( pow2(dim - 1) - 1 );
+				return( ExpressionConstructorNative::minusExpr(
+						ExpressionConstructorNative::newUInteger(2, (dim - 1)),
+						ExpressionConstant::INTEGER_ONE) );
 			}
 			else
 			{
-				return( AVM_NUMERIC_MAX_INTEGER );
+				return( ExpressionConstant::INTEGER_MAX );
 			}
 		}
 
@@ -183,17 +189,22 @@ avm_uinteger_t BaseTypeSpecifier::maxIntegerValue() const
 //			if( hasBitSizeConstraint() )
 			if( (dim > 0) && (dim <= 64) )
 			{
-				return( pow2(dim) );
+				return( ExpressionConstructorNative::newUInteger(2, dim) );
 			}
 			else
 			{
-				return( AVM_NUMERIC_MAX_UINTEGER );
+				return( ExpressionConstant::UINTEGER_MAX );
 			}
+		}
+
+		case TYPE_ALIAS_SPECIFIER:
+		{
+			return( thisTypeSpecifier().referedTypeSpecifier().maxIntegerValue() );
 		}
 
 		default:
 		{
-			return( AVM_NUMERIC_MAX_UINTEGER );
+			return( ExpressionConstant::INTEGER_MAX );
 		}
 	}
 }
@@ -210,7 +221,7 @@ BF BaseTypeSpecifier::genConstraint(const BF & aParam) const
 				<< SEND_EXIT;
 	}
 
-	const avm_size_t dim = getBitSize();
+	const std::size_t dim = getBitSize();
 
 	switch( mSpecifierKind )
 	{
@@ -222,13 +233,14 @@ BF BaseTypeSpecifier::genConstraint(const BF & aParam) const
 //			if( hasBitSizeConstraint() )
 			if( (dim > 0) && (dim <= 64) )
 			{
+				BF bound = ExpressionConstructorNative::newUInteger(2, (dim - 1));
+
 				return( ExpressionConstructorNative::andExpr(
 						ExpressionConstructorNative::gteExpr(aParam,
-								ExpressionConstructorNative::newInteger(
-										(- pow2(dim - 1)))),
+								ExpressionConstructorNative::uminusExpr(bound)),
 						ExpressionConstructorNative::lteExpr(aParam,
-								ExpressionConstructorNative::newInteger(
-										pow2(dim - 1) - 1))) );
+								ExpressionConstructorNative::minusExpr(bound,
+										ExpressionConstant::INTEGER_ONE)) ) );
 			}
 			else
 			{
@@ -238,7 +250,10 @@ BF BaseTypeSpecifier::genConstraint(const BF & aParam) const
 
 		case TYPE_UINTEGER_SPECIFIER:
 		case TYPE_URATIONAL_SPECIFIER:
+		case TYPE_CLOCK_SPECIFIER:
+		case TYPE_TIME_SPECIFIER:
 		case TYPE_CONTINUOUS_TIME_SPECIFIER:
+		case TYPE_DENSE_TIME_SPECIFIER:
 		case TYPE_DISCRETE_TIME_SPECIFIER:
 		case TYPE_UFLOAT_SPECIFIER:
 		case TYPE_UREAL_SPECIFIER:
@@ -250,8 +265,8 @@ BF BaseTypeSpecifier::genConstraint(const BF & aParam) const
 						ExpressionConstructorNative::gteExpr(aParam,
 								ExpressionConstant::INTEGER_ZERO),
 						ExpressionConstructorNative::lteExpr(aParam,
-								ExpressionConstructorNative::newInteger(
-										pow2(dim)))) );
+								ExpressionConstructorNative::newUInteger(
+										2, dim))) );
 			}
 			else
 			{
@@ -261,6 +276,9 @@ BF BaseTypeSpecifier::genConstraint(const BF & aParam) const
 		}
 
 		case TYPE_POS_INTEGER_SPECIFIER:
+		case TYPE_POS_RATIONAL_SPECIFIER:
+		case TYPE_POS_FLOAT_SPECIFIER:
+		case TYPE_POS_REAL_SPECIFIER:
 		{
 //			if( hasBitSizeConstraint() )
 			if( (dim > 0) && (dim <= 64) )
@@ -269,14 +287,19 @@ BF BaseTypeSpecifier::genConstraint(const BF & aParam) const
 						ExpressionConstructorNative::gtExpr(aParam,
 								ExpressionConstant::INTEGER_ZERO),
 						ExpressionConstructorNative::lteExpr(aParam,
-								ExpressionConstructorNative::newInteger(
-										pow2(dim)))) );
+								ExpressionConstructorNative::newUInteger(
+										2, dim))) );
 			}
 			else
 			{
 				return( ExpressionConstructorNative::gtExpr(aParam,
 						ExpressionConstant::INTEGER_ZERO) );
 			}
+		}
+
+		case TYPE_ALIAS_SPECIFIER:
+		{
+			return( referedTypeSpecifier().genConstraint(aParam) );
 		}
 
 		default:
@@ -291,10 +314,10 @@ BF BaseTypeSpecifier::genConstraint(const BF & aParam) const
  * GETTER
  * refered (as typedef) TypeSpecifier
  */
-BaseTypeSpecifier * BaseTypeSpecifier::referedTypeSpecifier()
+const BaseTypeSpecifier & BaseTypeSpecifier::referedTypeSpecifier() const
 {
-	return( this->isTypedAlias() ?
-			as< TypeAliasSpecifier >()->targetTypeSpecifier() : this );
+	return( this->is< TypeAliasSpecifier >() ?
+			to< TypeAliasSpecifier >().targetTypeSpecifier() : (* this) );
 }
 
 
@@ -306,7 +329,7 @@ void BaseTypeSpecifier::formatStream(
 {
 	if( bfValue.is< ArrayBF >() )
 	{
-		formatStream(out, bfValue.as_ref< ArrayBF >());
+		formatStream(out, bfValue.as< ArrayBF >());
 	}
 	else
 	{
@@ -318,7 +341,7 @@ void BaseTypeSpecifier::formatStream(
 		OutStream & out, const ArrayBF & arrayValue) const
 {
 	formatStream(out, arrayValue[0]);
-	for( avm_size_t offset = 1 ; offset < arrayValue.size() ; ++offset )
+	for( std::size_t offset = 1 ; offset < arrayValue.size() ; ++offset )
 	{
 		out << out.VALUE_STRUCT_CSS.SEPARATOR;
 		formatStream(out, arrayValue[offset]);

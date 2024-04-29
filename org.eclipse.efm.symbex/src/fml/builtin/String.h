@@ -41,6 +41,8 @@ public:
 
 	static bool USE_BACKSLASH_QUOTE;
 
+	static bool ENABLE_QUOTE_PRINTING;
+
 	static const char BACKSLASH_CHAR;
 
 
@@ -146,7 +148,7 @@ public:
 	/**
 	 * Operation
 	 */
-	inline virtual avm_size_t size() const
+	inline virtual std::size_t size() const override
 	{
 		return( mValue.size() );
 	}
@@ -154,9 +156,9 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
-		if( mQuoteChar != '\0' )
+		if( ENABLE_QUOTE_PRINTING && (mQuoteChar != '\0') )
 		{
 			if( USE_BACKSLASH_QUOTE )
 			{
@@ -177,9 +179,9 @@ public:
 		os << EOL_FLUSH;
 	}
 
-	inline virtual std::string str() const
+	inline virtual std::string str() const override
 	{
-		if( mQuoteChar != '\0' )
+		if( ENABLE_QUOTE_PRINTING && (mQuoteChar != '\0') )
 		{
 			if( USE_BACKSLASH_QUOTE )
 			{
@@ -198,7 +200,7 @@ public:
 	}
 
 	inline virtual std::string strNum(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const override
 	{
 		return( str() );
 	}

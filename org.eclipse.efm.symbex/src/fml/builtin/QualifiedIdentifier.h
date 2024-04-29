@@ -104,12 +104,12 @@ public:
 	}
 
 
-	inline std::string getContainerQualifiedNameID()
+	inline std::string getContainerQualifiedNameID() const
 	{
 		return( NamedElement::getContainerQualifiedNameID(mValue) );
 	}
 
-	inline std::string getNameID()
+	inline std::string getNameID() const
 	{
 		return( NamedElement::extractNameID(mValue) );
 	}
@@ -148,7 +148,7 @@ public:
 	/**
 	 * Serialization
 	 */
-	inline virtual void toStream(OutStream & os) const
+	inline virtual void toStream(OutStream & os) const override
 	{
 		os << TAB << mValue;
 		if( mPositionalParameterFlag )
@@ -159,13 +159,13 @@ public:
 		os << EOL_FLUSH;
 	}
 
-	virtual std::string str() const
+	virtual std::string str() const override
 	{
 		return( mValue );
 	}
 
 	inline virtual std::string strNum(
-			avm_uint8_t precision = AVM_MUMERIC_PRECISION) const
+			std::uint8_t precision = AVM_MUMERIC_PRECISION) const override
 	{
 		return( mValue );
 	}

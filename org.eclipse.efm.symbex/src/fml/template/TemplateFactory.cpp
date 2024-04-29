@@ -28,7 +28,7 @@ void TemplateFactory::genProperty(Machine * machine)
 {
 	if( machine->getSpecifier().hasFeatureTimed() )
 	{
-		TimedMachine::genProperty(machine);
+		TimedMachine::genProperty(* machine);
 	}
 }
 
@@ -37,7 +37,7 @@ void TemplateFactory::genBehavior(Machine * machine)
 {
 	if( machine->getSpecifier().hasFeatureTimed() )
 	{
-		TimedMachine::genBehavior(machine);
+		TimedMachine::genBehavior(* machine);
 	}
 }
 

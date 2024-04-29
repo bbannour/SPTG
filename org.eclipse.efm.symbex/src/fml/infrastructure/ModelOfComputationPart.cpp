@@ -37,9 +37,9 @@ ModelOfComputationPart::ModelOfComputationPart(
 /**
  * Serialization
  */
-void ModelOfComputationPart::toStream(OutStream & os) const
+void ModelOfComputationPart::toStream(OutStream & out) const
 {
-	os << TAB << "@" << getNameID() << ":" << EOL;
+	out << TAB << "@" << getNameID() << ":" << EOL;
 }
 
 

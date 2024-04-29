@@ -13,6 +13,7 @@
 #ifndef EXECUTIONDATA_H_
 #define EXECUTIONDATA_H_
 
+#include <base/SmartPointer.h>
 #include <base/SmartTable.h>
 
 #include <common/AvmPointer.h>
@@ -52,170 +53,392 @@ class InstanceOfMachine;
 typedef SmartTable< RuntimeForm , DestroyElementPolicy >  TableOfRuntimeT;
 
 
-class ExecutionData :  public Element ,
+class ExecutionData :
 		AVM_INJECT_INSTANCE_COUNTER_CLASS( ExecutionData )
 {
-
-	AVM_DECLARE_CLONABLE_CLASS( ExecutionData )
-
 
 public:
 	/**
 	 * ATTRIBUTES
 	 * static
 	 */
-	static avm_size_t PARAM_MACHINE_RUNTIME_OFFSET;
+	static std::size_t PARAM_MACHINE_RUNTIME_OFFSET;
 
-	static avm_size_t SYSTEM_RUNTIME_OFFSET;
+	static std::size_t SYSTEM_RUNTIME_OFFSET;
+
+	/*
+	 * DEFAULT NULL REFERENCE
+	 */
+	static ExecutionData _NULL_;
+
+
+private:
+	/**
+	 * TYPEDEF
+	 */
+	typedef AvmPointer< TableOfRuntimeFormState , DestroyObjectPolicy >
+			APTableOfRuntimeFormState;
+
+	typedef AvmPointer< StackOfLocalRuntime , DestroyObjectPolicy >
+			APStackOfLocalRuntime;
+
+	class _ExecutionData_ :  public Element ,
+			AVM_INJECT_INSTANCE_COUNTER_CLASS( _ExecutionData_ )
+	{
+
+		AVM_DECLARE_CLONABLE_CLASS( _ExecutionData_ )
+
+	public:
+		/**
+		 * ATTRIBUTES
+		 */
+		ExecutionContext * mExecutionContext;
+
+		BF mPathCondition;
+		BF mPathTimedCondition;
+
+		bool mGlobalNodeConditionEnabledFlag;
+		bool mLocalNodeConditionEnabledFlag;
+
+		BF mNodeCondition;
+		BF mNodeTimedCondition;
+		BF mRunnableElementTrace;
+		BF mIOElementTrace;
+
+		BFCode mOnInit;
+		BFCode mOnSchedule;
+
+		TableOfRuntimeT mTableOfRuntime;
+
+		APTableOfRuntimeFormState mTableOfRFStateFlags;
+
+		APStackOfLocalRuntime mStackOfLocalRuntime;
+
+
+		// public:
+		RuntimeID mRID;
+		bool mPreserveRID;
+
+		// Routine Parameter[s] or Return Statement value[s]
+		BF mVALUE;
+
+		AVM_EXECUTION_ENDING_STATUS mAEES;
+
+		ExecutionLocationQueue mSTATEMENT_QUEUE;
+
+		ExecutionSynchronizationPoint * mEXEC_SYNC_POINT;
+
+
+		/**
+		 * CONSTRUCTOR
+		 * Default
+		 */
+		_ExecutionData_( std::size_t aMachineCount )
+		: Element( CLASS_KIND_T( ExecutionData ) ),
+		mExecutionContext( nullptr ),
+
+		mPathCondition( ExpressionConstant::BOOLEAN_TRUE ),
+		mPathTimedCondition( ExpressionConstant::BOOLEAN_TRUE ),
+
+		mGlobalNodeConditionEnabledFlag( false ),
+		mLocalNodeConditionEnabledFlag( false ),
+
+		mNodeCondition( ExpressionConstant::BOOLEAN_TRUE ),
+		mNodeTimedCondition( ExpressionConstant::BOOLEAN_TRUE ),
+
+		mRunnableElementTrace( ),
+		mIOElementTrace( ),
+
+		mOnInit( ),
+		mOnSchedule( ),
+
+		mTableOfRuntime( aMachineCount ),
+
+		mTableOfRFStateFlags( new TableOfRuntimeFormState(aMachineCount) ),
+		mStackOfLocalRuntime( ),
+
+		// public Attributes
+		mRID( ),
+		mPreserveRID( false ),
+
+		mVALUE( ),
+
+		mAEES( AEES_OK ),
+
+		mSTATEMENT_QUEUE( ),
+		mEXEC_SYNC_POINT( nullptr )
+		{
+			//!! NOTHING
+		}
+
+
+		/**
+		 * CONSTRUCTOR
+		 * Copy
+		 */
+		_ExecutionData_(const _ExecutionData_ & anED)
+		: Element( anED ),
+		mExecutionContext( anED.mExecutionContext ),
+
+		mPathCondition( anED.mPathCondition ),
+		mPathTimedCondition( anED.mPathTimedCondition ),
+
+		mGlobalNodeConditionEnabledFlag( anED.mGlobalNodeConditionEnabledFlag ),
+		mLocalNodeConditionEnabledFlag( anED.mLocalNodeConditionEnabledFlag ),
+
+		mNodeCondition( anED.mNodeCondition ),
+		mNodeTimedCondition( anED.mNodeTimedCondition ),
+
+		mRunnableElementTrace( anED.mRunnableElementTrace ),
+		mIOElementTrace( anED.mIOElementTrace ),
+
+		mOnInit( anED.mOnInit ),
+		mOnSchedule( anED.mOnSchedule ),
+
+		mTableOfRuntime( anED.mTableOfRuntime ),
+
+		mTableOfRFStateFlags( anED.mTableOfRFStateFlags ),
+		mStackOfLocalRuntime( anED.mStackOfLocalRuntime ),
+
+		// public Attributes
+		mRID(anED.mRID),
+		mPreserveRID( anED.mPreserveRID ),
+
+		mVALUE( anED.mVALUE ),
+
+		mAEES( anED.mAEES ),
+
+		mSTATEMENT_QUEUE( anED.mSTATEMENT_QUEUE ),
+		mEXEC_SYNC_POINT( (anED.mEXEC_SYNC_POINT != nullptr) ?
+				new ExecutionSynchronizationPoint(
+						*(anED.mEXEC_SYNC_POINT) ) : nullptr )
+		{
+			//!! NOTHING
+		}
+
+		/**
+		 * DESTRUCTOR
+		 */
+		virtual ~_ExecutionData_()
+		{
+			delete( mEXEC_SYNC_POINT );
+		}
+
+		/**
+		 * Serialization
+		 */
+		virtual void toStream(OutStream & out) const override
+		{
+			//!! NOTHING
+		}
+
+	};
+
 
 protected:
 	/**
-	 * ATTRIBUTES
+	 * ATTRIBUTE
 	 */
-	ExecutionContext * mExecutionContext;
-
-	BF mPathCondition;
-	BF mPathTimedCondition;
-
-	bool mGlobalNodeConditionEnabledFlag;
-	bool mLocalNodeConditionEnabledFlag;
-
-	BF mNodeCondition;
-	BF mNodeTimedCondition;
-	BF mRunnableElementTrace;
-	BF mIOElementTrace;
-
-	BFCode mOnInit;
-	BFCode mOnSchedule;
-
-	TableOfRuntimeT mTableOfRuntime;
-
-	APTableOfRuntimeFormState mTableOfRFStateFlags;
-
-	APStackOfLocalRuntime mStackOfLocalRuntime;
-
-public:
-	/**
-	 * ATTRIBUTES
-	 * public
-	 */
-	RuntimeID mRID;
-	bool mPreserveRID;
-
-	// Routine Parameter[s] or Return Statement value[s]
-	BF mVALUE;
-
-	AVM_EXEC_ENDING_STATUS mAEES;
-
-	ExecutionLocationQueue mSTATEMENT_QUEUE;
-
-	ExecutionSynchronizationPoint * mEXEC_SYNC_POINT;
-
+	XSmartPointer< _ExecutionData_ , DestroyElementPolicy > mSmartPtr;
 
 public:
 	/**
 	 * CONSTRUCTOR
-	 * Default
+	 * for _NULL_ reference
 	 */
-	ExecutionData( avm_size_t aMachineCount )
-	: Element( CLASS_KIND_T( ExecutionData ) ),
-	mExecutionContext( NULL ),
-
-	mPathCondition( ),
-	mPathTimedCondition( ),
-
-	mGlobalNodeConditionEnabledFlag( true ),
-	mLocalNodeConditionEnabledFlag( false ),
-
-	mNodeCondition( ),
-	mNodeTimedCondition( ),
-
-	mRunnableElementTrace( ),
-	mIOElementTrace( ),
-
-	mOnInit( ),
-	mOnSchedule( ),
-
-	mTableOfRuntime( aMachineCount ),
-
-	mTableOfRFStateFlags( new TableOfRuntimeFormState(aMachineCount) ),
-	mStackOfLocalRuntime( ),
-
-	// public Attributes
-	mRID( ),
-	mPreserveRID( false ),
-	mVALUE( ),
-
-	mAEES( AEES_OK ),
-
-	mSTATEMENT_QUEUE( ),
-	mEXEC_SYNC_POINT( NULL )
+	ExecutionData( )
+	: mSmartPtr( )
 	{
 		//!! NOTHING
 	}
 
+	/**
+	 * CONSTRUCTOR
+	 * Default
+	 */
+	ExecutionData( std::size_t aMachineCount )
+	: mSmartPtr( new _ExecutionData_( aMachineCount ) )
+	{
+		//!! NOTHING
+	}
 
 	/**
 	 * CONSTRUCTOR
 	 * Copy
 	 */
 	ExecutionData(const ExecutionData & anED)
-	: Element( anED ),
-	mExecutionContext( anED.mExecutionContext ),
-
-	mPathCondition( anED.mPathCondition ),
-	mPathTimedCondition( anED.mPathTimedCondition ),
-
-	mGlobalNodeConditionEnabledFlag( anED.mGlobalNodeConditionEnabledFlag ),
-	mLocalNodeConditionEnabledFlag( anED.mLocalNodeConditionEnabledFlag ),
-
-	mNodeCondition( anED.mNodeCondition ),
-	mNodeTimedCondition( anED.mNodeTimedCondition ),
-
-	mRunnableElementTrace( anED.mRunnableElementTrace ),
-	mIOElementTrace( anED.mIOElementTrace ),
-
-	mOnInit( anED.mOnInit ),
-	mOnSchedule( anED.mOnSchedule ),
-
-	mTableOfRuntime( anED.mTableOfRuntime ),
-
-	mTableOfRFStateFlags( anED.mTableOfRFStateFlags ),
-	mStackOfLocalRuntime( anED.mStackOfLocalRuntime ),
-
-	// public Attributes
-	mRID(anED.mRID),
-	mPreserveRID( anED.mPreserveRID ),
-	mVALUE( anED.mVALUE ),
-
-	mAEES( anED.mAEES ),
-
-	mSTATEMENT_QUEUE( anED.mSTATEMENT_QUEUE ),
-	mEXEC_SYNC_POINT( (anED.mEXEC_SYNC_POINT != NULL) ?
-		new ExecutionSynchronizationPoint( *(anED.mEXEC_SYNC_POINT) ) : NULL )
+	: mSmartPtr( anED.mSmartPtr )
 	{
 		//!! NOTHING
 	}
-
 
 	/**
 	 * DESTRUCTOR
 	 */
 	virtual ~ExecutionData()
 	{
-		delete( mEXEC_SYNC_POINT );
+		//!! NOTHING
+	}
+
+	inline void destroy()
+	{
+		mSmartPtr.destroy();
+	}
+
+	/**
+	 * VALIDITY TEST
+	 * _NULL_
+	 */
+	inline bool isNull() const
+	{
+		return( //(this == (& ExecutionData::_NULL_)) ||
+				mSmartPtr.isNullptr()  );
+	}
+
+	inline bool invalid() const
+	{
+		return( mSmartPtr.invalid() );
+	}
+
+
+	inline bool isnotNull() const
+	{
+		return( //(this != (& ExecutionData::_NULL_)) &&
+				mSmartPtr.isnotNullptr() );
+	}
+
+	inline bool valid() const
+	{
+		return( mSmartPtr.valid() );
+	}
+
+	/**
+	 * OPERATORS
+	 */
+//	inline _ExecutionData_ * operator-> () const
+//	{
+//		AVM_OS_ASSERT_FATAL_NULL_SMART_POINTER_EXIT( mSmartPtr )
+//				<< "raw_pointer in ExecutionData !!!"
+//				<< SEND_EXIT;
+//
+//		return( mSmartPtr.raw_pointer() );
+//	}
+
+	/**
+	 * WRITABILITY
+	 */
+	inline void makeWritable()
+	{
+		mSmartPtr.makeWritable();
+	}
+
+	/**
+	 * COMPARISON OPERATOR
+	 * TRIVIAL EQUALITY
+	 */
+	virtual bool operator==(const ExecutionData & anED) const
+	{
+		return( (this == (& anED)) || (mSmartPtr == anED.mSmartPtr) );
+	}
+
+	virtual bool isTEQ(const ExecutionData & anED) const
+	{
+		if( (this == (& anED)) || (mSmartPtr == anED.mSmartPtr) )
+		{
+			return( true );
+		}
+		else if( mSmartPtr->mTableOfRFStateFlags->equalsState(
+				anED.mSmartPtr->mTableOfRFStateFlags ) )
+		{
+			return( (mSmartPtr->mTableOfRuntime
+							== anED.mSmartPtr->mTableOfRuntime)
+
+					&& mSmartPtr->mPathCondition.isTEQ(
+							anED.mSmartPtr->mPathCondition)
+
+					&& mSmartPtr->mPathTimedCondition.isTEQ(
+							anED.mSmartPtr->mPathTimedCondition)
+
+					&& (mSmartPtr->mStackOfLocalRuntime
+							== anED.mSmartPtr->mStackOfLocalRuntime) );
+		}
+		return( false );
+	}
+
+	inline bool isTNEQ(const ExecutionData & anED) const
+	{
+		return( not isTEQ( anED ) );
+	}
+
+	/**
+	 * RESET DATA BEFORE EVALUATION
+	 */
+	inline void resetVariantBeforeEvaluation()
+	{
+		mSmartPtr->mNodeCondition = ExpressionConstant::BOOLEAN_TRUE;
+
+		mSmartPtr->mNodeTimedCondition = ExpressionConstant::BOOLEAN_TRUE;
+
+		mSmartPtr->mRunnableElementTrace = BF::REF_NULL;
+
+		mSmartPtr->mIOElementTrace = BF::REF_NULL;
+
+		mSmartPtr->mTableOfRFStateFlags->setTableOfAssignedFlag( nullptr );
+	}
+
+	inline void storeVariantBeforeEvaluation(
+			BF & aNodeCondition, BF & aNodeTimedCondition,
+			BF & aRunnableElementTrace, BF & aIOElementTrace,
+			TableOfRuntimeFormState::TableOfAssignedFlag & aTableOfAssignedFlag)
+	{
+		aNodeCondition = mSmartPtr->mNodeCondition;
+		mSmartPtr->mNodeCondition = ExpressionConstant::BOOLEAN_TRUE;
+
+		aNodeTimedCondition = mSmartPtr->mNodeTimedCondition;
+		mSmartPtr->mNodeTimedCondition = ExpressionConstant::BOOLEAN_TRUE;
+
+		aRunnableElementTrace = mSmartPtr->mRunnableElementTrace;
+		mSmartPtr->mRunnableElementTrace = BF::REF_NULL;
+
+		aIOElementTrace = mSmartPtr->mIOElementTrace;
+		mSmartPtr->mIOElementTrace = BF::REF_NULL;
+
+		// Due to basic pointer, not smart pointer
+		aTableOfAssignedFlag =
+				mSmartPtr->mTableOfRFStateFlags->getTableOfAssignedFlag();
+		mSmartPtr->mTableOfRFStateFlags->setTableOfAssignedFlag( nullptr );
+	}
+
+
+	/**
+	 * RESTORE DATA AFTER EVALUATION
+	 */
+	inline void restoreVariantAfterEvaluation(
+			const BF & aNodeCondition, const BF & aNodeTimedCondition,
+			const BF & aRunnableElementTrace, const BF & aIOElementTrace,
+			const TableOfRuntimeFormState::
+			TableOfAssignedFlag & aTableOfAssignedFlag)
+	{
+		mSmartPtr->mNodeCondition = aNodeCondition;
+		mSmartPtr->mNodeTimedCondition = aNodeTimedCondition;
+
+		mSmartPtr->mRunnableElementTrace = aRunnableElementTrace;
+		mSmartPtr->mIOElementTrace = aIOElementTrace;
+
+		mSmartPtr->mTableOfRFStateFlags->setTableOfAssignedFlag(
+				aTableOfAssignedFlag );
 	}
 
 
 	/**
 	 * resize
 	 */
-	void resize(avm_size_t newMachineCount)
+	void resize(std::size_t newMachineCount)
 	{
-		mTableOfRuntime.makeWritableResize( newMachineCount );
+		mSmartPtr->mTableOfRuntime.makeWritableResize( newMachineCount );
 
-		mTableOfRFStateFlags.makeWritable();
-		mTableOfRFStateFlags->resize(newMachineCount);
+		mSmartPtr->mTableOfRFStateFlags.makeWritable();
+		mSmartPtr->mTableOfRFStateFlags->resize(newMachineCount);
 	}
 
 
@@ -225,18 +448,23 @@ public:
 	 */
 	inline ExecutionContext * getExecutionContext() const
 	{
-		return( mExecutionContext );
+		return( mSmartPtr->mExecutionContext );
 	}
 
 	inline bool hasExecutionContext() const
 	{
-		return( mExecutionContext != NULL );
+		return( mSmartPtr->mExecutionContext != nullptr );
 	}
 
 	inline void setExecutionContext(ExecutionContext * anExecutionContext)
 	{
-		mExecutionContext = anExecutionContext;
+		mSmartPtr->mExecutionContext = anExecutionContext;
 	}
+
+	// Previous ExecutionData
+	ExecutionData & getPrevious();
+
+	const ExecutionData & getPrevious() const;
 
 
 	/**
@@ -245,34 +473,34 @@ public:
 	 */
 	inline BF getAllPathCondition() const
 	{
-		if( mPathTimedCondition.valid()
-			&& mPathTimedCondition.isNotEqualTrue() )
+		if( mSmartPtr->mPathTimedCondition.valid()
+			&& mSmartPtr->mPathTimedCondition.isNotEqualTrue() )
 		{
 			return( ExpressionConstructor::andExpr(
-					mPathCondition, mPathTimedCondition) );
+					mSmartPtr->mPathCondition, mSmartPtr->mPathTimedCondition) );
 		}
 		else
 		{
-			return( mPathCondition );
+			return( mSmartPtr->mPathCondition );
 		}
 	}
 
 
 	inline BF andPathTimedCondition(const BF & aCondition) const
 	{
-		if( mPathTimedCondition.valid() )
+		if( mSmartPtr->mPathTimedCondition.valid() )
 		{
-			if( mPathTimedCondition.isEqualTrue() )
+			if( mSmartPtr->mPathTimedCondition.isEqualTrue() )
 			{
 				return( aCondition );
 			}
-			else if( mPathTimedCondition.isEqualFalse() )
+			else if( mSmartPtr->mPathTimedCondition.isEqualFalse() )
 			{
-				return( mPathTimedCondition );
+				return( mSmartPtr->mPathTimedCondition );
 			}
 
 			return( ExpressionConstructor::andExpr(
-					mPathTimedCondition, aCondition) );
+					mSmartPtr->mPathTimedCondition, aCondition) );
 		}
 		else
 		{
@@ -286,17 +514,24 @@ public:
 	 */
 	inline const BF & getPathCondition() const
 	{
-		return( mPathCondition );
+		return( mSmartPtr->mPathCondition );
 	}
 
 	inline bool hasPathCondition() const
 	{
-		return( mPathCondition.valid() );
+		return( mSmartPtr->mPathCondition.valid() );
 	}
 
 	inline void setPathCondition(const BF & aPathCondition)
 	{
-		mPathCondition = aPathCondition;
+		mSmartPtr->mPathCondition = aPathCondition;
+	}
+
+	inline void mwsetPathCondition(const BF & aPathCondition)
+	{
+		makeWritable();
+
+		mSmartPtr->mPathCondition = aPathCondition;
 	}
 
 
@@ -306,19 +541,25 @@ public:
 	 */
 	inline const BF & getPathTimedCondition() const
 	{
-		return( mPathTimedCondition );
+		return( mSmartPtr->mPathTimedCondition );
 	}
 
 	inline bool hasPathTimedCondition() const
 	{
-		return( mPathTimedCondition.valid() );
+		return( mSmartPtr->mPathTimedCondition.valid() );
 	}
 
 	inline void setPathTimedCondition(const BF & aPathTimedCondition)
 	{
-		mPathTimedCondition = aPathTimedCondition;
+		mSmartPtr->mPathTimedCondition = aPathTimedCondition;
 	}
 
+	inline void mwsetPathTimedCondition(const BF & aPathTimedCondition)
+	{
+		makeWritable();
+
+		mSmartPtr->mPathTimedCondition = aPathTimedCondition;
+	}
 
 
 	/**
@@ -327,14 +568,15 @@ public:
 	 */
 	inline BF getAllNodeCondition() const
 	{
-		if( mNodeTimedCondition.valid() && mNodeTimedCondition.isNotEqualTrue() )
+		if( mSmartPtr->mNodeTimedCondition.valid()
+			&& mSmartPtr->mNodeTimedCondition.isNotEqualTrue() )
 		{
 			return( ExpressionConstructor::andExpr(
-					mNodeCondition, mNodeTimedCondition) );
+					mSmartPtr->mNodeCondition, mSmartPtr->mNodeTimedCondition) );
 		}
 		else
 		{
-			return( mNodeCondition );
+			return( mSmartPtr->mNodeCondition );
 		}
 	}
 
@@ -345,17 +587,22 @@ public:
 	 */
 	inline const BF & getNodeCondition() const
 	{
-		return( mNodeCondition );
+		return( mSmartPtr->mNodeCondition );
 	}
 
 	inline bool hasNodeCondition() const
 	{
-		return( mNodeCondition.valid() );
+		return( mSmartPtr->mNodeCondition.valid() );
 	}
 
 	inline void setNodeCondition(const BF & aCondition)
 	{
-		mNodeCondition = aCondition;
+		mSmartPtr->mNodeCondition = aCondition;
+	}
+
+	inline void resetNodeCondition()
+	{
+		mSmartPtr->mNodeCondition = ExpressionConstant::BOOLEAN_TRUE;
 	}
 
 
@@ -365,17 +612,17 @@ public:
 	 */
 	inline const BF & getNodeTimedCondition() const
 	{
-		return( mNodeTimedCondition );
+		return( mSmartPtr->mNodeTimedCondition );
 	}
 
 	inline bool hasNodeTimedCondition() const
 	{
-		return( mNodeTimedCondition.valid() );
+		return( mSmartPtr->mNodeTimedCondition.valid() );
 	}
 
 	inline void setNodeTimedCondition(const BF & aTimedCondition)
 	{
-		mNodeTimedCondition = aTimedCondition;
+		mSmartPtr->mNodeTimedCondition = aTimedCondition;
 	}
 
 
@@ -386,34 +633,34 @@ public:
 	 */
 	inline bool isEnabledNodeCondition() const
 	{
-		return( mGlobalNodeConditionEnabledFlag ||
-				mLocalNodeConditionEnabledFlag );
+		return( //mSmartPtr->mGlobalNodeConditionEnabledFlag ||
+				mSmartPtr->mLocalNodeConditionEnabledFlag );
 	}
 
 	inline void setEnabledGlobalNodeCondition(bool aCondition = true)
 	{
-		mGlobalNodeConditionEnabledFlag = aCondition;
+		mSmartPtr->mGlobalNodeConditionEnabledFlag = aCondition;
 	}
 
 	inline void setEnabledLocalNodeCondition(bool aCondition = true)
 	{
-		mLocalNodeConditionEnabledFlag = aCondition;
+		mSmartPtr->mLocalNodeConditionEnabledFlag = aCondition;
 	}
 
 
 	/**
 	 * Serialization
 	 */
-	void toStream(OutStream & os) const;
+	void toStream(OutStream & out) const;
 
 	inline std::string str() const
 	{
 		return( strStateConf() );
 	}
 
-	void toStreamData(OutStream & os) const;
+	void toStreamData(OutStream & out) const;
 
-	void toFscn(OutStream & os, const ExecutionData * aPreviousExecData) const;
+	void toFscn(OutStream & out, const ExecutionData & aPreviousExecData) const;
 
 
 	/**
@@ -444,7 +691,7 @@ public:
 	*/
 
 	void toStreamStateIdleOrRunning(
-			OutStream & os, const RuntimeForm & aRF) const;
+			OutStream & out, const RuntimeForm & aRF) const;
 
 	/**
 	 * string of a state configuration of an ExecutionData
@@ -456,7 +703,7 @@ public:
 	 * %4% --> state identifier
 	 */
 	OutStream & toStreamLifelineStateFormat(
-			OutStream & os, const RuntimeForm & aRF,
+			OutStream & out, const RuntimeForm & aRF,
 			const std::string & formatLifelineStatePattern = "%3%:%4%") const;
 
 	inline std::string strStateConf(
@@ -484,7 +731,7 @@ public:
 		return( oss.str() );
 	}
 
-	void toStreamStateConf(OutStream & os, const RuntimeForm & aRF,
+	void toStreamStateConf(OutStream & out, const RuntimeForm & aRF,
 			const std::string & formatLifelineStatePattern = "%3%:%4%") const;
 
 
@@ -514,7 +761,7 @@ public:
 	}
 
 	void toStreamStateConfToFscn(
-			OutStream & os, const RuntimeForm & aRF) const;
+			OutStream & out, const RuntimeForm & aRF) const;
 
 
 	/**
@@ -523,24 +770,31 @@ public:
 	 */
 	inline BF & getRunnableElementTrace()
 	{
-		return( mRunnableElementTrace );
+		return( mSmartPtr->mRunnableElementTrace );
 	}
 
 	inline const BF & getRunnableElementTrace() const
 	{
-		return( mRunnableElementTrace );
+		return( mSmartPtr->mRunnableElementTrace );
 	}
 
 	inline bool hasRunnableElementTrace() const
 	{
-		return( mRunnableElementTrace.valid() );
+		return( mSmartPtr->mRunnableElementTrace.valid() );
 	}
+
 
 	inline void setRunnableElementTrace(const BF & aRunnableElementTrace)
 	{
-		mRunnableElementTrace = aRunnableElementTrace;
+		mSmartPtr->mRunnableElementTrace = aRunnableElementTrace;
 	}
 
+	inline void mwsetRunnableElementTrace(const BF & aRunnableElementTrace)
+	{
+		makeWritable();
+
+		mSmartPtr->mRunnableElementTrace = aRunnableElementTrace;
+	}
 
 	/**
 	 * GETTER - SETTER
@@ -548,22 +802,30 @@ public:
 	 */
 	inline BF & getIOElementTrace()
 	{
-		return( mIOElementTrace );
+		return( mSmartPtr->mIOElementTrace );
 	}
 
 	inline const BF & getIOElementTrace() const
 	{
-		return( mIOElementTrace );
+		return( mSmartPtr->mIOElementTrace );
 	}
 
 	inline bool hasIOElementTrace() const
 	{
-		return( mIOElementTrace.valid() );
+		return( mSmartPtr->mIOElementTrace.valid() );
 	}
+
 
 	inline void setIOElementTrace(const BF & anIOElementTrace)
 	{
-		mIOElementTrace = anIOElementTrace;
+		mSmartPtr->mIOElementTrace = anIOElementTrace;
+	}
+
+	inline void mwsetIOElementTrace(const BF & anIOElementTrace)
+	{
+		makeWritable();
+
+		mSmartPtr->mIOElementTrace = anIOElementTrace;
 	}
 
 
@@ -575,8 +837,8 @@ public:
 //$DELETE
 	inline bool notEvaluated() const
 	{
-		return( mRunnableElementTrace.invalid()
-				&& mIOElementTrace.invalid() );
+		return( mSmartPtr->mRunnableElementTrace.invalid()
+				&& mSmartPtr->mIOElementTrace.invalid() );
 	}
 
 
@@ -586,17 +848,17 @@ public:
 	 */
 	inline const BFCode & getOnInit() const
 	{
-		return( mOnInit );
+		return( mSmartPtr->mOnInit );
 	}
 
 	inline bool hasOnInit() const
 	{
-		return( mOnInit.valid() );
+		return( mSmartPtr->mOnInit.valid() );
 	}
 
 	inline void setOnInit(const BFCode & onInit)
 	{
-		mOnInit = onInit;
+		mSmartPtr->mOnInit = onInit;
 	}
 
 
@@ -606,17 +868,17 @@ public:
 	 */
 	inline const BFCode & getOnSchedule() const
 	{
-		return( mOnSchedule );
+		return( mSmartPtr->mOnSchedule );
 	}
 
 	inline bool hasOnSchedule() const
 	{
-		return( mOnSchedule.valid() );
+		return( mSmartPtr->mOnSchedule.valid() );
 	}
 
 	inline void setOnSchedule(const BFCode & onSchedule)
 	{
-		mOnSchedule = onSchedule;
+		mSmartPtr->mOnSchedule = onSchedule;
 	}
 
 
@@ -626,95 +888,172 @@ public:
 	 */
 	inline const TableOfRuntimeT & getTableOfRuntime() const
 	{
-		return( mTableOfRuntime );
+		return( mSmartPtr->mTableOfRuntime );
 	}
 
 
-	inline RuntimeForm & getRuntime(avm_size_t offset)
+	inline RuntimeForm & getRuntime(std::size_t offset)
 	{
-		return( mTableOfRuntime.ref(offset) );
+		return( mSmartPtr->mTableOfRuntime.ref(offset) );
 	}
 
-	inline const RuntimeForm & getRuntime(avm_size_t offset) const
+	inline const RuntimeForm & getRuntime(std::size_t offset) const
 	{
-		return( mTableOfRuntime.ref(offset) );
+		return( mSmartPtr->mTableOfRuntime.ref(offset) );
 	}
 
 
 	inline RuntimeForm & getRuntime(const RuntimeID & aRID)
 	{
-		return( mTableOfRuntime.ref( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRuntime.ref( aRID.getOffset() ) );
 	}
 
 	inline const RuntimeForm & getRuntime(const RuntimeID & aRID) const
 	{
-		return( mTableOfRuntime.ref( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRuntime.ref( aRID.getOffset() ) );
 	}
 
 
-	inline const RuntimeForm * ptrRuntime(avm_size_t offset) const
+	inline const RuntimeForm * ptrRuntime(std::size_t offset) const
 	{
-		return( mTableOfRuntime.at(offset) );
+		return( mSmartPtr->mTableOfRuntime.at(offset) );
 	}
 
 	inline RuntimeForm * ptrRuntime(const RuntimeID & aRID)
 	{
-		return( mTableOfRuntime.at( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRuntime.at( aRID.getOffset() ) );
 	}
 
 	inline const RuntimeForm * ptrRuntime(const RuntimeID & aRID) const
 	{
-		return( mTableOfRuntime.at( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRuntime.at( aRID.getOffset() ) );
 	}
 
 
-	inline const RuntimeID & getRuntimeID(avm_size_t rid) const
+	inline const RuntimeID & getRuntimeID(std::size_t rid) const
 	{
-		return( mTableOfRuntime.at(rid)->getRID() );
+		return( mSmartPtr->mTableOfRuntime.at(rid)->getRID() );
 	}
 
-	const RuntimeID & getRuntimeID(const ExecutableForm * anExecutable) const;
+	const RuntimeID & getRuntimeID(const ExecutableForm & anExecutable) const;
 
-	const RuntimeID & getRuntimeID(InstanceOfMachine * anInstance) const;
+	const RuntimeID & getRuntimeID(const InstanceOfMachine & anInstance) const;
 
 	const RuntimeID & getRuntimeID(
 			const std::string & aFullyQualifiedNameID) const;
 
 	const RuntimeID & getRuntimeIDByNameID(const std::string & aNameID) const;
 
+	const RuntimeID & getRuntimeIDByQualifiedNameID(
+			const std::string & aQualifiedNameID) const;
+
 
 	RuntimeID getRuntimeContainerRID(const RuntimeID & aRID,
-			BaseInstanceForm * anInstance) const;
+			const BaseInstanceForm * anInstance) const;
 
-	RuntimeID getRuntimeContainerRID(BaseInstanceForm * anInstance) const
+	inline RuntimeID getRuntimeContainerRID(
+			const BaseInstanceForm * anInstance) const
 	{
-		return( getRuntimeContainerRID(mRID, anInstance) );
+		return( getRuntimeContainerRID(mSmartPtr->mRID, anInstance) );
 	}
 
 
+	// RuntimeForm::mOnSchedule
 	inline const BFCode & getRuntimeFormOnSchedule(const RuntimeID & aRID) const
 	{
-		return( mTableOfRuntime.at(aRID.getOffset())->getOnSchedule() );
+		return( mSmartPtr->mTableOfRuntime.at(aRID.getOffset())->getOnSchedule() );
 	}
 
+	inline void mwsetRuntimeFormOnSchedule(
+			const RuntimeID & aRID, const BFCode & onSchedule)
+	{
+		if( aRID.refExecutable().isMutableSchedule()
+			&& (onSchedule != getRuntime(aRID).getOnSchedule()) )
+		{
+			makeWritable();
+
+			getWritableRuntime(aRID).setOnSchedule( onSchedule );
+		}
+	}
+
+	inline void mwsetRuntimeFormOnScheduleAndIdle(const RuntimeID & aRID)
+	{
+		mwsetRuntimeFormOnSchedule(aRID.getPRID(), aRID.getOnRunning());
+
+//		mwsetRuntimeFormOnSchedule(aRID.getPRID(),
+//				aRID.hasOnRunning() ? aRID.getOnRunning() :
+//						StatementConstructor::newOptiNopCode(
+//								OperatorManager::OPERATOR_RUN, aRID,
+//								AVM_ARG_MACHINE_RID) );
+
+		if( not isIdle() )
+		{
+			mwsetRuntimeFormState(aRID, PROCESS_IDLE_STATE);
+		}
+	}
+
+
+	// RuntimeForm::mOnDefer
 	inline const BFCode & getRuntimeFormOnDefer(const RuntimeID & aRID) const
 	{
-		return( mTableOfRuntime.at(aRID.getOffset())->getOnDefer() );
+		return( mSmartPtr->mTableOfRuntime.at(aRID.getOffset())->getOnDefer() );
 	}
 
+	inline void mwsetRuntimeFormOnDefer(
+			const RuntimeID & aRID, const BFCode & onDefer)
+	{
+		makeWritable();
+
+		getWritableRuntime( aRID ).setOnDefer( onDefer );
+	}
 
 
 	// assign <==> release_acquire
-	inline void saveRuntimeForm(avm_size_t offset, RuntimeForm * aRF) const
+	inline void saveRuntimeForm(std::size_t offset, RuntimeForm * aRF) const
 	{
-		mTableOfRuntime.set(offset, aRF);
+		mSmartPtr->mTableOfRuntime.set(offset, aRF);
 	}
 
 	// assign <==> release_acquire
-	inline void assignRuntimeForm(avm_size_t offset, RuntimeForm * aRF) const
+	inline void assignRuntimeForm(std::size_t offset, RuntimeForm * aRF) const
 	{
-		mTableOfRuntime.assign(offset, aRF);
+		mSmartPtr->mTableOfRuntime.assign(offset, aRF);
 	}
+
+	/**
+	 * GETTER
+	 * Time Value
+	 */
+	inline const BF & getTimeValue() const
+	{
+		return( getTimeValue( getRID() ) );
+	}
+
+	const BF & getTimeValue(const RuntimeID & aRID) const;
+
+
+	/**
+	 * GETTER
+	 * Delta Time Value
+	 */
+	inline const BF & getDeltaTimeValue() const
+	{
+		return( getDeltaTimeValue( getRID() ) );
+	}
+
+	const BF & getDeltaTimeValue(const RuntimeID & aRID) const;
+
+
+	/**
+	 * SYNC-SETTER
+	 * Synchronization of Time Values
+	 */
+	inline void syncTimeValues(const ExecutionData & refED)
+	{
+		return( syncTimeValues( getRID() , refED ) );
+	}
+
+	void syncTimeValues(const RuntimeID & aRID, const ExecutionData & refED);
 
 
 	/***************************************************************************
@@ -725,9 +1064,28 @@ public:
 	 * make writable
 	 ***************************************************************************
 	 */
+//	inline RuntimeForm & getWritableRuntime(const RuntimeID & aRID)
+//	{
+//		return( mSmartPtr->mTableOfRuntime.refWritable( aRID.getOffset() ) );
+//	}
+
 	inline RuntimeForm & getWritableRuntime(const RuntimeID & aRID)
 	{
-		return( mTableOfRuntime.refWritable( aRID.getOffset() ) );
+		makeWritable();
+
+		return( mSmartPtr->mTableOfRuntime.refWritable( aRID.getOffset() ) );
+
+	}
+
+	inline APTableOfData & getWritableRuntimeDataTable(const RuntimeID & aRID)
+	{
+		AVM_OS_ASSERT_FATAL_ERROR_EXIT( getRuntime(aRID).hasDataTable() )
+				<< "Unexpected RuntimeForm without data !!!"
+				<< SEND_EXIT;
+
+		makeWritable();
+
+		return( getWritableRuntime(aRID).getWritableDataTable() );
 	}
 
 
@@ -745,272 +1103,300 @@ public:
 	 * GETTER - SETTER
 	 * mTableOfRFStateFlags
 	 */
-	inline const APTableOfRuntimeFormState & getRuntimeFormStateTable() const
+	inline const TableOfRuntimeFormState * getRuntimeFormStateTable() const
 	{
-		return( mTableOfRFStateFlags );
+		return( mSmartPtr->mTableOfRFStateFlags );
+	}
+
+	inline TableOfRuntimeFormState * wrRuntimeFormStateTable()
+	{
+		return( mSmartPtr->mTableOfRFStateFlags );
 	}
 
 
-	inline PROCESS_EVAL_STATE getRuntimeFormState(avm_size_t rid) const
+	inline PROCESS_EVAL_STATE getRuntimeFormState(std::size_t rid) const
 	{
-		return( mTableOfRFStateFlags->stateAt(rid) );
+		return( mSmartPtr->mTableOfRFStateFlags->stateAt(rid) );
 	}
 
 	inline  PROCESS_EVAL_STATE getRuntimeFormState(
 			const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->stateAt( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->stateAt( aRID.getOffset() ) );
 	}
 
 	bool checkRunningForm(
-			const BF & aRunnableElementTrace, const RuntimeID & aRID);
+			const BF & aRunnableElementTrace, const RuntimeID & aRID) const;
+
+	inline bool checkRunningForm(const RuntimeID & aRID) const
+	{
+		return( checkRunningForm(getRunnableElementTrace(), aRID) );
+	}
 
 
 	// CREATED STATE
 	inline bool isCreated(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isCreated( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isCreated( aRID.getOffset() ) );
 	}
 
 	// LOADED STATE
 	inline bool isLoaded(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isLoaded( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isLoaded( aRID.getOffset() ) );
 	}
 
 	// STARTING STATE
 	inline bool isStarting(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isStarting( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isStarting( aRID.getOffset() ) );
 	}
 
 	inline bool isIniting(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isIniting( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isIniting( aRID.getOffset() ) );
 	}
 
 	// STOPPING STATE
 	inline bool isStopping(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isStopping( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isStopping( aRID.getOffset() ) );
 	}
 
 	// STOPPED STATE
 	inline bool isStopped(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isStopped( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isStopped( aRID.getOffset() ) );
 	}
 
 	// FINALIZING STATE
 	inline bool isFinalizing(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isFinalizing( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isFinalizing( aRID.getOffset() ) );
 	}
 
 	// FINALIZED STATE
 	inline bool isFinalized(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isFinalized( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isFinalized( aRID.getOffset() ) );
 	}
 
 	// DESTROYED STATE
 	inline bool isDestroyed(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isDestroyed( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isDestroyed( aRID.getOffset() ) );
 	}
 
 	// FINALIZED or DESTROYED STATE
 	inline bool isFinalizedOrDestroyed(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->
+		return( mSmartPtr->mTableOfRFStateFlags->
 				isFinalizedOrDestroyed( aRID.getOffset() ) );
 	}
 
 	// ALIVE STATE
 	inline bool isAlive(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isAlive( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isAlive( aRID.getOffset() ) );
 	}
 
 	// SUPENDED STATE
 	inline bool isSuspended(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isSuspended( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isSuspended( aRID.getOffset() ) );
 	}
 
 	// WAITING STATE
 	inline bool isWaiting(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isWaiting( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isWaiting( aRID.getOffset() ) );
 	}
 
 	// WAITING JOIN STATE
 	inline bool isWaitingJoin(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isWaitingJoin( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isWaitingJoin( aRID.getOffset() ) );
 	}
 
 	// DISABLE STATE
 	inline bool isDisable(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isDisable( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isDisable( aRID.getOffset() ) );
 	}
 
 	// DISABLE STATE
 	inline bool isAborted(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isAborted( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isAborted( aRID.getOffset() ) );
 	}
 
 	// DISABLE or ABORTED STATE
 	inline bool isDisableOrAborted(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isDisableOrAborted( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->
+				isDisableOrAborted( aRID.getOffset() ) );
 	}
 
 	// IDLE STATE
 	inline bool isIdle() const
 	{
-		return( mTableOfRFStateFlags->isIdle( mRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isIdle(
+				mSmartPtr->mRID.getOffset() ) );
 	}
 
 	inline bool isIdle(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isIdle( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isIdle( aRID.getOffset() ) );
 	}
 
 	// RUNNING STATE
 	inline bool isRunning(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isRunning( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isRunning( aRID.getOffset() ) );
 	}
 
 	// IDLE or RUNNING STATE
 	inline bool isIdleOrRunning(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isIdleOrRunning( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isIdleOrRunning( aRID.getOffset() ) );
 	}
 
 	// RUNNABLE STATE
 	inline bool isRunnable(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isRunnable( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isRunnable( aRID.getOffset() ) );
 	}
 
 	inline bool isunRunnable(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isunRunnable( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isunRunnable( aRID.getOffset() ) );
 	}
 
 	inline bool isunRunnableSystem() const
 	{
-		return( mTableOfRFStateFlags->isunRunnable( SYSTEM_RUNTIME_OFFSET ) );
+		return( mSmartPtr->mTableOfRFStateFlags->
+				isunRunnable( SYSTEM_RUNTIME_OFFSET ) );
 	}
 
 	// CREATED or RUNNABLE STATE
 	inline bool isCreatedOrRunnable(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isCreatedOrRunnable( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->
+				isCreatedOrRunnable( aRID.getOffset() ) );
 	}
 
 	// DEFINED / UNDEFINED STATE
 	inline bool isDefinedPES(const RuntimeID & aRID) const
 	{
-		return( mTableOfRFStateFlags->isDefined( aRID.getOffset() ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isDefined( aRID.getOffset() ) );
 	}
 
 	inline bool isUndefinedPES(avm_offset_t offset) const
 	{
-		return( mTableOfRFStateFlags->isUndefined( offset ) );
+		return( mSmartPtr->mTableOfRFStateFlags->isUndefined( offset ) );
 	}
 
 	inline void makeWritableRuntimeFormStateTable()
 	{
-		mTableOfRFStateFlags.makeWritable();
+		mSmartPtr->mTableOfRFStateFlags.makeWritable();
+	}
+
+	inline void mwsetRuntimeFormState(
+			const RuntimeID & aRID, PROCESS_EVAL_STATE aPES)
+	{
+		makeWritable();
+
+		makeWritableRuntimeFormStateTable();
+
+		mSmartPtr->mTableOfRFStateFlags->stateSet(aRID.getOffset(), aPES);
+	}
+
+	inline void setRuntimeFormState(
+			const RuntimeID & aRID, PROCESS_EVAL_STATE aPES)
+	{
+		mSmartPtr->mTableOfRFStateFlags->stateSet(aRID.getOffset(), aPES);
+	}
+
+
+	inline void mwsetRuntimeFormState(std::size_t rid, PROCESS_EVAL_STATE aPES)
+	{
+		makeWritableRuntimeFormStateTable();
+
+		mSmartPtr->mTableOfRFStateFlags->stateSet(rid, aPES);
+	}
+
+	inline void setRuntimeFormState(std::size_t rid, PROCESS_EVAL_STATE aPES)
+	{
+		mSmartPtr->mTableOfRFStateFlags->stateSet(rid, aPES);
+	}
+
+
+	inline void mwsetRuntimeFormState(PROCESS_EVAL_STATE aPES)
+	{
+		mwsetRuntimeFormState(mSmartPtr->mRID, aPES);
 	}
 
 	inline void mwsetRuntimeFormState(const RuntimeID & aRID,
-			PROCESS_EVAL_STATE aPES)
+			PROCESS_EVAL_STATE oldPES, PROCESS_EVAL_STATE aPES)
 	{
-		makeWritableRuntimeFormStateTable();
+		makeWritable();
 
-		mTableOfRFStateFlags->stateSet(aRID.getOffset(), aPES);
-	}
+		if( getRuntimeFormState(aRID) == oldPES )
+		{
+			mwsetRuntimeFormState(aRID.getOffset(), aPES);
 
-	inline void setRuntimeFormState(const RuntimeID & aRID,
-			PROCESS_EVAL_STATE aPES)
-	{
-		mTableOfRFStateFlags->stateSet(aRID.getOffset(), aPES);
-	}
-
-
-	inline void mwsetRuntimeFormState(avm_size_t rid,
-			PROCESS_EVAL_STATE aPES)
-	{
-		makeWritableRuntimeFormStateTable();
-
-		mTableOfRFStateFlags->stateSet(rid, aPES);
-	}
-
-	inline void setRuntimeFormState(avm_size_t rid,
-			PROCESS_EVAL_STATE aPES)
-	{
-		mTableOfRFStateFlags->stateSet(rid, aPES);
-	}
-
-
-	// ASSIGNABILITY
-	inline Bitset * getAssigned(avm_size_t rid) const
-	{
-		return( mTableOfRFStateFlags->getAssigned(rid) );
-	}
-
-	inline bool isAssigned(const RuntimeID & aRID, avm_size_t rid) const
-	{
-		return( mTableOfRFStateFlags->isAssigned(aRID.getOffset(), rid) );
-	}
-
-
-	inline void mwsetAssigned(const RuntimeID & aRID,
-			avm_offset_t varOffset, bool flag = true)
-	{
-		makeWritableRuntimeFormStateTable();
-
-		mTableOfRFStateFlags->setAssigned(*this,
-				aRID.getOffset(), varOffset, flag);
-	}
-
-	inline void setAssigned(const RuntimeID & aRID,
-			avm_offset_t varOffset, bool flag = true)
-	{
-		mTableOfRFStateFlags->setAssigned(*this,
-				aRID.getOffset(), varOffset, flag);
+			setAEES( RuntimeDef::PES_to_AEES( aPES , getAEES() ) );
+		}
 	}
 
 
 	/**
-	 * GETTER
-	 * mTableOfAssignedFlag
+	 * GETTER -- SETTER
+	 * ASSIGNED FLAGS
 	 */
+	inline const Bitset * getAssigned(std::size_t rid) const
+	{
+		return( mSmartPtr->mTableOfRFStateFlags->getAssigned(rid) );
+		
+//		return( getRuntime(rid).getAssigned() );
+	}
+
+	inline bool isAssigned(const RuntimeID & aRID, std::size_t varOffset) const
+	{
+		return( mSmartPtr->mTableOfRFStateFlags->isAssigned(
+				aRID.getOffset(), varOffset) );
+	
+//		return( getRuntime(aRID).isAssigned(varOffset) );
+	}
+
+	inline void setAssigned(const RuntimeID & aRID, avm_offset_t varOffset)
+	{
+		mSmartPtr->mTableOfRFStateFlags->setAssigned(
+				(*this), aRID.getOffset(), varOffset);
+
+//		getRuntime(aRID).setAssigned(assignFlags);
+	}
+
+	inline void setAssigned(std::size_t rid, const Bitset * assignFlags) const
+	{
+		mSmartPtr->mTableOfRFStateFlags->setAssigned(rid, assignFlags);
+
+//		getRuntime(rid).setAssigned(assignFlags);
+	}
+
+	// TABLE OF ASSIGNED FLAGS
 	TableOfRuntimeFormState::TableOfAssignedFlag getTableOfAssignedFlag()
 	{
-		return( mTableOfRFStateFlags->getTableOfAssignedFlag() );
+		return( mSmartPtr->mTableOfRFStateFlags->getTableOfAssignedFlag() );
 	}
 
 	void setTableOfAssignedFlag(
 			TableOfRuntimeFormState::TableOfAssignedFlag aTableOfAssignedFlag)
 	{
-		mTableOfRFStateFlags->setTableOfAssignedFlag( aTableOfAssignedFlag );
+		mSmartPtr->mTableOfRFStateFlags->setTableOfAssignedFlag( aTableOfAssignedFlag );
 	}
-
-
-	/**
-	 * GETTER
-	 * mSaveTableOfAssignedFlag
-	 */
-	TableOfRuntimeFormState::
-	TableOfAssignedFlag getSaveTableOfAssignedFlag() const;
-
+	
+	
 	/**
 	 * GETTER - SETTER
 	 * RuntimeForm CHILD
@@ -1034,55 +1420,82 @@ public:
 	 * GETTER - SETTER
 	 * mStackOfLocalRuntime
 	 */
-	inline void createLocalRuntimeStack()
+	inline void createLocalRuntimeStack() const
 	{
-		mStackOfLocalRuntime =
+		mSmartPtr->mStackOfLocalRuntime =
 				APStackOfLocalRuntime( new StackOfLocalRuntime() );
 	}
 
-	inline void destroyLocalRuntimeStack()
+	inline void destroyLocalRuntimeStack() const
 	{
-		mStackOfLocalRuntime.destroy();
+		mSmartPtr->mStackOfLocalRuntime.destroy();
 	}
 
 	inline APStackOfLocalRuntime & getLocalRuntimes()
 	{
-		return( mStackOfLocalRuntime );
+		return( mSmartPtr->mStackOfLocalRuntime );
 	}
 
 	inline const APStackOfLocalRuntime & getLocalRuntimes() const
 	{
-		return( mStackOfLocalRuntime );
+		return( mSmartPtr->mStackOfLocalRuntime );
 	}
 
 
 	inline bool hasLocalRuntime() const
 	{
-		return( mStackOfLocalRuntime.valid()
-				&& mStackOfLocalRuntime->nonempty() );
+		return( mSmartPtr->mStackOfLocalRuntime.valid()
+				&& mSmartPtr->mStackOfLocalRuntime->nonempty() );
 	}
 
 	inline bool hasLocalRuntimeStack() const
 	{
-		return( mStackOfLocalRuntime.valid() );
+		return( mSmartPtr->mStackOfLocalRuntime.valid() );
 	}
 
 	inline void makeWritableLocalRuntimeStack()
 	{
-		if( mStackOfLocalRuntime.valid() )
+		if( mSmartPtr->mStackOfLocalRuntime.valid() )
 		{
-			mStackOfLocalRuntime.makeWritable();
+			mSmartPtr->mStackOfLocalRuntime.makeWritable();
 		}
 		else
 		{
-			mStackOfLocalRuntime.replacePointer( new StackOfLocalRuntime() );
+			mSmartPtr->mStackOfLocalRuntime.replacePointer(
+					new StackOfLocalRuntime() );
 		}
 	}
 
-	inline void setLocalRuntime(avm_size_t offset,
+	inline void setLocalRuntime(std::size_t offset,
 			const LocalRuntime & aLocalRuntime)
 	{
-		mStackOfLocalRuntime->setLocalRuntime(offset, aLocalRuntime);
+		mSmartPtr->mStackOfLocalRuntime->setLocalRuntime(offset, aLocalRuntime);
+	}
+
+
+	// Make modifiable i.e. writable
+
+	inline void makeModifiableParamTable()
+	{
+		makeWritable();
+
+		// TODO Revoir la gestion de la liste des nouveaux parametres
+//		if( hasParam() && getParam()->isMultiple() )
+//		{
+//			decRefCounter( getParam() );
+//			setParam( new TableOfInstance() );
+//		}
+	}
+
+	inline void makeModifiableLocalRuntime(LocalRuntime & aLocalRuntime)
+	{
+		makeWritable();
+
+		makeWritableLocalRuntimeStack();
+
+		aLocalRuntime.makeWritable();
+
+		setLocalRuntime( aLocalRuntime.getOffset() , aLocalRuntime );
 	}
 
 
@@ -1093,26 +1506,26 @@ public:
 	inline const ParametersRuntimeForm & getParametersRuntimeForm() const
 	{
 		return( static_cast< const ParametersRuntimeForm & >(
-				mTableOfRuntime.ref(PARAM_MACHINE_RUNTIME_OFFSET) ) );
+				mSmartPtr->mTableOfRuntime.ref(PARAM_MACHINE_RUNTIME_OFFSET) ) );
 	}
 
 	inline ParametersRuntimeForm & getWritableParametersRuntimeForm()
 	{
+		makeWritable();
+
 		ParametersRuntimeForm & pRF = static_cast< ParametersRuntimeForm & >(
-				mTableOfRuntime.refWritable(PARAM_MACHINE_RUNTIME_OFFSET) );
+				mSmartPtr->mTableOfRuntime.refWritable(
+						PARAM_MACHINE_RUNTIME_OFFSET) );
 
 		pRF.resetOffset();
 
 		return( pRF );
-
-//		return( static_cast< ParametersRuntimeForm & >(
-//				mTableOfRuntime.refWritable(
-//						PARAM_MACHINE_RUNTIME_OFFSET) ) );
 	}
 
 	inline BF bfParametersRuntimeForm() const
 	{
-		return(  mTableOfRuntime.to_sp< BF >( PARAM_MACHINE_RUNTIME_OFFSET ) );
+		return(  mSmartPtr->mTableOfRuntime.to_sp< BF >(
+				PARAM_MACHINE_RUNTIME_OFFSET ) );
 	}
 
 
@@ -1126,27 +1539,32 @@ public:
 		return( getWritableParametersRuntimeForm().saveParameter(anInstance) );
 	}
 
-	inline void appendParameters(BFList & paramList)
+	inline void appendParameters(BFList & paramsList)
 	{
-		getWritableParametersRuntimeForm().appendParameters(paramList);
+		getWritableParametersRuntimeForm().appendParameters(paramsList);
+	}
+
+	inline void appendConstParameters(BFVector & paramsVector)
+	{
+		getWritableParametersRuntimeForm().appendConstParameters(paramsVector);
 	}
 
 
 	inline void saveParametersRuntimeForm(
 			ParametersRuntimeForm * paramsRF) const
 	{
-		mTableOfRuntime.set(PARAM_MACHINE_RUNTIME_OFFSET, paramsRF);
+		mSmartPtr->mTableOfRuntime.set(PARAM_MACHINE_RUNTIME_OFFSET, paramsRF);
 	}
 
 	inline void assignParametersRuntimeForm(
 			ParametersRuntimeForm * paramsRF) const
 	{
-		mTableOfRuntime.assign(PARAM_MACHINE_RUNTIME_OFFSET, paramsRF);
+		mSmartPtr->mTableOfRuntime.assign(PARAM_MACHINE_RUNTIME_OFFSET, paramsRF);
 	}
 
 	inline void assignParametersRuntimeForm(const BF & paramsRF) const
 	{
-		mTableOfRuntime.assign(PARAM_MACHINE_RUNTIME_OFFSET,
+		mSmartPtr->mTableOfRuntime.assign(PARAM_MACHINE_RUNTIME_OFFSET,
 				paramsRF.to_ptr< RuntimeForm >() );
 	}
 
@@ -1177,44 +1595,150 @@ public:
 	 */
 	inline const RuntimeID & getRID() const
 	{
-		return( mRID );
+		return( mSmartPtr->mRID );
 	}
 
-	inline void setRID(const RuntimeID & aRID)
+	inline void setRID(const RuntimeID & aRID) const
 	{
-		mRID = aRID;
+		mSmartPtr->mRID = aRID;
 	}
+
+	inline void mwsetRID(const RuntimeID & aRID)
+	{
+		makeWritable();
+
+		mSmartPtr->mRID = aRID;
+	}
+
+	/**
+	 * GETTER - SETTER
+	 * mPreserveRID
+	 */
+	inline bool isPreserveRID() const
+	{
+		return( mSmartPtr->mPreserveRID );
+	}
+
+	inline void setPreserveRID(bool isPreserveRID)
+	{
+		mSmartPtr->mPreserveRID = isPreserveRID;
+	}
+
+
+	/**
+	 * GETTER - SETTER
+	 * mVALUE
+	 */
+	inline const BF & getValue() const
+	{
+		return( mSmartPtr->mVALUE );
+	}
+
+	inline bool hasValue() const
+	{
+		return( mSmartPtr->mVALUE.valid() );
+	}
+
+	inline void setValue(const BF & aValue)
+	{
+		mSmartPtr->mVALUE = aValue;
+	}
+
 
 	/*
 	 * GETTER - SETTER
 	 * Avm Ending Execution Status
 	 */
-	inline AVM_EXEC_ENDING_STATUS getAEES() const
+	inline AVM_EXECUTION_ENDING_STATUS getAEES() const
 	{
-		return( mAEES );
+		return( mSmartPtr->mAEES );
 	}
 
-	inline void setAEES(AVM_EXEC_ENDING_STATUS anAEES)
+	inline void setAEES(AVM_EXECUTION_ENDING_STATUS anAEES)
 	{
-		mAEES = anAEES;
+		mSmartPtr->mAEES = anAEES;
+	}
+
+	inline void mwsetAEES(AVM_EXECUTION_ENDING_STATUS anAEES)
+	{
+		makeWritable();
+
+		mSmartPtr->mAEES = anAEES;
+	}
+
+	/*
+	 * GETTER - SETTER
+	 * ExecutionLocationQueue
+	 */
+	inline bool hasExecutionLocation()
+	{
+		return( mSmartPtr->mSTATEMENT_QUEUE.nonempty() );
+	}
+
+
+	inline void popExecutionLocationTo(BF & anExecLocation)
+	{
+		mSmartPtr->mSTATEMENT_QUEUE.popTo( anExecLocation );
+	}
+
+
+	inline void pushExecutionLocationhCache()
+	{
+		mSmartPtr->mSTATEMENT_QUEUE.pushCache();
+	}
+
+	inline void pushExecutionLocation(const BFCode & aCode)
+	{
+		makeWritable();
+
+		mSmartPtr->mSTATEMENT_QUEUE.push(mSmartPtr->mRID, aCode);
+	}
+
+	inline void pushExecutionLocation(const BFCode & aCode,
+			const AvmCode::const_iterator & it,
+			const AvmCode::const_iterator & endIt)
+	{
+		makeWritable();
+
+		mSmartPtr->mSTATEMENT_QUEUE.push(mSmartPtr->mRID, aCode, it, endIt);
 	}
 
 
 	/*
 	 * GETTER - SETTER
-	 * Avm Execution Synchronization Point
+	 * Execution Synchronization Point
 	 */
+	inline void destroyExecSyncPoint()
+	{
+		sep::destroy( mSmartPtr->mEXEC_SYNC_POINT );
+
+		mSmartPtr->mEXEC_SYNC_POINT = nullptr;
+	}
+
+
+	inline const ExecutionSynchronizationPoint * getExecSyncPoint() const
+	{
+		return( mSmartPtr->mEXEC_SYNC_POINT );
+	}
+
+	inline bool hasExecSyncPoint()
+	{
+		return( mSmartPtr->mEXEC_SYNC_POINT != nullptr );
+	}
+
 	inline void pushExecSyncPoint(
 			ExecutionSynchronizationPoint * anExecSyncPoint)
 	{
-		if( mEXEC_SYNC_POINT == NULL  )
+		makeWritable();
+
+		if( mSmartPtr->mEXEC_SYNC_POINT == nullptr )
 		{
-			mEXEC_SYNC_POINT = anExecSyncPoint;
+			mSmartPtr->mEXEC_SYNC_POINT = anExecSyncPoint;
 		}
 		else
 		{
-			ExecutionSynchronizationPoint * lastESP = mEXEC_SYNC_POINT;
-			while( lastESP->next != NULL )
+			ExecutionSynchronizationPoint * lastESP = mSmartPtr->mEXEC_SYNC_POINT;
+			while( lastESP->next != nullptr )
 			{
 				lastESP = lastESP->next;
 			}
@@ -1223,407 +1747,27 @@ public:
 	}
 
 
+	inline void printExecSyncPointTrace(OutStream & out) const
+	{
+		if( mSmartPtr.valid() )
+		{
+			out << TAB << "ED@" << mSmartPtr.raw_address();
+			if( mSmartPtr->mEXEC_SYNC_POINT != nullptr )
+			{
+				mSmartPtr->mEXEC_SYNC_POINT->printTrace( out );
+			}
+			out << " " << getRunnableElementTrace().str()
+				<< EOL_FLUSH;
+		}
+	}
+
+
+
 	/**
 	 * INSTANCIATION BOUND TEST
 	 */
 	bool couldBeInstanciated(InstanceOfMachine * anInstance) const;
 
-
-	/**
-	 * COMPARISON
-	 * OPERATOR
-	 *
-	 * TRIVIAL EQUALITY
-	 */
-	virtual bool isTEQ(const ExecutionData * anED) const
-	{
-		if( this == anED )
-		{
-			return( true );
-		}
-		else if( mTableOfRFStateFlags->equalsState(
-				anED->mTableOfRFStateFlags ) )
-		{
-			return( (mTableOfRuntime == anED->mTableOfRuntime)
-					&& mPathCondition.isTEQ(anED->mPathCondition)
-					&& mPathTimedCondition.isTEQ(anED->mPathTimedCondition)
-					&& (mStackOfLocalRuntime == anED->mStackOfLocalRuntime) );
-		}
-		return( false );
-	}
-
-	inline bool isTNEQ(const ExecutionData * anED) const
-	{
-		return( not isTEQ( anED ) );
-	}
-
-};
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-// AVM SMART POINTER FOR ExecutionData
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-
-#define AVM_DEBUG_EXECUTION_DATA_POINTER  true
-#undef AVM_DEBUG_EXECUTION_DATA_POINTER
-
-#if defined(AVM_DEBUG_EXECUTION_DATA_POINTER)
-
-	#define AVM_DECLARE_DEBUG_EXECUTION_DATA_PTR const ExecutionData * debugPTR;
-
-	#define AVM_INIT_DEBUG_EXECUTION_DATA_PTR( ptr )  , debugPTR( ptr )
-
-	#define AVM_ASSIGN_STMNT_DEBUG_EXECUTION_DATA_PTR( ptr )  debugPTR = ptr;
-
-	#define AVM_ASSIGN_EXPR_DEBUG_EXECUTION_DATA_PTR( ptr )   debugPTR = ptr
-
-#else
-
-	#define AVM_DECLARE_DEBUG_EXECUTION_DATA_PTR
-
-	#define AVM_INIT_DEBUG_EXECUTION_DATA_PTR( ptr )
-
-	#define AVM_ASSIGN_STMNT_DEBUG_EXECUTION_DATA_PTR( ptr )
-
-	#define AVM_ASSIGN_EXPR_DEBUG_EXECUTION_DATA_PTR( ptr )  ptr
-
-#endif
-
-
-class APExecutionData :
-		public AvmPointer< ExecutionData , DestroyElementPolicy >
-{
-
-private:
-	/**
-	 * TYPEDEF
-	 */
-	typedef  AvmPointer< ExecutionData , DestroyElementPolicy > base_this_type;
-
-
-protected:
-	/**
-	 * Only for debug facilities
-	 */
-	AVM_DECLARE_DEBUG_EXECUTION_DATA_PTR
-
-
-public:
-
-	/**
-	 * CONSTRUCTOR
-	 * Default
-	 */
-	APExecutionData()
-	: base_this_type( )
-	AVM_INIT_DEBUG_EXECUTION_DATA_PTR( NULL )
-	{
-		//!!! NOTHING
-	}
-
-	explicit APExecutionData(ExecutionData * anED)
-	: base_this_type( AVM_ASSIGN_EXPR_DEBUG_EXECUTION_DATA_PTR( anED ) )
-	{
-		//!!! NOTHING
-	}
-
-
-
-	/**
-	 * DESTRUCTOR
-	 */
-	virtual ~APExecutionData()
-	{
-		//!!! NOTHING
-	}
-
-
-	/**
-	 * resize
-	 */
-	void resize(avm_size_t newMachineCount)
-	{
-		makeWritable();
-
-		raw_pointer()->resize(newMachineCount);
-	}
-
-
-	/**
-	 * GETTER
-	 * the Previous ExecutionData
-	 */
-	APExecutionData & getPrevious();
-
-	const APExecutionData & getPrevious() const;
-
-	bool hasPrevious() const;
-
-
-	inline void mwsetPathCondition(const BF & mCondition)
-	{
-		makeWritable();
-
-		raw_pointer()->setPathCondition( mCondition );
-
-	}
-
-	inline void mwsetPathTimedCondition(const BF & mCondition)
-	{
-		makeWritable();
-
-		raw_pointer()->setPathTimedCondition( mCondition );
-
-	}
-
-
-	/**
-	 * SETTER
-	 * make Modifiable
-	 */
-	inline void makeModifiableParamTable()
-	{
-		makeWritable();
-
-		// TODO Revoir la gestion de la liste des nouveaux parametres
-//		if( hasParam() && getParam()->isMultiple() )
-//		{
-//			decRefCounter( getParam() );
-//			setParam( new TableOfInstance() );
-//		}
-	}
-
-
-	inline void makeModifiableLocalRuntime(LocalRuntime & aLocalRuntime)
-	{
-		makeWritable();
-
-		raw_pointer()->makeWritableLocalRuntimeStack();
-
-		aLocalRuntime.makeWritable();
-
-		raw_pointer()->setLocalRuntime(
-				aLocalRuntime.getOffset() , aLocalRuntime );
-	}
-
-
-	inline RuntimeForm & getWritableRuntime(const RuntimeID & aRID)
-	{
-		makeWritable();
-
-		return( raw_pointer()->getWritableRuntime(aRID) );
-
-	}
-
-	inline APTableOfData & getWritableRuntimeDataTable(const RuntimeID & aRID)
-	{
-		AVM_OS_ASSERT_FATAL_ERROR_EXIT(
-			raw_pointer()->getRuntime(aRID).hasDataTable() )
-				<< "Unexpected RuntimeForm without data !!!"
-				<< SEND_EXIT;
-
-		makeWritable();
-
-		return( raw_pointer()->getWritableRuntime(aRID).getWritableDataTable() );
-	}
-
-
-	/**
-	 * GETTER - SETTER
-	 * mTableOfRFStateFlags
-	 */
-
-	inline void mwsetRuntimeFormState(
-			const RuntimeID & aRID, PROCESS_EVAL_STATE aPES)
-	{
-		makeWritable();
-
-		raw_pointer()->mwsetRuntimeFormState(aRID.getOffset(), aPES);
-	}
-
-	inline void mwsetRuntimeFormState(PROCESS_EVAL_STATE aPES)
-	{
-		mwsetRuntimeFormState(raw_pointer()->mRID, aPES);
-	}
-
-	inline void mwsetRuntimeFormState(const RuntimeID & aRID,
-			PROCESS_EVAL_STATE oldPES, PROCESS_EVAL_STATE aPES)
-	{
-		makeWritable();
-
-		if( raw_pointer()->getRuntimeFormState(aRID) == oldPES )
-		{
-			raw_pointer()->mwsetRuntimeFormState(aRID.getOffset(), aPES);
-
-			raw_pointer()->setAEES( RuntimeDef::PES_to_AEES(
-					aPES, raw_pointer()->getAEES() ) );
-		}
-	}
-
-
-	/**
-	 * SETTER
-	 * mOnSchedule
-	 */
-	inline void mwsetRuntimeFormOnSchedule(
-			const RuntimeID & aRID, const BFCode & onSchedule)
-	{
-		if( aRID.getExecutable()->isMutableSchedule() &&
-			(onSchedule != raw_pointer()->getRuntime(aRID).getOnSchedule()) )
-		{
-			makeWritable();
-
-			raw_pointer()->getWritableRuntime(aRID).setOnSchedule( onSchedule );
-		}
-	}
-
-	inline void mwsetRuntimeFormOnScheduleAndIdle(const RuntimeID & aRID)
-	{
-		mwsetRuntimeFormOnSchedule(aRID.getPRID(), aRID.getOnRunning());
-
-//		mwsetRuntimeFormOnSchedule(aRID.getPRID(),
-//				aRID.hasOnRunning() ? aRID.getOnRunning() :
-//						StatementConstructor::newOptiNopCode(
-//								OperatorManager::OPERATOR_RUN, aRID,
-//								AVM_ARG_MACHINE_RID) );
-
-		if( not raw_pointer()->isIdle() )
-		{
-			raw_pointer()->mwsetRuntimeFormState(aRID, PROCESS_IDLE_STATE);
-		}
-	}
-
-
-	/**
-	 * SETTER
-	 * mDefer
-	 */
-	inline void mwsetRuntimeFormOnDefer(
-			const RuntimeID & aRID, const BFCode & onDefer)
-	{
-		makeWritable();
-
-		raw_pointer()->getWritableRuntime( aRID ).setOnDefer( onDefer );
-	}
-
-
-	/*
-	 * GETTER - SETTER
-	 * Avm Execution Synchronization Point
-	 */
-	inline void pushExecSyncPoint(
-			ExecutionSynchronizationPoint * anExecSyncPoint)
-	{
-		makeWritable();
-
-		raw_pointer()->pushExecSyncPoint( anExecSyncPoint );
-	}
-
-	/*
-	 * SETTER
-	 * Avm Ending Execution Status
-	 */
-	inline void mwsetAEES(AVM_EXEC_ENDING_STATUS anAEES)
-	{
-		makeWritable();
-
-		raw_pointer()->setAEES( anAEES );
-	}
-
-
-	/**
-	 * SETTER
-	 * mIOElementTrace
-	 */
-	inline void mwsetIOElementTrace(const BF & anIOElementTrace)
-	{
-		makeWritable();
-
-		raw_pointer()->setIOElementTrace( anIOElementTrace );
-	}
-
-
-	/**
-	 * SETTER
-	 * mRunnableElementTrace
-	 */
-	inline void mwsetRunnableElementTrace(const BF & aRunnableElementTrace)
-	{
-		makeWritable();
-
-		raw_pointer()->setRunnableElementTrace(aRunnableElementTrace);
-	}
-
-
-	/**
-	 * SETTER
-	 * mRID
-	 */
-
-	inline void mwsetRID(const RuntimeID & aRID)
-	{
-		makeWritable();
-		raw_pointer()->setRID( aRID );
-	}
-
-
-
-	/**
-	 * GETTER - SETTER
-	 * mParametersRuntimeForm
-	 */
-	inline const BF & saveParameter(InstanceOfData * anInstance)
-	{
-		makeWritable();
-
-		return( raw_pointer()->saveParameter(anInstance) );
-	}
-
-	inline void appendParameters(BFList & paramList)
-	{
-		makeWritable();
-
-		raw_pointer()->appendParameters(paramList);
-	}
-
-
-	inline ParametersRuntimeForm & getWritableParametersRuntimeForm()
-	{
-		makeWritable();
-
-		return( raw_pointer()->getWritableParametersRuntimeForm() );
-	}
-
-
-
-
-	/**
-	 * COMPARISON
-	 * OPERATOR
-	 *
-	 * TRIVIAL EQUALITY
-	 */
-	inline bool isTEQ(const APExecutionData & prevED)
-	{
-		return( raw_pointer()->isTEQ( prevED.raw_pointer() ) );
-	}
-
-	inline bool isTNEQ(const APExecutionData & prevED)
-	{
-		return( raw_pointer()->isTNEQ( prevED.raw_pointer() ) );
-	}
-
-
-	/**
-	 * DEFAULT NULL
-	 */
-	static APExecutionData REF_NULL;
 
 };
 
@@ -1632,14 +1776,11 @@ public:
 // TYPE DEFINITION for CONTAINER
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef Collection< APExecutionData >        CollectionOfAPExecutionData;
+typedef Collection< ExecutionData >        CollectionOfExecutionData;
 
-typedef List      < APExecutionData >        ListOfAPExecutionData;
+typedef List      < ExecutionData >        ListOfExecutionData;
 
-typedef Vector    < APExecutionData >        VectorOfAPExecutionData;
-
-typedef Vector    < ListOfAPExecutionData >  VectorOfListOfAPExecutionData;
-
+typedef Vector    < ExecutionData >        VectorOfExecutionData;
 
 }
 
