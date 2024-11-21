@@ -76,9 +76,11 @@ void AvmTestCaseUtils::getParameters(const ExecutionContext & tpEC,
 	TableOfInstanceOfData::const_raw_iterator endParam = paramRF.getParameters().end();
 	for( ; itParam != endParam ; ++itParam )
 	{
-AVM_OS_DEBUG << "Param : " << itParam->getFullyQualifiedNameID() << std::endl;
+//AVM_OS_DEBUG << "Param : " << itParam->getFullyQualifiedNameID() << std::endl;
+
 		if( (itParam->getNameID() != PropertyPart::VAR_ID_TIME_INITIAL)
-			&& (itParam->getNameID() != PropertyPart::VAR_ID_DELTA_TIME_INITIAL) )
+			&& (itParam->getNameID() != PropertyPart::VAR_ID_DELTA_TIME_INITIAL)
+			&& itParam->getModifier().hasNatureParameter() )
 		{
 			listOfParameters.append(*itParam);
 		}
@@ -96,7 +98,8 @@ void AvmTestCaseUtils::getInitialVariablesOfParameters(const ExecutionContext & 
 	for( avm_offset_t offset = 0 ; itParam != endParam ; ++itParam , ++offset)
 	{
 		if( (itParam->getNameID() != PropertyPart::VAR_ID_TIME_INITIAL)
-			&& (itParam->getNameID() != PropertyPart::VAR_ID_DELTA_TIME_INITIAL) )
+			&& (itParam->getNameID() != PropertyPart::VAR_ID_DELTA_TIME_INITIAL)
+			&& itParam->getModifier().hasNatureParameter() )
 		{
 //AVM_OS_DEBUG << "ParamVariable : " << itParam->getFullyQualifiedNameID() << std::endl;
 
@@ -157,6 +160,10 @@ void AvmTestCaseUtils::comParametersFromEC(
 		{
 			const BF & ioTrace = aChildEC->getIOElementTrace();
 			const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
+			if( ! comTrace.valid() )
+			{
+				continue;
+			}
 
 			auto itArg = comTrace.getOperands().begin();
 			const auto & endArg = comTrace.getOperands().end();
@@ -248,16 +255,15 @@ BFCode AvmTestCaseUtils::tpTrace_to_tcStatement(
 // Substitution
 /////////////////////////////////////////
 
-BF AvmTestCaseUtils::substitution(const ExecutionData & varTC_subst_mParamTP_ED,
-		const BF & anExpression, const BF & oldTerm, const BF & newTerm)
+BF AvmTestCaseUtils::substitution(const BF & anExpression,
+		const BF & oldTerm, const BF & newTerm)
 {
 	if( anExpression.is< AvmCode >() )
 	{
 		BFCode substExpression( anExpression.to< AvmCode >().getOperator() );
 		for( const auto & itOperand : anExpression.to< AvmCode >().getOperands() )
 		{
-			substExpression.append(
-					substitution(varTC_subst_mParamTP_ED, itOperand, oldTerm, newTerm) );
+			substExpression.append( substitution(itOperand, oldTerm, newTerm) );
 		}
 		return substExpression;
 	}
@@ -273,7 +279,11 @@ BF AvmTestCaseUtils::substitution(const ExecutionData & varTC_subst_mParamTP_ED,
 	}
 
 	return BF(anExpression);
+}
 
+//BF AvmTestCaseUtils::substitution(const ExecutionData & varTC_subst_mParamTP_ED,
+//		const BF & anExpression, const BF & oldTerm, const BF & newTerm)
+//{
 //	ExecutionData substED = varTC_subst_mParamTP_ED;
 //	ParametersRuntimeForm & paramsRF = substED.getWritableParametersRuntimeForm();
 //	if( oldTerm.is< InstanceOfData >() )
@@ -287,7 +297,7 @@ BF AvmTestCaseUtils::substitution(const ExecutionData & varTC_subst_mParamTP_ED,
 //	}
 //
 //	return anExpression;
-}
+//}
 
 
 /////////////////////////////////////////
@@ -368,6 +378,11 @@ void AvmTestCaseUtils::newfreshInputVarsFromEC(const ExecutionContext & tpEC,
 		{
 			const BF & ioTrace = aChildEC->getIOElementTrace();
 			const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
+			if( ! comTrace.valid() )
+			{
+				continue;
+			}
+
 			if( StatementTypeChecker::isInput(comTrace) )
 			{
 				BF tcPort;
@@ -386,6 +401,11 @@ void AvmTestCaseUtils::newfreshOutputVarsFromEC(const ExecutionContext & tpEC,
 		{
 			const BF & ioTrace = aChildEC->getIOElementTrace();
 			const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
+			if( ! comTrace.valid() )
+			{
+				continue;
+			}
+
 			if( StatementTypeChecker::isOutput(comTrace) )
 			{
 				BF tcPort;
@@ -404,6 +424,11 @@ void AvmTestCaseUtils::newfreshInoutVarsFromEC(const ExecutionContext & tpEC,
 		{
 			const BF & ioTrace = aChildEC->getIOElementTrace();
 			const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
+			if( ! comTrace.valid() )
+			{
+				continue;
+			}
+
 			BF tcPort;
 			getComPortVariableArguments(tcMachine, comTrace, tcPort, tcVars);
 		}
@@ -426,7 +451,8 @@ void AvmTestCaseUtils::getInitialParameters(
 	for( avm_offset_t offset = 0 ; itParam != endParam ; ++itParam , ++offset)
 	{
 		if( (itParam->getNameID() != PropertyPart::VAR_ID_TIME_INITIAL)
-			&& (itParam->getNameID() != PropertyPart::VAR_ID_DELTA_TIME_INITIAL) )
+			&& (itParam->getNameID() != PropertyPart::VAR_ID_DELTA_TIME_INITIAL)
+			&& itParam->getModifier().hasNatureParameter() )
 		{
 //AVM_OS_DEBUG << "ParamVariable : " << itParam->getFullyQualifiedNameID() << std::endl;
 
@@ -486,6 +512,11 @@ void AvmTestCaseUtils::newfreshInoutParamsFromEC(
 		{
 			const BF & ioTrace = aChildEC->getIOElementTrace();
 			const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
+			if( ! comTrace.valid() )
+			{
+				continue;
+			}
+
 			if( StatementTypeChecker::isCommunication(comTrace) )
 			{
 				auto itArg = comTrace.getOperands().begin();

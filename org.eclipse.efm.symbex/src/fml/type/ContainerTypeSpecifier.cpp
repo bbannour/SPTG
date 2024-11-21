@@ -173,15 +173,18 @@ std::string ContainerTypeSpecifier::strSpecifierKing(
 		}
 		case TYPE_CONTINUOUS_TIME_SPECIFIER:
 		{
-			return( "time#continuous" );
+			return( "time" );
+//			return( "time#continuous" );
 		}
 		case TYPE_DENSE_TIME_SPECIFIER:
 		{
-			return( "time#dense" );
+//			return( "time#dense" );
+			return( "time" );
 		}
 		case TYPE_DISCRETE_TIME_SPECIFIER:
 		{
-			return( "time#discrete" );
+//			return( "time#discrete" );
+			return( "time" );
 		}
 
 		default:

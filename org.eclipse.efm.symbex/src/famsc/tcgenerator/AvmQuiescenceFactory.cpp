@@ -20,6 +20,9 @@
 
 #include <fml/builtin/Identifier.h>
 
+#include <fml/executable/ExecutableForm.h>
+#include <fml/executable/InstanceOfData.h>
+
 #include <fml/expression/AvmCode.h>
 #include <fml/expression/AvmCodeFactory.h>
 #include <fml/expression/ExpressionConstant.h>
@@ -74,7 +77,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( LOW , PROCESSING )
 
 	ExecutionContext * symbexGraph = rootQuiescenceGraph.cloneGraph(nullptr, true);
 
-	for( const auto & aChildEC : rootQuiescenceGraph.getChildContexts()  )
+	for( const auto & aChildEC : rootQuiescenceGraph.getChildContexts() )
 	{
 		recQuiescenceOf(*aChildEC);
 	}
@@ -98,7 +101,9 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	AVM_OS_DEBUG << std::endl << EMPHASIS( "quiescenceOf " + anEC.str() ) << std::flush;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
-		BF quiescenceCondition = computeQuiescenceCondition(anEC);
+		BF quiescenceCondition = ExpressionConstructor::orExpr(
+				computeQuiescenceCondition(anEC),
+				computeAdmissibleQuiescenceCondition(anEC));
 		bool isSatisfiable =
 				SolverFactory::isStrongSatisfiable(quiescenceCondition, true);
 
@@ -175,7 +180,9 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	AVM_OS_DEBUG << std::endl << EMPHASIS( "quiescenceOf " + anEC.str() ) << std::flush;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
-		BF quiescenceCondition = computeQuiescenceCondition(anEC);
+		BF quiescenceCondition = ExpressionConstructor::orExpr(
+				computeQuiescenceCondition(anEC),
+				computeAdmissibleQuiescenceCondition(anEC));
 		bool isSatisfiable =
 				SolverFactory::isStrongSatisfiable(quiescenceCondition, true);
 
@@ -264,8 +271,12 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 		{
 			const BF & ioTrace = aChildEC->getIOElementTrace();
 			const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
-			const InstanceOfPort & comPort =
-					comTrace->first().to< InstanceOfPort >();
+			if( ! comTrace.valid() )
+			{
+				continue;
+			}
+
+			const InstanceOfPort & comPort = comTrace->first().to< InstanceOfPort >();
 			if( StatementTypeChecker::isOutput(comTrace) )
 			{
 				if( not aChildEC->getPathCondition().isEqualTrue() )
@@ -276,7 +287,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 						AvmCode::OperandCollectionT timeVarPositiveConditions;
 						for( const auto & boundVar : boundVars)
 						{
-							const BaseTypeSpecifier & type = boundVar.to< InstanceOfData >().getTypeSpecifier();
+							const BaseTypeSpecifier & type =
+									boundVar.to< InstanceOfData >().getTypeSpecifier();
 							if( type.isTypedPositiveNumber() )
 							{
 								timeVarPositiveConditions.append(
@@ -329,6 +341,119 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 
 	return ExpressionConstant::BOOLEAN_TRUE;
 }
+
+
+BF AvmQuiescenceFactory::computeAdmissibleQuiescenceCondition(
+		const ExecutionContext & tcSourceEC)
+{
+	AvmCode::OperandCollectionT phiOutput_Input;
+	bool hasOutput_Input = false;
+
+	const BF & paramElapsedTime =
+			AvmTestCaseUtils::newfreshDurationParamFromEC(tcSourceEC);
+
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+AVM_OS_DEBUG << "computeAdmissibleQuiescenceCondition paramElapsedTime :\n\t" << paramElapsedTime.strHeader() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+
+	for( const auto & aChildEC : tcSourceEC.getChildContexts() )
+	{
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+	AVM_OS_DEBUG << "computeAdmissibleQuiescenceCondition for " << aChildEC->str() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+
+		if( aChildEC->hasIOElementTrace() )
+		{
+			InstanceOfData::Table boundVars;
+			hasOutput_Input = false;
+
+			const BF & ioTrace = aChildEC->getIOElementTrace();
+			const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
+			if( ! comTrace.valid() )
+			{
+				continue;
+			}
+			const InstanceOfPort & comPort =
+					comTrace->first().to< InstanceOfPort >();
+			if( StatementTypeChecker::isOutput(comTrace) )
+			{
+				hasOutput_Input = true;
+
+				AvmTestCaseUtils::newfreshInoutParamsFromEC(tcSourceEC, boundVars);
+
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+	AVM_OS_DEBUG << "computeAdmissibleQuiescenceCondition for output< " << comPort.getNameID() << " >" << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+			}
+			else if( StatementTypeChecker::isInput(comTrace) )
+			{
+				hasOutput_Input = true;
+
+				AvmTestCaseUtils::newfreshInoutParamsFromEC(tcSourceEC, boundVars);
+
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+	AVM_OS_DEBUG << "computeAdmissibleQuiescenceCondition for input< " << comPort.getNameID() << " >" << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+			}
+
+			if( hasOutput_Input )
+			{
+				AvmCode::OperandCollectionT conditions;
+				for( const auto & boundVar : boundVars)
+				{
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+	AVM_OS_DEBUG << "computeAdmissibleQuiescenceCondition boundVar : " << boundVar.strHeader() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+
+					if( boundVar.to< InstanceOfData >().isTypedPositiveNumber() )
+					{
+						conditions.append(
+								ExpressionConstructor::gteExpr(boundVar,
+										ExpressionConstant::INTEGER_ZERO) );
+					}
+				}
+
+				BF boundVarZ( new InstanceOfData(
+						IPointerVariableNature::POINTER_STANDARD_NATURE,
+						& ExecutableForm::nullref(), Variable::nullref(),
+						paramElapsedTime.to< InstanceOfPort >().getTypeSpecifier(),
+						"z", 0) );
+				boundVars.append(boundVarZ);
+
+				conditions.append(
+						ExpressionConstructor::gteExpr(boundVarZ,
+								ExpressionConstant::INTEGER_ZERO) );
+
+				conditions.append(
+						ExpressionConstructor::ltExpr(paramElapsedTime, boundVarZ));
+
+				BF substPC = AvmTestCaseUtils::substitution(
+						aChildEC->getPathCondition(),
+						paramElapsedTime, boundVarZ);
+
+				conditions.append(substPC);
+
+				phiOutput_Input.append(
+						ExpressionConstructor::existsExpr(boundVars,
+								ExpressionConstructor::andExpr(conditions) ));
+
+AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+	AVM_OS_DEBUG << phiOutput_Input.last().str() << std::endl;
+AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+			}
+		}
+	}
+
+	if( phiOutput_Input.nonempty() )
+	{
+		return ExpressionConstructor::orExpr(phiOutput_Input);
+	}
+	else
+	{
+		return( ExpressionConstant::BOOLEAN_TRUE );
+	}
+}
+
 
 
 void AvmQuiescenceFactory::removeUnsatisfiableQuiescence(ExecutionContext * anEC)

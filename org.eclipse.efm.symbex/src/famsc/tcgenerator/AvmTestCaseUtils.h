@@ -90,8 +90,11 @@ public:
 	// Substitution
 	/////////////////////////////////////////
 
-	static BF substitution(const ExecutionData & varTC_subst_mParamTP_ED,
-			const BF & anExpression, const BF & oldTerm, const BF & newTerm);
+	static BF substitution(const BF & anExpression,
+			const BF & oldTerm, const BF & newTerm);
+
+//	static BF substitution(const ExecutionData & varTC_subst_mParamTP_ED,
+//			const BF & anExpression, const BF & oldTerm, const BF & newTerm);
 
 	/////////////////////////////////////////
 	// Fresh variables of EC

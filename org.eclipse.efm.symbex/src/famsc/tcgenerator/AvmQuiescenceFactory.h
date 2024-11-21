@@ -90,6 +90,8 @@ public:
 
 	BF computeQuiescenceCondition(const ExecutionContext & tcSourceEC);
 
+	BF computeAdmissibleQuiescenceCondition(const ExecutionContext & tcSourceEC);
+
 	void removeUnsatisfiableQuiescence(ExecutionContext * anEC);
 
 };

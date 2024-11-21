@@ -164,6 +164,12 @@ AVM_ENDIF_DEBUG_FLAG( SOLVING )
 		 {
 			 return( mConfigFlag = false );
 		 }
+ AVM_IF_DEBUG_LEVEL_FLAG( LOW , CONFIGURING )
+	AVM_OS_LOG << "Configuration of trace sequence: " << std::endl;
+	 mTraceTestPurpose.toStream( AVM_OS_LOG << AVM_TAB_INDENT );
+	 mTraceCommunicationIO.toStream( AVM_OS_LOG << AVM_TAB_INDENT );
+	AVM_OS_LOG << END_INDENT << std::endl;
+ AVM_ENDIF_DEBUG_LEVEL_FLAG( LOW , CONFIGURING )
 	}
 	else
 	{

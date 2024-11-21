@@ -135,16 +135,16 @@ void AvmTestCaseFactory::buildStructure(const System & sutSystem, System & tcSys
 	InteractionPart * tcInteractionPart = mMachineTC->getUniqInteraction();
 
 	// Quiescence port
-	Modifier outputModifier;
-	outputModifier.setVisibilityPublic().setDirectionOutput();
+	Modifier inputModifier;
+	inputModifier.setVisibilityPublic().setDirectionInput();
 
 	Port * quiescencePort = new Port(tcPropertyDecl, "Quiescence",
-					IComPoint::IO_PORT_NATURE, outputModifier);
+					IComPoint::IO_PORT_NATURE, inputModifier);
 	mQuiescencePortTC = tcPropertyDecl.saveOwnedElement(quiescencePort);
 
 	Connector & aConnector = tcInteractionPart->appendConnector(
 			ComProtocol::PROTOCOL_ENVIRONMENT_KIND);
-	aConnector.appendComRoute(quiescencePort, Modifier::PROPERTY_OUTPUT_DIRECTION );
+	aConnector.appendComRoute(quiescencePort, Modifier::PROPERTY_INPUT_DIRECTION );
 
 	const PropertyPart & sutPropertyDecl = sutSystem.getPropertyPart();
 
@@ -1129,7 +1129,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	// The com statement
 	BFCode failQuiescenceStatement = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_OUTPUT, mQuiescencePortTC);
+			OperatorManager::OPERATOR_INPUT, mQuiescencePortTC);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
 			OperatorManager::OPERATOR_SEQUENCE, guard, failQuiescenceStatement));
@@ -1138,15 +1138,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 BF AvmTestCaseFactory::compute_R09_QuiescenceCondition(
 		const ExecutionContext & tcSourceEC)
 {
-	AvmCode::OperandCollectionT phiOutput_UcInput;
-	bool hasOutput_UcInput = false;
-
-	const BF & varElapsedTime =
-			AvmTestCaseUtils::newfreshDurationVarFromEC(tcSourceEC, *mMachineTC);
-
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-AVM_OS_DEBUG << "R9_Quiescence condition varElapsedTime : " << varElapsedTime.strHeader() << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+	AvmCode::OperandCollectionT phiQuiescence;
 
 	for( const auto & aChildEC : tcSourceEC.getChildContexts() )
 	{
@@ -1156,107 +1148,32 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 
 		if( aChildEC->hasIOElementTrace() )
 		{
-			Variable::Table boundVars( mNewfreshInitialVars );
-			hasOutput_UcInput = false;
-
 			const BF & ioTrace = aChildEC->getIOElementTrace();
 			const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
 			const InstanceOfPort & comPort =
 					comTrace->first().to< InstanceOfPort >();
-			if( StatementTypeChecker::isOutput(comTrace) )
+			if( comPort.isTEQ(mQuiescencePortTP.rawPort()) )
 			{
-				if( comPort.isTEQ(mQuiescencePortTP.rawPort()) )
+				if( not aChildEC->getPathCondition().isEqualTrue() )
 				{
-					if( not aChildEC->getPathCondition().isEqualTrue() )
-					{
-						phiOutput_UcInput.append(
-								ExpressionConstructor::existsExpr(
-										mNewfreshInitialVars,
-										aChildEC->getPathCondition()
-								)
-						);
+					phiQuiescence.append(
+							ExpressionConstructor::existsExpr(
+									mNewfreshInitialVars,
+									aChildEC->getPathCondition()
+							)
+					);
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 	AVM_OS_DEBUG << "R9_Quiescence condition for output< " << comPort.getNameID()
 		<< " > of " << aChildEC->str() << " : ";
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-					}
 				}
-				else
-				{
-					hasOutput_UcInput = true;
-
-					AvmTestCaseUtils::newfreshOutputVarsFromEC(
-							tcSourceEC, *mMachineTC, boundVars);
-
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-	AVM_OS_DEBUG << "R9_Quiescence condition for output< " << comPort.getNameID() << " > : ";
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-				}
-			}
-			else if( mUncontrollableTraceFilter.pass(comPort) )
-			{
-				hasOutput_UcInput = true;
-
-				AvmTestCaseUtils::newfreshInputVarsFromEC(
-						tcSourceEC, *mMachineTC, boundVars);
-
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-	AVM_OS_DEBUG << "R9_Quiescence condition for ucInput< " << comPort.getNameID() << " > : ";
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-			}
-
-			if( hasOutput_UcInput )
-			{
-				AvmCode::OperandCollectionT conditions;
-				for( const auto & boundVar : boundVars)
-				{
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-	AVM_OS_DEBUG << "R9_Quiescence condition boundVar : " << boundVar.strHeader() << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-
-					const BF & type = boundVar.to< Variable >().getType();
-					if( type.is< BaseTypeSpecifier >() &&
-						type.to< BaseTypeSpecifier >().isTypedPositiveNumber() )
-					{
-						conditions.append(
-								ExpressionConstructor::gteExpr(boundVar,
-										ExpressionConstant::INTEGER_ZERO) );
-					}
-				}
-
-				BF boundVarZ( new Variable(mMachineTC,
-						Modifier::PROPERTY_PRIVATE_MODIFIER,
-						varElapsedTime.to< Variable >().getType(), "z") );
-				boundVars.append(boundVarZ);
-
-				conditions.append(
-						ExpressionConstructor::gteExpr(boundVarZ,
-								ExpressionConstant::INTEGER_ZERO) );
-
-				conditions.append(
-						ExpressionConstructor::ltExpr(varElapsedTime, boundVarZ));
-
-				BF substPC = AvmTestCaseUtils::substitution(
-						mVarTC_subst_mParamTP_ED,
-						aChildEC->getPathCondition(),
-						varElapsedTime, boundVarZ);
-
-				conditions.append(substPC);
-
-				phiOutput_UcInput.append(
-						ExpressionConstructor::existsExpr(boundVars,
-								ExpressionConstructor::andExpr(conditions) ));
-
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-	AVM_OS_DEBUG << phiOutput_UcInput.last().str() << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 			}
 		}
 	}
 
-	if( phiOutput_UcInput.nonempty() )
+	if( phiQuiescence.nonempty() )
 	{
-		return ExpressionConstructor::orExpr(phiOutput_UcInput);
+		return ExpressionConstructor::orExpr(phiQuiescence);
 	}
 	else
 	{
@@ -1506,7 +1423,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	// The com statement
 	BFCode failQuiescenceStatement = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_OUTPUT, mQuiescencePortTC);
+			OperatorManager::OPERATOR_INPUT, mQuiescencePortTC);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
 			OperatorManager::OPERATOR_SEQUENCE, guard, failQuiescenceStatement));
@@ -1516,15 +1433,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 BF AvmTestCaseFactory::compute_R11_QuiescenceCondition(
 		const ExecutionContext & tcSourceEC)
 {
-	AvmCode::OperandCollectionT phiOutput_UcInput;
-	bool hasOutput_UcInput = false;
-
-	const BF & varElapsedTime =
-			AvmTestCaseUtils::newfreshDurationVarFromEC(tcSourceEC, *mMachineTC);
-
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-AVM_OS_DEBUG << "R9_Quiescence condition varElapsedTime : " << varElapsedTime.strHeader() << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
+	AvmCode::OperandCollectionT phiQuiescence;
 
 	for( const auto & aChildEC : tcSourceEC.getChildContexts() )
 	{
@@ -1534,130 +1443,31 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 
 		if( aChildEC->hasIOElementTrace() )
 		{
-			Variable::Table boundVars( mNewfreshInitialVars );
-			hasOutput_UcInput = false;
-
 			const BF & ioTrace = aChildEC->getIOElementTrace();
 			const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
 			const InstanceOfPort & comPort =
 					comTrace->first().to< InstanceOfPort >();
 
-			if( StatementTypeChecker::isOutput(comTrace) )
+			if( comPort.isTEQ(mQuiescencePortTP.rawPort()) )
 			{
-				if( comPort.isTEQ(mQuiescencePortTP.rawPort()) )
-				{
-					phiOutput_UcInput.append(
-							ExpressionConstructor::forallExpr(
-									mNewfreshInitialVars,
-									ExpressionConstructor::notExpr(
-											aChildEC->getPathCondition()
-									)
-							)
-					);
+				phiQuiescence.append(
+						ExpressionConstructor::forallExpr(
+								mNewfreshInitialVars,
+								ExpressionConstructor::notExpr(
+										aChildEC->getPathCondition()
+								)
+						)
+				);
 AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 	AVM_OS_DEBUG << "R11_Quiescence condition for < " << comPort.getNameID() << " > of "
-		<< aChildEC->str() << " : " << phiOutput_UcInput.last().str() << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-				}
-				else
-				{
-					hasOutput_UcInput = true;
-
-					AvmTestCaseUtils::newfreshOutputVarsFromEC(
-							tcSourceEC, *mMachineTC, boundVars);
-
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-	AVM_OS_DEBUG << "R11_Quiescence condition for output< " << comPort.getNameID() << " > : ";
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-				}
-			}
-			else if( mUncontrollableTraceFilter.pass(comPort) )
-			{
-				hasOutput_UcInput = true;
-
-				AvmTestCaseUtils::newfreshInputVarsFromEC(
-						tcSourceEC, *mMachineTC, boundVars);
-
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-	AVM_OS_DEBUG << "R11_Quiescence condition for ucInput< " << comPort.getNameID() << " > : ";
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-			}
-
-			if( hasOutput_UcInput )
-			{
-				AvmCode::OperandCollectionT preConditions;
-				for( const auto & boundVar : boundVars)
-				{
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-	AVM_OS_DEBUG << "R11_Quiescence condition boundVar : " << boundVar.strHeader() << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-
-					const BF & type = boundVar.to< Variable >().getType();
-					if( type.is< BaseTypeSpecifier >() &&
-						type.to< BaseTypeSpecifier >().isTypedPositiveNumber() )
-					{
-						preConditions.append(
-								ExpressionConstructor::gteExpr(boundVar,
-										ExpressionConstant::INTEGER_ZERO) );
-					}
-				}
-
-				BF boundVarZ( new Variable(mMachineTC,
-						Modifier::PROPERTY_PRIVATE_MODIFIER,
-						varElapsedTime.to< Variable >().getType(), "z") );
-				boundVars.append(boundVarZ);
-
-				preConditions.append(
-						ExpressionConstructor::gteExpr(boundVarZ,
-								ExpressionConstant::INTEGER_ZERO) );
-
-				BF substPC = AvmTestCaseUtils::substitution(
-						mVarTC_subst_mParamTP_ED,
-						aChildEC->getPathCondition(),
-						varElapsedTime, boundVarZ);
-
-				BF zCond = ExpressionConstructor::ltExpr(varElapsedTime, boundVarZ);
-
-				if( preConditions.nonempty() )
-				{
-					phiOutput_UcInput.append(
-							ExpressionConstructor::forallExpr(
-									boundVars,
-									ExpressionConstructor::impliesExpr(
-											ExpressionConstructor::andExpr(
-													preConditions
-											),
-											ExpressionConstructor::notExpr(
-													ExpressionConstructor::andExpr(
-															zCond, substPC
-													)
-											)
-									)
-							)
-					);
-				}
-				else
-				{
-					phiOutput_UcInput.append(
-							ExpressionConstructor::forallExpr(
-									boundVars,
-									ExpressionConstructor::notExpr(
-											ExpressionConstructor::andExpr(
-													zCond, substPC
-											)
-									)
-							)
-					);
-				}
-AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
-	AVM_OS_DEBUG << phiOutput_UcInput.last().str() << std::endl;
+		<< aChildEC->str() << " : " << phiQuiescence.last().str() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 			}
 		}
 	}
-	if( phiOutput_UcInput.nonempty() )
+	if( phiQuiescence.nonempty() )
 	{
-		return ExpressionConstructor::andExpr(phiOutput_UcInput);
+		return ExpressionConstructor::andExpr(phiQuiescence);
 	}
 	else
 	{
@@ -1882,7 +1692,7 @@ void AvmTestCaseFactory::addFailQuiescenceTransition(
 			ExpressionConstructor::gteExpr(varElapsedTime, mVariable_TC_TM) );
 
 	BFCode failQuiescenceStatement = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_OUTPUT, mQuiescencePortTC);
+			OperatorManager::OPERATOR_INPUT, mQuiescencePortTC);
 
 	quiescTransition->setStatement( StatementConstructor::newCode(
 			OperatorManager::OPERATOR_SEQUENCE, guard, failQuiescenceStatement));
