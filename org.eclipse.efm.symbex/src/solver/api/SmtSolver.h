@@ -52,7 +52,7 @@ protected:
 	/**
 	 * ATTRIBUTES
 	 **/
-	TableOfInstanceOfData  mTableOfParameterInstance;
+	InstanceOfData::Table  mTableOfParameterInstance;
 	Vector< VarDecl_T >    mTableOfParameterDecl;
 
 	Vector< Expr_T    >    mTableOfParameterExpr;
@@ -117,10 +117,8 @@ public:
 	{
 		if( mTableOfParameterInstance.nonempty() )
 		{
-			BFVector::raw_iterator< InstanceOfData > it =
-					mTableOfParameterInstance.begin();
-			BFVector::raw_iterator< InstanceOfData > itEnd =
-					mTableOfParameterInstance.end();
+			InstanceOfData::Table::raw_iterator it = mTableOfParameterInstance.begin();
+			InstanceOfData::Table::raw_iterator itEnd =	mTableOfParameterInstance.end();
 			for( ++it /* ignore sentinel */ ; it != itEnd ; ++it )
 			{
 				(it)->setMark(0);

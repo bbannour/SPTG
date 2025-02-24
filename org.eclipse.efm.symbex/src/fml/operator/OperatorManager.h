@@ -201,6 +201,9 @@ public:
 	static bool isAssignBinary(const Operator * anOperator);
 	static bool isAssignUnary(const Operator * anOperator);
 
+	static bool isGuard(const Operator * anOperator);
+	static bool isTimedGuard(const Operator * anOperator);
+	static bool isAnyGuard(const Operator * anOperator);
 
 	static bool isUfi(const Operator * anOperator);
 	static bool isCtor(const Operator * anOperator);

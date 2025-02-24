@@ -1744,6 +1744,55 @@ bool OperatorManager::isAssignUnary(const Operator * anOperator)
 }
 
 
+bool OperatorManager::isGuard(const Operator * anOperator)
+{
+	switch( anOperator->getAvmOpCode() )
+	{
+		case AVM_OPCODE_GUARD:
+		{
+			return( true );
+		}
+
+		default:
+		{
+			return( false );
+		}
+	}
+}
+
+bool OperatorManager::isTimedGuard(const Operator * anOperator)
+{
+	switch( anOperator->getAvmOpCode() )
+	{
+		case AVM_OPCODE_TIMED_GUARD:
+		{
+			return( true );
+		}
+
+		default:
+		{
+			return( false );
+		}
+	}
+}
+
+bool OperatorManager::isAnyGuard(const Operator * anOperator)
+{
+	switch( anOperator->getAvmOpCode() )
+	{
+		case AVM_OPCODE_GUARD:
+		case AVM_OPCODE_TIMED_GUARD:
+		{
+			return( true );
+		}
+
+		default:
+		{
+			return( false );
+		}
+	}
+}
+
 bool OperatorManager::isUfi(const Operator * anOperator)
 {
 	switch( anOperator->getAvmOpCode() )

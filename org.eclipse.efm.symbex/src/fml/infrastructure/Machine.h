@@ -190,6 +190,26 @@ public:
 		return( new Machine(aContainer, aNameID, aMocSpecifier) );
 	}
 
+	inline static Machine * newState(Machine * aContainer,
+			const std::string & aNameID, Specifier aMocSpecifier,
+			const std::string & anUnrestrictedName)
+	{
+		if( aMocSpecifier.noneDesignKind() )
+		{
+			aMocSpecifier.setDesignPrototypeStatic();
+		}
+
+		aMocSpecifier.hasPseudostateMoc()
+				? aMocSpecifier.setComponentPseudostate()
+				: aMocSpecifier.setComponentState();
+
+		Machine * aState = new Machine(aContainer, aNameID, aMocSpecifier);
+		aState->setUnrestrictedName(anUnrestrictedName);
+
+		return( aState );
+	}
+
+
 	inline static Machine * newPseudostate(Machine * aContainer,
 			const std::string & aNameID, Specifier aMocSpecifier)
 	{
@@ -390,6 +410,12 @@ public:
 
 	/**
 	 * GETTER - SETTER
+	 * mDeclarationVariable
+	 */
+	const TableOfVariable & getVariables() const;
+
+	/**
+	 * GETTER - SETTER
 	 * mDeclarationParameter
 	 */
 	const TableOfVariable & getVariableParameters() const;
@@ -447,7 +473,7 @@ public:
 	 * GETTER - SETTER
 	 * mPropertyPart
 	 */
-	inline virtual const PropertyPart & getPropertyPart() const override
+	inline virtual const PropertyPart & getPropertyPart() const override final
 	{
 		return( mPropertyDeclaration );
 	}
@@ -574,7 +600,7 @@ public:
 	 * GETTER - SETTER
 	 * mCompositeSpecification
 	 */
-	inline virtual const CompositePart * getCompositePart() const override
+	inline virtual const CompositePart * getCompositePart() const override final
 	{
 		return( mCompositeSpecification );
 	}
@@ -586,7 +612,7 @@ public:
 
 	CompositePart * getUniqCompositePart();
 
-	inline bool hasCompositePart() const override
+	inline bool hasCompositePart() const override final
 	{
 		return( mCompositeSpecification != nullptr );
 	}
@@ -632,12 +658,12 @@ public:
 	 */
 	BehavioralPart * getUniqBehaviorPart();
 
-	inline virtual BehavioralPart * getBehaviorPart() const override
+	inline virtual BehavioralPart * getBehaviorPart() const override final
 	{
 		return( mBehavioralSpecification );
 	}
 
-	inline virtual bool hasBehaviorPart() const override
+	inline virtual bool hasBehaviorPart() const override final
 	{
 		return( mBehavioralSpecification != nullptr );
 	}
@@ -722,6 +748,8 @@ public:
 	virtual void toStream(OutStream & out) const override;
 
 };
+
+typedef TableOfBF_T< Machine >  TableOfMachine;
 
 
 

@@ -48,7 +48,9 @@ void AvmTestCaseStatistics::saveGuardCondition() const
 	if( mSelectedTransition != nullptr )
 	{
 		SolverFactory::to_smt(out, mLargestGuardCondition);
+		out.flush();
 	}
+
 
 }
 

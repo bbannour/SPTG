@@ -893,22 +893,22 @@ bool ExpressionFactory::isConstValue(const BF & value)
 
 
 /**
- * COLLECT VARIABLE OR CLAUSE
+ * COLLECT VARIABLE
+ * Using Variable::Table
+ * For only Variable typed var
  */
-
-void ExpressionFactory::collectVariable(
-		const BF & anExpr, BFCollection & listOfVar)
+void ExpressionFactory::collectSpecVariable(const BF & anExpr, Variable::Table & listOfVar)
 {
 	switch( anExpr.classKind() )
 	{
 		case FORM_AVMCODE_KIND:
 		{
-			collectVariable(anExpr.bfCode(), listOfVar);
+			collectSpecVariable(anExpr.bfCode(), listOfVar);
 
 			break;
 		}
 
-		case FORM_INSTANCE_DATA_KIND:
+		case FORM_XFSP_VARIABLE_KIND:
 		{
 			listOfVar.add_unique( anExpr );
 
@@ -923,18 +923,89 @@ void ExpressionFactory::collectVariable(
 }
 
 
+/**
+ * COLLECT VARIABLE
+ * Using InstanceOfData::Table
+ * For only InstanceOfData typed var
+ */
 void ExpressionFactory::collectVariable(
-		const BFCode & aCode, BFCollection & listOfVar)
+		const BF & anExpr, InstanceOfData::Table & listOfElement)
 {
-	for( const auto & itOperand : aCode.getOperands() )
+	switch( anExpr.classKind() )
 	{
-		collectVariable(itOperand, listOfVar);
+		case FORM_AVMCODE_KIND:
+		{
+			collectVariable(anExpr.bfCode(), listOfElement);
+
+			break;
+		}
+
+		case FORM_INSTANCE_DATA_KIND:
+		{
+			listOfElement.add_unique( anExpr );
+
+			break;
+		}
+
+		default:
+		{
+			break;
+		}
 	}
 }
 
 
+/**
+ * COLLECT ANY VARIABLE
+ * Using BFCollection
+ * For Variable or InstanceOfData typed var
+ */
+void ExpressionFactory::collectAnyVariable(
+		const BF & anExpr, BFCollection & listOfVar)
+{
+	switch( anExpr.classKind() )
+	{
+		case FORM_AVMCODE_KIND:
+		{
+			collectAnyVariable(anExpr.bfCode(), listOfVar);
+
+			break;
+		}
+
+		case FORM_INSTANCE_DATA_KIND:
+		case FORM_XFSP_VARIABLE_KIND:
+		{
+			listOfVar.add_unique( anExpr );
+
+			break;
+		}
+
+		default:
+		{
+			break;
+		}
+	}
+}
+
+
+void ExpressionFactory::collectAnyVariable(
+		const BFCode & aCode, BFCollection & listOfVar)
+{
+	for( const auto & itOperand : aCode.getOperands() )
+	{
+		collectAnyVariable(itOperand, listOfVar);
+	}
+}
+
+
+
+/**
+ * COLLECT FREE VARIABLE
+ * Using BFCollection
+ * For InstanceOfData typed var
+ */
 void ExpressionFactory::collectsFreeVariable(const BF & anExpr,
-		BFCollection & listOfBoundVar, BFCollection & listOfVar)
+		InstanceOfData::Table & listOfBoundVar, InstanceOfData::Table & listOfVar)
 {
 	switch( anExpr.classKind() )
 	{
@@ -963,7 +1034,7 @@ void ExpressionFactory::collectsFreeVariable(const BF & anExpr,
 }
 
 void ExpressionFactory::collectsFreeVariable(const BFCode & aCode,
-		BFCollection & listOfBoundVar, BFCollection & listOfVar)
+		InstanceOfData::Table & listOfBoundVar, InstanceOfData::Table & listOfVar)
 {
 	switch( aCode.getAvmOpCode() )
 	{
@@ -989,10 +1060,12 @@ void ExpressionFactory::collectsFreeVariable(const BFCode & aCode,
 			break;
 		}
 	}
-
 }
 
-
+/**
+ * UTILS
+ * For only InstanceOfData typed var
+ */
 bool ExpressionFactory::containsVariable(
 		const BF & anExpr, InstanceOfData * aVariable)
 {
@@ -1080,10 +1153,8 @@ bool ExpressionFactory::containsVariable(
 
 
 /**
- * COLLECT VARIABLE OR CLAUSE
+ * COLLECT CLAUSE
  */
-
-
 void ExpressionFactory::collectsClause(
 		const BF & anExpr, BFCollection & listOfClause)
 {

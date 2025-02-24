@@ -108,10 +108,8 @@ void AvmLabelledTestCaseFactory::buildStructure(const System & sutSystem, System
 	if( sutSystem.hasMachine() )
 	{
 		const CompositePart * sutCompositePart = sutSystem.getCompositePart();
-		CompositePart::TableOfMachine::const_ref_iterator itm =
-				sutCompositePart->getMachines().begin();
-		CompositePart::TableOfMachine::const_ref_iterator endItm =
-				sutCompositePart->getMachines().end();
+		TableOfMachine::const_ref_iterator itm = sutCompositePart->getMachines().begin();
+		TableOfMachine::const_ref_iterator endItm = sutCompositePart->getMachines().end();
 		for( ; itm != endItm ; ++itm )
 		{
 			if( itm->hasPortSignal() )

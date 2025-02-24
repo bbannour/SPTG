@@ -118,14 +118,16 @@ public:
 			const ExecutionContext & tcTargetEC);
 
 
+	void saveTestCaseJson(const System & aSystemTC);
+
+
 	////////////////////////////////////////////////////////////////////////////
 	// RULES FOR TESCASE GENERATION
 	////////////////////////////////////////////////////////////////////////////
 
 	BF boundTimeOutCondition(const ExecutionContext & tcSourceEC);
 
-	BFCode boundTimeOutPathConditionGuard(const ExecutionContext & tcSourceEC,
-			const ExecutionContext & tcTargetEC);
+	BF targetPathCondition(const ExecutionContext & tcTargetEC);
 
 	BF unboundTimeOutCondition(const ExecutionContext & tcSourceEC);
 
@@ -186,55 +188,6 @@ public:
 	BF compute_R11_QuiescenceCondition(const ExecutionContext & tcSourceEC);
 
 
-
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////
-
-	bool buildStatemachine();
-
-	Machine * buildState(Machine & tcSourceState,
-			const ExecutionContext & tcSourceEC,
-			const ExecutionContext & tcTargetEC);
-
-
-	void sutUnexpectedOutput(const ExecutionContext & tcSourceEC,
-			const BF tpOutputPort, BFList & specSutOutputPort);
-
-
-	void addIncInputTransition(
-			const ExecutionContext & tcSourceEC, Machine & tcSourceState,
-			const BFList & specSutOutputPort, bool groupIncInput);
-
-	void createIncInputTransition(
-			const ExecutionContext & tcSourceEC, Machine & tcSourceState,
-			const BFCodeList & allIncInputStatement, bool groupFailedInput);
-
-
-	void addFailQuiescenceTransition(
-			const ExecutionContext & tcSourceEC, Machine & tcSourceState);
-
-
-	void addFailInputTransition(const ExecutionContext & tcSourceEC,
-			Machine & tcSourceState, bool groupFailedInput);
-
-	void addFailInputTransition(
-			const ExecutionContext & tcSourceEC, Machine & tcSourceState,
-			const BFList & specSutOutputPort, bool groupFailedInput);
-
-	void createFailInputTransition(
-			const ExecutionContext & tcSourceEC, Machine & tcSourceState,
-			const BFCodeList & allFailedInputStatement, bool groupFailedInput);
-
-
-	////////////////////////////////////////////////////////////////////////////
 };
 
 

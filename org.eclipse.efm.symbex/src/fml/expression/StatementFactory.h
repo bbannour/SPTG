@@ -79,6 +79,15 @@ public:
 
 	/**
 	 * COLLECT
+	 * Guard & Communication Statement
+	 */
+	static void collectTimedGuard(const BF & aStatement, BFCode & timedguard);
+
+	static void collectGuardCommunication(
+			const BF & aStatement, BFCode & guard, BFCode & comStatement);
+
+	/**
+	 * COLLECT
 	 * RID
 	 */
 	static void collectRID(const BF & aStatement,

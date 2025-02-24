@@ -64,6 +64,29 @@ public:
 	}
 
 
+	inline static bool isGuard(const BF & aCode)
+	{
+		return( aCode.is< AvmCode >()
+				&& isGuard(aCode.to< AvmCode >()) );
+	}
+
+	inline static bool isGuard(const AvmCode & aCode)
+	{
+		return( OperatorManager::isGuard( aCode.getOperator() ) );
+	}
+
+	inline static bool isTimedGuard(const BF & aCode)
+	{
+		return( aCode.is< AvmCode >()
+				&& isTimedGuard(aCode.to< AvmCode >()) );
+	}
+
+	inline static bool isTimedGuard(const AvmCode & aCode)
+	{
+		return( OperatorManager::isTimedGuard( aCode.getOperator() ) );
+	}
+
+
 	inline static bool isSequence(const BF & aCode)
 	{
 		return( aCode.is< AvmCode >()

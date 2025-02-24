@@ -31,8 +31,11 @@
 
 #include <fml/expression/AvmCode.h>
 #include <fml/expression/ExpressionConstant.h>
+#include <fml/expression/ExpressionFactory.h>
 #include <fml/expression/StatementConstructor.h>
+#include <fml/expression/StatementFactory.h>
 
+#include <fml/infrastructure/BehavioralPart.h>
 #include <fml/infrastructure/CompositePart.h>
 #include <fml/infrastructure/ComProtocol.h>
 #include <fml/infrastructure/ComRoute.h>
@@ -54,10 +57,18 @@
 
 #include <sew/Configuration.h>
 
+#include <solver/api/SolverFactory.h>
+#include <solver/Z3Solver.h>
+
+#include <util/ExecutionChrono.h>
+
 
 namespace sep
 {
 
+
+static const std::string VAR_TC_CLOCK_ID = "clt"; // a.k.a. "tc_clock"
+static const std::string VAR_TM_ID       = "TM";
 
 /**
  * CONSTRUCTOR
@@ -111,6 +122,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( LOW , PROCESSING )
 	OutStream & out2File = mProcessor.getStream( "file#tc" );
 	mSystemTC.toStream(out2File);
 
+	saveTestCaseJson(mSystemTC);
+
 AVM_IF_DEBUG_LEVEL_FLAG( LOW , PROCESSING )
 	AVM_OS_DEBUG << DECR_INDENT;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( LOW , PROCESSING )
@@ -153,10 +166,8 @@ void AvmTestCaseFactory::buildStructure(const System & sutSystem, System & tcSys
 	if( sutSystem.hasMachine() )
 	{
 		const CompositePart * sutCompositePart = sutSystem.getCompositePart();
-		CompositePart::TableOfMachine::const_ref_iterator itm =
-				sutCompositePart->getMachines().begin();
-		CompositePart::TableOfMachine::const_ref_iterator endItm =
-				sutCompositePart->getMachines().end();
+		TableOfMachine::const_ref_iterator itm = sutCompositePart->getMachines().begin();
+		TableOfMachine::const_ref_iterator endItm = sutCompositePart->getMachines().end();
 		for( ; itm != endItm ; ++itm )
 		{
 			if( itm->hasPortSignal() )
@@ -210,6 +221,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	buildStatemachineTC();
 }
 
+
+// Saving SUT port for saving in JSON format
+static Port::Table OUTPUT_PORTS;
+static Port::Table INPUT_PORTS;
+static Port::Table UNCRNTROLLABLE_INPUT_PORTS;
+
+
 void AvmTestCaseFactory::addPorts(PropertyPart & tcPropertyPart,
 		InteractionPart * tcInteractionPart, const PropertyPart & sutPropertyPart)
 {
@@ -219,11 +237,14 @@ void AvmTestCaseFactory::addPorts(PropertyPart & tcPropertyPart,
 	Modifier outputModifier;
 	outputModifier.setVisibilityPublic().setDirectionOutput();
 
+	PropertyPart::TableOfPort::const_iterator sutItBf =
+			sutPropertyPart.getPorts().begin();
+
 	PropertyPart::TableOfPort::const_ref_iterator sutItp =
 			sutPropertyPart.getPorts().begin();
 	PropertyPart::TableOfPort::const_ref_iterator sutEndItp =
 			sutPropertyPart.getPorts().end();
-	for( ; sutItp != sutEndItp ; ++sutItp )
+	for( ; sutItp != sutEndItp ; ++sutItp, ++sutItBf )
 	{
 		Connector & aConnector = tcInteractionPart->appendConnector(
 				ComProtocol::PROTOCOL_ENVIRONMENT_KIND);
@@ -232,6 +253,8 @@ void AvmTestCaseFactory::addPorts(PropertyPart & tcPropertyPart,
 		{
 			if( mUncontrollableTraceFilter.pass(sutItp->to< Port >()) )
 			{
+				UNCRNTROLLABLE_INPUT_PORTS.append(*sutItBf);
+
 				Port * tcInputPort = new Port(tcPropertyPart,
 						sutItp->getNameID(), IComPoint::IO_PORT_NATURE, inputModifier);
 				tcInputPort->setParameters( sutItp->getParameters() );
@@ -246,6 +269,8 @@ void AvmTestCaseFactory::addPorts(PropertyPart & tcPropertyPart,
 			}
 			else
 			{
+				INPUT_PORTS.append(*sutItBf);
+
 				Port * tcOutputPort = new Port(tcPropertyPart,
 						sutItp->getNameID(), IComPoint::IO_PORT_NATURE, outputModifier);
 				tcOutputPort->setParameters( sutItp->getParameters() );
@@ -258,6 +283,8 @@ void AvmTestCaseFactory::addPorts(PropertyPart & tcPropertyPart,
 		}
 		else if( sutItp->getModifier().isDirectionOutput() )
 		{
+			OUTPUT_PORTS.append(*sutItBf);
+
 			Port * tcInputPort = new Port(tcPropertyPart,
 					sutItp->getNameID(), IComPoint::IO_PORT_NATURE, inputModifier);
 			tcInputPort->setParameters( sutItp->getParameters() );
@@ -330,7 +357,7 @@ void AvmTestCaseFactory::addVariables(PropertyPart & tcPropertyDecl,
 	mVariable_TC_TM = tcPropertyDecl.saveOwnedElement(
 			new Variable(mMachineTC,
 					Modifier::PROPERTY_PRIVATE_MODIFIER,
-					TypeManager::POS_RATIONAL, "TM") );
+					TypeManager::POS_RATIONAL, VAR_TM_ID) );
 
 	avm_type_specifier_kind_t time_type_specifier =
 			TimedMachine::timeTypeSpecifierKind(mSystemSUT.getSpecifier());
@@ -342,7 +369,8 @@ void AvmTestCaseFactory::addVariables(PropertyPart & tcPropertyDecl,
 
 	mVariable_TC_Clock = tcPropertyDecl.saveOwnedElement(
 			new Variable(mMachineTC,
-					Modifier::PROPERTY_PRIVATE_MODIFIER, clockType, "tc_clock") );
+					Modifier::PROPERTY_PRIVATE_MODIFIER,
+					clockType, VAR_TC_CLOCK_ID) );
 
 
 	InstanceOfData::Table::const_raw_iterator itParam = tpInoutParameters.begin();
@@ -399,11 +427,14 @@ bool AvmTestCaseFactory::buildStatemachineTC()
 	ExecutionContext::ListOfConstPtr traceECs(mTestPurposeTrace);
 	const ExecutionContext * tcSourceEC = traceECs.pop_first();
 
-	std::string stateID = (OSS() << "ec_" << tcSourceEC->getIdNumber()
-			<< "_" << tcSourceEC->getExecutionData().strStateConf("%4%"));
+	std::string stateID = (OSS() << "ec_" << tcSourceEC->getIdNumber());
+
+	std::string stateName = (OSS() << "ec_" << tcSourceEC->getIdNumber()
+		<< "_" << tcSourceEC->getExecutionData().strStateConf("%4%"));
 
 	Machine * tcSourceState = Machine::newState(mMachineTC,
-			stateID, Specifier::STATE_START_MOC);
+		stateID, Specifier::STATE_START_MOC, stateName);
+
 	mMachineTC->saveOwnedElement(tcSourceState);
 
 	for( const auto tcTargetEC : traceECs )
@@ -568,28 +599,16 @@ BF AvmTestCaseFactory::boundTimeOutCondition(const ExecutionContext & tcSourceEC
 			ExpressionConstructor::eqExpr(varElapsedTime, mVariable_TC_Clock) );
 }
 
-BFCode AvmTestCaseFactory::boundTimeOutPathConditionGuard(
-		const ExecutionContext & tcSourceEC, const ExecutionContext & tcTargetEC)
+BF AvmTestCaseFactory::targetPathCondition(const ExecutionContext & tcTargetEC)
 {
-	BF guardCondition = boundTimeOutCondition(*(tcTargetEC.getContainer()));
-
-	if( not tcTargetEC.getPathCondition().isEqualTrue() )
+	BF guardCondition = tcTargetEC.getPathCondition();
+	if( (not guardCondition.isEqualTrue()) and (not mNewfreshInitialVars.empty()) )
 	{
-		if( mNewfreshInitialVars.empty() )
-		{
-			guardCondition = ExpressionConstructor::andExpr(
-					guardCondition, tcTargetEC.getPathCondition());
-		}
-		else
-		{
-			guardCondition = ExpressionConstructor::andExpr(guardCondition,
-					ExpressionConstructor::existsExpr(mNewfreshInitialVars,
-							tcTargetEC.getPathCondition()));
-		}
+		guardCondition = ExpressionConstructor::existsExpr(
+				mNewfreshInitialVars, tcTargetEC.getPathCondition());
 	}
 
-	return StatementConstructor::newCode(
-			OperatorManager::OPERATOR_GUARD, guardCondition);
+	return guardCondition;
 }
 
 BF AvmTestCaseFactory::unboundTimeOutCondition(const ExecutionContext & tcSourceEC)
@@ -619,10 +638,14 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	// The target state on the test purpose path
-	std::string stateID = (OSS() << "ec_" << tcTargetEC.getIdNumber()
-			<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+	std::string stateID = (OSS() << "ec_" << tcTargetEC.getIdNumber());
+
+	std::string stateName = (OSS() << "ec_" << tcTargetEC.getIdNumber()
+		<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+
 	Machine * tcTargetState = Machine::newState(mMachineTC,
-			stateID, Specifier::STATE_SIMPLE_MOC);
+		stateID, Specifier::STATE_SIMPLE_MOC, stateName);
+
 	mMachineTC->saveOwnedElement(tcTargetState);
 
 	const std::string & portID =
@@ -635,7 +658,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	BF guardCondition = boundTimeOutCondition(tcSourceEC);
+	BF guardCondition = ExpressionConstant::BOOLEAN_TRUE;
 	if( not mTestPurposePathCondition.isEqualTrue() )
 	{
 		Variable::Table boundVars( mNewfreshInitialTraceVarsTP );
@@ -668,14 +691,18 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 						)
 		);
 	}
+
+	BFCode timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD, boundTimeOutCondition(tcSourceEC) );
+
 	BFCode guard = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_GUARD, guardCondition);
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(guardCondition, tpTransition);
 
-	// The com statement
-	BFCode tcComStatement =
+	// The Stimulation com statement
+	BFCode tcStimulationComStatement =
 			AvmTestCaseUtils::tpTrace_to_tcStatement(*mMachineTC, comTrace);
 
 	// The reset of the testcase clock
@@ -685,7 +712,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	tpTransition->setStatement( StatementConstructor::newCode(
 			OperatorManager::OPERATOR_SEQUENCE,
-			guard, tcComStatement, tcClockReset));
+			timedGuard, guard, tcStimulationComStatement, tcClockReset));
 
 	return tcTargetState;
 }
@@ -704,10 +731,14 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	// The target state on the test purpose path
-	std::string stateID = (OSS() << "ec_" << tcTargetEC.getIdNumber()
-			<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+	std::string stateID = (OSS() << "ec_" << tcTargetEC.getIdNumber());
+
+	std::string stateName = (OSS() << "ec_" << tcTargetEC.getIdNumber()
+		<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+
 	Machine * tcTargetState = Machine::newState(mMachineTC,
-			stateID, Specifier::STATE_SIMPLE_MOC);
+		stateID, Specifier::STATE_SIMPLE_MOC, stateName);
+
 	mMachineTC->saveOwnedElement(tcTargetState);
 
 	const std::string & portID =
@@ -720,13 +751,19 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	BFCode guard = boundTimeOutPathConditionGuard(tcSourceEC, tcTargetEC);
+	BFCode 	timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			boundTimeOutCondition(*(tcTargetEC.getContainer())) );
+
+	BFCode guard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_GUARD,
+			targetPathCondition(tcTargetEC) );
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(guard->first(), tpTransition);
 
-	// The com statement
-	BFCode tcComStatement =
+	// The Observation com statement
+	BFCode tcObservationComStatement =
 			AvmTestCaseUtils::tpTrace_to_tcStatement(*mMachineTC, comTrace);
 
 	// The reset of the testcase clock
@@ -736,7 +773,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	tpTransition->setStatement( StatementConstructor::newCode(
 			OperatorManager::OPERATOR_SEQUENCE,
-			guard, tcComStatement, tcClockReset));
+			timedGuard, tcObservationComStatement, guard, tcClockReset));
 
 	return tcTargetState;
 }
@@ -755,10 +792,14 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	// The target state on the test purpose path
-	std::string stateID = (OSS() << "ec_" << tcTargetEC.getIdNumber()
-			<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+	std::string stateID = (OSS() << "ec_" << tcTargetEC.getIdNumber());
+
+	std::string stateName = (OSS() << "ec_" << tcTargetEC.getIdNumber()
+		<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+
 	Machine * tcTargetState = Machine::newState(mMachineTC,
-			stateID, Specifier::STATE_SIMPLE_MOC);
+		stateID, Specifier::STATE_SIMPLE_MOC, stateName);
+
 	mMachineTC->saveOwnedElement(tcTargetState);
 
 	const std::string & portID =
@@ -771,13 +812,19 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	BFCode guard = boundTimeOutPathConditionGuard(tcSourceEC, tcTargetEC);
+	BFCode 	timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			boundTimeOutCondition(*(tcTargetEC.getContainer())) );
+
+	BFCode guard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_GUARD,
+			targetPathCondition(tcTargetEC) );
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(guard->first(), tpTransition);
 
-	// The com statement
-	BFCode tcComStatement =
+	// The Observation com statement
+	BFCode tcObservationComStatement =
 			AvmTestCaseUtils::tpTrace_to_tcStatement(*mMachineTC, comTrace);
 
 	// The reset of the testcase clock
@@ -787,7 +834,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	tpTransition->setStatement( StatementConstructor::newCode(
 			OperatorManager::OPERATOR_SEQUENCE,
-			guard, tcComStatement, tcClockReset));
+			timedGuard, tcObservationComStatement, guard, tcClockReset));
 
 	return tcTargetState;
 }
@@ -806,10 +853,14 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	// The target state PASS of the test purpose
-	std::string stateID = (OSS() << "PASS_ec_" << tcTargetEC.getIdNumber()
-			<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+	std::string stateID = (OSS() << "PASS_ec_" << tcTargetEC.getIdNumber());
+
+	std::string stateName = (OSS() << "PASS_ec_" << tcTargetEC.getIdNumber()
+		<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+
 	Machine * tcTargetState = Machine::newState(mMachineTC,
-			stateID, Specifier::STATE_FINAL_MOC);
+		stateID, Specifier::STATE_FINAL_MOC, stateName);
+
 	mMachineTC->saveOwnedElement(tcTargetState);
 
 	const std::string & portID =
@@ -822,16 +873,24 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	BFCode guard = boundTimeOutPathConditionGuard(tcSourceEC, tcTargetEC);
+	BFCode 	timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			boundTimeOutCondition(*(tcTargetEC.getContainer())) );
+
+	BFCode guard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_GUARD,
+			targetPathCondition(tcTargetEC) );
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(guard->first(), tpTransition);
 
-	BFCode tcComStatement =
+	// The Observation com statement
+	BFCode tcObservationComStatement =
 			AvmTestCaseUtils::tpTrace_to_tcStatement(*mMachineTC, comTrace);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, tcComStatement));
+			OperatorManager::OPERATOR_SEQUENCE,
+			timedGuard, tcObservationComStatement, guard));
 
 	return tcTargetState;
 }
@@ -849,10 +908,14 @@ AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	// The target state PASS of the test purpose
-	std::string stateID = (OSS() << "PASS_ec_" << tcTargetEC.getIdNumber()
-			<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+	std::string stateID = (OSS() << "PASS_ec_" << tcTargetEC.getIdNumber());
+
+	std::string stateName = (OSS() << "PASS_ec_" << tcTargetEC.getIdNumber()
+		<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
+
 	Machine * tcTargetState = Machine::newState(mMachineTC,
-			stateID, Specifier::STATE_SIMPLE_MOC);
+		stateID, Specifier::STATE_FINAL_MOC, stateName);
+
 	mMachineTC->saveOwnedElement(tcTargetState);
 
 	const std::string & portID =
@@ -865,27 +928,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	BF unboundTM = unboundTimeOutCondition(tcSourceEC);
+	BFCode timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			unboundTimeOutCondition(tcSourceEC) );
+
 	BFCode guard = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_GUARD,
-			ExpressionConstructor::andExpr(unboundTM,
-					mNewfreshInitialVars.empty() ?
-							tcTargetEC.getPathCondition() :
-							ExpressionConstructor::existsExpr(
-									mNewfreshInitialVars,
-									tcTargetEC.getPathCondition()
-							)
-			)
-	);
+			OperatorManager::OPERATOR_GUARD, targetPathCondition(tcTargetEC) );
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(guard->first(), tpTransition);
 
-	BFCode tcComStatement =
+	BFCode tcObservationComStatement =
 			AvmTestCaseUtils::tpTrace_to_tcStatement(*mMachineTC, comTrace);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, tcComStatement));
+			OperatorManager::OPERATOR_SEQUENCE,
+			timedGuard, tcObservationComStatement, guard));
 
 	return tcTargetState;
 }
@@ -921,17 +979,24 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	BFCode guard = boundTimeOutPathConditionGuard(tcSourceEC, tcTargetEC);
+	BFCode 	timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			boundTimeOutCondition(*(tcTargetEC.getContainer())) );
+
+	BFCode guard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_GUARD,
+			targetPathCondition(tcTargetEC) );
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(guard->first(), tpTransition);
 
-	// The com statement
-	BFCode tcComStatement =
+	// The Observation com statement
+	BFCode tcObservationComStatement =
 			AvmTestCaseUtils::tpTrace_to_tcStatement(*mMachineTC, comTrace);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, tcComStatement));
+			OperatorManager::OPERATOR_SEQUENCE,
+			timedGuard, tcObservationComStatement, guard));
 }
 
 // INCONCLUSIVE UNCONTROLLABLE INPUT SPECIFIED
@@ -964,17 +1029,24 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	BFCode guard = boundTimeOutPathConditionGuard(tcSourceEC, tcTargetEC);
+	BFCode 	timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			boundTimeOutCondition(*(tcTargetEC.getContainer())) );
+
+	BFCode guard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_GUARD,
+			targetPathCondition(tcTargetEC) );
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(guard->first(), tpTransition);
 
-	// The com statement
-	BFCode tcComStatement =
+	// The Observation com statement
+	BFCode tcObservationComStatement =
 			AvmTestCaseUtils::tpTrace_to_tcStatement(*mMachineTC, comTrace);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, tcComStatement));
+			OperatorManager::OPERATOR_SEQUENCE,
+			timedGuard, tcObservationComStatement, guard));
 }
 
 // INCONCLUSIVE UNCONTROLLABLE INPUT UNSPECIFIED
@@ -1006,25 +1078,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 						specComTrace->first().to< InstanceOfPort >();
 				if( ucInPortTC.getNameID() == ucinSpecPort.getNameID() )
 				{
-					if( aChildEC->getPathCondition().isEqualTrue() )
-					{
-						ucontrollableInputGuards.append(
-								ExpressionConstant::BOOLEAN_FALSE);
+					ucontrollableInputGuards.append(
+							ExpressionConstructor::notExpr(
+									targetPathCondition(*aChildEC) ) );
+
+//					if( aChildEC->getPathCondition().isEqualTrue() )
+//					{
 //						return;
-					}
-					else if( mNewfreshInitialVars.empty() )
-					{
-						ucontrollableInputGuards.append(
-								ExpressionConstructor::notExpr(
-										aChildEC->getPathCondition()) );
-					}
-					else
-					{
-						ucontrollableInputGuards.append(
-								ExpressionConstructor::notExpr(
-										ExpressionConstructor::existsExpr(mNewfreshInitialVars,
-												aChildEC->getPathCondition()) ));
-					}
+//					}
 				}
 			}
 		}
@@ -1050,27 +1111,28 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	if( ucontrollableInputGuards.size() > 0 )
-	{
-		ucontrollableInputGuards.getOperands().push_front(
-				boundTimeOutCondition(tcSourceEC));
-	}
-	else
-	{
-		ucontrollableInputGuards = boundTimeOutCondition(tcSourceEC);
-	}
+	BFCode timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			boundTimeOutCondition(tcSourceEC) );
+
 	BFCode guard = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_GUARD, ucontrollableInputGuards);
+			OperatorManager::OPERATOR_GUARD,
+			( ucontrollableInputGuards.size() > 1 )
+					? ucontrollableInputGuards
+					: ( ucontrollableInputGuards.size() > 0 )
+					  	? ucontrollableInputGuards->first()
+						: ExpressionConstant::BOOLEAN_TRUE );
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(ucontrollableInputGuards, tpTransition);
 
-	// The com statement
-	BFCode tcComStatement = StatementConstructor::newCode(
+	// The Observation com statement
+	BFCode tcObservationComStatement = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_INPUT, ucInPort);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, tcComStatement));
+			OperatorManager::OPERATOR_SEQUENCE,
+			timedGuard, tcObservationComStatement, guard));
 }
 
 
@@ -1107,32 +1169,28 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 	// The transition on the test purpose path
 	Transition * tpTransition = new Transition(tcSourceState,
-			"tr_R9_quiescenceAdmissible", Transition::MOC_SIMPLE_KIND);
+			"tr_R9_quiescence", Transition::MOC_SIMPLE_KIND);
 	tpTransition->setTarget( *tcTargetState );
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	if( quiescenceCondition.isEqualTrue() )
-	{
-		quiescenceCondition = unboundTimeOutCondition(tcSourceEC);
-	}
-	else
-	{
-		quiescenceCondition = ExpressionConstructor::andExpr(
-				unboundTimeOutCondition(tcSourceEC), quiescenceCondition);
-	}
+	BFCode timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			unboundTimeOutCondition(tcSourceEC) );
+
 	BFCode guard = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_GUARD, quiescenceCondition);
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(quiescenceCondition, tpTransition);
 
-	// The com statement
+	// The Quiescence Observation com statement
 	BFCode failQuiescenceStatement = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_INPUT, mQuiescencePortTC);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, failQuiescenceStatement));
+			OperatorManager::OPERATOR_SEQUENCE,
+			timedGuard, failQuiescenceStatement, guard));
 }
 
 BF AvmTestCaseFactory::compute_R09_QuiescenceCondition(
@@ -1212,23 +1270,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 						specComTrace->first().to< InstanceOfPort >();
 				if( (& failOutPort) == (& specOutPort) )
 				{
-					if( aChildEC->getPathCondition().isEqualTrue() )
-					{
-						outputGuards.append(
-								ExpressionConstant::BOOLEAN_FALSE);
+					outputGuards.append(
+							ExpressionConstructor::notExpr(
+									targetPathCondition(*aChildEC) ) );
+
+//					if( aChildEC->getPathCondition().isEqualTrue() )
+//					{
 //						return;
-					}
-					else if( mNewfreshInitialVars.empty() )
-					{
-						outputGuards.append( ExpressionConstructor::notExpr(
-								aChildEC->getPathCondition()) );
-					}
-					else
-					{
-						outputGuards.append( ExpressionConstructor::notExpr(
-								ExpressionConstructor::existsExpr(mNewfreshInitialVars,
-										aChildEC->getPathCondition()) ));
-					}
+//					}
 				}
 			}
 		}
@@ -1254,19 +1303,29 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	outputGuards.getOperands().push_front(boundTimeOutCondition(tcSourceEC));
+	BFCode timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			boundTimeOutCondition(tcSourceEC) );
+
 	BFCode guard = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_GUARD, outputGuards);
+			OperatorManager::OPERATOR_GUARD,
+			( outputGuards.size() > 1 )
+				? outputGuards
+				: ( outputGuards.size() > 0 )
+					? outputGuards->first()
+					: ExpressionConstant::BOOLEAN_TRUE);
+
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(outputGuards, tpTransition);
 
-	// The com statement
-	BFCode tcComStatement =
+	// The Observation com statement
+	BFCode tcObservationComStatement =
 			AvmTestCaseUtils::tpTrace_to_tcStatement(*mMachineTC, comTrace);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, tcComStatement));
+			OperatorManager::OPERATOR_SEQUENCE,
+			timedGuard, tcObservationComStatement, guard));
 }
 
 
@@ -1299,25 +1358,14 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 						specComTrace->first().to< InstanceOfPort >();
 				if( inputPortTC.getNameID() == ucinSpecPort.getNameID() )
 				{
-					if( aChildEC->getPathCondition().isEqualTrue() )
-					{
-						unspecifiedOutputGuards.append(
-								ExpressionConstant::BOOLEAN_FALSE);
+					unspecifiedOutputGuards.append(
+							ExpressionConstructor::notExpr(
+									targetPathCondition(*aChildEC) ) );
+
+//					if( aChildEC->getPathCondition().isEqualTrue() )
+//					{
 //						return;
-					}
-					else if( mNewfreshInitialVars.empty() )
-					{
-						unspecifiedOutputGuards.append(
-								ExpressionConstructor::notExpr(
-										aChildEC->getPathCondition()) );
-					}
-					else
-					{
-						unspecifiedOutputGuards.append(
-								ExpressionConstructor::notExpr(
-										ExpressionConstructor::existsExpr(mNewfreshInitialVars,
-												aChildEC->getPathCondition()) ));
-					}
+//					}
 				}
 			}
 		}
@@ -1343,27 +1391,28 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	if( unspecifiedOutputGuards.size() > 0 )
-	{
-		unspecifiedOutputGuards.getOperands().push_front(
-				boundTimeOutCondition(tcSourceEC));
-	}
-	else
-	{
-		unspecifiedOutputGuards = boundTimeOutCondition(tcSourceEC);
-	}
+	BFCode timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			boundTimeOutCondition(tcSourceEC) );
+
 	BFCode guard = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_GUARD, unspecifiedOutputGuards);
+			OperatorManager::OPERATOR_GUARD,
+			( unspecifiedOutputGuards.size() > 1 )
+				? unspecifiedOutputGuards
+				: ( unspecifiedOutputGuards.size() > 0 )
+					? unspecifiedOutputGuards->first()
+					: ExpressionConstant::BOOLEAN_TRUE);
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(unspecifiedOutputGuards, tpTransition);
 
-	// The com statement
-	BFCode tcComStatement = StatementConstructor::newCode(
+	// The Observation com statement
+	BFCode tcObservationComStatement = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_INPUT, obsPort);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, tcComStatement));
+			OperatorManager::OPERATOR_SEQUENCE,
+			timedGuard, tcObservationComStatement, guard));
 }
 
 // FAIL DURATION : UNSPECIFIED QUIESCENCE
@@ -1406,27 +1455,23 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 	tcSourceState.saveOwnedElement( tpTransition );
 
 	// The guard
-	if( quiescenceCondition.isEqualTrue() )
-	{
-		quiescenceCondition = unboundTimeOutCondition(tcSourceEC);
-	}
-	else
-	{
-		quiescenceCondition = ExpressionConstructor::andExpr(
-				unboundTimeOutCondition(tcSourceEC), quiescenceCondition);
-	}
+	BFCode timedGuard = StatementConstructor::newCode(
+			OperatorManager::OPERATOR_TIMED_GUARD,
+			unboundTimeOutCondition(tcSourceEC) );
+
 	BFCode guard = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_GUARD, quiescenceCondition);
 
 	// Statistic collector
 	mTestCaseStatistics.takeAccount(quiescenceCondition, tpTransition);
 
-	// The com statement
+	// The Quiescence Observation com statement
 	BFCode failQuiescenceStatement = StatementConstructor::newCode(
 			OperatorManager::OPERATOR_INPUT, mQuiescencePortTC);
 
 	tpTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, failQuiescenceStatement));
+			OperatorManager::OPERATOR_SEQUENCE,
+			timedGuard, failQuiescenceStatement, guard));
 }
 
 
@@ -1478,346 +1523,309 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Saving Testcase in JSON format
 ////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
+//static const Port::Table OUTPUT_PORTS;
+//static const Port::Table INPUT_PORTS;
+//static const Port::Table UNCRNTROLLABLE_INPUT_PORTS;
 
-bool AvmTestCaseFactory::buildStatemachine()
+static const std::string TC_MANIFEST =
+		"\n\t\"manifest\": {"
+		"\n\t\t\"version\": 0.1,"
+		"\n\t\t\"description\": \"Generated testcases definition in JSON Format\","
+		"\n\t\t\"service\": \"Testcase Specification\","
+		"\n\t\t\"generatedDate\": \"" + ExecutionChrono::current_time() + "\""
+		"\n\t},\n";
+
+static void sutPortToJson(OutStream & out, const Port & port)
 {
-	ExecutionContext::ListOfConstPtr traceECs(mTestPurposeTrace);
-	const ExecutionContext * tcSourceEC = traceECs.pop_first();
-
-	std::string stateID = (OSS() << "ec_" << tcSourceEC->getIdNumber()
-			<< "_" << tcSourceEC->getExecutionData().strStateConf("%4%"));
-
-	Machine * tcSourceState = Machine::newState(mMachineTC,
-			stateID, Specifier::STATE_START_MOC);
-	mMachineTC->saveOwnedElement(tcSourceState);
-
-	for( const auto tcTargetEC : traceECs )
+	out << EOL << TAB4 << "{"
+		<< EOL << TAB5 << "\"name\": \"" << port.getNameID() << "\"";
+	if( not port.getParameters().empty() )
 	{
-AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
-	AVM_OS_DEBUG << "Build state-transition for : " << tcSourceEC->str() << std::endl;
-AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
+		out << ",";
+		out<< EOL << TAB5 << "\"parameters\": [";
 
-		Specifier stateSpec = Specifier::STATE_SIMPLE_MOC;
-
-		tcSourceState = buildState(*tcSourceState, *tcSourceEC, *tcTargetEC);
-
-		tcSourceEC = tcTargetEC;
+		TableOfVariable::const_raw_iterator itParam = port.getParameters().begin();
+		TableOfVariable::const_raw_iterator endIt = port.getParameters().end();
+		std::string commaSep = "";
+		for( std::size_t offset = 0 ; itParam != endIt ; ++itParam , ++offset)
+		{
+			out << commaSep;
+			std::string paramName = itParam->getNameID();
+			if( paramName.empty() )
+			{
+				paramName = "$" + to_string(offset) ;
+			}
+			out << EOL << TAB6 << "{"
+				<< EOL << TAB7 << "\"name\": \"" << paramName << "\","
+				<< EOL << TAB7 << "\"type\": \"" << itParam->strTypeSpecifier() << "\""
+				<< EOL << TAB6 << "}";
+			commaSep = ",";
+		}
+		out << EOL << TAB5 << "]";
 	}
-	tcSourceState->setNames( tcSourceState->getNameID() + "_PASS" );
-	tcSourceState->updateFullyQualifiedNameID();
-
-
-	return true;
+	out << EOL << TAB4 << "}";
 }
 
-Machine * AvmTestCaseFactory::buildState(Machine & tcSourceState,
-		const ExecutionContext & tcSourceEC, const ExecutionContext & tcTargetEC)
+static std::string tcVerdictToJson(const std::string & stateName)
 {
-	std::string stateID = (OSS() << "ec_" << tcTargetEC.getIdNumber()
-			<< "_" << tcTargetEC.getExecutionData().strStateConf("%4%"));
-	Machine * tcTargetState = Machine::newState(mMachineTC,
-			stateID, Specifier::STATE_SIMPLE_MOC);
-	mMachineTC->saveOwnedElement(tcTargetState);
-
-	Transition * tpTransition = new Transition(tcSourceState,
-			"t_" + stateID, Transition::MOC_SIMPLE_KIND);
-	tpTransition->setTarget( *tcTargetState );
-	tcSourceState.saveOwnedElement( tpTransition );
-
-	const BF & ioTrace = tcTargetEC.getIOElementTrace();
-	const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
-	const BF & comPort = comTrace->first();
-	const std::string & portID = comPort.to< InstanceOfPort >().getNameID();
-
-	BF tcPort = mMachineTC->getPort(portID);
-//	BF tcPort = ExpressionConstructor::newIdentifier(portID);
-
-	const BF & varElapsedTime =
-			AvmTestCaseUtils::newfreshDurationVarFromEC(tcSourceEC, *mMachineTC);
-
-	BF tmConstraint = ExpressionConstructor::ltExpr(varElapsedTime, mVariable_TC_TM);
-
-	if( StatementTypeChecker::isOutput(comTrace) )
+	if( stateName.starts_with("FAIL_out") )
 	{
-		BFCode guard = StatementConstructor::newCode(
-				OperatorManager::OPERATOR_GUARD,
-				ExpressionConstructor::andExpr(
-						tmConstraint, tcTargetEC.getPathCondition()));
+		return "FAIL_OUTPUT";
+	}
+	else if( stateName.starts_with("INC_out") )
+	{
+		return "INCONCLUSIVE_OUTPUT ";
+	}
 
-		BFCode observ = StatementConstructor::newCode(
-				OperatorManager::OPERATOR_INPUT, tcPort);
+	else if( stateName.starts_with("FAIL_dur") )
+	{
+		return "FAIL_DURATION";
+	}
+	else if( stateName.starts_with("INC_dur") )
+	{
+		return "INCONCLUSIVE_DURATION ";
+	}
 
-		tpTransition->setStatement( StatementConstructor::newCode(
-				OperatorManager::OPERATOR_SEQUENCE, guard, observ));
+	else if( stateName.starts_with("INC_ucInSpec") )
+	{
+		return "INCONCLUSIVE_UNCROLLABLE_INPUT_SPECIFIED";
+	}
+	else if( stateName.starts_with("INC_ucInUspec") )
+	{
+		return "INCONCLUSIVE_UNCROLLABLE_INPUT_UNSPECIFIED";
+	}
 
-		addFailQuiescenceTransition(tcSourceEC, tcSourceState);
+	else if( stateName.starts_with("PASS") )
+	{
+		return "PASS";
+	}
 
-		BFList specSutOutputPort; // Only local soec output not in TP
-		sutUnexpectedOutput(tcSourceEC, comPort, specSutOutputPort);
+	return stateName;
+}
 
-		addIncInputTransition(tcSourceEC,
-				tcSourceState, specSutOutputPort, false);
+static std::string tcTimeVariableToJson(const Machine & state)
+{
+	BFCode timedGuard;
+	Variable::Table timeVars;
+	for( const auto & itTransition :
+			state.getBehaviorPart()->getOutgoingTransitions() )
+	{
+		StatementFactory::collectTimedGuard(
+				itTransition.to< Transition >().getStatement(), timedGuard);
+		if( timedGuard.valid() )
+		{
+			ExpressionFactory::collectSpecVariable(timedGuard, timeVars);
+			for( const auto & itVar : timeVars )
+			{
+				const Variable & timeVar = itVar.to< Variable >();
+				if( (timeVar.getNameID() != VAR_TC_CLOCK_ID)
+						and (timeVar.getNameID() != VAR_TM_ID))
+				{
+					return timeVar.getNameID();
+				}
+				else if( timeVar.getNameID().starts_with(PropertyPart::VAR_ID_DELTA_TIME) )
+				{
+					return timeVar.getNameID();
+				}
+			}
+		}
+	}
 
-		specSutOutputPort.append(comPort); // All local spec output
-		addFailInputTransition(tcSourceEC,
-				tcSourceState, specSutOutputPort, false);
-//		addIncInputTransition(tcSourceState, tcPort->to< Port >());
+	return "UNFOUND_TIME_VARIABLE";
+}
+
+static void tcTransitionToJson(OutStream & out,
+		const Transition & transition, const BF & quiescencePortTC)
+{
+	BFCode guard;
+	BFCode comStatement;
+
+	StatementFactory::collectGuardCommunication(
+			transition.getStatement(), guard, comStatement);
+
+	StringOutStream outSMT( AVM_STR_INDENT );
+//	StringOutStream outSMT( AVM_TAB_INDENT );
+	BFVector paramVector;
+	Z3Solver aSolver;
+//	aSolver.to_smtlib(outSMT, guard->first());
+
+	aSolver.to_smt(outSMT << EOL, guard->first(), paramVector);
+//	SolverFactory::to_smt(outSMT, guard, SolverDef::SOLVER_Z3_KIND, false);
+
+	std::string nature;
+	const Port & port = comStatement->first().to< Port >();
+	if( quiescencePortTC.raw_pointer() == &port )
+	{
+		nature = "QUIESCENCE";
+	}
+	else if( StatementTypeChecker::isOutput(comStatement) )
+	{
+		nature = "STIMULATION";
 	}
 	else
 	{
-		BFCode guard = StatementConstructor::newCode(
-				OperatorManager::OPERATOR_GUARD,
-				ExpressionConstructor::andExpr(
-						tmConstraint, mTestPurposePathCondition));
-
-		BFCode stimuli = StatementConstructor::newCode(
-				OperatorManager::OPERATOR_OUTPUT, tcPort);
-
-		tpTransition->setStatement( StatementConstructor::newCode(
-				OperatorManager::OPERATOR_SEQUENCE, guard, stimuli));
-
-		addFailInputTransition(tcSourceEC, tcSourceState, false);
+		nature = "OBSERVATION";
 	}
 
-	return tcTargetState;
-}
+	out << EOL << TAB6 << "{"
+		<< EOL << TAB7 << "\"name\": \"" << transition.getNameID() << "\","
 
-void AvmTestCaseFactory::sutUnexpectedOutput(
-		const ExecutionContext & tcSourceEC,
-		const BF tpOutputPort, BFList & specSutOutputPort)
-{
-	for( const auto & aChildEC : tcSourceEC.getChildContexts()  )
+		<< EOL << TAB7 << "\"guard\": \"" << guard->first().str() << "\","
+
+		<< EOL << TAB7 << "\"guard_smt\": \"" << outSMT.str() << "\","
+
+		<< EOL << TAB7 << "\"action\": {"
+		<< EOL << TAB8 << "\"nature\": \"" << nature << "\","
+
+		<< EOL << TAB8 << "\"port\": \"" << port.getNameID() << "\"";
+	if( comStatement->getOperands().populated() )
 	{
-		const BF & ioTrace = aChildEC->getIOElementTrace();
-		const BFCode & comTrace = BaseEnvironment::searchTraceIO(ioTrace);
-		const BF & comPort = comTrace->first();
-		if( StatementTypeChecker::isOutput(comTrace) && (tpOutputPort != comPort) )
+		out << ","
+			<< EOL << TAB8 << "\"parameters\": [";
+		std::string commaSep = "";
+		for( std::size_t offset = 1 ; offset < comStatement->getOperands().size() ; ++offset)
 		{
-			specSutOutputPort.append(comPort);
+			const BF & param = comStatement->operand(offset);
+			out << commaSep
+				<< EOL << TAB9 << "\"" << param.to< Variable >().getNameID() << "\"";
+			commaSep = ",";
 		}
+		out << EOL << TAB8 << "]";
 	}
+
+	out << EOL << TAB7 << "},";
+
+	const Machine & targetState = transition.getTarget().to< Machine >();
+	if( targetState.getSpecifier().isStateMocFINAL() )
+	{
+		out << EOL << TAB7 << "\"verdict\": \"PASS\"";
+	}
+	else if( targetState.getSpecifier().isPseudostateMocTERMINAL() )
+	{
+		out << EOL << TAB7 << "\"verdict\": \""
+			<< tcVerdictToJson(targetState.getNameID()) << "\"";
+	}
+	else
+	{
+		out << EOL << TAB7 << "\"next\": \"" << targetState.getNameID() << "\"";
+	}
+
+	out << EOL << TAB6 << "}";
 }
 
 
-void AvmTestCaseFactory::addIncInputTransition(
-		const ExecutionContext & tcSourceEC, Machine & tcSourceState,
-		const BFList & specSutOutputPort, bool groupIncInput)
+void AvmTestCaseFactory::saveTestCaseJson(const System & aSystemTC)
 {
-	BFCodeList allIncInputStatement;
+	OutStream & out = mProcessor.newFileStream("testcases.json");
+	std::string commaSep = "";
 
-//	Machine * treeStateINC = nullptr;
+	out << "{"
+		<< TC_MANIFEST;
 
-	for( const auto & sutPort : specSutOutputPort )
+	out << EOL << TAB2 << "\"SUT\": {"
+		<< EOL << TAB3 << "\"output_ports\": [";
+	for( const auto & itPort : OUTPUT_PORTS )
 	{
-		const std::string & portID = sutPort.to< InstanceOfPort >().getNameID();
-		BF tcPort = mMachineTC->getPort(portID);
+		out << commaSep;
+		sutPortToJson(out, itPort.to< Port >());
+		commaSep = ",";
+	}
+	out << EOL << TAB3 << "],";
 
-		allIncInputStatement.append( StatementConstructor::newCode(
-				OperatorManager::OPERATOR_INPUT, tcPort) );
+	out << EOL << TAB3 << "\"input_ports\": [";
+	commaSep = "";
+	for( const auto & itPort : INPUT_PORTS )
+	{
+		out << commaSep;
+		sutPortToJson(out, itPort.to< Port >());
+		commaSep = ",";
+	}
+	out << EOL << TAB3 << "],";
+
+	out << EOL << TAB3 << "\"uncontrollable_input_ports\": [";
+	commaSep = "";
+	for( const auto & itPort : UNCRNTROLLABLE_INPUT_PORTS )
+	{
+		out << commaSep;
+		sutPortToJson(out, itPort.to< Port >());
+
+		commaSep = ",";
+	}
+	out << EOL << TAB3 << "]"
+		<< EOL << TAB2 << "}," << EOL;
+
+	out <<  EOL << TAB2 << "\"TESTCASE\": {"
+		<< EOL << TAB3 << "\"variables\": [";
+
+	TableOfVariable::const_raw_iterator itVar = mMachineTC->getVariables().begin();
+	TableOfVariable::const_raw_iterator endVar = mMachineTC->getVariables().end();
+	commaSep = "";
+	for( ; itVar != endVar ; ++itVar )
+	{
+		out << commaSep;
+		out << EOL << TAB4 << "{"
+			<< EOL << TAB5 << "\"name\": \"" << itVar->getNameID() << "\","
+			<< EOL << TAB5 << "\"type\": \"" << itVar->strTypeSpecifier() << "\""
+			<< EOL << TAB4 << "}";
+		commaSep = ",";
 	}
 
-	createIncInputTransition(tcSourceEC, tcSourceState,
-			allIncInputStatement, groupIncInput);
-}
+	out << EOL << TAB3 << "],\n";
 
-void AvmTestCaseFactory::createIncInputTransition(
-		const ExecutionContext & tcSourceEC, Machine & tcSourceState,
-		const BFCodeList & allIncInputStatement, bool groupFailedInput)
-{
-	if( allIncInputStatement.nonempty() )
+	out << EOL << TAB3 << "\"states\": [";
+	TableOfMachine::const_raw_iterator itMachine =
+			mMachineTC->getCompositePart()->getMachines().begin();
+	TableOfMachine::const_raw_iterator endMachine =
+			mMachineTC->getCompositePart()->getMachines().end();
+	commaSep = "";
+	std::string commaSep2;
+	for( ; itMachine != endMachine ; ++itMachine )
 	{
-		std::string stateID = (OSS() << "INC_ec_" << tcSourceEC.getIdNumber());
-		Machine * treeStateINC = Machine::newState(mMachineTC,
-				stateID, Specifier::STATE_FINAL_MOC);
-		mMachineTC->saveOwnedElement(treeStateINC);
+//		if( itMachine->getSpecifier().isPseudostateMocTERMINAL() // VERDICT
+//			|| itMachine->getSpecifier().isStateMocFINAL() )     // STATES
+//		{
+//			continue;
+//		}
 
-		if( groupFailedInput )
+		if( itMachine->hasBehaviorPart()
+			&& itMachine->getBehaviorPart()->hasOutgoingTransition() )
 		{
-			Transition * failTransition = new Transition(tcSourceState,
-					"t_inc", Transition::MOC_SIMPLE_KIND);
-			failTransition->setTarget( *treeStateINC );
-			tcSourceState.saveOwnedElement( failTransition );
+			std::string name = itMachine->getNameID();
+			out << commaSep;
+			out << EOL << TAB4 << "{"
+				<< EOL << TAB5 << "\"name\": \"" << name << "\",";
 
-			failTransition->setStatement( allIncInputStatement.singleton() ?
-					allIncInputStatement.first() :
-					StatementConstructor::newCode(
-							OperatorManager::OPERATOR_SCHEDULE_OR_ELSE,
-							allIncInputStatement) );
-		}
-		else
-		{
-			for( const auto & failedInputStatement : allIncInputStatement )
+			name = name.substr( name.find_first_of('_', 4) + 1 ); // 4 = size("ec_1")
+			out << EOL << TAB5 << "\"sut_state\": \"" << name << "\",";
+
+			out << EOL << TAB5 << "\"time_var\": \""
+				<< tcTimeVariableToJson(itMachine->to< Machine >()) << "\",";
+
+			out << EOL << TAB5 << "\"transitions\": [";
+			commaSep2 = "";
+			for( const auto & itTransition :
+					itMachine->getBehaviorPart()->getOutgoingTransitions() )
 			{
-				const std::string & trNameID =
-						failedInputStatement->first().to< Port >().getNameID();
-				Transition * failTransition = new Transition(tcSourceState,
-						"t_inc_" + trNameID, Transition::MOC_SIMPLE_KIND);
-				failTransition->setTarget( *treeStateINC );
-				tcSourceState.saveOwnedElement( failTransition );
-
-				failTransition->setStatement(failedInputStatement);
+				out << commaSep2;
+				tcTransitionToJson(out, itTransition.to< Transition >(), mQuiescencePortTC);
+				commaSep2 = ",";
 			}
-		}
-	}
-}
-
-void AvmTestCaseFactory::addFailQuiescenceTransition(
-		const ExecutionContext & tcSourceEC, Machine & tcSourceState)
-{
-	std::string stateID =
-			(OSS() << "FAIL_dur_ec_" << tcSourceEC.getIdNumber());
-	Machine * treeStateFAIL = Machine::newState(mMachineTC,
-			stateID, Specifier::STATE_FINAL_MOC);
-	mMachineTC->saveOwnedElement(treeStateFAIL);
-
-	Transition * quiescTransition = new Transition(tcSourceState,
-			"t_quiescence", Transition::MOC_SIMPLE_KIND);
-	quiescTransition->setTarget( *treeStateFAIL );
-	tcSourceState.saveOwnedElement( quiescTransition );
-
-	const BF & varElapsedTime =
-			AvmTestCaseUtils::newfreshDurationVarFromEC(tcSourceEC, *mMachineTC);
-
-	BFCode guard = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_GUARD,
-			ExpressionConstructor::gteExpr(varElapsedTime, mVariable_TC_TM) );
-
-	BFCode failQuiescenceStatement = StatementConstructor::newCode(
-			OperatorManager::OPERATOR_INPUT, mQuiescencePortTC);
-
-	quiescTransition->setStatement( StatementConstructor::newCode(
-			OperatorManager::OPERATOR_SEQUENCE, guard, failQuiescenceStatement));
-}
-
-void AvmTestCaseFactory::addFailInputTransition(
-		const ExecutionContext & tcSourceEC,
-		Machine & tcSourceState, bool groupFailedInput)
-{
-	BFCodeList allFailedInputStatement;
-
-//	Machine * treeStateFAIL = nullptr;
-
-	const PropertyPart & tcPropertyPart = mMachineTC->getPropertyPart();
-	PropertyPart::TableOfPort::const_ref_iterator itp = tcPropertyPart.getPorts().begin();
-	PropertyPart::TableOfPort::const_ref_iterator endItp = tcPropertyPart.getPorts().end();
-	for( ; itp != endItp ; ++itp )
-	{
-		if( itp->getModifier().isDirectionInput() )
-		{
-			allFailedInputStatement.append(
-					StatementConstructor::newCode(
-							OperatorManager::OPERATOR_INPUT, *itp) );
+			out << EOL << TAB5 << "]"
+				<< EOL << TAB4 << "}";
+			commaSep = ",";
 		}
 	}
 
-	createFailInputTransition(tcSourceEC, tcSourceState,
-			allFailedInputStatement, groupFailedInput);
+
+	out << EOL << TAB3 << "]\n";
+
+	out << EOL << TAB2 << "}\n";
+
+	out << "}";
 }
 
-void AvmTestCaseFactory::addFailInputTransition(
-		const ExecutionContext & tcSourceEC, Machine & tcSourceState,
-		const BFList & specSutOutputPort, bool groupFailedInput)
-{
-	BFCodeList allFailedInputStatement;
-
-//	Machine * treeStateFAIL = nullptr;
-
-	const PropertyPart & tcPropertyPart = mMachineTC->getPropertyPart();
-	PropertyPart::TableOfPort::const_ref_iterator itp = tcPropertyPart.getPorts().begin();
-	PropertyPart::TableOfPort::const_ref_iterator endItp = tcPropertyPart.getPorts().end();
-	for( ; itp != endItp ; ++itp )
-	{
-		if( itp->getModifier().isDirectionInput() )
-		{
-			bool isUnexpectedOutput = true;
-			for( const auto & sutPort : specSutOutputPort )
-			{
-				const std::string & portID =
-						sutPort.to< InstanceOfPort >().getNameID();
-				if( portID == itp->getNameID() )
-				{
-					isUnexpectedOutput = false;
-					break;
-				}
-			}
-
-			if( isUnexpectedOutput )
-			{
-				allFailedInputStatement.append(
-					StatementConstructor::newCode(
-							OperatorManager::OPERATOR_INPUT, *itp) );
-			}
-		}
-	}
-
-	createFailInputTransition(tcSourceEC, tcSourceState,
-			allFailedInputStatement, groupFailedInput);
-}
-
-void AvmTestCaseFactory::createFailInputTransition(
-		const ExecutionContext & tcSourceEC, Machine & tcSourceState,
-		const BFCodeList & allFailedInputStatement, bool groupFailedInput)
-{
-	if( allFailedInputStatement.nonempty() )
-	{
-		std::string stateID =
-				(OSS() << "FAIL_out_ec_" << tcSourceEC.getIdNumber());
-		Machine * treeStateFAIL = Machine::newState(mMachineTC,
-				stateID, Specifier::STATE_FINAL_MOC);
-		mMachineTC->saveOwnedElement(treeStateFAIL);
-
-		const BF & varElapsedTime =
-				AvmTestCaseUtils::newfreshDurationVarFromEC(
-						tcSourceEC, *mMachineTC);
-
-		BFCode guard = StatementConstructor::newCode(
-				OperatorManager::OPERATOR_GUARD,
-				ExpressionConstructor::ltExpr(varElapsedTime, mVariable_TC_TM) );
-
-		if( groupFailedInput )
-		{
-			Transition * failTransition = new Transition(tcSourceState,
-					"t_fail_out", Transition::MOC_SIMPLE_KIND);
-			failTransition->setTarget( *treeStateFAIL );
-			tcSourceState.saveOwnedElement( failTransition );
-
-			BF failedTransStatement = allFailedInputStatement.singleton() ?
-					allFailedInputStatement.first() :
-					StatementConstructor::newCode(
-							OperatorManager::OPERATOR_SCHEDULE_OR_ELSE,
-							allFailedInputStatement);
-
-			failTransition->setStatement(StatementConstructor::newCode(
-					OperatorManager::OPERATOR_SEQUENCE,
-					guard, failedTransStatement) );
-		}
-		else
-		{
-			for( const auto & failedInputStatement : allFailedInputStatement )
-			{
-				const std::string & trNameID =
-						failedInputStatement->first().to< Port >().getNameID();
-				Transition * failTransition = new Transition(tcSourceState,
-						"t_fail_" + trNameID, Transition::MOC_SIMPLE_KIND);
-				failTransition->setTarget( *treeStateFAIL );
-				tcSourceState.saveOwnedElement( failTransition );
-
-				failTransition->setStatement(StatementConstructor::newCode(
-						OperatorManager::OPERATOR_SEQUENCE,
-						guard, failedInputStatement) );
-			}
-		}
-	}
-}
 
 
 } /* namespace sep */

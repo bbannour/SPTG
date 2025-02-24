@@ -633,7 +633,7 @@ void TestCaseGenerationHelper::verifyIncontrollablePath(ExecutionContext * child
 	///////////////////////////////////////////////////////////////////////////
 	// This piece of code treats controllability of path in TP
 	const BF & pathConditionChildEC = childEC->getExecutionData().getPathCondition(); // get Path condition of childEC
-	BFList listOfVar;
+	InstanceOfData::Table listOfVar;
 	ExpressionFactory::collectVariable(pathConditionChildEC, listOfVar); // put fresh variables appeared in pathConditionChildEC
 	// to listOfVar
 

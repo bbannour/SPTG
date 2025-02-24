@@ -120,38 +120,68 @@ public:
 
 	static bool isConstValue(const BF & value);
 
-
 	/**
-	 * COLLECT VARIABLE OR CLAUSE
+	 * COLLECT VARIABLE
+	 * Using Variable::Table
+	 * For only Variable typed var
 	 */
-	static void collectVariable(const BF & anExpr, BFCollection & listOfVar);
+	static void collectSpecVariable(const BF & anExpr, Variable::Table & listOfVar);
 
-	static void collectVariable(const BFCode & aCode, BFCollection & listOfVar);
-
-
-	inline static void collectVariable(const BF & anExpr,
-			VectorOfBaseInstanceForm & listOfElement)
+	static inline void collectSpecVariable(const BFCode & aCode, Variable::Table & listOfVar)
 	{
-		BFVector listOfVar;
-
-		collectVariable(anExpr, listOfVar);
-
-		BFVector::raw_iterator< InstanceOfData > itVar = listOfVar.begin();
-		BFVector::raw_iterator< InstanceOfData > endVar = listOfVar.end();
-		for( ; itVar != endVar ; ++itVar )
+		for( const auto & itOperand : aCode.getOperands() )
 		{
-			listOfElement.append( itVar );
+			collectSpecVariable(itOperand, listOfVar);
 		}
 	}
 
 
+	/**
+	 * COLLECT VARIABLE
+	 * Using InstanceOfData::Table
+	 * For only InstanceOfData typed var
+	 */
+	static void collectVariable(const BF & anExpr,
+			InstanceOfData::Table & listOfElement);
+
+	static inline void collectVariable(const BFCode & aCode,
+			InstanceOfData::Table listOfElement)
+	{
+		for( const auto & itOperand : aCode.getOperands() )
+		{
+			collectVariable(itOperand, listOfElement);
+		}
+	}
+
+
+
+
+	/**
+	 * COLLECT VARIABLE
+	 * Using BFCollection
+	 * For Variable or InstanceOfData typed var
+	 */
+	static void collectAnyVariable(const BF & anExpr, BFCollection & listOfVar);
+
+	static void collectAnyVariable(const BFCode & aCode, BFCollection & listOfVar);
+
+
+	/**
+	 * COLLECT FREE VARIABLE
+	 * Using InstanceOfData::Table of BFCollection
+	 * For only InstanceOfData typed var
+	 */
 	static void collectsFreeVariable(const BF & anExpr,
-			BFCollection & listOfBoundVar, BFCollection & listOfVar);
+			InstanceOfData::Table & listOfBoundVar, InstanceOfData::Table & listOfVar);
 
 	static void collectsFreeVariable(const BFCode & aCode,
-			BFCollection & listOfBoundVar, BFCollection & listOfVar);
+			InstanceOfData::Table & listOfBoundVar, InstanceOfData::Table & listOfVar);
 
 
+	/**
+	 * UTILS
+	 * For only InstanceOfData typed var
+	 */
 	static bool containsVariable(const BF & anExpr, InstanceOfData * aVariable);
 
 	static bool containsVariable(const BFCode & aCode, InstanceOfData * aVariable);
@@ -162,6 +192,9 @@ public:
 	static bool containsVariable(const BFCode & aCode, BFCollection & listOfVar);
 
 
+	/**
+	 * COLLECT CLAUSE
+	 */
 	static void collectsClause(const BF & anExpr, BFCollection & listOfClause);
 
 	static void collectsClause(const BFCode & aCode, BFCollection & listOfClause);

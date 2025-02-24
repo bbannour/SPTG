@@ -49,7 +49,7 @@ public:
 	static SatSolver * theDefaultSolver4CheckSatisfiability;
 	static SatSolver * theDefaultSolver4ModelsProduction;
 
-	static BFVector thePCParameters;
+	static InstanceOfData::Table thePCParameters;
 	static BFVector thePCParameterValues;
 
 	////////////////////////////////////////////////////////////////////////////
@@ -147,7 +147,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 
 	static bool solve(SolverDef::SOLVER_KIND aSolverKind, const BF & aCondition,
-			BFVector & dataVector, BFVector & valuesVector);
+			InstanceOfData::Table & dataVector, BFVector & valuesVector);
 
 
 	////////////////////////////////////////////////////////////////////////////
@@ -278,7 +278,8 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 
 	static bool to_smt(OutStream & os, const BF & aCondition,
-			SolverDef::SOLVER_KIND aSolverKind = SolverDef::SOLVER_Z3_KIND);
+			SolverDef::SOLVER_KIND aSolverKind = SolverDef::SOLVER_Z3_KIND,
+			bool enableModelProduction = true);
 
 
 

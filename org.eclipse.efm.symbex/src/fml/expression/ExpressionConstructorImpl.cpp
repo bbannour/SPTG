@@ -15,8 +15,13 @@
 
 #include "ExpressionConstructorImpl.h"
 
+#include <collection/BFContainer.h>
+
 #include <fml/expression/ExpressionConstant.h>
 #include <fml/expression/ExpressionConstructor.h>
+#include <fml/expression/ExpressionFactory.h>
+
+#include <fml/infrastructure/Variable.h>
 
 #include <fml/numeric/Numeric.h>
 
@@ -363,30 +368,123 @@ BF ExpressionConstructorNative::impliesExpr(const BF & arg0, const BF & arg1)
 BF ExpressionConstructorNative::existsExpr(
 		const BF & boundVar, const BF & formula)
 {
-	return( ExpressionConstructor::newCode(
-			OperatorManager::OPERATOR_EXISTS, boundVar, formula) );
+	BFList listOfVar;
+	ExpressionFactory::collectAnyVariable(formula, listOfVar);
+
+	for( const auto & itVar : listOfVar )
+	{
+		if( NamedElement::extractNameID(boundVar.str()) ==
+				NamedElement::extractNameID(itVar.str()) )
+		{
+			return( ExpressionConstructor::newCode(
+					OperatorManager::OPERATOR_EXISTS, boundVar, formula) );
+		}
+	}
+
+	return formula;
 }
 
 BF ExpressionConstructorNative::existsExpr(
 		const AvmCode::OperandCollectionT & operands)
 {
-	return( ExpressionConstructor::newCode(
-		OperatorManager::OPERATOR_EXISTS, operands) );
+//	return( ExpressionConstructor::newCode(
+//		OperatorManager::OPERATOR_EXISTS, operands) );
+
+	AvmCode::OperandCollectionT selectedOperands;
+
+	BFList listOfVar;
+
+	ExpressionFactory::collectAnyVariable(operands.last(), listOfVar);
+
+	for( const auto & itOperand : operands )
+	{
+		if( operands.last().isNTEQ(itOperand) )
+		{
+			for( const auto & itVar : listOfVar )
+			{
+				if( NamedElement::extractNameID(itOperand.str()) ==
+						NamedElement::extractNameID(itVar.str()) )
+				{
+					selectedOperands.append(itOperand);
+					break;
+				}
+			}
+		}
+	}
+
+	if( selectedOperands.nonempty() )
+	{
+		selectedOperands.append(operands.last());
+
+		return( ExpressionConstructor::newCode(
+			OperatorManager::OPERATOR_EXISTS, selectedOperands) );
+	}
+	else
+	{
+		return operands.last();
+	}
 }
 
 
 BF ExpressionConstructorNative::forallExpr(
 		const BF & boundVar, const BF & formula)
 {
-	return( ExpressionConstructor::newCode(
-			OperatorManager::OPERATOR_FORALL, boundVar, formula) );
+	BFList listOfVar;
+	ExpressionFactory::collectAnyVariable(formula, listOfVar);
+
+	for( const auto & itVar : listOfVar )
+	{
+		if( NamedElement::extractNameID(boundVar.str()) ==
+				NamedElement::extractNameID(itVar.str()) )
+		{
+			return( ExpressionConstructor::newCode(
+					OperatorManager::OPERATOR_FORALL, boundVar, formula) );
+		}
+	}
+
+	return formula;
 }
 
 BF ExpressionConstructorNative::forallExpr(
 		const AvmCode::OperandCollectionT & operands)
 {
-	return( ExpressionConstructor::newCode(
-		OperatorManager::OPERATOR_FORALL, operands) );
+//	return( ExpressionConstructor::newCode(
+//			OperatorManager::OPERATOR_FORALL, operands) );
+
+	AvmCode::OperandCollectionT selectedOperands;
+
+	BFList listOfVar;
+
+	ExpressionFactory::collectAnyVariable(operands.last(), listOfVar);
+
+	for( const auto & itOperand : operands )
+	{
+		if( operands.last().isNTEQ(itOperand) )
+		{
+			for( const auto & itVar : listOfVar )
+			{
+				if( NamedElement::extractNameID(itOperand.str()) ==
+						NamedElement::extractNameID(itVar.str()) )
+				{
+					selectedOperands.append(itOperand);
+					break;
+				}
+			}
+
+		}
+	}
+
+	if( selectedOperands.nonempty() )
+	{
+		selectedOperands.append(operands.last());
+
+		return( ExpressionConstructor::newCode(
+			OperatorManager::OPERATOR_FORALL, selectedOperands) );
+	}
+	else
+	{
+		return operands.last();
+	}
 }
 
 

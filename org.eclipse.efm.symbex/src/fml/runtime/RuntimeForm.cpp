@@ -489,14 +489,15 @@ void ParametersRuntimeForm::appendParameters(const BFList & paramsList)
 	}
 }
 
-void ParametersRuntimeForm::appendParameters(const BFVector & paramsVector)
+void ParametersRuntimeForm::appendParameters(
+		const InstanceOfData::Table & paramsVector)
 {
 	std::size_t offset = mDataTable->size();
 	mDataTable.makeWritable();
 	mDataTable->resize( offset + paramsVector.size() );
 
-	BFVector::const_raw_iterator< InstanceOfData > itParam = paramsVector.begin();
-	BFVector::const_raw_iterator< InstanceOfData > endParam = paramsVector.end();
+	InstanceOfData::Table::const_raw_iterator itParam = paramsVector.begin();
+	InstanceOfData::Table::const_raw_iterator endParam = paramsVector.end();
 	for( ; itParam != endParam ; ++itParam , ++offset )
 	{
 		(itParam)->setContainer( getExecutable() );
@@ -509,26 +510,25 @@ void ParametersRuntimeForm::appendParameters(const BFVector & paramsVector)
 	}
 }
 
-void ParametersRuntimeForm::appendConstParameters(const BFVector & paramsVector)
+void ParametersRuntimeForm::appendConstParameters(
+		const InstanceOfData::Table & paramsVector)
 {
 	std::size_t offset = mDataTable->size();
 	mDataTable.makeWritable();
 	mDataTable->resize( offset + paramsVector.size() );
 
-	BFVector::const_iterator itParam = paramsVector.begin();
-	BFVector::const_iterator endParam = paramsVector.end();
-	for( InstanceOfData * pParam; itParam != endParam ; ++itParam , ++offset )
+	InstanceOfData::Table::const_raw_iterator itParam = paramsVector.begin();
+	InstanceOfData::Table::const_raw_iterator endParam = paramsVector.end();
+	for( ; itParam != endParam ; ++itParam , ++offset )
 	{
-		pParam = (*itParam).to_ptr< InstanceOfData >();
-
-		pParam->setContainer( getExecutable() );
+		(itParam)->setContainer( getExecutable() );
 		mParameters.append( *itParam );
 
-		pParam->setOffset( offset );
+		(itParam)->setOffset( offset );
 		mDataTable->set(offset,
-				pParam->hasValue() ? pParam->getValue() : *itParam);
+				(itParam)->hasValue() ? (itParam)->getValue() : *itParam);
 
-		pParam->setRuntimeContainerRID( mRID );
+		(itParam)->setRuntimeContainerRID( mRID );
 	}
 }
 
@@ -538,7 +538,7 @@ void ParametersRuntimeForm::appendConstParameters(const BFVector & paramsVector)
  */
 void ParametersRuntimeForm::update(const BF & paramExpr)
 {
-	BFVector tableOfParams;
+	InstanceOfData::Table tableOfParams;
 	ExpressionFactory::collectVariable(paramExpr, tableOfParams);
 
 	std::size_t actualParametersSize = mParameters.size();

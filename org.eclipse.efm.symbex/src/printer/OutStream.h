@@ -225,7 +225,7 @@ public:
 		return( (OS == nullptr) || OS->fail() );
 	}
 
-	inline virtual bool good() const
+	inline virtual bool good() const final
 	{
 		return( (OS != nullptr) && OS->good() );
 	}
@@ -367,7 +367,7 @@ public:
 		}
 	}
 
-	inline virtual void backspace()
+	inline virtual void backspace() final
 	{
 		OutStream::backspace( OS  );
 	}
@@ -956,14 +956,38 @@ inline void TAB3(OutStream & os)
 
 inline void TAB4(OutStream & os)
 {
-	os << os.INDENT.TABS << os.INDENT.CHAR << os.INDENT.CHAR
-			<< os.INDENT.CHAR;
+	os << os.INDENT.TABS << os.INDENT.CHAR << os.INDENT.CHAR << os.INDENT.CHAR;
 }
 
 inline void TAB5(OutStream & os)
 {
 	os << os.INDENT.TABS << os.INDENT.CHAR << os.INDENT.CHAR
-			<< os.INDENT.CHAR << os.INDENT.CHAR;
+		<< os.INDENT.CHAR << os.INDENT.CHAR;
+}
+
+inline void TAB6(OutStream & os)
+{
+	os << os.INDENT.TABS << os.INDENT.CHAR << os.INDENT.CHAR
+		<< os.INDENT.CHAR << os.INDENT.CHAR << os.INDENT.CHAR;
+}
+
+inline void TAB7(OutStream & os)
+{
+	os << os.INDENT.TABS << os.INDENT.CHAR << os.INDENT.CHAR << os.INDENT.CHAR
+		<< os.INDENT.CHAR << os.INDENT.CHAR << os.INDENT.CHAR;
+}
+
+inline void TAB8(OutStream & os)
+{
+	os << os.INDENT.TABS << os.INDENT.CHAR << os.INDENT.CHAR << os.INDENT.CHAR
+		<< os.INDENT.CHAR << os.INDENT.CHAR << os.INDENT.CHAR << os.INDENT.CHAR;
+}
+
+inline void TAB9(OutStream & os)
+{
+	os << os.INDENT.TABS << os.INDENT.CHAR << os.INDENT.CHAR
+		<< os.INDENT.CHAR << os.INDENT.CHAR << os.INDENT.CHAR
+		<< os.INDENT.CHAR << os.INDENT.CHAR << os.INDENT.CHAR;
 }
 
 
@@ -1306,7 +1330,7 @@ inline void EOL_FLUSH_DECR_INDENT(OutStream & os)
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-class StringOutStream  :  public OutStream
+class StringOutStream final :  public OutStream
 {
 
 protected:

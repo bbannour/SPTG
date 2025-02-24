@@ -378,6 +378,55 @@ void StatementFactory::collectCommunication(
 
 /**
  * COLLECT
+ * Guard & Communication Statement
+ */
+void StatementFactory::collectTimedGuard(const BF & aStatement, BFCode & timedguard)
+{
+	if( aStatement.is< AvmCode >() )
+	{
+		const AvmCode & aCode = aStatement.to< AvmCode >();
+
+		if( StatementTypeChecker::isTimedGuard(aCode) )
+		{
+			timedguard = aStatement;
+		}
+		else
+		{
+			for( const auto & itOperand : aCode.getOperands() )
+			{
+				collectTimedGuard(itOperand, timedguard);
+			}
+		}
+	}
+}
+
+void StatementFactory::collectGuardCommunication(
+			const BF & aStatement, BFCode & guard, BFCode & comStatement)
+{
+	if( aStatement.is< AvmCode >() )
+	{
+		const AvmCode & aCode = aStatement.to< AvmCode >();
+
+		if( StatementTypeChecker::isGuard(aCode) )
+		{
+			guard = aStatement;
+		}
+		else if( StatementTypeChecker::isCommunication(aCode) )
+		{
+			comStatement = aStatement;
+		}
+		else
+		{
+			for( const auto & itOperand : aCode.getOperands() )
+			{
+				collectGuardCommunication(itOperand, guard, comStatement);
+			}
+		}
+	}
+}
+
+/**
+ * COLLECT
  * RID
  */
 void StatementFactory::collectRID(const BF & aStatement,
@@ -507,7 +556,7 @@ const RuntimeID & StatementFactory::getActivityTargetRID(
 		}
 	}
 
-	return( RuntimeID::REF_NULL );
+	return( RuntimeID::nullref() );
 }
 
 

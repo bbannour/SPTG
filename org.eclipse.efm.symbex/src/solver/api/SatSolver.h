@@ -208,14 +208,14 @@ public:
 	 * an empty << valuesVector >> compute by the solver
 	 */
 	bool solve(const BF & aCondition,
-			BFVector & dataVector, BFVector & valuesVector);
+			InstanceOfData::Table & dataVector, BFVector & valuesVector);
 
 	virtual bool solveImpl(const BF & aCondition,
 			BFVector & dataVector, BFVector & valuesVector) = 0;
 
 
 	BF completeUsingDataTypeConstraint(
-			const BF & aCondition, BFVector & dataVector) const;
+			const BF & aCondition, InstanceOfData::Table & dataVector) const;
 
 
 	/**

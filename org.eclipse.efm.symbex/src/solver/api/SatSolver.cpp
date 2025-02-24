@@ -89,7 +89,7 @@ AVM_ENDIF_DEBUG_FLAG2( CONFIGURING , SOLVING )
  * an empty << valuesVector >> compute by the solver
  */
 bool SatSolver::solve(const BF & aCondition,
-		BFVector & dataVector, BFVector & valuesVector)
+		InstanceOfData::Table & dataVector, BFVector & valuesVector)
 {
 	BF fullCondition = completeUsingDataTypeConstraint(aCondition, dataVector);
 
@@ -113,17 +113,17 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , SOLVING )
 
 
 BF SatSolver::completeUsingDataTypeConstraint(
-		const BF & aCondition, BFVector & dataVector) const
+		const BF & aCondition, InstanceOfData::Table & dataVector) const
 {
 	BF allCondition = aCondition;
 	BF typeConstraint;
 
-	BFVector paramsVars( dataVector );
-	BFList boundVars;
+	InstanceOfData::Table paramsVars( dataVector );
+	InstanceOfData::Table boundVars;
 	ExpressionFactory::collectsFreeVariable(aCondition, boundVars, paramsVars);
 
-	BFVector::raw_iterator< InstanceOfData > itParam = paramsVars.begin();
-	BFVector::raw_iterator< InstanceOfData > endParam = paramsVars.end();
+	InstanceOfData::Table::raw_iterator itParam = paramsVars.begin();
+	InstanceOfData::Table::raw_iterator endParam = paramsVars.end();
 	for( ; itParam != endParam ; ++itParam )
 	{
 		typeConstraint = (itParam)->getTypeSpecifier().genConstraint( *itParam );

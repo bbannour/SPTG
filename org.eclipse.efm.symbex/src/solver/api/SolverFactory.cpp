@@ -56,7 +56,7 @@ namespace sep
 SatSolver * SolverFactory::theDefaultSolver4CheckSatisfiability = nullptr;
 SatSolver * SolverFactory::theDefaultSolver4ModelsProduction = nullptr;
 
-BFVector SolverFactory::thePCParameters;
+InstanceOfData::Table SolverFactory::thePCParameters;
 BFVector SolverFactory::thePCParameterValues;
 
 ExecutionData SolverFactory::theSymbolicED;
@@ -486,8 +486,8 @@ SatSolver * SolverFactory::newSolver4ModelsProduction(
 // CONDITION PARAMETER SOLVING
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SolverFactory::solve(SolverDef::SOLVER_KIND aSolverKind,
-		const BF & aCondition, BFVector & dataVector, BFVector & valuesVector)
+bool SolverFactory::solve(SolverDef::SOLVER_KIND aSolverKind, const BF & aCondition,
+		InstanceOfData::Table & dataVector, BFVector & valuesVector)
 {
 	switch( aSolverKind )
 	{
@@ -713,8 +713,8 @@ bool SolverFactory::solveParameters(ExecutionData & anED, const BF & aCondition)
 		ParametersRuntimeForm & paramsRF = anED.getWritableParametersRuntimeForm();
 		APTableOfData & aDataTable = paramsRF.getWritableDataTable();
 
-		BFVector::raw_iterator< InstanceOfData > itParam = thePCParameters.begin();
-		BFVector::raw_iterator< InstanceOfData > endParam = thePCParameters.end();
+		InstanceOfData::Table::raw_iterator itParam = thePCParameters.begin();
+		InstanceOfData::Table::raw_iterator endParam = thePCParameters.end();
 		for( std::size_t offset = 0 ; itParam != endParam ; ++itParam , ++offset )
 		{
 			aDataTable->set( (itParam), thePCParameterValues[offset] );
@@ -912,8 +912,8 @@ void SolverFactory::setRuntimeParametersSolvingValues(ExecutionData & anED)
 
 	paramsRF.resetOffset();
 
-	BFVector::raw_iterator< InstanceOfData > itVar = thePCParameters.begin();
-	BFVector::raw_iterator< InstanceOfData > endVar = thePCParameters.end();
+	InstanceOfData::Table::raw_iterator itVar = thePCParameters.begin();
+	InstanceOfData::Table::raw_iterator endVar = thePCParameters.end();
 	for( avm_offset_t offset = 0 ; itVar != endVar ; ++itVar, ++offset )
 	{
 		(itVar)->getwModifier().setFeatureFinal( false );
@@ -965,14 +965,14 @@ AVM_ENDIF_DEBUG_FLAG( SMT_SOLVING )
 
 void SolverFactory::updateRuntimeParametersValues(const BF & aValue)
 {
-	BFVector exprVariableVector;
+	InstanceOfData::Table exprVariableVector;
 	ExpressionFactory::collectVariable(aValue, exprVariableVector);
 
 	ParametersRuntimeForm & paramsRF =
 			theSymbolicED.getWritableParametersRuntimeForm();
 
-	BFVector::raw_iterator< InstanceOfData > itVar = exprVariableVector.begin();
-	BFVector::raw_iterator< InstanceOfData > endVar = exprVariableVector.end();
+	InstanceOfData::Table::raw_iterator itVar = exprVariableVector.begin();
+	InstanceOfData::Table::raw_iterator endVar = exprVariableVector.end();
 	for( ; itVar != endVar ; ++itVar )
 	{
 		if( not thePCParameters.contains(*itVar) )
@@ -1068,8 +1068,8 @@ ExecutionData SolverFactory::solveNewfresh(SolverDef::SOLVER_KIND aSolverKind,
 // TO_SMT
 ////////////////////////////////////////////////////////////////////////////
 
-bool SolverFactory::to_smt(OutStream & os,
-		const BF & aCondition, SolverDef::SOLVER_KIND aSolverKind)
+bool SolverFactory::to_smt(OutStream & os, const BF & aCondition,
+		SolverDef::SOLVER_KIND aSolverKind, bool enableModelProduction)
 {
 	switch( aSolverKind )
 	{
@@ -1077,7 +1077,7 @@ bool SolverFactory::to_smt(OutStream & os,
 		case SolverDef::SOLVER_CVC4_KIND:
 		case SolverDef::SOLVER_CVC_KIND:
 		{
-			CVC4Solver aSolver(true /*to set option << produce-models >>*/);
+			CVC4Solver aSolver(enableModelProduction /*to set option << produce-models >>*/);
 
 			return( aSolver.to_smt(os, aCondition) );
 		}
@@ -1089,7 +1089,7 @@ bool SolverFactory::to_smt(OutStream & os,
 		{
 			Z3Solver aSolver;
 
-			return aSolver.to_smt(os, aCondition);
+			return aSolver.to_smt(os, aCondition, enableModelProduction);
 		}
 #endif /* _AVM_SOLVER_Z3_ */
 
@@ -1100,7 +1100,7 @@ bool SolverFactory::to_smt(OutStream & os,
 		{
 			Yices2Solver aSolver;
 
-			return aSolver.to_smt(os, aCondition);
+			return aSolver.to_smt(os, aCondition, enableModelProduction);
 		}
 #endif /* _AVM_SOLVER_YICES_V2_ */
 
@@ -1118,7 +1118,8 @@ bool SolverFactory::to_smt(OutStream & os,
 					<< " >> in this executable and and there are no default alternative solver !"
 					<< SEND_EXIT;
 
-			return theDefaultSolver4ModelsProduction->to_smt(os, aCondition);
+			return theDefaultSolver4ModelsProduction->to_smt(os,
+					aCondition, enableModelProduction);
 		}
 	}
 

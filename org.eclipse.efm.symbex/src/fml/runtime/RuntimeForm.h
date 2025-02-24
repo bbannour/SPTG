@@ -823,10 +823,10 @@ public:
 
 	void appendParameters(const BFList & paramsList);
 
-	void appendParameters(const BFVector & paramsVector);
+	void appendParameters(const InstanceOfData::Table & paramsVector);
 
 
-	void appendConstParameters(const BFVector & paramsVector);
+	void appendConstParameters(const InstanceOfData::Table & paramsVector);
 
 
 	inline const TableOfInstanceOfData & getParameters() const

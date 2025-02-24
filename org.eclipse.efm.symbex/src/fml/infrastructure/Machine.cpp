@@ -423,7 +423,16 @@ void Machine::setAutoStart(bool bAutoStart)
 
 /**
  * GETTER - SETTER
- * mDeclarationParameter
+ * mDeclarationVariables
+ */
+const TableOfVariable & Machine::getVariables() const
+{
+	return( mPropertyDeclaration.getVariables() );
+}
+
+/**
+ * GETTER - SETTER
+ * mDeclarationParameters
  */
 const TableOfVariable & Machine::getVariableParameters() const
 {
@@ -453,7 +462,7 @@ avm_offset_t Machine::getVariableParameterOffset(const std::string & aNameID) co
 
 /**
  * GETTER - SETTER
- * mDeclarationReturn
+ * mDeclarationReturns
  */
 const TableOfVariable & Machine::getVariableReturns() const
 {

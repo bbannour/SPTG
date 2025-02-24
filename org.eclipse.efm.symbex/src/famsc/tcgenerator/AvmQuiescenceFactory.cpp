@@ -245,10 +245,11 @@ BF AvmQuiescenceFactory::computeQuiescenceCondition(
 {
 	AvmCode::OperandCollectionT phiOutput;
 
-	if( not tcSourceEC.getPathCondition().isEqualTrue() )
-	{
-		phiOutput.append(tcSourceEC.getPathCondition());
-	}
+//	if( not tcSourceEC.getPathCondition().isEqualTrue() )
+//	{
+//AVM_OS_DEBUG << "phiOutput of " << tcSourceEC.str() << std::endl << tcSourceEC.getPathCondition() << std::endl;
+//		phiOutput.append(tcSourceEC.getPathCondition());
+//	}
 
 	InstanceOfData::Table boundVars;
 	AvmTestCaseUtils::newfreshDurationParamsFromEC(tcSourceEC, boundVars);
@@ -284,30 +285,32 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 
 					if( boundVars.nonempty() )
 					{
-						AvmCode::OperandCollectionT timeVarPositiveConditions;
-						for( const auto & boundVar : boundVars)
-						{
-							const BaseTypeSpecifier & type =
-									boundVar.to< InstanceOfData >().getTypeSpecifier();
-							if( type.isTypedPositiveNumber() )
-							{
-								timeVarPositiveConditions.append(
-										ExpressionConstructor::gteExpr(
-												boundVar, ExpressionConstant::INTEGER_ZERO) );
-							}
-						}
+//!@! Remove Type constraint
+//						AvmCode::OperandCollectionT timeVarPositiveConditions;
+//						for( const auto & boundVar : boundVars)
+//						{
+//							const BaseTypeSpecifier & type =
+//									boundVar.to< InstanceOfData >().getTypeSpecifier();
+//							if( type.isTypedPositiveNumber() )
+//							{
+//								timeVarPositiveConditions.append(
+//										ExpressionConstructor::gteExpr(
+//												boundVar, ExpressionConstant::INTEGER_ZERO) );
+//							}
+//						}
 
-						if( timeVarPositiveConditions.nonempty() )
-						{
-							phiOutput.append(
-									ExpressionConstructor::forallExpr(boundVars,
-											ExpressionConstructor::impliesExpr(
-													ExpressionConstructor::andExpr(
-															timeVarPositiveConditions),
-												ExpressionConstructor::notExpr(
-														aChildEC->getPathCondition())) ));
-						}
-						else
+//!@! Remove Type constraint
+//						if( timeVarPositiveConditions.nonempty() )
+//						{
+//							phiOutput.append(
+//									ExpressionConstructor::forallExpr(boundVars,
+//											ExpressionConstructor::impliesExpr(
+//													ExpressionConstructor::andExpr(
+//															timeVarPositiveConditions),
+//												ExpressionConstructor::notExpr(
+//														aChildEC->getPathCondition())) ));
+//						}
+//						else
 						{
 							phiOutput.append(
 									ExpressionConstructor::forallExpr(boundVars,
@@ -334,9 +337,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 		}
 	}
 
-	if( phiOutput.nonempty() )
+	if( phiOutput.populated() )
 	{
 		return ExpressionConstructor::andExpr(phiOutput);
+	}
+	else if( phiOutput.nonempty() )
+	{
+		return phiOutput.first();
 	}
 
 	return ExpressionConstant::BOOLEAN_TRUE;
@@ -405,24 +412,26 @@ AVM_IF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 	AVM_OS_DEBUG << "computeAdmissibleQuiescenceCondition boundVar : " << boundVar.strHeader() << std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 
-					if( boundVar.to< InstanceOfData >().isTypedPositiveNumber() )
-					{
-						conditions.append(
-								ExpressionConstructor::gteExpr(boundVar,
-										ExpressionConstant::INTEGER_ZERO) );
-					}
+//!@! Remove Type constraint
+//					if( boundVar.to< InstanceOfData >().isTypedPositiveNumber() )
+//					{
+//						conditions.append(
+//								ExpressionConstructor::gteExpr(boundVar,
+//										ExpressionConstant::INTEGER_ZERO) );
+//					}
 				}
 
 				BF boundVarZ( new InstanceOfData(
 						IPointerVariableNature::POINTER_STANDARD_NATURE,
 						& ExecutableForm::nullref(), Variable::nullref(),
-						paramElapsedTime.to< InstanceOfPort >().getTypeSpecifier(),
+						paramElapsedTime.to< InstanceOfData >().getTypeSpecifier(),
 						"z", 0) );
 				boundVars.append(boundVarZ);
 
-				conditions.append(
-						ExpressionConstructor::gteExpr(boundVarZ,
-								ExpressionConstant::INTEGER_ZERO) );
+//!@! Remove Type constraint
+//				conditions.append(
+//						ExpressionConstructor::gteExpr(boundVarZ,
+//								ExpressionConstant::INTEGER_ZERO) );
 
 				conditions.append(
 						ExpressionConstructor::ltExpr(paramElapsedTime, boundVarZ));
