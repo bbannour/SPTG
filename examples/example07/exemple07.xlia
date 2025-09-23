@@ -1,6 +1,6 @@
 @xlia< system , 1.0 >:
 
-timed system Example06 {
+timed system Example07 {
 
 @composite:
 	statemachine Example07 {
