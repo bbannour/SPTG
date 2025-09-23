@@ -1,0 +1,340 @@
+@xlia< system , 1.0 >:
+
+timed system Example05_Automotive_Platoon {
+
+@composite:
+	statemachine Example05_LeaderAgent {
+	@public:
+		
+		port input Join_r(int joining_veh_sender, int joining_veh_front); 
+		port input Set_spacing_from(int joining_veh_front_OR_leaving_veh_sender);
+		port input Join_suc(int joining_veh_sender);
+		
+
+		port input Leave_r(int leaving_veh_sender, int leaving_veh_front, int back_vehicle);
+		port input Switch_steering_done(int back_vehicle);
+		port input Left_suc(int leaving_veh_sender);
+		 
+		port output Join_agr_c(int joining_veh_sender);
+		port output Set_spacing_c(int joining_OR_leaving__veh_sender, int space);
+		port output Platoon_m_c(int joining_veh_sender);
+		port output Fail_to_join(int joining_veh_sender);
+		
+		port output Leave_agr_c(int leaving_veh_sender);
+		port output Switch_steering(int back_vehicle);
+		port output No_platoon_m_c(int leaving_veh_sender);
+		port output Fail_to_leave(int leaving_veh_sender);
+
+		const uint NO_VEHICULE_SENDER;
+		
+		const uint NO_SPACE;
+		const uint AVAIL_SPACE;
+
+
+		const uint JOIN_TIME = 60;
+		const uint CHANGE_LANE_TIME = 20;
+		const uint CHANGE_LANE_BOUND = 5;
+		const uint JOIN_DISTANCE_TIME = 10;
+		const uint JOIN_DISTANCE_BOUND = 5;
+		const uint SET_SPACE_TIME = 20;
+		const uint SET_SPACE_BOUND = 5;
+		const uint LEADER_WAITING =2;
+		const uint AGENT_WAITING =1;
+				   
+		const uint TIMEOUT_JOINING = SET_SPACE_TIME + SET_SPACE_BOUND +
+				CHANGE_LANE_TIME + CHANGE_LANE_BOUND + 
+				JOIN_DISTANCE_TIME + JOIN_DISTANCE_BOUND +
+				LEADER_WAITING;    
+
+		const uint TIMEOUT_LEAVING = SET_SPACE_TIME + SET_SPACE_BOUND +
+				CHANGE_LANE_TIME + CHANGE_LANE_BOUND + 
+				JOIN_DISTANCE_TIME + JOIN_DISTANCE_BOUND +
+				LEADER_WAITING;    
+
+  	@private:
+  	
+ 		var clock uint timer;
+ 		var clock uint timer_c; // For committed state
+		
+		var int joining_veh_sender;
+		var int joining_veh_sender_ret;
+		var int joining_veh_front;
+		var int joining_veh_front_ret;
+		
+		var int leaving_veh_sender;
+		var int leaving_veh_sender_ret;
+		var int leaving_veh_front;
+		var int leaving_veh_front_ret;
+		
+		var int back_vehicle;
+		var int back_vehicle_ret;
+ 		var boolean fail_leaving; 
+ 	
+	@region:
+		///////////////////////////////////////////////////////////////////////
+		// q0
+		///////////////////////////////////////////////////////////////////////
+
+		state<start> q0 { 
+			transition t_join_r --> q1 {
+				input Join_r(joining_veh_sender, joining_veh_front);
+				timer = 0;
+				timer_c = 0;
+			}
+			transition t_leave_r --> q10 {
+				input Leave_r(leaving_veh_sender, leaving_veh_front, back_vehicle);
+				fail_leaving = false;
+				timer_c = 0;
+			}
+		}
+				
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+		// JOIN
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+
+		state/*< junction >*/ q1 {
+			transition t_join_agr_c --> /*join_agreement*/ q4 {
+				guard (timer_c <= 0);
+				guard (joining_veh_front == 0);
+				output Join_agr_c(joining_veh_sender);
+			}
+			transition t_set_spacing_c --> q2 {
+				guard (timer_c <= 0);
+				guard (joining_veh_front != 0);
+				output Set_spacing_c(joining_veh_front, AVAIL_SPACE);
+				timer = 0;
+			}
+		}
+		
+		state q2 {
+			transition t_set_spacing_from --> q3 {
+				guard (timer <= SET_SPACE_TIME + SET_SPACE_BOUND);
+				guard (timer >= SET_SPACE_TIME - SET_SPACE_BOUND);
+				input Set_spacing_from(joining_veh_front_ret);
+				guard (joining_veh_front_ret == joining_veh_front);
+				timer_c = 0;
+			}
+		}
+		
+		state/*< junction >*/ q3 {
+			transition t_join_agr_c --> /*join_agreement*/ q4 {
+				guard (timer_c <= 0);
+				output Join_agr_c(joining_veh_sender);
+			}
+		}
+		
+		
+		state /*join_agreement*/ q4 {
+			transition t_joined_suc --> /*join_act*/ q5 {
+				input Join_suc(joining_veh_sender_ret);
+				guard (joining_veh_sender_ret == joining_veh_sender);
+				timer_c = 0;
+			}
+			transition t_fail_to_join --> q0 {
+				guard (timer >= TIMEOUT_JOINING);
+				guard (joining_veh_front == 0);
+				output Fail_to_join(joining_veh_sender);
+			}
+			transition t_timeout_joining --> /*failed_to_join*/ q8 {
+				guard (timer >= TIMEOUT_JOINING);
+				guard (joining_veh_front != 0);
+				output Fail_to_join(joining_veh_sender);
+				timer_c = 0;
+			}
+		}
+		
+		state/*< junction >*/ /*failed_to_join*/ q8 {
+			transition t_set_spacing_c --> q9 {
+				guard (timer_c <= 0);
+				output Set_spacing_c(joining_veh_front, NO_SPACE);
+				timer = 0;
+			}
+		}
+		
+		state q9 {
+			transition t_set_spacing_from --> q0 {
+				guard (timer <= SET_SPACE_TIME + SET_SPACE_BOUND);
+				guard (timer >= SET_SPACE_TIME - SET_SPACE_BOUND);
+				input Set_spacing_from(joining_veh_front_ret);
+				guard (joining_veh_front_ret == joining_veh_front);
+			}
+		}
+		
+		
+		state/*< junction >*/ /*join_act*/ q5 {
+			transition t_set_spacing_c --> q6 {
+				guard (timer_c <= 0);
+				guard (joining_veh_front != 0);
+				output Set_spacing_c(joining_veh_front, NO_SPACE);
+				timer = 0;
+			}
+			transition t_platoon_m_c --> q0 {
+				guard (timer_c <= 0);
+				guard (joining_veh_front == 0);
+				output Platoon_m_c(joining_veh_sender);
+				joining_veh_sender = NO_VEHICULE_SENDER;
+			}
+		}
+		
+		state q6 {
+			transition t_set_spacing_from --> q7 {
+				guard (timer <= SET_SPACE_TIME + SET_SPACE_BOUND);
+				guard (timer >= SET_SPACE_TIME - SET_SPACE_BOUND);
+				input Set_spacing_from(joining_veh_front_ret);
+				guard (joining_veh_front_ret == joining_veh_front);
+				timer_c = 0;
+			}
+		}
+
+		state/*< junction >*/ q7 {
+			transition t_platoon_m_c --> q0 {
+				guard (timer_c <= 0);
+				output Platoon_m_c(joining_veh_sender);
+				joining_veh_sender = NO_VEHICULE_SENDER;
+			}
+		}
+
+
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+		// LEAVE
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+
+		state/*< junction >*/ q10 {
+			transition t_set_spacing_c --> q11 {
+				guard (timer_c <= 0);
+				output Set_spacing_c(leaving_veh_sender, AVAIL_SPACE);
+				timer = 0;
+			}
+		}
+
+		state q11 {
+			transition t_set_spacing_from --> q12 {
+				guard (timer <= SET_SPACE_TIME + SET_SPACE_BOUND);
+				guard (timer >= SET_SPACE_TIME - SET_SPACE_BOUND);
+				input Set_spacing_from(leaving_veh_sender_ret);
+				guard (leaving_veh_sender_ret == leaving_veh_sender);
+				timer_c = 0;
+			}
+		}
+
+		state/*< junction >*/ q12 {
+			transition t_switch_steering --> q13 {
+				guard (timer_c <= 0);
+				guard (back_vehicle != 0);
+				output Switch_steering(back_vehicle);
+			}
+			transition t_leave_agr_c --> /*leave_agreement*/ q15 {
+				guard (timer_c <= 0);
+				guard (back_vehicle == 0);
+				output Leave_agr_c(leaving_veh_sender);
+			}
+		}
+
+		state q13 {
+			transition t_switch_steering_done --> q14 {
+				input Switch_steering_done(back_vehicle_ret);
+				guard (back_vehicle_ret == back_vehicle);
+				timer_c = 0;
+			}
+		}
+
+		state/*< junction >*/ q14 {
+			transition t_leave_agr_c --> /*leave_agreement*/ q15 {
+				guard (timer_c <= 0);
+				output Leave_agr_c(leaving_veh_sender);
+			}
+		}
+
+		state /*leave_agreement*/ q15 {
+			transition t_left_suc --> q18 {
+				input Left_suc(leaving_veh_sender_ret);
+				guard (leaving_veh_sender_ret == leaving_veh_sender);
+				timer_c = 0;
+			}
+			transition t_fail_to_leaving --> /*failed_to_leave*/ q16 {
+				guard (timer >= TIMEOUT_LEAVING);
+				output Fail_to_leave(leaving_veh_sender);
+				fail_leaving = true;
+				timer_c = 0;
+			}
+		}
+
+		state/*< junction >*/ /*failed_to_leave*/ q16 {
+			transition t_set_spacing_c --> q17 {
+				guard (timer_c <= 0);
+				output Set_spacing_c(leaving_veh_sender, NO_SPACE);
+				timer = 0;
+			}
+		}
+
+		state q17 {
+			transition t_set_spacing_from --> q18 {
+//				guard (timer <= SET_SPACE_TIME + SET_SPACE_BOUND);
+				guard (timer >= SET_SPACE_TIME - SET_SPACE_BOUND);
+				input Set_spacing_from(leaving_veh_sender_ret);
+				guard (leaving_veh_sender_ret == leaving_veh_sender);
+				timer_c = 0;
+			}
+		}
+
+
+		state/*< junction >*/ q18 {
+			transition t_no_platoon_m_c --> q0 {
+				guard (timer_c <= 0);
+				guard (back_vehicle == 0);
+				output No_platoon_m_c(leaving_veh_sender);
+			}
+			transition t_switch_steering --> q19 {
+				guard (timer_c <= 0);
+				guard (back_vehicle != 0);
+				output Switch_steering(leaving_veh_sender);
+			}
+		}
+
+
+		state q19 {
+			transition t_switch_steering_done --> q20 {
+				input Switch_steering_done(back_vehicle_ret);
+				guard (back_vehicle_ret == back_vehicle);
+				timer_c = 0;
+			}
+		}
+
+
+		state/*< junction >*/ q20 {
+			transition t_no_platoon_m_c --> q0 {
+				guard (timer_c <= 0);
+				output No_platoon_m_c(leaving_veh_sender);
+			}
+			transition t_fail_leaving --> q0 {
+				guard (timer_c <= 0);
+				guard fail_leaving;
+				output Fail_to_leave(leaving_veh_sender);
+			}
+		}
+	@com:
+		connect< env >{
+			 input Join_r;
+			 input Set_spacing_from;
+			 input Join_suc;
+			 
+			 input Leave_r;
+			 input Switch_steering_done;
+			 input Left_suc;
+			 
+			 output Join_agr_c;
+			 output Set_spacing_c;
+			 output Platoon_m_c;
+			 output Fail_to_join;
+			 
+			 output Leave_agr_c;
+			 output Switch_steering;
+			 output No_platoon_m_c;
+			 output Fail_to_leave;
+		}	
+  	}
+}
