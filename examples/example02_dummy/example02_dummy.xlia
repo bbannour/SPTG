@@ -1,9 +1,9 @@
 @xlia< system , 1.0 >:
 
-timed system Tacas01 {
+timed system Example02_Dummy {
 
 @composite:
-	statemachine Dummy {
+	statemachine Example02_Dummy {
 	@public:
 		port input In( urational );
 		port output Out( int );
@@ -13,7 +13,6 @@ timed system Tacas01 {
 		var urational x;
 		var int fee;
 		var clock urational cl;
-			
 	@region:
 	
 	    state<start> q0 {
@@ -44,13 +43,13 @@ timed system Tacas01 {
         }
         	    
        	state q2;
-        
-	  }
-@com:
-	connect< env >{
-		input Dummy->In;
-		output Dummy->Out;
-		output Dummy->Done;
-	}
+       	
+	@com:
+		connect< env >{
+			input In;
+			output Out;
+			output Done;
+		}
+	 }
 }
 
