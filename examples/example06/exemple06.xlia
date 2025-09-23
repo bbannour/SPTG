@@ -1,0 +1,35 @@
+@xlia< system , 1.0 >:
+
+timed system Example06 {
+
+@composite:
+	statemachine Example06 {
+	@public:
+		port input In;
+		port output Out;
+		
+	@private:
+		var clock urational cl;
+			
+	@region:
+	
+	    state<start> q0 {
+	        transition  tr_1 --> q1 { 
+	            input In;
+//	            cl := 0;
+	        }                                    
+	    }
+	    state q1 {
+	        transition tr_2 --> q0 {
+	            output Out;
+	            guard( cl <= 5 );
+	        }
+        }
+    @com:
+		connect< env >{
+			input In;
+			output Out;
+		}
+	}
+}
+
