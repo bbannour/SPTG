@@ -9,7 +9,7 @@ timed system Example07 {
 		port output Out;
 		
 	@private:
-		var urational x;
+		var urational x; //uninitialized variable
 		var clock urational cl;
 			
 	@region:
