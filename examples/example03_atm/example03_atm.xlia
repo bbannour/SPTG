@@ -39,7 +39,7 @@ timed system Example03_ATM {
         }
         	    
        	state Print {
-	        transition tr_2 --> Idle {
+	        transition tr_4 --> Idle {
 	        	guard( cl <= 5 );
 	            output PrintBalance( balance );
 	        }
