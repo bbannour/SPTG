@@ -1,0 +1,57 @@
+@xlia< system , 1.0 >:
+
+timed system Example03_ATM {
+
+@composite:
+	statemachine Example03_ATM {
+	@public:
+		port input Withdrawl( int );
+		port output DispenseCash( int );
+		port output InsufficientFunds( int );
+		port output PrintBalance( int );
+	@private:
+		var int amount;
+		var int balance;
+		var clock urational cl;
+	@region:
+	
+	    state<start> Idle {
+	    	@init{
+	    		guard( balance > 0 );
+	    	}
+	        transition  tr_1 --> Verify { 
+	            input Withdrawl( amount );
+	            guard ( amount > 0 );
+	            cl := 0;
+	        }                             
+	    }
+	    state Verify {
+	        transition tr_2 --> Idle {
+	        	guard( amount <= balance && cl <= 10 );
+	            output DispenseCash( amount );
+	            balance := balance-amount;
+	        }
+	        transition tr_3 --> Print {
+	        	guard( amount > balance && cl <= 2 );
+	            output InsufficientFunds( amount );
+	             cl := 0;
+	        }
+        }
+        	    
+       	state Print {
+	        transition tr_2 --> Idle {
+	        	guard( cl <= 5 );
+	            output PrintBalance( balance );
+	        }
+        }
+       	
+	@com:
+		connect< env >{
+			input Withdrawl;
+			output DispenseCash;
+			output InsufficientFunds;
+			output PrintBalance;
+		}
+	 }
+}
+
