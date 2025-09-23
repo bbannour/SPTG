@@ -3,7 +3,7 @@
 timed system Example06 {
 
 @composite:
-	statemachine Example06 {
+	statemachine Example07 {
 	@public:
 		port input In;
 		port output Out;
