@@ -1,0 +1,56 @@
+@xlia< system , 1.0 >:
+
+timed system Tacas01 {
+
+@composite:
+	statemachine Dummy {
+	@public:
+		port input In( urational );
+		port output Out( int );
+		port output Done;
+	@private:
+		var urational sum;
+		var urational x;
+		var int fee;
+		var clock urational cl;
+			
+	@region:
+	
+	    state<start> q0 {
+	    	@init{
+	    		guard( fee > 0 );
+	    		sum := 0;
+	    	}
+	        transition  tr_1 --> q1 { 
+	            input In( x );
+	            guard (1 <= x <= 10 );
+	            sum := sum+x;
+	            cl := 0;
+	        }                   
+	        transition  tr_4 --> q2 { 
+	            guard (sum >= 15 );
+	            output Done;
+	        }                   
+	    }
+	    state q1 {
+	        transition tr_2 --> q0 {
+	            output Out( 0 );
+	            guard( x <= 5 && cl == 42-x );
+	        }
+	        transition tr_3 --> q0 {
+	            output Out( fee );
+	            guard( x > 5 && cl == 42-x );
+	        }
+        }
+        	    
+       	state q2;
+        
+	  }
+@com:
+	connect< env >{
+		input Dummy->In;
+		output Dummy->Out;
+		output Dummy->Done;
+	}
+}
+
