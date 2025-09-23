@@ -13,7 +13,6 @@ timed system Example04_Beverage_Machine {
 		var int x;
 		var int y;
 		var int q;
-		var int change;
 		var urational i;
 		var urational t;
 		var clock urational cl;
@@ -26,7 +25,6 @@ timed system Example04_Beverage_Machine {
 	        transition  tr_1 --> q1 { 
 	            input Money( x );
 	            guard ( x >= 1 );
-//	            change := x-1;
 	            cl := 0;
 	        }                             
 	    }
@@ -34,7 +32,6 @@ timed system Example04_Beverage_Machine {
 	        transition tr_2 --> q2 {
 	        	input Choice( y, t );
 	            guard ( x-1 < q && t <= 5 && cl <= i );
-//	            change := x-1;
 	            cl := 0;
 	        }
 	        transition tr_4 --> q0 {
