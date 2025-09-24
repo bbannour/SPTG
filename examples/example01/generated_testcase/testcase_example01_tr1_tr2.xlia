@@ -1,0 +1,126 @@
+@xlia< system , 1.0 >:
+
+timed system< and > tcSystem {
+@composite:
+	statemachine tcMachine {
+	@property:
+		public input port Quiescence;
+		public output port In;
+		public input port Out;
+		var pos_rational TM;
+		var clock< urational > cl;
+		var time< urational > z_2;
+		var time< urational > z_1;
+
+	@region:
+		state< start > ec_2 "ec_2_q0" {
+			transition tr_R1_In --> ec_3 {
+				tguard ((z_1 == cl) && (cl < TM));
+				guard exists< z_2 : urational >(z_2 <= 5);
+				output In;
+				cl := 0;
+			}
+			transition tr_R10b_Out --> FAIL_out_ec_2_Out {
+				tguard ((z_1 == cl) && (cl < TM));
+				input Out;
+				guard true;
+			}
+			transition tr_R9_quiescence --> INC_dur_ec_2 {
+				tguard ((z_1 == cl) && (cl >= TM));
+				input Quiescence;
+				guard true;
+			}
+			transition tr_R11_unspecifiedQuiescence --> FAIL_dur_ec_2 {
+				tguard ((z_1 == cl) && (cl >= TM));
+				input Quiescence;
+				guard false;
+			}
+		}
+
+		state ec_3 "ec_3_q1" {
+			transition tr_R4_PASS_Out --> PASS_ec_5 {
+				tguard ((z_2 == cl) && (cl < TM));
+				input Out;
+				guard (z_2 <= 5);
+			}
+			transition tr_R10b_Out --> FAIL_out_ec_3_Out {
+				tguard ((z_2 == cl) && (cl < TM));
+				input Out;
+				guard true;
+			}
+			transition tr_R9_quiescence --> INC_dur_ec_3 {
+				tguard ((z_2 == cl) && (cl >= TM));
+				input Quiescence;
+				guard (exists< z : urational >((z_2 < z) && (z <= 5)) || forall< z_2 : urational >(z_2 > 5));
+			}
+			transition tr_R11_unspecifiedQuiescence --> FAIL_dur_ec_3 {
+				tguard ((z_2 == cl) && (cl >= TM));
+				input Quiescence;
+				guard ((! exists< z : urational >((z_2 < z) && (z <= 5))) && (! forall< z_2 : urational >(z_2 > 5)));
+			}
+		/*transition< incoming >: [
+				transition tr_R1_In : state< start > ec_2 --> ec_3;
+		] // end transition*/
+		}
+
+		state< terminal > FAIL_out_ec_2_Out {
+		/*transition< incoming >: [
+				transition tr_R10b_Out : state< start > ec_2 --> FAIL_out_ec_2_Out;
+		] // end transition*/
+
+		}
+
+		state< terminal > INC_dur_ec_2 {
+		/*transition< incoming >: [
+				transition tr_R9_quiescence : state< start > ec_2 --> INC_dur_ec_2;
+		] // end transition*/
+
+		}
+
+		state< terminal > FAIL_dur_ec_2 {
+		/*transition< incoming >: [
+				transition tr_R11_unspecifiedQuiescence : state< start > ec_2 --> FAIL_dur_ec_2;
+		] // end transition*/
+
+		}
+
+		state< final > PASS_ec_5 "PASS_ec_5_q0" {
+		/*transition< incoming >: [
+				transition tr_R4_PASS_Out : state ec_3 --> PASS_ec_5;
+		] // end transition*/
+
+		}
+
+		state< terminal > FAIL_out_ec_3_Out {
+		/*transition< incoming >: [
+				transition tr_R10b_Out : state ec_3 --> FAIL_out_ec_3_Out;
+		] // end transition*/
+
+		}
+
+		state< terminal > INC_dur_ec_3 {
+		/*transition< incoming >: [
+				transition tr_R9_quiescence : state ec_3 --> INC_dur_ec_3;
+		] // end transition*/
+
+		}
+
+		state< terminal > FAIL_dur_ec_3 {
+		/*transition< incoming >: [
+				transition tr_R11_unspecifiedQuiescence : state ec_3 --> FAIL_dur_ec_3;
+		] // end transition*/
+
+		}
+
+	@com:
+		connector< env >  {
+			input tcMachine->Quiescence;
+		}
+		connector< env >  {
+			output tcMachine->In;
+		}
+		connector< env >  {
+			input tcMachine->Out;
+		}
+	}
+}

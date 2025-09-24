@@ -1,0 +1,98 @@
+@sew< workflow , 1.0 >:
+
+// Symbolic Execution Workflow
+// Diversity Tool Configuration
+// CEA - LIST
+workflow {
+	workspace [
+		root   = "."
+		output = "generated_testcase"
+	] // end workspace
+	director extraneous#module 'as main execution objective' {
+		manifest [
+			autoconf  = true
+			autostart = true
+		] // end manifest
+		project 'path of input model' [
+			source = "."
+			model  = "exemple01.xlia"
+		] // end project
+		supervisor {
+			limit 'of graph exploration' [
+				step = 1000
+				eval = -1
+			] // end limit
+			queue 'defining the exploration/search strategy' [
+				strategy = 'BREADTH_FIRST_SEARCH'
+			] // end queue
+		}
+		worker [
+			/////// TESTCASE GENERATOR ///////
+			path#guided#testcase#generator testcase_genertor {
+			property [
+					stop  = true
+					slice = false
+					heuristic = false
+					solver = 'Z3'
+					// The name of the clock variable of the TestCase,
+					// reset to zero at each step
+					clock_var_name = "cl"
+					// The name of the variable of the TestCase that represents
+					// the maximum duration for the TestCase to execute
+					// an action (a stimulation or an observation) i.e. clk < TM
+					timeout_var_name = "TM"
+					// The prefix of the name of the variable that represents a
+					// positional argument of an output message of the test purpose
+					message_arg_prefix_name = "$_"
+					// Enables simplification in all TestCase guards
+					enable_guard_simplification = false
+			    // Enables global state for verdict
+			    enable_global_verdict_state = false
+				] // end property
+				trace [
+					//Sequence of elements characterizing the test purpose.
+					transition = "tr_1"
+					transition = "tr_2"
+				] // end trace
+				uncontrollable [
+					//List of uncrollable input.
+				] // end uncontrollable
+				vfs [
+					folder = "."
+					// file#ltc   = "labelled_testcases.xlia"
+					file#tc   = "testcase_example01_tr1_tr2.xlia"
+				] // end vfs
+			}
+			serializer#model#graphic model2graphic {
+				statemachine [
+					transition = true
+				] // end property
+				transition [
+					statement = true
+				] // end property
+				statement [
+					statement = true
+				] // end property
+				vfs [
+					file = "exemple01.puml"
+				] // end vfs
+			}
+		] // end worker
+	}
+	symbex 'option' [
+		name_id_separator = "_"   // default "#"
+		newfresh_param_name_pid = false
+		pretty_printer_var_name = true   // default false
+		time_name_id = "$time"
+		time_initial_value = 0
+		delta_name_id = "z"
+		delta_initial_value = 0
+		node_condition_enabled = false   // default false
+		separation_of_pc_disjunction = false
+		check_pathcondition_satisfiability = true
+		constraint_solver = "Z3"  // CVC5 | YICES
+	] // end symbex
+	console [
+		verbose = 'MINIMUM'
+	] // end console
+}
