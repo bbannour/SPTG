@@ -18,6 +18,7 @@ timed system Example08_Absolute_Value {
 	        transition  tr_1 --> q1 { 
 	            input In( x );
 	            guard( -42 <= x <= 42 ); 
+	            cl := 0;
 	        }                                    
 	    }
 	    state q1 {
