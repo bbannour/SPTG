@@ -21,8 +21,8 @@ timed system Example01 {
 	    }
 	    state q1 {
 	        transition tr_2 --> q0 {
+	        	guard( cl <= 5 );
 	            output Out;
-	            guard( cl <= 5 );
 	        }
         }
     @com:
