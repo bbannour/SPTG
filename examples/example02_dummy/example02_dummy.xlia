@@ -6,7 +6,7 @@ timed system Example02_Dummy {
 	statemachine Example02_Dummy {
 	@public:
 		port input In( urational );
-		port output Out( int );
+		port output Out( urational );
 		port output Done;
 	@private:
 		var urational sum;
@@ -17,7 +17,6 @@ timed system Example02_Dummy {
 	
 	    state<start> q0 {
 	    	@init{
-	    		guard( fee > 0 );
 	    		sum := 0;
 	    	}
 	        transition  tr_1 --> q1 { 
@@ -37,7 +36,7 @@ timed system Example02_Dummy {
 	            guard( x <= 5 && cl == 42-x );
 	        }
 	        transition tr_3 --> q0 {
-	            output Out( fee );
+	            output Out( x );
 	            guard( x > 5 && cl == 42-x );
 	        }
         }
