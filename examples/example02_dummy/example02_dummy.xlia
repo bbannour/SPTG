@@ -11,7 +11,6 @@ timed system Example02_Dummy {
 	@private:
 		var urational sum;
 		var urational x;
-		var int fee;
 		var clock urational cl;
 	@region:
 	
@@ -19,23 +18,23 @@ timed system Example02_Dummy {
 	    	@init{
 	    		sum := 0;
 	    	}
-	        transition  tr_1 --> q1 { 
+	        transition  tr1 --> q1 { 
 	            input In( x );
 	            guard (1 <= x <= 10 );
 	            sum := sum+x;
 	            cl := 0;
 	        }                   
-	        transition  tr_4 --> q2 { 
+	        transition  tr4 --> q2 { 
 	            guard (sum >= 15 );
 	            output Done;
 	        }                   
 	    }
 	    state q1 {
-	        transition tr_2 --> q0 {
+	        transition tr2 --> q0 {
 	            output Out( 0 );
 	            guard( x <= 5 && cl == 42-x );
 	        }
-	        transition tr_3 --> q0 {
+	        transition tr3 --> q0 {
 	            output Out( x );
 	            guard( x > 5 && cl == 42-x );
 	        }
