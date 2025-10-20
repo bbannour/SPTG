@@ -1,13 +1,74 @@
 # SPTG
 
-Symbolic Path-Guided Test Case Generator
+## 🧩 SPTG: Symbolic Path-Guided Test Generation Tool
+
+
+**SPTG** generates conformance test cases from system models combining data and timing constraints. It uses path-guided symbolic execution, following a chosen sequence of transitions (the test path) and collecting constraints on inputs and timing.  
+
+## Key Features
+
+- **Symbolic execution**: Generates tests along test purpose paths, accumulating symbolic constraints on inputs and their timing.  
+- **Data, timing & quiescence**: Handles clocks and data variables uniformly, distinguishing valid quiescence (expected silence within allowed delay) from missing outputs (silence when an output is expected).  
+- **Deterministic paths**: Only paths that are deterministic are used; non-deterministic paths are dropped, ensuring unambiguous test cases that mirror the symbolic execution tree.  
+- **Concise tests**: Prunes infeasible branches and simplifies redundant constraints.  
+- **Coverage support**: Test paths can be user-defined or automatically selected, with SPTG working as an extension of the Diversity platform for coverage analysis and test selection.
+
+## Applications
+
+- **Model-Based Testing** of systems with timing and data-dependent behavior.    
+- **Offline generation** of efficient, deterministic test suites from models.
+- **Demonstrations and teaching** of symbolic execution and test generation.
+
+
+SPTG is based on the symbolic path-guided test case generation approach https://doi.org/10.1016/j.scico.2025.103285 (Open access)
+
+
+## SPTG Tool I/O Flow
+
+
+<style>
+  /* Optional: Global style for all tables if multiple are used */
+  .spaced-table td, .spaced-table th {
+    padding-left: 15px; /* Increase space on the left of cell content */
+    padding-right: 15px; /* Increase space on the right of cell content */
+    /* You can also adjust padding-top and padding-bottom if desired */
+  }
+</style>
+
+<table class="spaced-table">
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th>Content</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>Input 1 : Timed symbolic automaton - Reference system model</b></td>
+      <td><img src="files/images/example01_paper_tacas.PNG" alt="Timed symbolic automaton"></td>
+    </tr>
+    <tr>
+      <td><b>Input 2 : Consecutive sequence of transitions (path) of the model - Test purpose</b></td>
+      <td>
+      <b>tr1.tr2</b>
+      </td>
+    </tr>
+    <tr>
+      <td><b>Output : Deterministic timed symbolic automaton - Test case</b></td>
+      <td><img src="files/images/example01_paper_tacas_testcase.PNG" alt="Deterministic timed symbolic automaton"></td>
+    </tr>
+  </tbody>
+</table>
 
 
 
-Using SPTG
+## How to compile SPTG
+
+
+## How to use SPTG
 
 ```
-sptg.exe 
+sptg.exe example01_tc.sew
 
 ```
 
@@ -16,7 +77,7 @@ sptg.exe
 
 
 
-**XLIA subset to encode timed symbolic transition system**
+**More on XLIA subset to encode timed symbolic transition system**
 
 
 ```
@@ -153,179 +214,6 @@ timed system S {
 }
 
 ```
-
-@startuml
-
-	' allow_mixing
-	' !pragma teoz true
-
-	skinparam componentstyle uml2
-
-	hide empty description
-
-	skinparam linetype polyline
-	' skinparam linetype ortho
-	' left to right direction
-	!function $kw($key_word)
-	!return "**<color blue>" + $key_word + "</color>**"
-	!endfunction
-	!function $kop($key_operator)
-	!return "**<color blue>" + $key_operator + "</color>**"
-	!endfunction
-	!function $ks($key_symbol)
-	!return "**<color blue>" + $key_symbol + "</color>**"
-	!endfunction
-	!function $param($p)
-	!return "**<color darkred>" + $p + "</color>**"
-	!endfunction
-	!$natural = "**<color darkred>&#9838;</color>**"
-
-	!$tp_path = "#Green,thickness=2"
-
-	<style>
-		note {
-			backgroundcolor white
-			shadowing 0
-			linecolor transparent
-		}
-	</style>
-
-	skinparam backgroundColor White
-
-	skinparam state {
-		StartColor Green
-		EndColor Red
-		'Attribut pour les transitions
-		ArrowColor Black
-		ArrowColor<< Else >> Orange
-		'Attribut par défaut pour les états
-		BorderColor Gray
-		BackgroundColor Wheat
-		'Attribut pour les états composites
-		BackgroundColor<< System       >> Turquoise
-		BackgroundColor<< Statemachine >> DodgerBlue
-		BackgroundColor<< Machine      >> SpringGreen
-		BackgroundColor<< Instance     >> Orchid
-		BackgroundColor<< Composite    >> SpringGreen
-		'Attribut pour les états simples
-		BackgroundColor<< simple_hierarchic >> PaleTurquoise
-		BackgroundColor<< simple >> PaleTurquoise
-		BackgroundColor<< start  >> Green
-		BackgroundColor<< final >> Red
-		BackgroundColor<< pass >> GreenYellow
-		BackgroundColor<< sync   >> Aqua
-		'Attribut pour les pseudo-états
-		BackgroundColor<< pseudostate >> Lavender
-		BackgroundColor<< initial     >> GreenYellow
-		BackgroundColor<< junction    >> GreenYellow
-		BackgroundColor<< choice      >> Orange
-		BackgroundColor<< fork        >> SpringGreen
-		BackgroundColor<< junction    >> SpringGreen
-		BackgroundColor<< dhistory    >> SpringGreen
-		BackgroundColor<< shistory    >> SpringGreen
-		BackgroundColor<< return      >> OrangeRed
-		BackgroundColor<< terminal    >> DarkGray
-		FontColor Black
-		FontName Times
-		FontSize 14
-	}
-
-state "**timed system** S" as S_1405366479 << System >> {
-
-	state "**statemachine** SM" as SM_281118486 << Statemachine >> {
-
-		state "q0" as q0_201018752 << start >>
-
-		note bottom of q0_201018752 #white
-			**init( )**
-			sum $kop(":=") 0 $ks(";")
-			flag $kop(":=") false $ks(";")
-			$kw("guard") (fee $kop(">") 0) $ks(";")
-		end note
-
-		q0_201018752 --> q1_357179108
-
-		note on link #white
-			**tr1** 
-			$kw("input") In1(x) $ks(";")
-			$kw("guard") ((1 $kop("<=") x) <= 10) $ks(";")
-			sum $kop(":=") (sum $kop("+") x) $ks(";")
-			y $kop(":=") sum $ks(";")
-			cl $kop(":=") 0 $ks(";")
-		end note
-
-		q0_201018752 --> q1_357179108
-
-		note on link #white
-			**tr2** 
-			$kw("input") In(x) $ks(";")
-			$kw("guard") ((10 $kop("<") x)
-				$kop("&&") (x $kop("<") N)) $ks(";")
-			$ks("{")$ks("|,|")
-				sum $kop(":=") (sum $kop("+") x) $ks(";")
-				y $kop(":=") sum $ks(";")
-			$ks("}")
-			cl2 $kop(":=") 0 $ks(";")
-		end note
-
-		
-
-		state "q1" as q1_357179108 << simple >>
-
-		q1_357179108 --> q0_201018752
-
-		note on link #white
-			**tr3** 
-			$kw("guard") ((x $kop("<=") 10)
-				$kop("&&") (cl $kop("==") (N $kop("-") x))) $ks(";")
-			$kw("output") Out((sum $kop("-") 1)) $ks(";")
-		end note
-
-		q1_357179108 --> q0_201018752
-
-		note on link #white
-			**tr4** 
-			$kw("guard") (x $kop(">") 10) $ks(";")
-			$kw("guard") (cl $kop("<=") 5) $ks(";")
-			$kw("output") Out2(fee, flag) $ks(";")
-			flag $kop(":=") true $ks(";")
-			cl2 $kop(":=") 0 $ks(";")
-		end note
-
-		q1_357179108 --> q2_1367554826
-
-		note on link #white
-			**tr5** 
-			$kw("guard") ((sum $kop(">=") 15)
-				$kop("&&") (cl2 $kop("<=") 1)) $ks(";")
-			$kw("output") Done $ks(";")
-			cl2 $kop(":=") 0 $ks(";")
-		end note
-
-		state "q2" as q2_1367554826 << simple >>
-
-	}
-
-	note bottom of SM_281118486
-	{{
-	title "Model of Interaction : list of connections"
-	== connect< env > ==
-	' group connect< env >
-		?-> SM : In
-		?-> SM : In1
-		?-> SM : In2
-		?-> SM : In3
-		SM ->? : Done
-		SM ->? : Out
-		SM ->? : Out2
-	' end group
-	}}
-	end note
-}
-
-
-
-@enduml
 
 
 
