@@ -26,14 +26,7 @@ SPTG is based on the symbolic path-guided test case generation approach https://
 ## SPTG Tool I/O Flow
 
 
-<style>
-  /* Optional: Global style for all tables if multiple are used */
-  .spaced-table td, .spaced-table th {
-    padding-left: 15px; /* Increase space on the left of cell content */
-    padding-right: 15px; /* Increase space on the right of cell content */
-    /* You can also adjust padding-top and padding-bottom if desired */
-  }
-</style>
+
 
 <table class="spaced-table">
   <thead>
