@@ -6,7 +6,7 @@
 
 The construction of the test case is obtained by applying dedicated symbolic execution techniques to the reference timed symbolic automaton, in order to derive a symbolic subtree restricted to the test purpose, i.e., a path represented as a sequence of transitions of the reference automaton. In the following, we **first provide an overview of these test-oriented symbolic techniques**, and **then describe the test case generation itself**, obtained by applying transformations to this subtree (mirroring and constraint simplifications).
 
-## Test-oriented Symbolic Execution Techniques
+## 1. Test-oriented Symbolic Execution Techniques
 
 **Symbolic execution** explores a model by representing both data and time with symbolic variables instead of concrete values. It unfolds the automaton while generating constraints over symbolic variables, producing a **symbolic execution tree** . The tree's nodes are **execution contexts**, and its edges represent symbolic steps such as initialization, transition firing, or **quiescence completion**.
 
@@ -26,33 +26,30 @@ The **root context** $ec_0$ starts in $q_0$, with clocks at zero, variables assi
 
 **Symbolic Variables**: Fresh symbolic variables are introduced:
 
-$(x_i)_{i \ge 0}$ represent successive values of a data variable $x$ (with $x_0$ being the initial value).
+x0, x1, ...  represent successive values of a data variable $x$ (with x0 being the initial value).
 
-$(\#_i)_{i \ge 1}$ denote **symbolic delays**.
+$\char35_1$,  ... denote **symbolic delays** 
 
-
-
-$(\$_i)_{i \geq 1}$ denote **emitted values** typed according to their channels.
-
+$\char36_1$, ... denote **emitted values** typed according to their channels
 
 
 ### Symbolic Paths
 
 Contexts $ec_2$, $ec_3$, and $ec_4$ illustrate the symbolic execution of transitions $\mathbf{tr}_1$, $\mathbf{tr}_2$, and $\mathbf{tr}_3$.
 
-1.  **Edge $ec_1 \to ec_2$ ($\mathbf{tr}_1$)**:
-    * Transition from $q_0 \to q_1$ via input $\mathit{In}$.
-    * $x$ is updated to $x_1$. Clock $cl$ is reset to $0$.
-    * Edge label: symbolic action $\mathit{In}?x_1$ and delay $\#_1$.
-    * **Path condition**: $1 \leq x_1 \leq 10$ (from guard $1 \leq x \leq 10$).
-    * Update: $\mathit{sum} \mapsto x_1$.
+1.  **Edge from $ec_1$ to $ec_2$ ($\mathbf{tr}_1$)**:
+    * Transition from $q_0$ to $q_1$ via input $In$.
+    * $x$ is updated to x1. Clock $cl$ is reset to $0$.
+    * Edge label: symbolic action $\mathit{In}?x_1$ and delay #1.
+    * **Path condition**: $1 \leq$ x1 $\leq 10$ (from guard $1 \leq x \leq 10$).
+    * Update: $\mathit{sum} \mapsto$ x1.
 
-2.  **Edge $ec_2 \to ec_3$ ($\mathbf{tr}_2$)**:
-    * Transition from $q_1 \to q_0$, emitting on channel $\mathit{Out}$.
-    * $\#_2$ is elapsed time, and $\$_1$ is the emitted value. Clock value becomes $\#_2$.
-    * **Path condition**: $x_1 \leq 5$ and $\#_2 = 42 - x_1$ (from guard $x \leq 5$ and $cl = 42 - x$), and $\$_1 = 0$.
+2.  **Edge from $ec_2$ to $ec_3$ ($\mathbf{tr}_2$)**:
+    * Transition from $q_1$ to $q_0$, emitting on channel $\mathit{Out}$.
+    * #2 is elapsed time, and $1 is the emitted value. Clock value becomes #2.
+    * **Path condition**: x1 $\leq 5$ and #2 = 42 -  x1 (from guard $x \leq 5$ and $cl = 42 - x$), and $1 = 0.
 
-The symbolic path $ec_1.ec_2.ec_3$ corresponds to model path $\mathbf{tr}_1.\mathbf{tr}_2$, yielding the symbolic trace $(\#_1, \mathit{In}?x_1).(\#_2, \mathit{Out}!\$_1)$.
+The symbolic path $ec_1.ec_2.ec_3$ corresponds to model path $\mathbf{tr}_1.\mathbf{tr}_2$, yielding the symbolic trace (#1, $\mathit{In}?$ x1).(#2, $\mathit{Out}!$ $1)$.
 
 The **path condition** for this trace ($\#_1$ is unconstrained) is:
 $$1 \leq x_1 \leq 10 \;\land\; x_1 \leq 5 \;\land\; \#_2 = 42 - x_1 \;\land\; \$_1 = 0$$
