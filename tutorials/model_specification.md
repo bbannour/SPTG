@@ -6,15 +6,67 @@
 # Timed symbolic transition system - Reference system model
 
 
-The SPTG framework, being an extension of the DIVERSITY symbolic execution platform, uses its entry language to express models of timed symbolic transition systems. This language, called **XLIA** (**eXecutable Language for Interaction and Architecture**), is designed for specifying the behavior of component-based systems.
+SPTG automata models, called **timed symbolic transition systems**, will be introduced in the following using a small dummy one, $\mathbb{G}$ sufficient to illustrate the main components:
 
-In XLIA, components are referred to as machines. These machines are communicating, hierarchical, and heterogeneous, and their evaluation semantics can be customized to support different analysis or execution contexts.
 
-For timed symbolic transition systems, a single machine is typically used to represent the system under study, which interacts with its environment through well-defined communication interfaces.
+<div style="padding-top: 20px; padding-bottom: 20px;">
+</div>
+
+<center>
+
+<img src="./../README_files/images/autG.svg" width="300px" alt="Example of timed symbolic transition system">
+</center>
+
+<div style="padding-top: 20px; padding-bottom: 20px;">
+</div>
+
+Channels are $C=\{\mathit{In}, \mathit{Out}, \mathit{Done}\}$, data variables are $A = \{x, \mathit{sum}\}$, and clocks are $K = \{\mathit{cl}\}$.  
+Clock $\mathit{cl}$ ranges over positive rationals, providing a dense time domain, and measures elapsed time.  
+Variable $x$ stores incoming values, while variable $\mathit{sum}$ accumulates them (initialized to $0$).  
+
+Channels are typed and declared as input or output:
+- $\mathit{In}?x$ binds $x$ to a value of the type of $\mathit{In}$ (here, positive rationals),
+- $\mathit{Out}!t$ emits a value $t$ of the type of $\mathit{Out}$,
+- channels without data, like $\mathit{Done}$, have undefined type.
+
+A **transition** is a tuple  
+$(q, act, \phi, \mathbb{K}, \rho, q')$,  
+where:
+- $q, q'$ are states,
+- $act$ is an input/output action,
+- $\phi$ is a guard,
+- $\mathbb{K} \subseteq K$ is the set of clocks to reset,
+- $\rho$ is an update $\{x_1 \!:=\! t_1, \ldots, x_n \!:=\! t_n\}$ on data variables (where terms $t_i$ may involve clocks).
+
+When $\rho = id$, variables remain unchanged; only relevant updates are shown.
+
+The system $\mathbb{G}$ has three states $q_0, q_1, q_2$ and four transitions:
+
+- **$\mathbf{tr}_1$** = $(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} \!:=\! \mathit{sum} + x, q_1)$  
+  → processes inputs;
+
+- **$\mathbf{tr}_2$** = $(q_1, \mathit{Out}!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$  
+  → emits $0$ for small inputs;
+
+- **$\mathbf{tr}_3$** = $(q_1, \mathit{Out}!x, x > 5 \wedge cl = 42 - x, \emptyset, id, q_0)$  
+  → emits the received value otherwise;
+
+- **$\mathbf{tr}_4$** = $(q_0, \mathit{Done}!, \mathit{sum} \geq 15, \emptyset, id, q_2)$  
+  → may signal termination when the accumulated sum reaches $15$.
 
 ## Encoding of the timed symbolic transition system in XLIA
 
-The automaton \( \mathbb{G} \) from Fig. \ref{fig:tiosts_symbex_tree} is encoded in the **XLIA** input language of the **DIVERSITY** symbolic execution platform as follows:
+The SPTG framework, being an extension of the DIVERSITY symbolic execution platform, uses its entry language to express models of timed symbolic transition systems. This language, called **XLIA** (**eXecutable Language for Interaction and Architecture**), is designed for specifying the behavior of component-based systems.
+
+In XLIA, components are referred to as machines. These machines are communicating, hierarchical, and heterogeneous, and their evaluation semantics can be customized to support different analysis or execution contexts. 
+
+The complete XLIA specification is available in the [XLIA documentation](DiversityLangaugeXlia_documentation.pdf).
+
+For timed symbolic transition systems, a single machine is typically used to represent the system under study, which interacts with its environment through well-defined communication interfaces.
+
+
+
+The automaton $\mathbb{G}$ is encoded in the **XLIA** input language of the **DIVERSITY** symbolic execution platform as follows:
 
 ```xlia
 timed system Example01_Dummy {
@@ -22,12 +74,12 @@ timed system Example01_Dummy {
 @composite:
 	statemachine Example01_Dummy {
 	@public:
-		port input In( urational );
+		port input  In( urational );
 		port output Out( urational );
 		port output Done;
 	@private:
-		var urational sum;
-		var urational x;
+		var urational       sum;
+		var urational       x;
 		var clock urational cl;
 	@region:
 	
@@ -37,22 +89,22 @@ timed system Example01_Dummy {
 	    	}
 	        transition  tr1 --> q1 { 
 	            input In( x );
-	            guard (1 <= x <= 10 );
+	            guard ( 1 <= x <= 10 );
 	            sum := sum+x;
-	            cl := 0;
+	            cl  := 0;
 	        }                   
 	        transition  tr4 --> q2 { 
-	            guard (sum >= 15 );
+	            guard ( sum >= 15 );
 	            output Done;
 	        }                   
 	    }
 	    state q1 {
 	        transition tr2 --> q0 {
-	        	guard( x <= 5 && cl == 42-x );
+	        	guard ( x <= 5 && cl == 42-x );
 	            output Out( 0 );
 	        }
 	        transition tr3 --> q0 {
-	        	guard( x > 5 && cl == 42-x );
+	        	guard ( x > 5 && cl == 42-x );
 	            output Out( x );
 	        }
         }
@@ -61,7 +113,7 @@ timed system Example01_Dummy {
        	
 	@com:
 		connect< env >{
-			input In;
+			input  In;
 			output Out;
 			output Done;
 		}
@@ -87,12 +139,12 @@ From the XLIA model:
 
 ```xlia
 @public:
-	port input In( urational );
+	port input  In( urational );
 	port output Out( urational );
 	port output Done;
 @private:
-	var urational sum;
-	var urational x;
+	var urational       sum;
+	var urational       x;
 	var clock urational cl;
 ```
 
@@ -112,7 +164,7 @@ From the XLIA model:
 
 Thus, the static part declares the **interface** and **internal state space** of the automaton.
 
-## Behavioral Part
+## 3. Behavioral Part
 
 The behavioral description is under `@region`, where states and transitions are defined.
 
@@ -143,12 +195,12 @@ q2: Final or terminal state when the condition `sum >= 15` holds.
 ```
 transition tr1 --> q1 { 
     input In( x );
-    guard (1 <= x <= 10 );
+    guard ( 1 <= x <= 10 );
     sum := sum+x;
-    cl := 0;
+    cl  := 0;
 }                   
 transition  tr4 --> q2 { 
-    guard (sum >= 15 );
+    guard ( sum >= 15 );
     output Done;
 }
 ```
@@ -157,12 +209,60 @@ transition  tr4 --> q2 {
 
 | Transition | Automaton equivalent | Description |
 | :--- | :--- | :--- |
-| **tr1** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} \!:=\! \mathit{sum}+x, q_1)$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $c1$. |
+| **tr1** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} \!:=\! \mathit{sum}+x, q_1)$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $cl$. |
 | **tr4** | $$(q_0, \mathit{Done}!, \mathit{sum} \geq 15, \emptyset, id, q_2)$$ | Produces $\text{Done}$ output when accumulated $\text{sum} \ge 15$. |
 
 
+**Transitions form q1**
 
-<div style="padding-top: 100px; padding-bottom: 100px;">
+```xlia
+transition tr2 --> q0 {
+	guard ( x <= 5 && cl == 42-x );
+	output Out( 0 );
+}
+transition tr3 --> q0 {
+	guard ( x > 5 && cl == 42-x );
+	output Out( x );
+}
+```
+
+| Transition | Automaton equivalent | Description |
+| :--- | :--- | :--- |
+| **tr2** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} \!:=\! \mathit{sum} + x, q_1)$$ | Emits value $0$, for small inputs. |
+| **tr3** | $$(q_1, \mathit{Out}!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits received input $x$, otherwise. |
+
+
+## 4. Communication Interface
+
+The `@com` section defines how this state machine interacts with the environment:
+
+```xlia
+@com:
+	connect< env >{
+		input  In;
+		output Out;
+		output Done;
+	}
+```
+
+This binds the declared input/output ports to the environment.
+
+## 5. Summary: Automaton -- XLIA Correspondence
+
+| Automaton Concept | XLIA Encoding |
+| :--- | :--- |
+| **Locations** $q_0, q_1, q_2$ | `state q0`, `state q1`, `state q2` |
+| **Initial location** | `state<start>` |
+| **Transitions** | `transition trX --> qY { ... }` |
+| **Guards** | `guard(...)` expressions |
+| **Clocks** | Declared with `var clock` |
+| **Clock resets** | Assignments like `c1 := 0` |
+| **Input actions** | `input In(x)` |
+| **Output actions** | `output Out(...)` or `output Done` |
+| **Variable updates** | Direct assignments inside transition body |
+| **Terminal state** | `state q2;` (no outgoing transitions) |
+
+<div style="padding-top: 20px; padding-bottom: 20px;">
 </div>
 
 **More on XLIA subset to encode timed symbolic transition system**
