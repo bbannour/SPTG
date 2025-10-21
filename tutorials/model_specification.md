@@ -254,8 +254,8 @@ This binds the declared input/output ports to the environment.
 | **Initial location** | `state<start>` |
 | **Transitions** | `transition trX --> qY { ... }` |
 | **Guards** | `guard(...)` expressions |
-| **Clocks** | Declared with `var clock` |
-| **Clock resets** | Assignments like `c1 := 0` |
+| **Clocks** | Declared with `var clock urational cl` |
+| **Clock resets** | Assignments like `cl := 0` |
 | **Input actions** | `input In(x)` |
 | **Output actions** | `output Out(...)` or `output Done` |
 | **Variable updates** | Direct assignments inside transition body |
