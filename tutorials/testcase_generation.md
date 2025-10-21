@@ -26,11 +26,11 @@ The **root context** $ec_0$ starts in $q_0$, with clocks at zero, variables assi
 
 **Symbolic Variables**: Fresh symbolic variables are introduced:
 
-$x_0$, $x_1$, ... represent successive values of a data variable $x$ (with $x_0$ being the initial value).
+`x0`, `x1`, ... represent successive values of a data variable $x$ (with `x0` being the initial value).
 
-&#35;1, &#35;2, ... denote **symbolic delays**.
+`#1`, `#2`, ... denote **symbolic delays**.
 
-&#36;1, &#36;2, ...  denote **emitted values** typed according to their channels.
+`$1`, `$2`, ...  denote **emitted values** typed according to their channels.
 
 
 ### Symbolic Paths
@@ -39,20 +39,21 @@ Contexts $ec_2$, $ec_3$, and $ec_4$ illustrate the symbolic execution of transit
 
 1.  **Edge from $ec_1$ to $ec_2$ ($\mathbf{tr}_1$)**:
     * Transition from $q_0$ to $q_1$ via input $In$.
-    * $x$ is updated to x1. Clock $cl$ is reset to $0$.
-    * Edge label: symbolic action $\mathit{In}?x_1$ and delay #1.
-    * **Path condition**: $1 \leq$ x1 $\leq 10$ (from guard $1 \leq x \leq 10$).
-    * Update: $\mathit{sum} \mapsto$ x1.
+    * $x$ is updated to `x1`. Clock $cl$ is reset to $0$.
+    * Edge label: symbolic action $\mathit{In}?$`x1` and delay `#1`.
+    * **Path condition**: `$1` \leq$ `x1` $\leq 10$ (from guard `$1` \leq x \leq 10$).
+    * Update: $\mathit{sum} \mapsto$ `x1`.
 
 2.  **Edge from $ec_2$ to $ec_3$ ($\mathbf{tr}_2$)**:
     * Transition from $q_1$ to $q_0$, emitting on channel $\mathit{Out}$.
-    * #2 is elapsed time, and $1 is the emitted value. Clock value becomes #2.
-    * **Path condition**: x1 $\leq 5$ and #2 = 42 -  x1 (from guard $x \leq 5$ and $cl = 42 - x$), and $1 = 0.
+    * `#2` is elapsed time, and `$1` is the emitted value. Clock value becomes `#2`.
+    * **Path condition**: `x1` $\leq 5$ and `#2` = 42 -  `x1` (from guard $x \leq 5$ and $cl = 42 - x$), and `$1` = 0.
 
-The symbolic path $ec_1.ec_2.ec_3$ corresponds to model path $\mathbf{tr}_1.\mathbf{tr}_2$, yielding the symbolic trace (#1, $\mathit{In}?$ x1).(#2, $\mathit{Out}!$ $1)$.
+The symbolic path $ec_1.ec_2.ec_3$ corresponds to model path $\mathbf{tr}_1.\mathbf{tr}_2$, yielding the symbolic trace (`#1`, $\mathit{In}?$`x1`).(`#2`, $\mathit{Out}!$`$1`).
 
-The **path condition** for this trace ($\#_1$ is unconstrained) is:
-$$1 \leq x_1 \leq 10 \;\land\; x_1 \leq 5 \;\land\; \#_2 = 42 - x_1 \;\land\; \$_1 = 0$$
+The **path condition** for this trace (`#1` is unconstrained) is:
+
+1 $\leq$ `x1` $\leq$ 10 $\land$ `x1` $\leq$ 5 $\land$ `#2` = 42 - `x1` $\land$ `$1` = 0
 
 This is **satisfiable** (e.g., $x_1 \mapsto 1$, $\$_1 \mapsto 0$, $\#_1 \mapsto 0$, $\#_2 \mapsto 41$), producing the **timed trace** $(0, \mathit{In}?1).(41, \mathit{Out}!0)$. This trace shows the system receives $\mathit{In}?1$ after initialization and emits $\mathit{Out}!0$ 41 time units later.
 
