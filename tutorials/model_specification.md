@@ -20,7 +20,7 @@ SPTG automata models, called **timed symbolic transition systems**, will be intr
 <div style="padding-top: 20px; padding-bottom: 20px;">
 </div>
 
-Channels are $C=\{\mathit{In}, \mathit{Out}, \mathit{Done}\}$, data variables are $A = \{x, \mathit{sum}\}$, and clocks are $K = \{\mathit{cl}\}$.  
+Channels are $C$ = { $In$, $Out$, $Done$ }, data variables are $A$ = { $x$, $sum$ }, and clocks are $K$ = { $cl$ }.  
 Clock $\mathit{cl}$ ranges over positive rationals, providing a dense time domain, and measures elapsed time.  
 Variable $x$ stores incoming values, while variable $\mathit{sum}$ accumulates them (initialized to $0$).  
 
