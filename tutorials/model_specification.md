@@ -100,12 +100,12 @@ From the XLIA model:
 
 | XLIA element | Meaning | Automaton equivalent |
 | :--- | :--- | :--- |
-| `port input In(urational)` | **Input port** for receiving a rational value $x$ | Incoming transition label $\text{In}(x)$ |
-| `port output Out(urational)` | **Output port** for sending a rational value | Outgoing transition label $\text{Out}(\dots)$ |
-| `port output Done` | **Output event** without data | Output transition labeled $\text{Done}$ |
+| `port input In(urational)` | **Input port** for receiving a rational value $x$ | Transition input action $In?x$ |
+| `port output Out(urational)` | **Output port** for sending a rational value | Transition output action $Out!0$ or $Out!x$|
+| `port output Done` | **Output signal** without data | Transition output action $Done$ |
 | `var urational sum` | **Data variable** tracking accumulated input | Automaton variable (used in **guards/actions**) |
 | `var urational x` | **Data variable** holding the latest input | **Variable bound** by input message |
-| `var clock urational c1` | **Clock variable** (measures elapsed time since last reset) | Automaton clock for **timed constraints** |
+| `var clock urational cl` | **Clock variable** (measures elapsed time since last reset) | Automaton clock for **timed constraints** |
 
 ---
 
@@ -156,8 +156,8 @@ transition  tr4 --> q2 {
 
 | Transition | Automaton equivalent | Description |
 | :--- | :--- | :--- |
-| **tr1** | $$q_0 \xrightarrow{In?x, 1 \le x \le 10, \text{sum} := \text{sum} + x, c1 := 0} q_1$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $c1$. |
-| **tr4** | $$q_0 \xrightarrow{\text{Done}, \text{sum} \ge 15} q_2$$ | Produces $\text{Done}$ output when accumulated $\text{sum} \ge 15$. |
+| **tr1** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} \!:=\! \mathit{sum}+x, q_1)$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $c1$. |
+| **tr4** | $$(q_0, \mathit{Done}!, \mathit{sum} \geq 15, \emptyset, id, q_2)$$ | Produces $\text{Done}$ output when accumulated $\text{sum} \ge 15$. |
 
 **More on XLIA subset to encode timed symbolic transition system**
 
