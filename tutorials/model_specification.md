@@ -41,7 +41,7 @@ When $\rho = id$, variables remain unchanged; only relevant updates are shown.
 
 The system $\mathbb{G}$ has three states $q_0, q_1, q_2$ and four transitions:
 
-- **$\mathbf{tr}_1$** = $(q_0, In?x, 1 \leq x \leq 10, \{cl\}, sum := sum + x, q_1)$  
+- **$\mathbf{tr}_1$** = $(q_0, In?x, 1 \leq x \leq 10,$ { $cl$ } $, sum := sum + x, q_1)$  
   → processes inputs;
 
 - **$\mathbf{tr}_2$** = $(q_1, Out!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$  
@@ -68,10 +68,10 @@ For timed symbolic transition systems, a single machine is typically used to rep
 The automaton $\mathbb{G}$ is encoded in the **XLIA** input language of the **DIVERSITY** symbolic execution platform as follows:
 
 ```xlia
-timed system Example01_Dummy {
+timed system Example01_Dummy_S {
 
 @composite:
-	statemachine Example01_Dummy {
+	statemachine Example01_Dummy_SM {
 	@public:
 		port input  In( urational );
 		port output Out( urational );
@@ -208,7 +208,7 @@ transition  tr4 --> q2 {
 
 | Transition | Automaton equivalent | Description |
 | :--- | :--- | :--- |
-| **tr1** | $$(q_0, In?x, 1 \leq x \leq 10, \{cl\}, sum := sum+x, q_1)$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $cl$. |
+| **tr1** | $(q_0, In?x, 1 \leq x \leq 10,$ { $cl$ }$, sum := sum+x, q_1)$ | Receives input $x$, adds to $\text{sum}$, resets the clock $cl$. |
 | **tr4** | $$(q_0, Done!, sum \geq 15, \emptyset, id, q_2)$$ | Produces $\text{Done}$ output when accumulated $\text{sum} \ge 15$. |
 
 
@@ -227,8 +227,8 @@ transition tr3 --> q0 {
 
 | Transition | Automaton equivalent | Description |
 | :--- | :--- | :--- |
-| **tr2** | $$(q_0, In?x, 1 \leq x \leq 10, \{cl\}, sum := sum + x, q_1)$$ | Emits value $0$, for small inputs. |
-| **tr3** | $$(q_1, Out!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits received input $x$, otherwise. |
+| **tr2** | $$(q_1, Out!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits value $0$, for small inputs. |
+| **tr3** | $$(q_1, Out!x, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits received input $x$, otherwise. |
 
 
 ## 4. Communication Interface
@@ -264,7 +264,80 @@ This binds the declared input/output ports to the environment.
 <div style="padding-top: 20px; padding-bottom: 20px;">
 </div>
 
-**More on XLIA subset to encode timed symbolic transition system**
+**Other example: Timed system (no data)**
+
+
+<center>
+
+<img src="./../README_files/images/autG_timed_system.svg" width="200px" alt="Example of timed transition system">
+</center>
+
+<div style="padding-top: 20px; padding-bottom: 20px;">
+</div>
+
+**Channels** $C$ = { $In$, $Out$ }
+
+**Clocks** $K$ = { $cl$ }
+
+**Data Variables** $A$ = $\emptyset$ (No data variables).
+
+The automaton has two states $q_0$ and $q_1$ and two transitions as follows.
+
+- **$\mathbf{tr}_1$** = $(q_0, In?, True,$ { $ cl$ } $, id, q_1)$  
+    * **Action**: $In?$ (Receives an input on $In$).
+    * **Guard**: $\phi = true$ (Always enabled when in $q_0$).
+    * **Reset**: $\mathbb{K}$ = { $cl$ } (Resets the clock $cl$ to $0$).
+    * **Update**: $\rho = id$ (No variable updates).
+    
+    $\rightarrow$ Upon receiving an input on $In$, the system moves from $q_0$ to $q_1$ and restarts the clock $cl$.
+
+- **$\mathbf{tr}_2$** = $(q_1, Out!, cl \leq 5, \emptyset, id, q_0)$
+    * **Action**: $Out!$ (Sends an output on $Out$).
+    * **Guard**: $\phi = cl \leq 5$ (Can only be taken if $cl$ is less than or equal to $5$).
+    * **Reset**: $\mathbb{K} = \emptyset$ (No clocks are reset).
+    * **Update**: $\rho = id$ (No variable updates).
+    * $\rightarrow$ If the clock $cl$ has not exceeded $5$, the system sends an output on $Out$ and moves from $q_1$ back to $q_0$.
+
+Encoding in XLIA:
+
+```xlia
+@xlia< system , 1.0 >:
+
+timed system Example01_S {
+
+@composite:
+	statemachine Example01_SM {
+	@public:
+		port input  In;
+		port output Out;
+		
+	@private:
+		var clock urational cl;
+			
+	@region:
+	
+	    state<start> q0 {
+	        transition  tr1 --> q1 { 
+	            input In;
+	            cl := 0;
+	        }                                    
+	    }
+	    state q1 {
+	        transition tr2 --> q0 {
+	        	guard ( cl <= 5 );
+	            output Out;
+	        }
+        }
+    @com:
+		connect< env >{
+			input  In;
+			output Out;
+		}
+	}
+}
+```
+
+**More on XLIA subset to encode timed symbolic transition systems**
 
 
 ```
