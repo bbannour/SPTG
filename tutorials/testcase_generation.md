@@ -30,7 +30,7 @@ $x_0$, $x_1$, ... represent successive values of a data variable $x$ (with $x_0$
 
 &#35;1, &#35;2, ... denote **symbolic delays**.
 
-&$36;1, &$36;2, ...  denote **emitted values** typed according to their channels.
+&#36;1, &#36;2, ...  denote **emitted values** typed according to their channels.
 
 
 ### Symbolic Paths
