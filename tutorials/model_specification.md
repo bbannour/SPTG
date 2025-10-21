@@ -1,5 +1,6 @@
 
-
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script type="text/x-mathjax-config"> MathJax.Hub.Config({ tex2jax: {inlineMath: [['$', '$']]}, messageStyle: "none" });</script>
 
 
 # Timed symbolic transition system - Reference system model
@@ -158,6 +159,11 @@ transition  tr4 --> q2 {
 | :--- | :--- | :--- |
 | **tr1** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} \!:=\! \mathit{sum}+x, q_1)$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $c1$. |
 | **tr4** | $$(q_0, \mathit{Done}!, \mathit{sum} \geq 15, \emptyset, id, q_2)$$ | Produces $\text{Done}$ output when accumulated $\text{sum} \ge 15$. |
+
+
+
+<div style="padding-top: 100px; padding-bottom: 100px;">
+</div>
 
 **More on XLIA subset to encode timed symbolic transition system**
 
