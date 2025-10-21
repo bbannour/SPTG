@@ -313,7 +313,6 @@ timed system S {
             var urational y;
             var integer   z;
             var bool      flag;
-            var integer   fee;
 
             // ----------------------------------------------
             // Declaration of Clocks
@@ -333,7 +332,6 @@ timed system S {
                 @init {
                     sum  := 0;
                     flag := false;
-                    guard( fee > 0 );
                 }
 
                 transition tr1 --> q1 {
@@ -367,7 +365,7 @@ timed system S {
                 transition tr4 --> q0 {
                     guard( x > 10 );
                     guard( cl <= 5 );
-                    output Out2( fee, flag );
+                    output Out2( 100, flag );
                     flag := true;
                     cl2 := 0;
                 }
