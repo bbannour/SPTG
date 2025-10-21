@@ -21,13 +21,13 @@ SPTG automata models, called **timed symbolic transition systems**, will be intr
 </div>
 
 Channels are $C$ = { $In$, $Out$, $Done$ }, data variables are $A$ = { $x$, $sum$ }, and clocks are $K$ = { $cl$ }.  
-Clock $\mathit{cl}$ ranges over positive rationals, providing a dense time domain, and measures elapsed time.  
-Variable $x$ stores incoming values, while variable $\mathit{sum}$ accumulates them (initialized to $0$).  
+Clock $cl$ ranges over positive rationals, providing a dense time domain, and measures elapsed time.  
+Variable $x$ stores incoming values, while variable $sum$ accumulates them (initialized to $0$).  
 
 Channels are typed and declared as input or output:
-- $\mathit{In}?x$ binds $x$ to a value of the type of $\mathit{In}$ (here, positive rationals),
-- $\mathit{Out}!t$ emits a value $t$ of the type of $\mathit{Out}$,
-- channels without data, like $\mathit{Done}$, have undefined type.
+- $In?x$ binds $x$ to a value of the type of $In$ (here, positive rationals),
+- $Out!t$ emits a value $t$ of the type of $Out$,
+- channels without data, like $Done$, have undefined type.
 
 A **transition** is a tuple  $(q, act, \phi, \mathbb{K}, \rho, q')$,  
 where:
@@ -41,16 +41,16 @@ When $\rho = id$, variables remain unchanged; only relevant updates are shown.
 
 The system $\mathbb{G}$ has three states $q_0, q_1, q_2$ and four transitions:
 
-- **$\mathbf{tr}_1$** = $(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} := \mathit{sum} + x, q_1)$  
+- **$\mathbf{tr}_1$** = $(q_0, In?x, 1 \leq x \leq 10, \{cl\}, sum := sum + x, q_1)$  
   → processes inputs;
 
-- **$\mathbf{tr}_2$** = $(q_1, \mathit{Out}!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$  
+- **$\mathbf{tr}_2$** = $(q_1, Out!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$  
   → emits $0$ for small inputs;
 
-- **$\mathbf{tr}_3$** = $(q_1, \mathit{Out}!x, x > 5 \wedge cl = 42 - x, \emptyset, id, q_0)$  
+- **$\mathbf{tr}_3$** = $(q_1, Out!x, x > 5 \wedge cl = 42 - x, \emptyset, id, q_0)$  
   → emits the received value otherwise;
 
-- **$\mathbf{tr}_4$** = $(q_0, \mathit{Done}!, \mathit{sum} \geq 15, \emptyset, id, q_2)$  
+- **$\mathbf{tr}_4$** = $(q_0, Done!, sum \geq 15, \emptyset, id, q_2)$  
   → may signal termination when the accumulated sum reaches $15$.
 
 ## Encoding of the timed symbolic transition system in XLIA
@@ -208,8 +208,8 @@ transition  tr4 --> q2 {
 
 | Transition | Automaton equivalent | Description |
 | :--- | :--- | :--- |
-| **tr1** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} := \mathit{sum}+x, q_1)$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $cl$. |
-| **tr4** | $$(q_0, \mathit{Done}!, \mathit{sum} \geq 15, \emptyset, id, q_2)$$ | Produces $\text{Done}$ output when accumulated $\text{sum} \ge 15$. |
+| **tr1** | $$(q_0, In?x, 1 \leq x \leq 10, \{cl\}, sum := sum+x, q_1)$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $cl$. |
+| **tr4** | $$(q_0, Done!, sum \geq 15, \emptyset, id, q_2)$$ | Produces $\text{Done}$ output when accumulated $\text{sum} \ge 15$. |
 
 
 **Transitions form q1**
@@ -227,8 +227,8 @@ transition tr3 --> q0 {
 
 | Transition | Automaton equivalent | Description |
 | :--- | :--- | :--- |
-| **tr2** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} := \mathit{sum} + x, q_1)$$ | Emits value $0$, for small inputs. |
-| **tr3** | $$(q_1, \mathit{Out}!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits received input $x$, otherwise. |
+| **tr2** | $$(q_0, In?x, 1 \leq x \leq 10, \{cl\}, sum := sum + x, q_1)$$ | Emits value $0$, for small inputs. |
+| **tr3** | $$(q_1, Out!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits received input $x$, otherwise. |
 
 
 ## 4. Communication Interface
