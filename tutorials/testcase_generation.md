@@ -26,11 +26,11 @@ The **root context** $ec_0$ starts in $q_0$, with clocks at zero, variables assi
 
 **Symbolic Variables**: Fresh symbolic variables are introduced:
 
-x0, x1, ...  represent successive values of a data variable $x$ (with x0 being the initial value).
+$x_0$, $x_1$, ... represent successive values of a data variable $x$ (with $x_0$ being the initial value).
 
-$\char35_1$,  ... denote **symbolic delays** 
+&#35;1, &#35;2, ... denote **symbolic delays**.
 
-$\char36_1$, ... denote **emitted values** typed according to their channels
+&$36;1, &$36;2, ...  denote **emitted values** typed according to their channels.
 
 
 ### Symbolic Paths
