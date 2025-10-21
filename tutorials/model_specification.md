@@ -29,20 +29,19 @@ Channels are typed and declared as input or output:
 - $\mathit{Out}!t$ emits a value $t$ of the type of $\mathit{Out}$,
 - channels without data, like $\mathit{Done}$, have undefined type.
 
-A **transition** is a tuple  
-$(q, act, \phi, \mathbb{K}, \rho, q')$,  
+A **transition** is a tuple  $(q, act, \phi, \mathbb{K}, \rho, q')$,  
 where:
 - $q, q'$ are states,
 - $act$ is an input/output action,
 - $\phi$ is a guard,
 - $\mathbb{K} \subseteq K$ is the set of clocks to reset,
-- $\rho$ is an update $\{x_1 \!:=\! t_1, \ldots, x_n \!:=\! t_n\}$ on data variables (where terms $t_i$ may involve clocks).
+- $\rho$ is an update $\{x_1 := t_1, \ldots, x_n := t_n\}$ on data variables (where terms $t_i$ may involve clocks).
 
 When $\rho = id$, variables remain unchanged; only relevant updates are shown.
 
 The system $\mathbb{G}$ has three states $q_0, q_1, q_2$ and four transitions:
 
-- **$\mathbf{tr}_1$** = $(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} \!:=\! \mathit{sum} + x, q_1)$  
+- **$\mathbf{tr}_1$** = $(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} := \mathit{sum} + x, q_1)$  
   → processes inputs;
 
 - **$\mathbf{tr}_2$** = $(q_1, \mathit{Out}!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$  
@@ -209,7 +208,7 @@ transition  tr4 --> q2 {
 
 | Transition | Automaton equivalent | Description |
 | :--- | :--- | :--- |
-| **tr1** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} \!:=\! \mathit{sum}+x, q_1)$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $cl$. |
+| **tr1** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} := \mathit{sum}+x, q_1)$$ | Receives input $x$, adds to $\text{sum}$, resets the clock $cl$. |
 | **tr4** | $$(q_0, \mathit{Done}!, \mathit{sum} \geq 15, \emptyset, id, q_2)$$ | Produces $\text{Done}$ output when accumulated $\text{sum} \ge 15$. |
 
 
@@ -228,7 +227,7 @@ transition tr3 --> q0 {
 
 | Transition | Automaton equivalent | Description |
 | :--- | :--- | :--- |
-| **tr2** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} \!:=\! \mathit{sum} + x, q_1)$$ | Emits value $0$, for small inputs. |
+| **tr2** | $$(q_0, \mathit{In}?x, 1 \leq x \leq 10, \{cl\}, \mathit{sum} := \mathit{sum} + x, q_1)$$ | Emits value $0$, for small inputs. |
 | **tr3** | $$(q_1, \mathit{Out}!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits received input $x$, otherwise. |
 
 
