@@ -10,6 +10,32 @@ The construction of the test case is obtained by applying dedicated symbolic exe
 
 **Symbolic execution** explores a model by representing both data and time with symbolic variables instead of concrete values. It unfolds the automaton while generating constraints over symbolic variables, producing a **symbolic execution tree** . The tree's nodes are **execution contexts**, and its edges represent symbolic steps such as initialization, transition firing, or **quiescence completion**.
 
+Recall the dummy automaton example (discussed [model specification tutorial](model_specification.md)):
+
+<div style="padding-top: 20px; padding-bottom: 20px;">
+</div>
+
+<center>
+
+<img src="./../README_files/images/autG.svg" width="300px" alt="Example of timed symbolic transition system">
+</center>
+
+<div style="padding-top: 20px; padding-bottom: 20px;">
+</div>
+
+The symbolic execution tree (restricted by test purpose transitions sequence $\mathbf{tr}_1.\mathbf{tr}_2$):
+
+
+<div style="padding-top: 20px; padding-bottom: 20px;">
+</div>
+
+<center>
+
+<img src="./../README_files/images/symbex_tree.svg" width="700px" alt="Example of timed symbolic transition system">
+</center>
+
+<div style="padding-top: 20px; padding-bottom: 20px;">
+</div>
 
 ### Execution Contexts
 
