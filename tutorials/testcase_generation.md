@@ -41,7 +41,7 @@ Contexts $ec_2$, $ec_3$, and $ec_4$ illustrate the symbolic execution of transit
     * Transition from $q_0$ to $q_1$ via input $In$.
     * $x$ is updated to `x1`. Clock $cl$ is reset to $0$.
     * Edge label: symbolic action $\mathit{In}?$`x1` and delay `#1`.
-    * **Path condition**: `$1` \leq$ `x1` $\leq 10$ (from guard `$1` \leq x \leq 10$).
+    * **Path condition**: 1 $\leq$ `x1` $\leq$ 10 (from guard $1 \leq x \leq 10$).
     * Update: $\mathit{sum} \mapsto$ `x1`.
 
 2.  **Edge from $ec_2$ to $ec_3$ ($\mathbf{tr}_2$)**:
@@ -55,18 +55,17 @@ The **path condition** for this trace (`#1` is unconstrained) is:
 
 1 $\leq$ `x1` $\leq$ 10 $\land$ `x1` $\leq$ 5 $\land$ `#2` = 42 - `x1` $\land$ `$1` = 0
 
-This is **satisfiable** (e.g., $x_1 \mapsto 1$, $\$_1 \mapsto 0$, $\#_1 \mapsto 0$, $\#_2 \mapsto 41$), producing the **timed trace** $(0, \mathit{In}?1).(41, \mathit{Out}!0)$. This trace shows the system receives $\mathit{In}?1$ after initialization and emits $\mathit{Out}!0$ 41 time units later.
+This is **satisfiable** e.g. with `x1` $\mapsto$ 1, `$1` $\mapsto$ 0, `#1` $\mapsto$ 0, `#2` $\mapsto$ 41, producing the **timed trace** $(0, \mathit{In}?1).(41, \mathit{Out}!0)$. This trace shows the system receives $\mathit{In}?1$ after initialization and emits $\mathit{Out}!0$ 41 time units later.
 
----
 
 ### Completion by Quiescence
 
-Contexts $ec_5$ and $ec_6$ model **quiescence** (system silence). Symbolic variables are reused across sibling contexts (e.g., $\#_1$ for $ec_2$ and $ec_5$).
+Contexts $ec_5$ and $ec_6$ model **quiescence** (system silence). Symbolic variables are reused across sibling contexts (e.g., `#1` for $ec_2$ and $ec_5$).
 
-* **Quiescence Context $ec_5$**: Derived from $ec_1$. The edge is labeled with the quiescence event $(\#_1, \delta!)$. The system may remain silent indefinitely, reflected by $\pi = \text{True}$ and unconstrained delay $\#_1$.
+* **Quiescence context $ec_5$**: Derived from $ec_1$. The edge is labeled with the quiescence event (`#1`, $\delta!$). The system may remain silent indefinitely, reflected by $\pi = True$ and unconstrained delay `#1`.
 
-* **Quiescence Context $ec_6$**: Derived from $ec_2$'s output successors ($ec_3$ and $ec_4$). Its path condition is a disjunction of existential constraints (e.g., $\mathbf{\exists \# \cdot \exists \$_1 \cdot  \#_2 < \# \wedge \ldots}$), capturing that quiescence persists until an output is possible.
+* **Quiescence context $ec_6$**: Derived from $ec_2$'s output successors ($ec_3$ and $ec_4$). Its path condition is a disjunction of existential constraints (e.g., $\exists$ `#` $\cdot$ $\exists$ `$1` $\cdot$  `#2` < `#` $\wedge$ $\ldots$), capturing that quiescence persists until an output is possible.
 
-* **Trace-Determinism and Pruning**: For a chosen Test Path (TP) $ec_1.ec_2.ec_3$ (which implies $x_1 \le 5$), context $ec_4$ (which implies $x_1 > 5$) **conflicts** and is removed (grayed out). This simplifies $ec_6$'s path condition.
+* **Trace-determinism and pruning**: For a chosen Test Path (TP) $ec_1.ec_2.ec_3$ (which implies `x1` $\le$ 5), context $ec_4$ (which implies `x1` > 5) **conflicts** and is removed (grayed out). This simplifies $ec_6$'s path condition.
 
-A **witness timed trace** $(0, \mathit{In}?1)\cdot(40, \delta!)$ covers $ec_6$ (with $x_1 \mapsto 1$, $\#_2 \mapsto 40$), demonstrating that after $\mathit{In}?1$, the system can remain silent for 40 time units, expecting the next output at 41.
+A **witness timed trace** $(0, \mathit{In}?1)\cdot(40, \delta!)$ covers $ec_6$ (with `x1` $\mapsto$ 1, `#2` $\mapsto$ 40), demonstrating that after $\mathit{In}?1$, the system can remain silent for 40 time units, expecting the next output at 41.
