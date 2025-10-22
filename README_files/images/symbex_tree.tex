@@ -28,7 +28,7 @@
 \renewcommand{\arraystretch}{0.9}
 
 %\newcommand{\myhash}{\raisebox{\depth}{\scalebox{0.8}{\#}}}
-\newcommand{\myhash}{\raisebox{\depth}{\scalebox{0.8}{\#}}} 
+\newcommand{\myhash}{\raisebox{\depth}{\scalebox{0.8}{\text{\#}}}} 
 \newcommand{\mydollar}{\raisebox{\depth}{\scalebox{0.8}{\$}}} 
 
 	\begin{tikzpicture}
@@ -94,7 +94,7 @@ $};
 \multicolumn{2}{|l|}{q_0}
 \\
 \hline
-True \;&\; x \mapsto \fmbtsymbexReg{x_0},\,sum\mapsto  \fmbtsymbexReg{sum_0},\,cl \mapsto 0 \\
+True \;&\; x \mapsto \fmbtsymbexReg{\mathtt{x0}},\,sum\mapsto  \fmbtsymbexReg{\mathtt{sum0}},\,cl \mapsto 0 \\
 \hline
 \end{array}
 $};
@@ -114,10 +114,10 @@ $};
 \multicolumn{2}{|l|}{q_1}
 \\
 \hline
-1 \le \fmbtsymbexReg{x_1} \le 10
+1 \le \fmbtsymbexReg{\mathtt{x1}} \le 10
 \;&\;
-x \mapsto \fmbtsymbexReg{x_1},\,
-sum \mapsto \fmbtsymbexReg{x_1}
+x \mapsto \fmbtsymbexReg{\mathtt{x1}},\,
+sum \mapsto \fmbtsymbexReg{\mathtt{x1}}
 \\
 \hline
 \end{array}
@@ -126,7 +126,7 @@ $};
 	\def\arraystretch{1.2} 
 \begin{array}{|l|}
 \hline
-cl \mapsto \fmbtsymbex{\myhash_1}
+cl \mapsto \fmbtsymbex{\mathtt{\#1}}
 \\
 \hline
 \end{array}
@@ -140,13 +140,13 @@ $};
 q_0
 \\
 \hline
-1 \le \fmbtsymbexReg{x_1} \le 10  \;\land
+1 \le \fmbtsymbexReg{\mathtt{x1}} \le 10  \;\land
 \\
- \fmbtsymbexReg{x_1} \le 5  \;\land\;
-\fmbtsymbex{\myhash_2}=42-\fmbtsymbexReg{x_1}  \;\land\\
- \fmbtsymbex{\mydollar_1}=0  \\
+ \fmbtsymbexReg{\mathtt{x1}} \le 5  \;\land\;
+\fmbtsymbex{\mathtt{\#2}}=42-\fmbtsymbexReg{\mathtt{x1}}  \;\land\\
+ \fmbtsymbex{\mathtt{\$}_1}=0  \\
  \hline
-cl \mapsto \fmbtsymbex{\myhash_2}
+cl \mapsto \fmbtsymbex{\mathtt{\#2}}
 \\
 \hline
 \end{array}
@@ -157,14 +157,14 @@ $};
 \textcolor{gray!85}{q_0}
 \\
 \hline
-\textcolor{gray!85}{1 \le \fmbtsymbexReg{\textcolor{gray!85}{x_1}} \le 10  \;\land}\\
- \textcolor{gray!85}{ \fmbtsymbexReg{\textcolor{gray!85}{x_1}} > 5 \;\land\;}
- \textcolor{gray!85}{ \fmbtsymbexReg{\textcolor{gray!85}{\myhash_2}}=
- 42-\fmbtsymbexReg{\textcolor{gray!85}{x_1}} \;\land} \\
- \textcolor{gray!85}{ \fmbtsymbex{\textcolor{gray!85}{\mydollar_1}}
- =\fmbtsymbexReg{\textcolor{gray!85}{x_1}}}  \\
+\textcolor{gray!85}{1 \le \fmbtsymbexReg{\textcolor{gray!85}{\mathtt{x1}}} \le 10  \;\land}\\
+ \textcolor{gray!85}{ \fmbtsymbexReg{\textcolor{gray!85}{\mathtt{x1}}} > 5 \;\land\;}
+ \textcolor{gray!85}{ \fmbtsymbexReg{\textcolor{gray!85}{\mathtt{\#2}}}=
+ 42-\fmbtsymbexReg{\textcolor{gray!85}{\mathtt{x1}}} \;\land} \\
+ \textcolor{gray!85}{ \fmbtsymbex{\textcolor{gray!85}{\mathtt{\$}_1}}
+ =\fmbtsymbexReg{\textcolor{gray!85}{\mathtt{x1}}}}  \\
  \hline
-\textcolor{gray!85}{cl \mapsto \fmbtsymbex{\textcolor{gray!85}{\myhash_2}}}
+\textcolor{gray!85}{cl \mapsto \fmbtsymbex{\textcolor{gray!85}{\mathtt{\#2}}}}
 \end{array}
 $};
 
@@ -200,13 +200,13 @@ $};
 \draw[->, line width=.3mm ]   (v1) edge (v5);
 
 
-\node at (5.4,18.16) {$(\fmbtsymbex{\myhash_1},\; \delta!)$};
+\node at (5.4,18.16) {$(\fmbtsymbex{\mathtt{\#1}},\; \delta!)$};
 \node at (3.5,15) {$
 \begin{array}{c}
 \textcolor{gray!85}{\textbf{\em tr}_3}
 \\
-\textcolor{gray!85}{(\fmbtsymbex{\textcolor{gray!85}{\myhash_2}},\; 
-\mathit{Out}!\; \fmbtsymbex{\textcolor{gray!85}{\mydollar_1}})}
+\textcolor{gray!85}{(\fmbtsymbex{\textcolor{gray!85}{\mathtt{\#2}}},\; 
+\mathit{Out}!\; \fmbtsymbex{\textcolor{gray!85}{\mathtt{\$}_1}})}
 \end{array}
 $};
 
@@ -214,7 +214,11 @@ $};
 \begin{array}{c}
 \textbf{\em tr}_2
 \\
-(\fmbtsymbex{\myhash_2},\; \mathit{Out}!\; \fmbtsymbex{\mydollar_1})
+(
+\fmbtsymbex{\mathtt{\#2}}
+,\; \mathit{Out}!\; 
+%\fmbtsymbex{\mathtt{\$}_1})
+\fmbtsymbex{\mathtt{\$}_1})
 \end{array}
 $};
 
@@ -222,8 +226,8 @@ $};
 \begin{array}{c}
 \textbf{\em tr}_1
 \\
-(\fmbtsymbex{\myhash_1},\; \mathit{In}?\; 
-\fmbtsymbexReg{x_1} )
+(\fmbtsymbex{\mathtt{\#1}},\; \mathit{In}?\; 
+\fmbtsymbexReg{\mathtt{x1}} )
 \end{array}
 $};
 
@@ -233,17 +237,17 @@ $};
 	\def\arraystretch{1.2} 
 \begin{array}{|l|}
 \hline
-1 \le \fmbtsymbexReg{x_1} \le 10 \:\land \\
+1 \le \fmbtsymbexReg{\mathtt{x1}} \le 10 \:\land \\
 
 \mathcolor{gray!85}{ \left( }
 \begin{array}{l}
 \left(
 \begin{array}{l}
 \exists  \fmbtsymbex{\myhash}\cdot
-\exists \fmbtsymbex{ \mydollar_1 }\cdot  \fmbtsymbex{\myhash_2} < \fmbtsymbex{\myhash}  \;\land \\
-\fmbtsymbexReg{x_1} \le 5  \;\land\;
-\fmbtsymbex{\myhash}=42-\fmbtsymbexReg{x_1} \;\land\\
-\fmbtsymbex{\mydollar_1}=0
+\exists \fmbtsymbex{ \mathtt{\$}_1 }\cdot  \fmbtsymbex{\mathtt{\#2}} < \fmbtsymbex{\myhash}  \;\land \\
+\fmbtsymbexReg{\mathtt{x1}} \le 5  \;\land\;
+\fmbtsymbex{\myhash}=42-\fmbtsymbexReg{\mathtt{x1}} \;\land\\
+\fmbtsymbex{\mathtt{\$}_1}=0
 \end{array}        
  \right)
 \\
@@ -252,26 +256,26 @@ $};
 \mathcolor{gray!85}{ \left( }
 \begin{array}{l}
 \textcolor{gray!85}{ \exists  \fmbtsymbex{\textcolor{gray!85}{ \myhash}}\cdot
-\exists \fmbtsymbex{ \textcolor{gray!85}{ \mydollar_1} }\cdot  
-\fmbtsymbex{\textcolor{gray!85}{ \myhash_2}} < \fmbtsymbex{\textcolor{gray!85}{ \myhash}}  \;\land} \\
-\textcolor{gray!85}{ \fmbtsymbexReg{\textcolor{gray!85}{x_1}} > 5  \;\land\;
- \fmbtsymbex{\textcolor{gray!85}{\myhash}}=42-\fmbtsymbexReg{\textcolor{gray!85}{x_1}} \;\land } \\
- \fmbtsymbex{\textcolor{gray!85}{\mydollar_1} } \textcolor{gray!85}{\, = \,} 
- \fmbtsymbexReg{\textcolor{gray!85}{x_1}}
+\exists \fmbtsymbex{ \textcolor{gray!85}{ \mathtt{\$}_1} }\cdot  
+\fmbtsymbex{\textcolor{gray!85}{ \mathtt{\#2}}} < \fmbtsymbex{\textcolor{gray!85}{ \myhash}}  \;\land} \\
+\textcolor{gray!85}{ \fmbtsymbexReg{\textcolor{gray!85}{\mathtt{x1}}} > 5  \;\land\;
+ \fmbtsymbex{\textcolor{gray!85}{\myhash}}=42-\fmbtsymbexReg{\textcolor{gray!85}{\mathtt{x1}}} \;\land } \\
+ \fmbtsymbex{\textcolor{gray!85}{\mathtt{\$}_1} } \textcolor{gray!85}{\, = \,} 
+ \fmbtsymbexReg{\textcolor{gray!85}{\mathtt{x1}}}
 \end{array}   
 \mathcolor{gray!85}{ \right)}
  \end{array}        
 \mathcolor{gray!85}{ \right)}
  \\
 \hline        
-cl \mapsto \fmbtsymbex{\myhash_2}
+cl \mapsto \fmbtsymbex{\mathtt{\#2}}
 \\
 \hline
 \end{array}
 $};
 
 
-\node at (6,15.5) {$(\fmbtsymbex{\myhash_2},\; \delta!)$};
+\node at (6,15.5) {$(\fmbtsymbex{\mathtt{\#2}},\; \delta!)$};
 \node[circled node,line width=.3mm,fill=gray!10] (v9) at (7.5,14.5) {$\!\!\!\!
 \begin{array}{c}
 ec_6 
@@ -315,6 +319,11 @@ $};
 %\node[line width=0.3mm,draw=black,rectangle,fill=white] at (9.2,17.748) {\Large
 %$SE(\mathbb{G})^{\delta}_{ /\textbf{\em tr}_1.\textbf{\em tr}_2}$};
 
+
+
+% \node at (0.5,18) {\#\#\#\#};
+% \node at (0.5,17.5) {\$\$\$\$};
+ %\node at (0.5,17) {\verb|$|   \verb|$| \verb|$|};
 
 
 \end{tikzpicture}
