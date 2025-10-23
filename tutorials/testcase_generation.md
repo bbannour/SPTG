@@ -31,7 +31,7 @@ The symbolic execution tree (restricted by test purpose transitions sequence $\m
 
 <center>
 
-<img src="./../README_files/images/symbex_tree.svg" width="700px" alt="Example of timed symbolic transition system">
+<img src="./../README_files/images/symbex_tree.svg" width="600px" alt="Example of timed symbolic transition system">
 </center>
 
 <div style="padding-top: 20px; padding-bottom: 20px;">
@@ -100,9 +100,7 @@ A **witness timed trace** $(0, \mathit{In}?1)\cdot(40, \delta!)$ covers $ec_6$ (
 
 ### SPTG Workflow
 
-For a model $\mathbb{G}$, the **Symbolic Path-guided Test Generation (SPTG)** workflow restricts symbolic exploration to a **model path**  
-
-$p = \textbf{tr}_1 \cdots \textbf{tr}_n$, chosen as a **test path (TP)**.  
+For a model $\mathbb{G}$, the **Symbolic Path-guided Test Generation (SPTG)** workflow restricts symbolic exploration to a **model path** $p = \textbf{tr}_1 \cdots \textbf{tr}_n$, chosen as a **test path (TP)**.  
 
 Starting from the initial state $q_0$, the workflow performs **symbolic execution along** $p$, using the SMT solver **Z3** to verify:
 - satisfiability of execution contexts,  
@@ -114,8 +112,7 @@ The workflow proceeds through the following five main steps:
 1. **Symbolic execution along the path**  
    - From the current execution context $ec_1$, all successor contexts are computed (Custom Symbex).  
    - For each transition $\textbf{tr}_i$, the workflow checks whether it can be fired.  
-   - If the transition is fireable, exploration continues from the successor produced by $\textbf{tr}_i$, exploring the remaining suffix  
-     $p' = \textbf{tr}_{i+1} \cdots \textbf{tr}_n$.  
+   - If the transition is fireable, exploration continues exploring the remaining suffix $p'=\textbf{tr}_{i+1}\cdots\textbf{tr}_n$ from the successor produced by $\textbf{tr}_i$, .  
    - Otherwise, the exploration stops.
 
 2. **Conflict removal**  
@@ -126,17 +123,15 @@ The workflow proceeds through the following five main steps:
    - Exploration halts if nondeterminism is detected.
 
 4. **Incorporation of quiescence contexts**  
-   - Quiescence contexts are added, producing a restricted, deterministic, quiescence-augmented symbolic execution tree  
-     $SE(\mathbb{G})^{\delta}_{/p}$, which contains the path $p$ and its immediate trace-deterministic divergences.
+   - Quiescence contexts are added, producing a restricted, deterministic, quiescence-augmented symbolic execution tree  $SE(\mathbb{G})^{\delta}_{/p}$, which contains the path  and its immediate trace-deterministic divergences.
 
 5. **Test case synthesis**  
-   - The final step synthesizes the **timed symbolic test case** $\mathbb{TC}_p$ from  
-     $SE(\mathbb{G})^{\delta}_{/p}$.
+   - The final step synthesizes from $SE(\mathbb{G})^{\delta}_{/p}$ the timed symbolic test case $\mathbb{TC}_p$.
 
 In the following, we detail the construction of $\mathbb{TC}_p$, illustrated below for our running dummy example, and explain how SPTG generates it from the given model path $p$, which serves as the test purpose.
 
 
-The test case which corresponds to the test purpose path $\mathbf{tr}_1.\mathbf{tr}_2$ (partial view):
+The test case $\mathbb{TC}_{\mathbf{tr}_1.\mathbf{tr}_2}$ which corresponds to the test purpose path $\mathbf{tr}_1.\mathbf{tr}_2$ (partial view):
 
 
 <div style="padding-top: 20px; padding-bottom: 20px;">
@@ -164,111 +159,82 @@ These variables represent the information known and manipulated by the test case
 
 **Clock constraint**
   - The clock satisfies:
-    $$
-    cl < \text{TM}
-    $$
+    
+    $cl$ < $\text{TM}$
+    
     where $\text{TM}$ denotes the maximal waiting time before either:
     - applying a stimulation, or  
     - observing an output.
 
 This timing mechanism, combined with quiescence detection ($cl \geq \text{TM}$), ensures that the test case can be implemented in a real-time environment. 
 
-### Relation to symbolic execution
+
+### Test case general structure
+
+
+The test case mirrors $SE(\mathbb{G})^{\delta}_{/p}$ and is used to **check the conformance** of the SUT to $\mathbb{G}$ along the symbolic path $p$.
+
+ Roughly speaking, test case structure is obtained as follows:
+
+- The execution contexts related to path $p$ form the **main branch** leading to the verdict **$\text{PASS}$**.  
+  The target context is replaced by **$\text{PASS}$**.  
+- Any deviation from this branch triggers a verdict state:  
+  - **$\text{FAIL}$** if the behavior violates expectations.  
+  - **$\text{INC}$** (inconclusive) if no clear verdict can be determined.
 
 
 
-
-As illustrated in Fig.~\ref{fig:tiosts_symbex_tree}, the test case $\mathbb{TC}_p$ mirrors $SE(\mathbb{G})^{\delta}_{/p}$ and is used to **check the conformance** of the SUT to $\mathbb{G}$ along the symbolic path $p$.
-
----
-
-### Execution structure
-
-- The execution contexts related to path $p$ form the **main branch** leading to the verdict **`PASS`**.  
-  The target context is replaced by `PASS`.  
-- Any deviation from this branch triggers a verdict state:
-  - **`FAIL`** if the behavior violates expectations.
-  - **`INC`** (inconclusive) if no clear verdict can be determined.
-
----
-
-### Guard derivation
+### Test case guard derivation
 
 The **guard** of the test-case transition from $ec_1$ to $ec_2$ is derived from the target of the test path (TP), denoted $ec_3$.  
 It guides the selection of the stimulation $In!x_1$ along this path.  
 The guard is expressed as:
 
-$$
-cl < \text{TM} \;\wedge\; 1 \leq x_1 \leq 10 \;\wedge\; x_1 \leq 5 \;\wedge\;
-\exists \#_2 \cdot \exists \$_1 \cdot (\#_2 = 42 - x_1 \;\wedge\; \$_1 = 0)
-$$
 
-At this stage:
-- $x_1$ and its duration $\#_1$ are determined.
-- $\#_2$ and $\$_1$ remain undetermined.
+$cl$ < $\text{TM}$ $\wedge$ 1 $\leq$ `x1` $\leq$ 10 $\wedge$ `x1` $\leq$ 5 $\wedge$ $\exists$ `#2` $\cdot$ $\exists$ `$1` $\cdot$ (`#2` = 42 - `x1` $\wedge$ `$1` = 0)
 
-The variable $x_1$ is constrained by the path condition of $ec_3$ (small inputs), whereas $\#_1$ is unconstrained and may be omitted (grayed).
+At this stage:  
+- `x1` and its duration `#1` are determined.  
+- `#2` and `$1` remain undetermined.  
 
----
+The variable `x1` is constrained by the path condition of $ec_3$ (corresponding to small input values), whereas `#1` is unconstrained and can therefore be omitted (shown as grayed out in the explanatory figure of the test case $\mathbb{TC}_{\mathbf{tr}_1.\mathbf{tr}_2}$).
 
-### Quantifier simplification
+Conditions producing $ec_3$ are, by default, under existential quantifiers: $\exists$ `#2` $\cdot$ $\exists$ `$1` $\cdot$ (`x1` $\leq$ 5 $\wedge$  $\cdot$ `#2` = 42 - `x1` $\wedge$ `$1` = 0). 
+Since `#2` and `$1` do not occur freely in `x1` $\leq$ 5, this constraint is moved outside the quantifiers, yielding the final guard.
 
-Conditions producing $ec_3$ are, by default, under existential quantifiers:
+Following the test path, the test case expects an observation $Out?$`$1` on channel  $Out$, storing it in `$1`.  
+It transitions from $ec_2$ to $\text{PASS}$ under the following guard:
 
-$$
-\exists \#_2 \;\exists \$_1 \;\big( x_1 \leq 5 \;\wedge\; \#_2 = 42 - x_1 \;\wedge\; \$_1 = 0 \big)
-$$
 
-Since $\#_2$ and $\$_1$ do not occur freely in $x_1 \leq 5$, this constraint is moved outside the quantifiers, yielding the **final guard**.
+$cl$ < $\text{TM}$ $\wedge$ `#2` = cl $\wedge$ 1 $\leq$ `x1` $\leq$ 10 $\wedge$ `x1` $\leq$ 5 $\wedge$ `#2` = 42 - `x1` $\wedge$ `$1` = 0
 
----
 
-### Expected observation and transition to `PASS`
 
-Following the test path, the test case expects an observation $Out?\$_1$ on channel `Out`, storing it in $\$_1$.  
-It transitions from $ec_2$ to `PASS` under the following guard:
-
-$$
-cl < \text{TM} \;\wedge\; \#_2 = cl \;\wedge\; 1 \leq x_1 \leq 10 \;\wedge\;
-x_1 \leq 5 \;\wedge\; \#_2 = 42 - x_1 \;\wedge\; \$_1 = 0
-$$
-
-- The formulas $1 \leq x_1 \leq 10$ and $x_1 \leq 5$ appear *grayed* because they are inherited from earlier transitions.
+- The formulas 1 $\leq$ `x1` $\leq$ 10  and `x1` $\leq$ 5 appear *grayed* because they are inherited from earlier transitions.
 - The remaining guard ensures that:
-  - the observed value $\$_1$ matches the expected output $0$ for small inputs ($x_1 \leq 5$), and  
-  - the measured duration $\#_2$ recorded by $cl$ equals $42 - x_1$.
+  - the observed value `$1` matches the expected output $0$ for small inputs (`x1` $\leq$ 5), and  
+  - the measured duration `#2` recorded by $cl$ equals 42 - `x1`.
 
----
+Transition to $\text{FAIL}^{out}$ is triggered when `#2` is within the time limit ($\text{TM}$), but either the duration or the observed value `$1` violates the guard from $ec_2$ to $\text{PASS}$:
 
-### Verdict transitions
+$cl$ < $\text{TM}$ $\wedge$ `#2` = cl $\wedge$ 1 $\leq$ `x1` $\leq$ 10 $\wedge$ `x1` $\leq$ 5 $\wedge$ (`#2` $\neq$ 42 - `x1` $\lor$ `$1` $\neq$ 0 )
 
-- **Transition to `FAIL^{out}`**  
-  Triggered when $\#_2$ is within the time limit ($\text{TM}$), but either the duration or the observed value $\$_1$ violates the guard from $ec_2$ to `PASS`.
+Transition to $\text{FAIL}^{dur}$ captures invalid quiescence, defined by:
 
-- **Transition to `FAIL^{dur}`**  
-  Captures **invalid quiescence**, defined by:
+  $cl$ $\geq$ $\text{TM}$ $\wedge$ `#2` = $cl$ $\wedge$
+  $\forall$ `#` $\cdot$ $\forall$ `$1` $\cdot$ (`#2` $\geq$ `#` $\vee$ `#` $\neq$ 42 - `x1` $\vee$ `$1` $\neq$ 0)
 
-  $$
-  cl \geq \text{TM} \;\wedge\; \#_2 = cl \;\wedge\;
-  \forall \# \cdot \forall \$_1 \cdot (\#_2 \geq \# \;\vee\; \# \neq 42 - x_1 \;\vee\; \$_1 \neq 0)
-  $$
-
----
+  Other test case transitions are shown in (complete) test case image generated by SPTG.
 
 ### Example verdicts (for $\text{TM} = 60$)
 
 | Verdict | Trace | Description |
 |----------|--------|-------------|
-| **PASS** | $(0, In?1).(41, Out!0)$ | Valid output and timing |
-| **FAIL$^{out}$** | $(0, In?1).(40, Out!0)$ or $(0, In?1).(41, Out!1)$ | Output mismatch or incorrect timing |
-| **FAIL$^{dur}$** | $(0, In?1).(60, \delta!)$ | Quiescence beyond allowed duration |
+| **$\text{PASS}$** | $(0, In?1).(41, Out!0)$ | Valid output and timing |
+| **$\text{FAIL}^{out}$** | $(0, In?1).(40, Out!0)$ | Incorrect timing|
+| **$\text{FAIL}^{out}$** | $(0, In?1).(41, Out!1)$ | Output mismatch |
+| **$\text{FAIL}^{dur}$** | $(0, In?1).(60, \delta!)$ | Quiescence beyond allowed duration |
 
-The last trace shows quiescence exceeding the allowed duration, with only $(41, Out!0)$ as a valid output after $(0, In?1)$, resulting in a `FAIL^{dur}` verdict.
+The last trace shows quiescence exceeding the allowed duration, with only $(41, Out!0)$ as a valid output after $(0, In?1)$, resulting in a $\text{FAIL}^{dur}$ verdict.
 
----
-
-### Additional material
-
-- Other test case transitions are illustrated in Fig.~\ref{fig:tc_xlia_puml}, labeled in **Diversity syntax** for readability.  
-- A 5-depth test case is presented in Fig.~\ref{fig:tc_xlia_puml_len_5} in the appendix.
 
