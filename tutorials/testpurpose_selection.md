@@ -22,9 +22,7 @@ Once such a path is identified:
 
 ## 1. Principle of the Hit-or-Jump heuristic
 
-The **test purpose** is defined as a selector, expressed as a **sequence of transitions**  $\textbf{ tr}_1 \cdot \textbf{ tr}_2 \cdot \textbf{ tr}_3 \cdots \textbf{ tr}_{n-1} \cdot\textbf{ tr}_{n}$ which must be covered in order. 
-
-During symbolic execution, HoJ drives the exploration of the symbolic automaton so that the generated symbolic tree **progressively covers prefixes** of this sequence until full coverage is achieved as illustrated in th the following (Schematic illustration of HoJ trials and coverage progression):
+Assuming the **coverage goal** is a **sequence of transitions** which must be covered in order. During symbolic execution, HoJ drives the exploration of the symbolic automaton so that the generated symbolic tree **progressively covers prefixes** of this sequence until full coverage is achieved as illustrated in th the following (Schematic illustration of HoJ trials and coverage progression):
 
 
 <div style="padding-top: 20px; padding-bottom: 20px;">
