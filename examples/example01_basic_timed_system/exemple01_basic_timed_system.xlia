@@ -1,11 +1,11 @@
 @xlia< system , 1.0 >:
 
-timed system Example01 {
+timed system Example01_Basic_Timed_System_S {
 
 @composite:
-	statemachine Example01 {
+	statemachine Example01_Basic_Timed_System_SM {
 	@public:
-		port input In;
+		port input 	In;
 		port output Out;
 		
 	@private:
@@ -21,14 +21,14 @@ timed system Example01 {
 	    }
 	    state q1 {
 	        transition tr_2 --> q0 {
-	        	guard( cl <= 5 );
+	        	guard ( cl <= 5 );
 	            output Out;
 	        }
         }
     @com:
 		connect< env >{
-			input In;
-			output Out;
+			input	In;
+			output 	Out;
 		}
 	}
 }
