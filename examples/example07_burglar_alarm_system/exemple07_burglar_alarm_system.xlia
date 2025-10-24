@@ -1,39 +1,172 @@
 @xlia< system , 1.0 >:
 
-timed system Example07 {
+timed system BurglarAlarmSystem {
 
 @composite:
-	statemachine Example07 {
+	statemachine AlarmSystem {
 	@public:
-		port input In;
-		port output Out;
+		port input VerifyInvasion( urational roomNumber, urational invType ); 
+		port input Interrupt( urational intCode );                           
+		port input PowerFailInterrupt;                                       
+		port output NoInvasionDetected;                                      
+		
+		port output ReactivateAlarmSystem;                                   
+		port output TriggerWindowBreakingAlarm( urational windowNumber );
+		port output TriggerDoorOpeningAlarm( urational doorNumber );
+		port output TriggerRoomMovementAlarm( urational movSensorNumber );
+		port output Error;
+		port output CallPolice( urational roomNumber );
+		port output TurnOnLights( urational roomNumber );
+		port output TransferToBackupPower;
 		
 	@private:
-		var urational x; //uninitialized variable
-		var clock urational cl;
-			
+		var clock urational cl;           
+		var clock urational interruptionCl;
+		var urational invasionType;    
+		var urational roomNumber;      
+		var urational room;      
+		var urational invType;         
+		var urational doorNumber;      
+		var urational movSensorNumber; 
+		var urational interruptChoice;         
+		var urational intCode;         
+		
 	@region:
 	
-	    state<start> q0 {
-	    	@init{
-	    		guard( x < 42 );
-	    	}
-	        transition  tr_1 --> q1 { 
-	            input In;
-	            cl := 0;
-	        }                                    
-	    }
-	    state q1 {
-	        transition tr_2 --> q0 {
-	            output Out;
-	            guard( x >= 1 && cl == x );
+	    state<start> S1 {
+	        @init{
+	            interruptChoice := 0;
 	        }
-        }
-    @com:
-		connect< env >{
-			input In;
-			output Out;
-		}
-	}
-}
+	        transition tr_S1_S2 --> S2 {
+	            input VerifyInvasion( roomNumber, invType );
+	            room := roomNumber;
+	            invasionType := invType; 
+	            cl := 0;
+	    	}
+	        transition tr_S1_I1 --> I1 {
+	            input Interrupt( intCode );
+                guard (intCode == 1 && interruptChoice == 0);
+                interruptChoice := intCode;
+	        }
+	    }
+	    state S2 {        
+	        transition t_S2_S1 --> S1 {
+                guard (invasionType == 0);
+                output NoInvasionDetected;
+            }
 
+            transition t_S2_S3_1 --> S3 {
+                guard (1 <= invasionType && invasionType <= 50 && cl <= 500);
+                output TriggerWindowBreakingAlarm( invasionType );
+                cl := 0;
+            }
+
+            transition t_S2_S3_2 --> S3 {
+                guard (51 <= invasionType && invasionType <= 80 && cl <= 500);
+                output TriggerDoorOpeningAlarm( invasionType );
+                cl := 0;
+            }
+
+            transition t_S2_S3_3 --> S3 {
+                guard (81 <= invasionType && invasionType <= 280 && cl <= 500);
+                output TriggerRoomMovementAlarm( invasionType );
+                cl := 0;
+            }
+
+            transition t_S2_S6 --> S6 {
+                guard (invasionType > 280);
+                output Error;
+            }
+	        
+	    }
+	    state S3 {
+	    
+	        transition t_S3_S4 --> S4 {
+                guard (cl <= 4000);
+                output CallPolice( room );
+                cl := 0;
+            }
+	        transition tr_S3_I1 --> I1 {
+	            input Interrupt( intCode );
+	            guard ( intCode == 3 && interruptChoice == 0 );
+	            interruptChoice := intCode;
+	        }
+	    }
+	    state S4 {
+	        
+	        transition t_S4_S5 --> S5 {
+                guard (cl <= 500);
+                output TurnOnLights( room );
+            }
+	        transition tr_S4_I1 --> I1 {
+	            input Interrupt( intCode );
+	            guard ( intCode == 4 && interruptChoice == 0 );
+	            interruptChoice := intCode;
+	        }
+	    }
+	    state S5 {
+	    	transition tr_S5_I1 --> I1 {
+	            input Interrupt( intCode );
+	            guard ( intCode == 5 && interruptChoice == 0 );
+	            interruptChoice := intCode;
+	        }  
+	    }
+	    state S6 {
+	        transition t_S6_I1 --> I1 {
+                input Interrupt( intCode );
+	            guard ( intCode == 2 && interruptChoice == 0 );
+	            interruptChoice := intCode;
+            }
+	    }
+	    state I1 {
+	       transition t_I1_I2 --> I2 {
+                input PowerFailInterrupt;
+                interruptionCl := 0;
+            }
+	    }
+	    state I2 {
+	        transition tr_I2_I3 --> I3 {
+	            output TransferToBackupPower;
+	        }  
+	    }
+	    state I3 {
+	        transition t_I3_S1 --> S1 {
+                guard (interruptChoice == 1 && interruptionCl <= 50);
+                output ReactivateAlarmSystem;
+            }
+            transition t_I3_S3 --> S3 {
+                guard (interruptChoice == 3 && interruptionCl <= 50);
+                output ReactivateAlarmSystem;
+            }
+            transition t_I3_S4 --> S4 {
+                guard (interruptChoice == 4 && interruptionCl <= 50);
+                output ReactivateAlarmSystem;
+            }
+            transition t_I3_S5 --> S5 {
+                guard (interruptChoice == 5 && interruptionCl <= 50);
+                output ReactivateAlarmSystem;
+            }
+            transition t_I3_S6 --> S6 {
+                guard (interruptChoice == 2 && interruptionCl <= 50);
+                output ReactivateAlarmSystem;
+            }
+	    }
+	    
+	   @com:
+	        connect< env >{
+	            input VerifyInvasion;
+	            input Interrupt;
+	            input PowerFailInterrupt;
+	
+	            output NoInvasionDetected;
+	            output TriggerWindowBreakingAlarm;
+	            output TriggerDoorOpeningAlarm;
+	            output TriggerRoomMovementAlarm;
+	            output CallPolice;
+	            output TurnOnLights;
+	            output ReactivateAlarmSystem;
+	            output Error;
+	            output TransferToBackupPower;
+        }
+    }
+}
