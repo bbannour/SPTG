@@ -7,22 +7,22 @@ In the **test case generation** process (see the [model specification tutorial](
 
 To enable the **selection of such sequences** from the model, the **Hit-or-Jump (HoJ)** exploration heuristic — provided as a dedicated function of **SPTG**, inherited from **Diversity** — can be used. This heuristic guides symbolic exploration toward specific behavioral goals while avoiding exhaustive exploration of irrelevant paths.
 
-The main idea of HoJ is to start from a **declared set or sequence of automata constructs**, which may include:
-- Transitions  
-- States  
-- Input/output actions or ports  
+The user is interested in some behavior which can be seen **a set or sequence of reachable artefacts** during symbolic execution, i.e. coverage goal, which may include:
+- firing transitions  
+- recahing states  
+- evaluation of input/output statements on involved ports.  
 
-and to iteratively explore the symbolic tree to **find a symbolic path** that satisfies the desired coverage goal.  
+The main idea of HoJ iteratively explores the symbolic tree to **find a symbolic path** that satisfies this desired coverage goal.  
 
 
-Once such a path is identified:
+Once such a symbolic path is identified:
 - It corresponds to a **consecutive sequence of transitions** in the automaton.  
-- This sequence serves as the **test purpose** for the **SPTG test case generation** process.  
+- This sequence can serve as the input **test purpose** for the **SPTG test case generation** process.  
 
 
 ## 1. Principle of the Hit-or-Jump heuristic
 
-Assuming the **coverage goal** is a **sequence of transitions** which must be covered in order. During symbolic execution, HoJ drives the exploration of the symbolic automaton so that the generated symbolic tree **progressively covers prefixes** of this sequence until full coverage is achieved as illustrated in th the following (Schematic illustration of HoJ trials and coverage progression):
+Assuming the **coverage goal** is a **sequence of (non-consecutive) transitions** which must be covered in order but the HoJ can fill the gaps in between to find the covering symbolic path (if any). During symbolic execution, HoJ drives the exploration of the symbolic automaton so that the generated symbolic tree **progressively covers prefixes** of this sequence until full coverage is achieved as illustrated in th the following figure (Schematic illustration of HoJ trials and coverage progression):
 
 
 <div style="padding-top: 20px; padding-bottom: 20px;">
