@@ -1,16 +1,16 @@
 @xlia< system , 1.0 >:
 
-timed system Example02_Dummy {
+timed system Example01_Dummy_S {
 
 @composite:
-	statemachine Example02_Dummy {
+	statemachine Example01_Dummy_SM {
 	@public:
-		port input In( urational );
+		port input  In( urational );
 		port output Out( urational );
 		port output Done;
 	@private:
-		var urational sum;
-		var urational x;
+		var urational       sum;
+		var urational       x;
 		var clock urational cl;
 	@region:
 	
@@ -20,23 +20,23 @@ timed system Example02_Dummy {
 	    	}
 	        transition  tr1 --> q1 { 
 	            input In( x );
-	            guard (1 <= x <= 10 );
+	            guard ( 1 <= x <= 10 );
 	            sum := sum+x;
-	            cl := 0;
+	            cl  := 0;
 	        }                   
 	        transition  tr4 --> q2 { 
-	            guard (sum >= 15 );
+	            guard ( sum >= 15 );
 	            output Done;
 	        }                   
 	    }
 	    state q1 {
 	        transition tr2 --> q0 {
+	        	guard ( x <= 5 && cl == 42-x );
 	            output Out( 0 );
-	            guard( x <= 5 && cl == 42-x );
 	        }
 	        transition tr3 --> q0 {
+	        	guard ( x > 5 && cl == 42-x );
 	            output Out( x );
-	            guard( x > 5 && cl == 42-x );
 	        }
         }
         	    
@@ -44,10 +44,9 @@ timed system Example02_Dummy {
        	
 	@com:
 		connect< env >{
-			input In;
+			input  In;
 			output Out;
 			output Done;
 		}
 	 }
 }
-
