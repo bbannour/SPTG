@@ -1,35 +1,65 @@
 @xlia< system , 1.0 >:
 
-timed system Example06 {
+timed system WashingMachine {
 
 @composite:
-	statemachine Example06 {
+	lifeline statemachine  Washer {
+
 	@public:
-		port input In;
-		port output Out;
-		
-	@private:
-		var clock urational cl;
-			
+		port input WashProg( time uinteger progDuration );
+
+		port output Abort;
+
+		port output StartCycle(time uinteger totaTime);
+		port output EndCycle;
+
+  	@private:
+		var time uinteger pdur;
+ 		var clock urational clk;
+
+ 		var time urational ySC1;
+
 	@region:
-	
-	    state<start> q0 {
-	        transition  tr_1 --> q1 { 
-	            input In;
-//	            cl := 0;
-	        }                                    
-	    }
-	    state q1 {
-	        transition tr_2 --> q0 {
-	            output Out;
-	            guard( cl <= 5 );
-	        }
-        }
-    @com:
-		connect< env >{
-			input In;
-			output Out;
-		}
+		state< start > Standby {
+			transition tr_1 --> Launch {
+				input WashProg( pdur );
+				clk = 0;
+			}
+		}//Standby
+
+	    state Launch {
+			transition tr_2 --> Wash {
+				newfresh(ySC1);
+				guard( ySC1 == (pdur + 12) );
+				output StartCycle( ySC1 );
+				guard( (30 <= pdur <= 120) && (clk <= 1) );
+				clk = 0;
+			}
+			transition tr_4 --> Standby {
+				output Abort;
+				guard( ((pdur < 30) || (pdur > 120)) && (clk <= 1) );
+			}
+		}//Launch
+
+		state Wash {
+			transition tr_3 --> Standby {
+				output EndCycle;
+				guard( clk == pdur + 12 );
+			}
+		}//Wash
+	}
+
+@com:
+	connect< env >{
+		input Washer->WashProg;
+	}
+	connect< env >{
+		output Washer->Abort;
+	}
+	connect< env >{
+		output Washer->StartCycle;
+	}
+	connect< env >{
+		output Washer->EndCycle;
 	}
 }
-
