@@ -36,15 +36,13 @@ timed system Example03_ATM_S {
 	            output InsufficientFunds( amount );
 	            cl := 0;
 	        }
-        }
-        	    
+        }	    
        	state Print {
 	        transition tr4 --> Idle {
 	        	guard ( cl <= 5 );
 	            output PrintBalance( balance );
 	        }
         }
-       	
 	@com:
 		connect< env >{
 			input  Withdrawl;
