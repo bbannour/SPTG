@@ -1,7 +1,7 @@
 # SPTG: Symbolic Path-Guided Test Generator
 
-**SPTG** is a model-based test generation tool that automatically produces **conformance test cases** from system models integrating **data** and **timing constraints**.  
-It relies on **path-guided symbolic execution**, which follows a selected sequence of transitions (the **test purpose path**) while collecting symbolic constraints on inputs and timing.
+**SPTG** is a model-based test generation tool that automatically produces **conformance test cases** from system models mixing **data** and **timing constraints**.  
+It relies on **path-guided symbolic execution**, which follows a selected consecutive sequence of transitions (the **test purpose path**) while collecting symbolic constraints on inputs and timing.
 
 ---
 
@@ -11,7 +11,7 @@ It relies on **path-guided symbolic execution**, which follows a selected sequen
 - **Unified treatment of data, time, and quiescence** — Supports both data and clock variables, and distinguishes between *expected quiescence* (permitted silence within a delay) and *missing outputs* (silence when an output is expected).  
 - **Deterministic path selection** — Only deterministic paths are used; non-deterministic ones are discarded, ensuring unambiguous, executable test cases that align with the symbolic execution tree.  
 - **Concise test cases** — Infeasible branches are pruned, and redundant constraints are simplified to keep the test cases minimal.  
-- **Coverage-oriented testing** — Test paths can be user-defined or automatically selected. SPTG extends the **Diversity** platform with coverage analysis and test selection capabilities.
+- **Coverage-oriented testing** — Test purpose paths can be user-defined or automatically selected from reference system model. As an extension of the Diversity symbolic execution platform, SPTG inherits advanced coverage analysis and test selection capabilities.
 
 ---
 
