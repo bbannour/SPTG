@@ -1,4 +1,4 @@
-# SPTG: Symbolic Path-Guided Test Generator
+# SPTG: Symbolic Path-Guided Test Case Generator
 
 **SPTG** is a model-based test generation tool that automatically produces **conformance test cases** from system models mixing **data** and **timing constraints**.  
 It relies on **path-guided symbolic execution**, which follows a selected consecutive sequence of transitions (the **test purpose path**) while collecting symbolic constraints on inputs and timing.
