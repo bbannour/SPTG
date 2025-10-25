@@ -14,13 +14,13 @@ timed system Example01_Basic_Timed_System_S {
 	@region:
 	
 	    state<start> q0 {
-	        transition  tr_1 --> q1 { 
+	        transition  tr1 --> q1 { 
 	            input In;
 	            cl := 0;
 	        }                                    
 	    }
 	    state q1 {
-	        transition tr_2 --> q0 {
+	        transition tr2 --> q0 {
 	        	guard ( cl <= 5 );
 	            output Out;
 	        }
@@ -32,4 +32,6 @@ timed system Example01_Basic_Timed_System_S {
 		}
 	}
 }
-
+//Sequence of transitions characterizing a test purpose.
+//	transition = "tr1"
+//	transition = "tr2"
