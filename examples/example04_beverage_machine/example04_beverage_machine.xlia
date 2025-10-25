@@ -1,18 +1,18 @@
 @xlia< system , 1.0 >:
 
-timed system Example04_Beverage_Machine {
+timed system Example04_Beverage_Machine_S {
 
 @composite:
-	statemachine Example04_Beverage_Machine {
+	statemachine Example04_Beverage_Machine_SM {
 	@public:
-		port input Money( int );
-		port input Choice( int, urational );
+		port input  Money( int );
+		port input  Choice( int, urational );
 		port output Serve( int, int );
 		port output Return( int );
 	@private:
-		var int x;
-		var int y;
-		var int q;
+		var int 	  x;
+		var int 	  y;
+		var int 	  q;
 		var urational i;
 		var urational t;
 		var clock urational cl;
@@ -22,41 +22,45 @@ timed system Example04_Beverage_Machine {
 	    	@init{
 	    		i := 42;
 	    	}
-	        transition  tr_1 --> q1 { 
+	        transition  tr1 --> q1 { 
 	            input Money( x );
 	            guard ( x >= 1 );
 	            cl := 0;
 	        }                             
 	    }
 	    state q1 {
-	        transition tr_2 --> q2 {
+	        transition tr2 --> q2 {
 	        	input Choice( y, t );
 	            guard ( x-1 < q && t <= 5 && cl <= i );
 	            cl := 0;
 	        }
-	        transition tr_4 --> q0 {
+	        transition tr4 --> q0 {
 	        	guard ( cl == i );
 	        	output Return( x );
 	        }
-	        transition tr_5 --> q0 {
+	        transition tr5 --> q0 {
 	        	guard ( x-1 >= q && cl <= i );
 	        	output Return( x );
 	        }
         }	    
        	state q2 {
-	        transition tr_3 --> q0 {
-	        	guard( cl <= t );
+	        transition tr3 --> q0 {
+	        	guard ( cl <= t );
 	            output Serve( y, x-1 );
 	        }
         }
        	
 	@com:
 		connect< env >{
-			input Money;
-			input Choice;
+			input  Money;
+			input  Choice;
 			output Serve;
 			output Return;
 		}
 	 }
 }
+//Sequence of transitions characterizing a test purpose.
+//	transition = "tr1"
+//	transition = "tr2"
+//	transition = "tr3"
 
