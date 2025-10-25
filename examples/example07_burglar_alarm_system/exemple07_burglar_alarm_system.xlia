@@ -176,3 +176,12 @@ timed system BurglarAlarmSystem {
         }
     }
 }
+//Sequence of transitions characterizing a test purpose.
+//		transition = "tr_S1_S2"
+//		transition = "tr_S2_S3_1"
+//		transition = "tr_S3_S4"
+//		transition = "tr_S4_S5"
+//		transition = "tr_S5_I1"
+//		transition = "tr_I1_I2"
+//		transition = "tr_I2_I3"
+//		transition = "tr_I3_S5"
