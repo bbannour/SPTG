@@ -1,41 +1,44 @@
 @xlia< system , 1.0 >:
 
-timed system Example08_Absolute_Value {
+timed system Example08_Absolute_Value_S {
 
 @composite:
-	statemachine Example08_Absolute_Value {
+	statemachine Example08_Absolute_Value_SM {
 	@public:
-		port input In( int );
+		port input 	In( int );
 		port output Out( int );
 		
 	@private:
-		var int x;
+		var int 			x;
 		var clock urational cl;
 			
 	@region:
-	
 	    state<start> q0 {
-	        transition  tr_1 --> q1 { 
+	        transition  tr1 --> q1 { 
 	            input In( x );
-	            guard( -42 <= x <= 42 ); 
+	            guard ( -42 <= x <= 42 ); 
 	            cl := 0;
 	        }                                    
 	    }
 	    state q1 {
-	        transition tr_2 --> q0 {
+	        transition tr2 --> q0 {
+	            guard ( x >= 0 && cl <= 5 );
 	            output Out( x );
-	            guard( x >= 0 && cl <= 5 );
 	        }
-	        transition tr_3 --> q0 {
+	        transition tr3 --> q0 {
+	        	guard ( x < 0 && cl <= 5 );
 	            output Out( -x );
-	            guard( x < 0 && cl <= 5 );
 	        }
         }
     @com:
 		connect< env >{
-			input In;
+			input  In;
 			output Out;
 		}
 	}
 }
+
+//Sequence of transitions characterizing a test purpose.
+//		transition = "tr1"
+//		transition = "tr2"
 
