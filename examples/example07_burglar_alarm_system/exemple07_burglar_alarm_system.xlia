@@ -5,31 +5,31 @@ timed system BurglarAlarmSystem {
 @composite:
 	statemachine AlarmSystem {
 	@public:
-		port input VerifyInvasion( urational roomNumber, urational invType ); 
-		port input Interrupt( urational intCode );                           
-		port input PowerFailInterrupt;                                       
+		port input 	VerifyInvasion( uint roomNumber, uint invType ); 
+		port input 	Interrupt( uint intCode );                           
+		port input 	PowerFailInterrupt;                                       
 		port output NoInvasionDetected;                                      
 		
 		port output ReactivateAlarmSystem;                                   
-		port output TriggerWindowBreakingAlarm( urational windowNumber );
-		port output TriggerDoorOpeningAlarm( urational doorNumber );
-		port output TriggerRoomMovementAlarm( urational movSensorNumber );
+		port output TriggerWindowBreakingAlarm( uint windowNumber );
+		port output TriggerDoorOpeningAlarm( uint doorNumber );
+		port output TriggerRoomMovementAlarm( uint movSensorNumber );
 		port output Error;
-		port output CallPolice( urational roomNumber );
-		port output TurnOnLights( urational roomNumber );
+		port output CallPolice( uint roomNumber );
+		port output TurnOnLights( uint roomNumber );
 		port output TransferToBackupPower;
 		
 	@private:
+		var uint invasionType;    
+		var uint roomNumber;      
+		var uint room;      
+		var uint invType;         
+		var uint doorNumber;      
+		var uint movSensorNumber; 
+		var uint interruptChoice;         
+		var uint intCode;  
 		var clock urational cl;           
-		var clock urational interruptionCl;
-		var urational invasionType;    
-		var urational roomNumber;      
-		var urational room;      
-		var urational invType;         
-		var urational doorNumber;      
-		var urational movSensorNumber; 
-		var urational interruptChoice;         
-		var urational intCode;         
+		var clock urational interruptionCl;       
 		
 	@region:
 	
@@ -39,50 +39,50 @@ timed system BurglarAlarmSystem {
 	        }
 	        transition tr_S1_S2 --> S2 {
 	            input VerifyInvasion( roomNumber, invType );
-	            room := roomNumber;
+	            room 		 := roomNumber;
 	            invasionType := invType; 
-	            cl := 0;
+	            		  cl := 0;
 	    	}
 	        transition tr_S1_I1 --> I1 {
 	            input Interrupt( intCode );
-                guard (intCode == 1 && interruptChoice == 0);
+                guard ( intCode == 1 && interruptChoice == 0 );
                 interruptChoice := intCode;
 	        }
 	    }
 	    state S2 {        
-	        transition t_S2_S1 --> S1 {
-                guard (invasionType == 0);
+	        transition tr_S2_S1 --> S1 {
+                guard ( invasionType == 0 );
                 output NoInvasionDetected;
             }
 
-            transition t_S2_S3_1 --> S3 {
-                guard (1 <= invasionType && invasionType <= 50 && cl <= 500);
+            transition tr_S2_S3_1 --> S3 {
+                guard ( 1 <= invasionType && invasionType <= 50 && cl <= 500 );
                 output TriggerWindowBreakingAlarm( invasionType );
                 cl := 0;
             }
 
-            transition t_S2_S3_2 --> S3 {
-                guard (51 <= invasionType && invasionType <= 80 && cl <= 500);
+            transition tr_S2_S3_2 --> S3 {
+                guard ( 51 <= invasionType && invasionType <= 80 && cl <= 500 );
                 output TriggerDoorOpeningAlarm( invasionType );
                 cl := 0;
             }
 
-            transition t_S2_S3_3 --> S3 {
-                guard (81 <= invasionType && invasionType <= 280 && cl <= 500);
+            transition tr_S2_S3_3 --> S3 {
+                guard ( 81 <= invasionType && invasionType <= 280 && cl <= 500 );
                 output TriggerRoomMovementAlarm( invasionType );
                 cl := 0;
             }
 
-            transition t_S2_S6 --> S6 {
-                guard (invasionType > 280);
+            transition tr_S2_S6 --> S6 {
+                guard ( invasionType > 280 );
                 output Error;
             }
 	        
 	    }
 	    state S3 {
 	    
-	        transition t_S3_S4 --> S4 {
-                guard (cl <= 4000);
+	        transition tr_S3_S4 --> S4 {
+                guard ( cl <= 4000 );
                 output CallPolice( room );
                 cl := 0;
             }
@@ -94,8 +94,8 @@ timed system BurglarAlarmSystem {
 	    }
 	    state S4 {
 	        
-	        transition t_S4_S5 --> S5 {
-                guard (cl <= 500);
+	        transition tr_S4_S5 --> S5 {
+                guard ( cl <= 500 );
                 output TurnOnLights( room );
             }
 	        transition tr_S4_I1 --> I1 {
@@ -112,14 +112,14 @@ timed system BurglarAlarmSystem {
 	        }  
 	    }
 	    state S6 {
-	        transition t_S6_I1 --> I1 {
+	        transition tr_S6_I1 --> I1 {
                 input Interrupt( intCode );
 	            guard ( intCode == 2 && interruptChoice == 0 );
 	            interruptChoice := intCode;
             }
 	    }
 	    state I1 {
-	       transition t_I1_I2 --> I2 {
+	       transition tr_I1_I2 --> I2 {
                 input PowerFailInterrupt;
                 interruptionCl := 0;
             }
@@ -127,36 +127,42 @@ timed system BurglarAlarmSystem {
 	    state I2 {
 	        transition tr_I2_I3 --> I3 {
 	            output TransferToBackupPower;
+	            guard ( interruptionCl <= 50 );
 	        }  
 	    }
 	    state I3 {
-	        transition t_I3_S1 --> S1 {
-                guard (interruptChoice == 1 && interruptionCl <= 50);
+	        transition tr_I3_S1 --> S1 {
+                guard ( interruptChoice == 1 && interruptionCl <= 50 );
                 output ReactivateAlarmSystem;
+                interruptChoice := 0;
             }
-            transition t_I3_S3 --> S3 {
-                guard (interruptChoice == 3 && interruptionCl <= 50);
+            transition tr_I3_S3 --> S3 {
+                guard ( interruptChoice == 3 && interruptionCl <= 50 );
                 output ReactivateAlarmSystem;
+                interruptChoice := 0;
             }
-            transition t_I3_S4 --> S4 {
+            transition tr_I3_S4 --> S4 {
                 guard (interruptChoice == 4 && interruptionCl <= 50);
                 output ReactivateAlarmSystem;
+                interruptChoice := 0;
             }
-            transition t_I3_S5 --> S5 {
-                guard (interruptChoice == 5 && interruptionCl <= 50);
+            transition tr_I3_S5 --> S5 {
+                guard ( interruptChoice == 5 && interruptionCl <= 50 );
                 output ReactivateAlarmSystem;
+                interruptChoice := 0;
             }
-            transition t_I3_S6 --> S6 {
-                guard (interruptChoice == 2 && interruptionCl <= 50);
+            transition tr_I3_S6 --> S6 {
+                guard ( interruptChoice == 2 && interruptionCl <= 50 );
                 output ReactivateAlarmSystem;
+                interruptChoice := 0;
             }
 	    }
 	    
 	   @com:
 	        connect< env >{
-	            input VerifyInvasion;
-	            input Interrupt;
-	            input PowerFailInterrupt;
+	            input  VerifyInvasion;
+	            input  Interrupt;
+	            input  PowerFailInterrupt;
 	
 	            output NoInvasionDetected;
 	            output TriggerWindowBreakingAlarm;
