@@ -1,65 +1,54 @@
 @xlia< system , 1.0 >:
 
-timed system WashingMachine {
+timed system Example06_Washing_Machine_S {
 
 @composite:
-	lifeline statemachine  Washer {
+	lifeline statemachine  Example06_Washing_Machine_SM {
 
 	@public:
-		port input WashProg( time uinteger progDuration );
-
+		port input 	WashProg( urational progDuration );
 		port output Abort;
-
-		port output StartCycle(time uinteger totaTime);
+		port output StartCycle( urational totaTime);
 		port output EndCycle;
 
   	@private:
-		var time uinteger pdur;
- 		var clock urational clk;
-
- 		var time urational ySC1;
+		var time uinteger 	pdur;
+ 		var clock urational cl;
 
 	@region:
 		state< start > Standby {
-			transition tr_1 --> Launch {
+			transition tr1 --> Launch {
 				input WashProg( pdur );
-				clk = 0;
+				cl = 0;
 			}
-		}//Standby
-
+		}
 	    state Launch {
-			transition tr_2 --> Wash {
-				newfresh(ySC1);
-				guard( ySC1 == (pdur + 12) );
-				output StartCycle( ySC1 );
-				guard( (30 <= pdur <= 120) && (clk <= 1) );
-				clk = 0;
+			transition tr2 --> Wash {
+				guard( (30 <= pdur <= 120 ) && ( cl <= 1) );
+				output StartCycle( pdur+12 );
+				cl := 0;
 			}
-			transition tr_4 --> Standby {
+			transition tr4 --> Standby {
+				guard( ((pdur < 30) || (pdur > 120)) && (cl <= 1) );
 				output Abort;
-				guard( ((pdur < 30) || (pdur > 120)) && (clk <= 1) );
 			}
-		}//Launch
-
+		}
 		state Wash {
-			transition tr_3 --> Standby {
+			transition tr3 --> Standby {
+				guard( cl == pdur + 12 );
 				output EndCycle;
-				guard( clk == pdur + 12 );
 			}
-		}//Wash
-	}
-
-@com:
-	connect< env >{
-		input Washer->WashProg;
-	}
-	connect< env >{
-		output Washer->Abort;
-	}
-	connect< env >{
-		output Washer->StartCycle;
-	}
-	connect< env >{
-		output Washer->EndCycle;
+		}
+	 @com:
+		connect< env >{
+			input  WashProg;
+			output Abort;
+			output StartCycle;
+			output EndCycle;
+		}
 	}
 }
+//Sequence of transitions characterizing a test purpose.
+//	transition = "tr1"
+//	transition = "tr2"
+//	transition = "tr3"
