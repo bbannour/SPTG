@@ -50,3 +50,6 @@ timed system Example01_Dummy_S {
 		}
 	 }
 }
+//Sequence of transitions characterizing a test purpose.
+//	transition = "tr1"
+//	transition = "tr2"
