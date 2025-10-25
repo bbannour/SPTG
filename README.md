@@ -46,10 +46,10 @@ SPTG implements the **Symbolic Path-Guided Test Generation** approach described 
 
 ## Using SPTG
 ```
-./bin/sptg.exe ./examples/example02_dummy/workflow_4_testcase_generation.sew```
-
+./bin/sptg.exe ./examples/example02_dummy/workflow_4_testcase_generation.sew
 ```
-excerpt of symbolic execution workflow file ```./examples/example02_dummy/workflow_4_testcase_generation.sew``` 
+
+Excerpt of symbolic execution workflow file ```./examples/example02_dummy/workflow_4_testcase_generation.sew``` 
 ```
 project 'location of input reference model' [
     source = "."
