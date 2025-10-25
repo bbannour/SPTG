@@ -1,212 +1,124 @@
-# SPTG
+# SPTG: Symbolic Path-Guided Test Generator
 
-## 🧩 SPTG: Symbolic Path-Guided Test Generation Tool
+**SPTG** is a model-based test generation tool that automatically produces **conformance test cases** from system models integrating **data** and **timing constraints**.  
+It relies on **path-guided symbolic execution**, which follows a selected sequence of transitions (the **test purpose path**) while collecting symbolic constraints on inputs and timing.
 
-
-**SPTG** generates conformance test cases from system models combining data and timing constraints. It uses path-guided symbolic execution, following a chosen sequence of transitions (the test path) and collecting constraints on inputs and timing.  
+---
 
 ## Key Features
 
-- **Symbolic execution**: Generates tests along test purpose paths, accumulating symbolic constraints on inputs and their timing.  
-- **Data, timing & quiescence**: Handles clocks and data variables uniformly, distinguishing valid quiescence (expected silence within allowed delay) from missing outputs (silence when an output is expected).  
-- **Deterministic paths**: Only paths that are deterministic are used; non-deterministic paths are dropped, ensuring unambiguous test cases that mirror the symbolic execution tree.  
-- **Concise tests**: Prunes infeasible branches and simplifies redundant constraints.  
-- **Coverage support**: Test paths can be user-defined or automatically selected, with SPTG working as an extension of the Diversity platform for coverage analysis and test selection.
+- **Symbolic execution** — Generates test cases along *test purpose paths* by accumulating symbolic constraints on input data and timing conditions.  
+- **Unified treatment of data, time, and quiescence** — Supports both data and clock variables, and distinguishes between *expected quiescence* (permitted silence within a delay) and *missing outputs* (silence when an output is expected).  
+- **Deterministic path selection** — Only deterministic paths are used; non-deterministic ones are discarded, ensuring unambiguous, executable test cases that align with the symbolic execution tree.  
+- **Concise test cases** — Infeasible branches are pruned, and redundant constraints are simplified to keep the test cases minimal.  
+- **Coverage-oriented testing** — Test paths can be user-defined or automatically selected. SPTG extends the **Diversity** platform with coverage analysis and test selection capabilities.
+
+---
 
 ## Applications
 
-- **Model-Based Testing** of systems with timing and data-dependent behavior.    
-- **Offline generation** of efficient, deterministic test suites from models.
-- **Demonstrations and teaching** of symbolic execution and test generation.
+- **Model-Based Testing (MBT)** of systems with combined data and timing behaviors.  
+- **Offline generation** of efficient and deterministic test suites from formal models.  
+- **Teaching and demonstration** of symbolic execution and model-based test generation principles.
 
+SPTG implements the **Symbolic Path-Guided Test Generation** approach described in:  
+👉 [https://doi.org/10.1016/j.scico.2025.103285](https://doi.org/10.1016/j.scico.2025.103285) *(Open Access)*
 
-SPTG is based on the symbolic path-guided test case generation approach https://doi.org/10.1016/j.scico.2025.103285 (Open access)
-
+---
 
 ## SPTG Tool I/O Flow
 
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
 
+<center>
+<img src="README_files/images/sptg_io.png" width="600px" alt="SPTG Tool I/O Flow">
+</center>
 
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
 
-<table class="spaced-table">
-  <thead>
-    <tr>
-      <th>Description</th>
-      <th>Content</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><b>Input 1 : Timed symbolic automaton - Reference system model</b></td>
-      <td><img src="files/images/example01_paper_tacas.PNG" alt="Timed symbolic automaton"></td>
-    </tr>
-    <tr>
-      <td><b>Input 2 : Consecutive sequence of transitions (path) of the model - Test purpose</b></td>
-      <td>
-      <b>tr1.tr2</b>
-      </td>
-    </tr>
-    <tr>
-      <td><b>Output : Deterministic timed symbolic automaton - Test case</b></td>
-      <td><img src="files/images/example01_paper_tacas_testcase.PNG" alt="Deterministic timed symbolic automaton"></td>
-    </tr>
-  </tbody>
-</table>
+| **Description** | **Content** |
+|------------------|-------------|
+| **Input 1:** *Timed symbolic automaton — Reference system model* | <img src="README_files/images/example01_paper_tacas.PNG" alt="Timed symbolic automaton"> |
+| **Input 2:** *Sequence of transitions (path) — Test purpose* | `tr1.tr2` |
+| **Output:** *Deterministic timed symbolic automaton — Generated test case* | <img src="README_files/images/example01_paper_tacas_testcase.PNG" alt="Deterministic timed symbolic automaton"> |
 
+---
 
-
-## How to compile SPTG
-
-
-## How to use SPTG
+## Using SPTG
+```
+./bin/sptg.exe ./examples/example02_dummy/workflow_4_testcase_generation.sew```
 
 ```
-sptg.exe example01_tc.sew
-
+excerpt of symbolic execution workflow file ```./examples/example02_dummy/workflow_4_testcase_generation.sew``` 
 ```
-
-
-**Example01 -- Simple timed system (no symbolic data)**
-
-
-
-**More on XLIA subset to encode timed symbolic transition system**
-
-
+...
+project 'location of input reference model' [
+    source = "."
+    model  = "example02_dummy.xlia"
+] // end project
+...
+trace 'input test purpose' [
+    transition = "tr1"
+    transition = "tr2"
+] // end trace
+...
+vfs 'location and name of generated test case' [
+    folder = "output"
+    file#tc       = "testcase.xlia"
+    file#tc#puml  = "testcase.puml"
+] // end vfs
 ```
-// ============================================================
-// Prologue - Header
-// ============================================================
-@xlia< system , 1.0 >:
+This workflow instructs SPTG to generate a **test case** from the **reference model** (`example02_dummy.xlia`) using the **sequence of transitions** (`tr1`, `tr2`) that define the *test purpose*.
 
-// ============================================================
-// System Definition
-// ============================================================
-timed system S {
+> **Note:**  
+> The input reference model automaton is encoded in the **XLIA language**, the input language of the **Diversity** symbolic execution platform.  
+> SPTG extends Diversity with dedicated functionality for symbolic path-guided test generation.  
+> See [model_specification](tutorials/model_specification.md) for more details.
 
-    // ========================================================
-    // Composite Part: State Machine Definition
-    // ========================================================
-    @composite:
-    statemachine SM {
-        @public:
+SPTG generates the resulting **test case automaton** in both **XLIA** and **PlantUML** formats.  
+You can convert the `.puml` output to `.svg` using **PlantUML** (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)) or the online tool [PlantText](https://www.planttext.com/).
 
-            // ----------------------------------------------
-            // Declaration of Ports
-            // ----------------------------------------------
-            port input  In;
-            port output Done;
-            port input  In1( urational );
-            port input  In2( integer );
-            port output Out( urational );
+Tutorials are available on:
+- Model specification for SPTG  
+- Test case generation using SPTG  
+- Test purpose selection (inherited from the Diversity platform)
 
-            // Declaration of N-ary Ports
-            port input  In3( bool, integer, rational );
-            port output Out2( integer, bool );
+📘 [See Tutorials](tutorials/README.md)
 
-            // ----------------------------------------------
-            // Declaration of Constants
-            // ----------------------------------------------
-            const integer N = 42;
+---
 
-        @private:
+## Compilation Instructions
 
-            // ----------------------------------------------
-            // Declaration of Variables
-            // ----------------------------------------------
-            var urational sum;
-            var urational x;
-            var urational y;
-            var integer   z;
-            var bool      flag;
-            var integer   fee;
+*(To be completed with compilation steps)*
 
-            // ----------------------------------------------
-            // Declaration of Clocks
-            // ----------------------------------------------
-            var clock urational cl;
-            var clock urational cl2;
+---
 
-        // ====================================================
-        // Behavioral Description: States and Transitions
-        // ====================================================
-        @region:
+## PlantUML: PUML to SVG Conversion Guide
 
-            // ----------------------------------------------
-            // Initial State
-            // ----------------------------------------------
-            state<start> q0 {
-                @init {
-                    sum  := 0;
-                    flag := false;
-                    guard( fee > 0 );
-                }
+A quick reference for converting `.puml` files to `.svg` images via the command line.
 
-                transition tr1 --> q1 {
-                    input In1( x );
-                    guard ( 1 <= x <= 10 );
-                    sum := sum + x;
-                    y   := sum;
-                    cl  := 0;
-                }
+### Prerequisites
 
-                transition tr2 --> q1 {
-                    input In( x );
-                    guard ( 10 < x && x < N );
-                    {|,|
-                        sum := sum + x;
-                        y   := sum; // y receives the pre-increment sum value
-                    }
-                    cl2 := 0;
-                }
-            }
+1. **Java Runtime Environment (JRE):** Required to execute PlantUML.  
+2. **PlantUML JAR File:** The standalone application.
 
-            // ----------------------------------------------
-            // Secondary State
-            // ----------------------------------------------
-            state q1 {
-                transition tr3 --> q0 {
-                    guard( x <= 10 && cl == N - x );
-                    output Out( sum - 1 );
-                }
+### 1. Download PlantUML
 
-                transition tr4 --> q0 {
-                    guard( x > 10 );
-                    guard( cl <= 5 );
-                    output Out2( fee, flag );
-                    flag := true;
-                    cl2 := 0;
-                }
+Get the latest stable release of `plantuml.jar` from the official site:  
+👉 [https://sourceforge.net/projects/plantuml/files/](https://sourceforge.net/projects/plantuml/files/)
 
-                transition tr5 --> q2 {
-                    guard( sum >= 15 && cl2 <= 1 );
-                    output Done;
-                    cl2 := 0;
-                }
-            }
+### 2. Conversion Command
 
-            // ----------------------------------------------
-            // Terminal State
-            // ----------------------------------------------
-            state q2;
+Navigate to the folder containing both `plantuml.jar` and your `.puml` file.
 
-        // ====================================================
-        // Communication Part: Port Connections
-        // ====================================================
-        @com:
-        connect< env > {
-            input  In;
-            input  In1;
-            input  In2;
-            input  In3;
-            output Done;
-            output Out;
-            output Out2;
-        }
-    }
-}
+Use the `-tsvg` flag to generate an SVG image:
 
-```
+| **Command** | **Action** |
+|--------------|------------|
+| `java -jar plantuml.jar -tsvg yourfile.puml` | Converts the input file (`.puml`) to an SVG output (`.svg`). |
 
+#### Example
 
-
+```bash
+# Generates 'MyDiagram.svg'
+java -jar plantuml.jar -tsvg MyDiagram.puml
