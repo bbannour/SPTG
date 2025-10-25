@@ -52,4 +52,6 @@ timed system Example03_ATM_S {
 		}
 	 }
 }
-
+//Sequence of transitions characterizing a test purpose.
+//	transition = "tr1"
+//	transition = "tr2"
