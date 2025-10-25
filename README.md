@@ -89,9 +89,22 @@ Tutorials are available on:
 ---
 
 ## Compilation Instructions
-
-*(To be completed with compilation steps)*
-
+To compile SPTG, navigate to the `Release` directory of the `org.eclipse.efm.symbex` module:
+```bash
+cd org.eclipse.efm.symbex/Release/
+```
+Then build the project:
+```bash
+make all -j4
+```
+During compilation, the process automatically overwrites the existing `sptg.exe` in the `bin` directory using:
+```bash
+cp -f sptg.exe ../../bin/sptg.exe
+```
+If you wish to preserve the existing executable, rename it before compilation as follows:
+```bash
+mv ../../bin/sptg.exe ../../bin/sptg_old.exe
+```
 ---
 
 ## PlantUML: PUML to SVG Conversion Guide
