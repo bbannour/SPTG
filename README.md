@@ -51,22 +51,23 @@ SPTG implements the **Symbolic Path-Guided Test Generation** approach described 
 ```
 excerpt of symbolic execution workflow file ```./examples/example02_dummy/workflow_4_testcase_generation.sew``` 
 ```
-...
 project 'location of input reference model' [
     source = "."
     model  = "example02_dummy.xlia"
 ] // end project
 ...
-trace 'input test purpose' [
-    transition = "tr1"
-    transition = "tr2"
-] // end trace
-...
-vfs 'location and name of generated test case' [
-    folder = "output"
-    file#tc       = "testcase.xlia"
-    file#tc#puml  = "testcase.puml"
-] // end vfs
+path#guided#testcase#generator testcase_genertor {
+    trace 'input test purpose' [
+        transition = "tr1"
+        transition = "tr2"
+    ] // end trace
+    vfs 'location and name of generated test case' [
+        folder = "output"
+        file#tc       = "testcase.xlia"
+        file#tc#puml  = "testcase.puml"
+    ] // end vfs
+    ...
+}
 ```
 This workflow instructs SPTG to generate a **test case** from the **reference model** (`example02_dummy.xlia`) using the **sequence of transitions** (`tr1`, `tr2`) that define the *test purpose*.
 
