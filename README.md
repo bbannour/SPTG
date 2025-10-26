@@ -7,11 +7,11 @@ It relies on **path-guided symbolic execution**, which follows a selected consec
 
 ## Key Features
 
-- **Symbolic execution** — Generates test cases along *test purpose paths* by accumulating symbolic constraints on input data and timing conditions.  
-- **Unified treatment of data, time, and quiescence** — Supports both data and clock variables, and distinguishes between *expected quiescence* (permitted silence within a delay) and *missing outputs* (silence when an output is expected).  
-- **Deterministic path selection** — Only deterministic paths are used; non-deterministic ones are discarded, ensuring unambiguous, executable test cases that align with the symbolic execution tree.  
-- **Concise test cases** — Infeasible branches are pruned, and redundant constraints are simplified to keep the test cases minimal.  
-- **Coverage-oriented testing** — Test purpose paths can be user-defined or automatically selected from reference system model. As an extension of the Diversity symbolic execution platform, SPTG inherits advanced coverage analysis and test selection capabilities.
+- **Symbolic execution** : Generates test cases along *test purpose paths* by accumulating symbolic constraints on input data and timing conditions.  
+- **Unified treatment of data, time, and quiescence** : Supports both data and clock variables, and distinguishes between *expected quiescence* (permitted silence within a delay) and *missing outputs* (silence when an output is expected).  
+- **Deterministic path selection** : Only deterministic paths are used; non-deterministic ones are discarded, ensuring unambiguous, executable test cases that align with the symbolic execution tree.  
+- **Concise test cases** : Infeasible branches are pruned, and redundant constraints are simplified to keep the test cases minimal.  
+- **Coverage-oriented testing** : Test purpose paths can be user-defined or automatically selected from reference system model. As an extension of the Diversity symbolic execution platform, SPTG inherits advanced coverage analysis and test selection capabilities.
 
 ---
 
@@ -39,7 +39,7 @@ SPTG implements the **Symbolic Path-Guided Test Generation** approach described 
 | **Description** | **Content** |
 |------------------|-------------|
 | **Input 1:** *Timed symbolic automaton — Reference system model* | <img src="README_files/images/example01_paper_tacas.PNG" alt="Timed symbolic automaton"> |
-| **Input 2:** *Sequence of transitions (path) — Test purpose* | `tr1.tr2` |
+| **Input 2:** *Sequence of transitions (path) — Test purpose* | (tr1, tr2) |
 | **Output:** *Deterministic timed symbolic automaton — Generated test case* | <img src="README_files/images/example01_paper_tacas_testcase.PNG" alt="Deterministic timed symbolic automaton"> |
 
 ---
@@ -69,7 +69,7 @@ path#guided#testcase#generator testcase_genertor {
     ...
 }
 ```
-This workflow instructs SPTG to generate a **test case** from the **reference model** (`example02_dummy.xlia`) using the **sequence of transitions** (`tr1`, `tr2`) that define the *test purpose*.
+This workflow instructs SPTG to generate a **test case** from the **reference model** (`example02_dummy.xlia`) using the **sequence of transitions** (tr1, tr2) that define the *test purpose*.
 
 > **Note:**  
 > The input reference model automaton is encoded in the **XLIA language**, the input language of the **Diversity** symbolic execution platform.  
@@ -80,11 +80,12 @@ SPTG generates the resulting **test case automaton** in both **XLIA** and **Plan
 You can convert the `.puml` output to `.svg` using **PlantUML** (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)) or the online tool [PlantText](https://www.planttext.com/).
 
 Tutorials are available on:
-- Model specification for SPTG  
-- Test case generation using SPTG  
-- Test purpose selection (inherited from the Diversity platform)
 
-📘 [See Tutorials](tutorials/README.md)
+📘 [Model specification for SPTG](tutorials/model_specification.md)
+
+📘 [Test case generation using SPTG](tutorials/testcase_generation.md)  
+
+📘  [Test purpose selection (inherited from the Diversity platform)](tutorials/testpurpose_selection.md) 
 
 ---
 
