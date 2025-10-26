@@ -13,14 +13,14 @@ timed system Example04_Beverage_Machine_S {
 		var int 	  x;
 		var int 	  y;
 		var int 	  q;
-		var urational i;
 		var urational t;
 		var clock urational cl;
+		const urational i = 1;
 	@region:
 	
 	    state<start> q0 {
 	    	@init{
-	    		i := 42;
+	    		q := 42;
 	    	}
 	        transition  tr1 --> q1 { 
 	            input Money( x );
@@ -35,10 +35,6 @@ timed system Example04_Beverage_Machine_S {
 	            cl := 0;
 	        }
 	        transition tr4 --> q0 {
-	        	guard ( cl == i );
-	        	output Return( x );
-	        }
-	        transition tr5 --> q0 {
 	        	guard ( x-1 >= q && cl <= i );
 	        	output Return( x );
 	        }
@@ -47,6 +43,7 @@ timed system Example04_Beverage_Machine_S {
 	        transition tr3 --> q0 {
 	        	guard ( cl <= t );
 	            output Serve( y, x-1 );
+	            q := q-(x-1);
 	        }
         }
        	
