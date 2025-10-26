@@ -117,6 +117,20 @@ workflow {
 					file   = "testpurpose.txt"
 				] // end vfs
 			}
+			serializer#model#graphic model2graphic {
+				statemachine [
+					transition = true
+				] // end property
+				transition [
+					statement = true
+				] // end property
+				statement [
+					statement = true
+				] // end property
+				vfs [
+					file = "example05_automotive_platoon.puml"
+				] // end vfs
+			}
 		] // end worker
 	}
 	symbex 'option' [
