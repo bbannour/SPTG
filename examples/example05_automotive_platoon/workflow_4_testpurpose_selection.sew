@@ -88,7 +88,7 @@ workflow {
 					transition = '[*]'
 				] // end trace
 				format [
-					execution#context#id = 'ec_%1%'
+					execution#context#id = 'ec%1%'
 					testcase#header = 'TRACE PATH %1% %2%\n'
 					step#header = 'step %1% --> %2%\n'
 					comment = '\t// %1%\n'
