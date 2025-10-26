@@ -1,0 +1,106 @@
+@sew< workflow , 1.0 >:
+
+// Symbolic Execution Workflow
+// SPTG Tool Configuration
+// CEA - LIST
+workflow {
+	workspace [
+		root   = "example01_basic_timed_system"
+		launch = "example01_basic_timed_system"
+		output = "."
+	] // end workspace
+	director extraneous#module 'as main execution objective' {
+		manifest [
+			autoconf  = true
+			autostart = true
+		] // end manifest
+		project 'path of input model' [
+			source = "."
+    		model  = "exemple01_basic_timed_system.xlia"
+		] // end project
+		supervisor {
+			limit 'of graph exploration' [
+				step = 1000
+				eval = -1
+			] // end limit
+			queue 'defining the exploration/search strategy' [
+				strategy = 'BREADTH_FIRST_SEARCH'
+			] // end queue
+			console [
+				format = "\nstep:%1% , context:%2% , height:%3% , width:%4%\n"
+				report = "\nstop:%1% , context:%2% , height:%3% , width:%4%\n"
+				spider#init = "\n<$spider(%1%:%2%:%3%:%4%)%5%\n"
+				spider#step = "\n$spider(%1%:%2%:%3%:%4%)%5%\n"
+				spider#stop = "\n>$spider(%1%:%2%:%3%:%4%)%5%\n"
+			] // end console
+		}
+		worker [
+			/////// TESTCASE GENERATOR ///////
+			path#guided#testcase#generator testcase_genertor {
+			property [
+					stop  = true
+					slice = false
+					heuristic = false
+					solver = 'Z3'
+					// The name of the clock variable of the TestCase,
+					// reset to zero at each step
+					clock_var_name = "cl"
+					// The name of the variable of the TestCase that represents
+					// the maximum duration for the TestCase to execute
+					// an action (a stimulation or an observation) i.e. clk < TM
+					timeout_var_name = "TM"
+					// The prefix of the name of the variable that represents a
+					// positional argument of an output message of the test purpose
+					message_arg_prefix_name = "$"
+					// Enables simplification in all TestCase guards
+					enable_guard_simplification = true
+			    // Enables global state for verdict
+			    enable_global_verdict_state = false
+				] // end property
+				trace [
+					//Sequence of elements characterizing the test purpose.
+					transition = "tr1"
+					transition = "tr2"
+				] // end trace
+				uncontrollable [
+					//List of uncrollable input.
+				] // end uncontrollable
+				vfs [
+					folder = "output"
+        			file#tc       = "testcase.xlia"
+        			file#tc#puml  = "testcase.puml"
+				] // end vfs
+				console [
+					format = " - coverage: %1% / %2%"
+					spider#init = "$cover(%1%:%2%)"
+					spider#step = "$cover(%1%:%2%)"
+					spider#stop = "$cover(%1%:%2%)"
+				] // end console
+			}
+		] // end worker
+	}
+	symbex 'option' [
+		name_id_separator = ""   // default "#"
+		newfresh_param_name_pid = false
+		pretty_printer_var_name = true   // default false
+		time_name_id = "$time"
+		time_initial_value = 0
+		delta_name_id = "#"
+		delta_initial_value = 0
+		node_condition_enabled = false   // default false
+		separation_of_pc_disjunction = false
+		check_pathcondition_satisfiability = true
+		//strongly_check_pathcondition_satisfiability = true
+		//make_trivial_assignment_from_guard = true
+		//make_trivial_assignment_from_timed_guard = true
+		constraint_solver = "Z3"  // CVC5 | YICES
+	] // end symbex
+	console [
+		verbose = 'MINIMUM'
+	] // end console
+	shell [
+		// Stop stop the current execution if it detects the creation of the above file !
+		stop = "symbex.stop"
+	] // end shell
+}
+
