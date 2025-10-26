@@ -119,8 +119,8 @@ A quick reference for converting `.puml` files to `.svg` images via the command 
 
 ### 1. Download PlantUML
 
-Get the latest stable release of `plantuml.jar` from the official site:  
-👉 [https://sourceforge.net/projects/plantuml/files/](https://sourceforge.net/projects/plantuml/files/)
+Get the latest stable release of `plantuml.jar` from the official github site:  
+👉 [https://github.com/plantuml/plantuml/releases](https://github.com/plantuml/plantuml/releases)
 
 ### 2. Conversion Command
 
