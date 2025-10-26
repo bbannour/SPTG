@@ -2,8 +2,8 @@
 
 Tutorials are available on:
 
-📘 [Model specification for SPTG](tutorials/model_specification.md)
+📘 [Model specification for SPTG](model_specification.md)
 
-📘 [Test case generation using SPTG](tutorials/testcase_generation.md)  
+📘 [Test case generation using SPTG](testcase_generation.md)  
 
-📘  [Test purpose selection (inherited from the Diversity platform)](tutorials/testpurpose_selection.md) 
+📘  [Test purpose selection (inherited from the Diversity platform)](testpurpose_selection.md) 
