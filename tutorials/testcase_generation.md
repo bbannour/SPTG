@@ -271,7 +271,7 @@ path#guided#testcase#generator testcase_genertor {
 }
 ```
 
-The user specifies the location of the model textual file, [`example02_dummy.xlia`](../examples/example02_dummy.xlia/example02_dummy.xlia), which is depicted below (zoom in for details):
+The user specifies the location of the model textual file, [`example02_dummy.xlia`](../examples/example02_dummy/example02_dummy.xlia), which is depicted below (zoom in for details):
 
 <div style="padding-top: 20px; padding-bottom: 20px;"></div>
 
@@ -311,6 +311,38 @@ The execution produces the following output files:
 </center>
 
 <div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+---
+
+## PlantUML: PUML to SVG Conversion Guide
+
+A quick reference for converting `.puml` files to `.svg` images via the command line.
+
+### Prerequisites
+
+1. **Java Runtime Environment (JRE):** Required to execute PlantUML.  
+2. **PlantUML JAR File:** The standalone application.
+
+### 1. Download PlantUML
+
+Get the latest stable release of `plantuml.jar` from the official github site:  
+👉 [https://github.com/plantuml/plantuml/releases](https://github.com/plantuml/plantuml/releases)
+
+### 2. Conversion Command
+
+Navigate to the folder containing both `plantuml.jar` and your `.puml` file.
+
+Use the `-tsvg` flag to generate an SVG image:
+
+| **Command** | **Action** |
+|--------------|------------|
+| `java -jar plantuml.jar -tsvg yourfile.puml` | Converts the input file (`.puml`) to an SVG output (`.svg`). |
+
+#### Example
+
+```bash
+# Generates 'MyDiagram.svg'
+java -jar plantuml.jar -tsvg MyDiagram.puml
 
 
 
