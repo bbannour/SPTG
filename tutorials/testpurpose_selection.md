@@ -71,6 +71,120 @@ The HoJ heuristic is controlled by several key parameters that determine its exp
 
 Tuning these parameters allows balancing **exploration depth** and **search focus**, ensuring that the heuristic converges efficiently toward a subtree that satisfies the **test purpose**.
 
+## 4. Illustration on a use case
+
+Consider an automaton model representing a leader agent that manages the insertion and departure of vehicles in a platoon, ensuring safe spacing and coordination. The model is encoded as a timed symbolic transition system corresponding to a UPPAAL model [https://doi.org/10.1016/J.SCICO.2017.05.006](https://doi.org/10.1016/J.SCICO.2017.05.006) *(Open Access)*. This model is interesting for illustrating the HoJ, as it exhibits long, intertwined transition paths, making it difficult to identify the exact sequence of consecutive transitions needed to realize certain desired behaviors.
+
+The textual model is available [here](../examples/example05_automotive_platoon/example05_automotive_platoon.xlia) and depicted below (Zoom-in for details):
+
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+<center>
+<img src="./../README_files/images/example05_automotive_platoon.svg" width="600px" alt="Example of timed symbolic transition system">
+</center>
+
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+### Using SPTG
+Navigate to the `SPTG` directory (e.g., the folder from the downloaded or cloned repository), then run: 
+```bash
+./bin/sptg.exe ./examples/example05_automotive_platoon/workflow_4_testpurpose_selection.sew
+```
+
+Excerpt of symbolic execution workflow file `./examples/example05_automotive_platoon/workflow_4_testpurpose_selection.sew` available [here](../examples/example05_automotive_platoon/workflow_4_testpurpose_selection.sew)
+```
+project 'location of input reference model' [
+    source = "."
+    model  = "example05_automotive_platoon.xlia"
+] // end project
+supervisor {
+        limit 'of graph exploration' [
+            step = 1000 //symbex step count
+            eval = -1   //symbex eval count
+        ] // end limit
+        ...
+}
+...
+coverage#behavior behavior_coverage {
+    ...
+    trace [
+        transition = 'q0.tr_join_r'
+        transition = 'q4.tr_joined_suc'
+        transition = 'q7.tr_platoon_m_c'
+	] // end trace
+    heuristic [
+        hit#consecutive = false
+        jump#height = 3
+        jump#trials#limit = -1
+        hit#count  = 1
+        jump#count = 1
+        ...
+	] // end heuristic
+}
+serializer#symbex#trace#basic basic_trace_generator {
+    vfs [
+        folder = "output"
+        file   = "testpurpose.txt"
+	] // end vfs
+}
+...
+}
+```
+
+The user input is a sequence of (non-consecutive) transitions  
+`(q0.tr_join_r, q4.tr_joined_suc, q7.tr_platoon_m_c)`,  
+representing the following behavioral steps in the platooning process:  
+- a **platoon join request**,  
+- a **successful joining phase**, and  
+- a **confirmation of switching to automatic platoon mode** for the joining vehicle.  
+
+The following figure illustrates how these symbolic transitions correspond to a **real-world scenario** involving a vehicle (`vehJ`) joining an existing platoon.  
+It depicts the different stages of the process — from initiating the join request, through the coordinated merging maneuver, to the successful integration and activation of autonomous driving mode.
+
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+<center>
+<img src="./../README_files/images/platoon_scenario.PNG" width="400px" alt="Illustration of the join-middle-succ platoon scenario">
+</center>
+
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+*Figure – Real-world representation of the `join-middle-succ` scenario, showing the joining vehicle (`vehJ`) progressively integrating into the platoon.*
+
+
+Since HoJ performs a **heuristic and goal-oriented exploration** rather than an exhaustive one, it is necessary to define an **absolute criterion** to limit the exploration.  
+Here, a **maximum number of symbolic execution steps** (`step = 1000`) is specified to bound the search.  
+This limit ensures termination when the user-defined sequence cannot be covered within the allowed steps.
+
+This execution generates a file:  
+`./examples/example05_automotive_platoon/output/testpurpose.txt`  
+with the following content:
+ ```
+ TRACE PATH 1 ec13
+	fired q0.tr_join_r
+	fired q1.tr_set_spacing_c
+	fired q2.tr_set_spacing_from
+	fired q3.tr_join_agr_c
+	fired q4.tr_joined_suc
+	fired q5.tr_set_spacing_c
+	fired q6.tr_set_spacing_from
+	fired q7.tr_platoon_m_c
+ ```
+
+
+This output corresponds to a **feasible symbolic path** of the model, representing a **consecutive sequence of transitions** that includes both the user-specified transitions and the additional ones inferred by the heuristic to connect them according to the model’s behavior.  
+
+Recall that the user input sequence contains only three transitions:  
+`(q0.tr_join_r, q4.tr_joined_suc, q7.tr_platoon_m_c)`.  
+
+During exploration, the HoJ heuristic **filled in the gaps** between these transitions with intermediate transitions obtained from the model:  
+
+- Between `q0.tr_join_r` and `q4.tr_joined_suc`, the heuristic identified  
+  `q1.tr_set_spacing_c`, `q2.tr_set_spacing_from`, and `q3.tr_join_agr_c`.  
+- Between `q4.tr_joined_suc` and `q7.tr_platoon_m_c`, it inserted  
+  `q5.tr_set_spacing_c` and `q6.tr_set_spacing_from`.  
+  
+The resulting consecutive sequence can then be used as a **test purpose** for SPTG to generate a concrete test case.
 
 
 
