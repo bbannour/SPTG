@@ -29,8 +29,7 @@ Assuming the **coverage goal** is a **sequence of (non-consecutive) transitions*
 </div>
 
 <center>
-
-<img src="./../README_files/images/testpurpose_select_hoj.svg" width="600px" alt="Schematic illustration of HoJ trials and coverage progression.">
+<img src="./../README_files/images/testpurpose_select_hoj.svg" width="400px" alt="Schematic illustration of HoJ trials and coverage progression.">
 </center>
 
 <div style="padding-top: 20px; padding-bottom: 20px;">
