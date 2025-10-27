@@ -238,3 +238,79 @@ Transition to $\text{FAIL}^{dur}$ captures invalid quiescence, defined by:
 The last trace shows quiescence exceeding the allowed duration, with only $(41, Out!0)$ as a valid output after $(0, In?1)$, resulting in a $\text{FAIL}^{dur}$ verdict.
 
 
+### Using SPTG
+Navigate to the `SPTG` directory (e.g., the folder from the downloaded or cloned repository), then run: 
+```bash
+./bin/sptg.exe ./examples/example02_dummy/workflow_4_testcase_generation.sew
+```
+Excerpt of symbolic execution workflow file `./examples/example02_dummy/workflow_4_testcase_generation.sew` available [here](../example02_dummy/workflow_4_testcase_generation.sew)
+```
+project 'location of input reference model' [
+    source = "."
+    model  = "example02_dummy.xlia"
+] // end project
+supervisor {
+        limit 'of graph exploration' [
+            step = 1000 //symbex step count
+            eval = -1   //symbex eval count
+        ] // end limit
+        ...
+}
+...
+path#guided#testcase#generator testcase_genertor {
+    trace 'input test purpose' [
+        transition = "tr1"
+        transition = "tr2"
+    ] // end trace
+    vfs 'location and name of generated test case' [
+        folder = "output"
+        file#tc       = "testcase.xlia"
+        file#tc#puml  = "testcase.puml"
+    ] // end vfs
+    ...
+}
+```
+
+The user specifies the location of the model textual file, [`example02_dummy.xlia`](../examples/example02_dummy.xlia/example02_dummy.xlia), which is depicted below (zoom in for details):
+
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+<center>
+<img src="./../README_files/images/example02_dummy.svg" width="600px" alt="Dummy timed symbolic transition system">
+</center>
+
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+The user defines the **test purpose** as the consecutive sequence of transitions to be covered: `(tr1, tr2)`. 
+
+To control the symbolic exploration, it is necessary to define an **absolute termination criterion**. Here, a **maximum number of symbolic execution steps** (`step = 1000`) is specified to bound the search space. This limit ensures termination when the user-defined transition sequence cannot be covered within the allowed number of steps.  
+
+The execution produces the following output files:
+
+- **`./examples/example02_dummy/output/testcase.xlia`**  
+  The generated **test case** as a *timed symbolic automaton* encoded in the textual entry language **XLIA**, used by the symbolic execution platform **Diversity**, of which **SPTG** is an extension.  
+  The format is identical to that of the reference model from which the test case is derived.
+
+- **`./examples/example02_dummy/output/testcase.puml`**  
+  The **PlantUML representation** of the test case as a timed symbolic automaton.  
+  This file can be:
+  - converted to SVG (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide) below), or  
+  - opened directly with PlantUML-compatible tools such as the [PlantText online editor](https://www.planttext.com/).  
+  In particular, transitions are labeled using the **XLIA syntax** of Diversity, which is easy to read.
+
+- **`./examples/example02_dummy/output/testcase_smt.json`**  
+  The **JSON-encoded** version of the test case as a timed symbolic automaton.  
+  The progress and verdict guards are expressed in **SMT-LIB format**, directly compatible with SMT solvers such as **Z3**, facilitating test execution against the System Under Test (SUT).
+
+  The following figure depicts the generated test case, represented in SVG format and obtained from the `testcase.puml` file.
+
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+<center>
+<img src="./../README_files/images/dummy_testcase_gen.svg" width="700px" alt="Dummy timed symbolic automaton test case">
+</center>
+
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+
+
