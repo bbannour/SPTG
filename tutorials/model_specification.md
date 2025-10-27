@@ -68,10 +68,10 @@ For timed symbolic transition systems, a single machine is typically used to rep
 The automaton $\mathbb{G}$ is encoded in the **XLIA** input language of the **DIVERSITY** symbolic execution platform as follows:
 
 ```xlia
-timed system Example01_Dummy_S {
+timed system Example02_Dummy_S {
 
 @composite:
-	statemachine Example01_Dummy_SM {
+	statemachine Example02_Dummy_SM {
 	@public:
 		port input  In( urational );
 		port output Out( urational );
