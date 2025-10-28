@@ -1,10 +1,10 @@
 # SPTG: Symbolic Path-Guided Test Case Generator
 
-**SPTG** is a model-based test generation tool that automatically produces **conformance test cases** from system models mixing **data** and **timing constraints**.  
-It relies on **path-guided symbolic execution**, which follows a selected consecutive sequence of transitions (the **test purpose path**) while collecting symbolic constraints on inputs and timing.
+**SPTG** is a model-based test generation tool that automatically produces **conformance deterministic test cases** from system models combining both **data** and **timing constraints**. 
+It relies on **path-guided symbolic execution**, which explores a selected sequence of transitions (the **test purpose path**) and incrementally builds the corresponding **symbolic constraints** over inputs and timing. 
+These constraints are then solved using an **SMT solver** to determine **feasible symbolic paths**, ensuring that each generated test case corresponds to an **executable behavior** of the system under test.
 
----
-
+<!---
 ## Key Features
 
 - **Symbolic execution** : Generates test cases along *test purpose paths* by accumulating symbolic constraints on input data and timing conditions.  
@@ -12,8 +12,8 @@ It relies on **path-guided symbolic execution**, which follows a selected consec
 - **Deterministic path selection** : Only deterministic paths are used; non-deterministic ones are discarded, ensuring unambiguous, executable test cases that align with the symbolic execution tree.  
 - **Concise test cases** : Infeasible branches are pruned, and redundant constraints are simplified to keep the test cases minimal.  
 - **Coverage-oriented testing** : Test purpose paths can be user-defined or automatically selected from reference system model. As an extension of the Diversity symbolic execution platform, SPTG inherits advanced coverage analysis and test selection capabilities.
-
 ---
+-->
 
 ## Applications
 
@@ -21,7 +21,7 @@ It relies on **path-guided symbolic execution**, which follows a selected consec
 - **Offline generation** of efficient and deterministic test suites from formal models.  
 - **Teaching and demonstration** of symbolic execution and model-based test generation principles.
 
-SPTG implements the **Symbolic Path-Guided Test Generation** approach described in:  
+SPTG implements the **symbolic path-guided test generation approach** developped in:  
 👉 [https://doi.org/10.1016/j.scico.2025.103285](https://doi.org/10.1016/j.scico.2025.103285) *(Open Access)*
 
 ---
@@ -38,18 +38,19 @@ SPTG implements the **Symbolic Path-Guided Test Generation** approach described 
 
 | **Description** | **Content** |
 |------------------|-------------|
-| **Input 1:** *Timed symbolic automaton — Reference system model* | <img src="README_files/images/example01_paper_tacas.PNG" alt="Timed symbolic automaton"> |
-| **Input 2:** *Sequence of transitions (path) — Test purpose* | (tr1, tr2) |
-| **Output:** *Deterministic timed symbolic automaton — Generated test case* | <img src="README_files/images/example01_paper_tacas_testcase.PNG" alt="Deterministic timed symbolic automaton"> |
+| **Input 1:** *Timed symbolic automaton : Reference system model* | <img src="README_files/images/example02_dummy.svg" alt="Timed symbolic automaton"> |
+| **Input 2:** *Sequence of transitions (path) : Test purpose* | `(tr1, tr2)` |
+| **Output:** *Deterministic timed symbolic automaton : Generated test case* | <img src="README_files/images/dummy_testcase_gen.svg" alt="Deterministic timed symbolic automaton"> |
 
 ---
 
 ## Using SPTG
+
 ```
-./bin/sptg.exe ./examples/example02_dummy/workflow_4_testcase_generation.sew
+PATH_TO_SPTG/bin/sptg.exe PATH_TO_SPTG/examples/example02_dummy/workflow_4_testcase_generation.sew
 ```
 
-Excerpt of symbolic execution workflow file ```./examples/example02_dummy/workflow_4_testcase_generation.sew``` 
+Excerpt of symbolic execution workflow file ```PATH_TO_SPTG/examples/example02_dummy/workflow_4_testcase_generation.sew``` 
 ```
 project 'location of input reference model' [
     source = "."
@@ -69,15 +70,26 @@ path#guided#testcase#generator testcase_genertor {
     ...
 }
 ```
-This workflow instructs SPTG to generate a **test case** from the **reference model** (`example02_dummy.xlia`) using the **sequence of transitions** (tr1, tr2) that define the *test purpose*.
+This workflow instructs SPTG to generate a **test case** from the **reference system model** (`example02_dummy.xlia`) using the **sequence of transitions** `(tr1, tr2)` that define the *test purpose*.
+
+<div style="padding-top: 5px; padding-bottom: 5px;"></div>
 
 > **Note:**  
-> The input reference model automaton is encoded in the **XLIA language**, the input language of the **Diversity** symbolic execution platform.  
-> SPTG extends Diversity with dedicated functionality for symbolic path-guided test generation.  
-> See [model_specification](tutorials/model_specification.md) for more details.
+> The input reference model automaton is encoded in the **XLIA language**, the input language of the **Diversity** symbolic execution platform. **SPTG** extends Diversity with dedicated functionality for symbolic path-guided test generation.See [model_specification](tutorials/model_specification.md) for more details.
 
-SPTG generates the resulting **test case automaton** in both **XLIA** and **PlantUML** formats.  
-You can convert the `.puml` output to `.svg` using **PlantUML** (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)) or the online tool [PlantText](https://www.planttext.com/).
+<div style="padding-top: 5px; padding-bottom: 5px;"></div>
+
+SPTG generates the resulting **test case automaton** in the follwoing formats:
+
+- specification langauge **XLIA** the same langauge used to express the reference model (`PATH_TO_SPTG/examples/example02_dummy/output/testcase.xlia`) 
+
+- in graphical format **PlantUML** (`PATH_TO_SPTG/examples/example02_dummy/output/testcase.puml`). 
+
+- In addition, SPTG generates the test case automaton in JSON format with guards expressed in SMT-LIB format (`PATH_TO_SPTG/examples/example02_dummy/output/testcase_smt.json`).
+
+You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/plantuml/releases) or the online tool [PlantText](https://www.planttext.com/).
+
+You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
 
 Tutorials are available on:
 
@@ -92,7 +104,7 @@ Tutorials are available on:
 ## Compilation Instructions
 To compile SPTG, navigate to the `Release` directory of the `org.eclipse.efm.symbex` module:
 ```bash
-cd org.eclipse.efm.symbex/Release/
+cd PATH_TO_SPTG/org.eclipse.efm.symbex/Release/
 ```
 Then build the project:
 ```bash
