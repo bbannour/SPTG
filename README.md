@@ -4,34 +4,35 @@
 It relies on **path-guided symbolic execution**, which explores a selected sequence of transitions (the **test purpose path**) and incrementally builds the corresponding **symbolic constraints** over inputs and timing. 
 These constraints are then solved using an **SMT solver** to determine **feasible symbolic paths**, ensuring that each generated test case corresponds to an **executable behavior** of the system under test.
 
-<!---
-## Key Features
-
-- **Symbolic execution** : Generates test cases along *test purpose paths* by accumulating symbolic constraints on input data and timing conditions.  
-- **Unified treatment of data, time, and quiescence** : Supports both data and clock variables, and distinguishes between *expected quiescence* (permitted silence within a delay) and *missing outputs* (silence when an output is expected).  
-- **Deterministic path selection** : Only deterministic paths are used; non-deterministic ones are discarded, ensuring unambiguous, executable test cases that align with the symbolic execution tree.  
-- **Concise test cases** : Infeasible branches are pruned, and redundant constraints are simplified to keep the test cases minimal.  
-- **Coverage-oriented testing** : Test purpose paths can be user-defined or automatically selected from reference system model. As an extension of the Diversity symbolic execution platform, SPTG inherits advanced coverage analysis and test selection capabilities.
----
--->
-
 ## Applications
 
 - **Model-Based Testing (MBT)** of systems with combined data and timing behaviors.  
 - **Offline generation** of efficient and deterministic test suites from formal models.  
 - **Teaching and demonstration** of symbolic execution and model-based test generation principles.
 
+## References
 SPTG implements the **symbolic path-guided test generation approach** developped in:  
 👉 [https://doi.org/10.1016/j.scico.2025.103285](https://doi.org/10.1016/j.scico.2025.103285) *(Open Access)*
 
 ---
 
-## SPTG Tool I/O Flow
+## Table of content
+
+1. [SPTG overview](#sptg-overview)
+2. [SPTG evaluation](#sptg-evaluation)
+3. SPTG tutorials  
+   📘 [Tutorial on model specification](tutorials/model_specification.md)  
+   📘 [Tutorial on test case generation](tutorials/testcase_generation.md)  
+   📘 [Tutorial on test purpose selection](tutorials/testpurpose_selection.md)
+
+---
+
+## SPTG overview
 
 <div style="padding-top: 20px; padding-bottom: 20px;"></div>
 
 <center>
-<img src="README_files/images/sptg_io.png" width="600px" alt="SPTG Tool I/O Flow">
+<img src="README_files/images/overview_sptg_io.svg" width="400px" alt="SPTG Tool I/O Flow">
 </center>
 
 <div style="padding-top: 20px; padding-bottom: 20px;"></div>
@@ -44,7 +45,16 @@ SPTG implements the **symbolic path-guided test generation approach** developped
 
 ---
 
-## Using SPTG
+## SPTG evaluation
+
+SPTG directory Structure:
+
+- `examples`
+- `tutorials`
+- `src`
+- `third-party`
+- `Release`
+
 
 ```
 PATH_TO_SPTG/bin/sptg.exe PATH_TO_SPTG/examples/example02_dummy/workflow_4_testcase_generation.sew
@@ -90,14 +100,6 @@ SPTG generates the resulting **test case automaton** in the follwoing formats:
 You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/plantuml/releases) or the online tool [PlantText](https://www.planttext.com/).
 
 You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
-
-Tutorials are available on:
-
-📘 [Model specification for SPTG](tutorials/model_specification.md)
-
-📘 [Test case generation using SPTG](tutorials/testcase_generation.md)  
-
-📘  [Test purpose selection (inherited from the Diversity platform)](tutorials/testpurpose_selection.md) 
 
 ---
 
