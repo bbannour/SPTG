@@ -4,9 +4,16 @@
 
 # Test case generation
 
-The construction of the test case is obtained by applying dedicated symbolic execution techniques to the reference timed symbolic automaton, in order to derive a symbolic subtree restricted to the test purpose, i.e., a path represented as a sequence of transitions of the reference automaton. In the following, we **first provide an overview of these test-oriented symbolic techniques**, and **then describe the test case generation itself**, obtained by applying transformations to this subtree (mirroring and constraint simplifications).
+The construction of the test case is obtained by applying dedicated symbolic execution techniques to the reference timed symbolic automaton, in order to derive a symbolic subtree restricted to the test purpose, i.e., a path represented as a sequence of transitions of the reference automaton. In the following, we **first provide an overview of these test-oriented symbolic techniques**, and **then describe the test case generation itself**, obtained by applying transformations to this subtree (mirroring and constraint simplifications). Finally, we show how tu use SPTG to generate the test cases.
 
-## 1. Test-oriented Symbolic Execution Techniques
+
+1. [Test-oriented Symbolic Execution Techniques](#test-oriented-symbolic-execution-techniques)
+2. [Symbolic path-guided test case](#symbolic-path-guided-test-case)
+3. [Using SPTG](#using-sptg)
+
+
+
+## Test-oriented Symbolic Execution Techniques
 
 **Symbolic execution** explores a model by representing both data and time with symbolic variables instead of concrete values. It unfolds the automaton while generating constraints over symbolic variables, producing a **symbolic execution tree** . The tree's nodes are **execution contexts**, and its edges represent symbolic steps such as initialization, transition firing, or **quiescence completion**.
 
@@ -146,7 +153,7 @@ The test case $\mathbb{TC}_{\mathbf{tr}_1.\mathbf{tr}_2}$ which corresponds to t
 </div>
 
 
-## 2. Symbolic path-guided test case
+## Symbolic path-guided test case
 
 
 The test case $\mathbb{TC}_p$ is defined as a **timed symbolic transition system** equipped with a **single clock** `cl`, which measures the elapsed time before each action it performs.  
@@ -238,79 +245,93 @@ Transition to $\text{FAIL}^{dur}$ captures invalid quiescence, defined by:
 The last trace shows quiescence exceeding the allowed duration, with only $(41, Out!0)$ as a valid output after $(0, In?1)$, resulting in a $\text{FAIL}^{dur}$ verdict.
 
 
-### Using SPTG
-Navigate to the `SPTG` directory (e.g., the folder from the downloaded or cloned repository), then run: 
+## Using SPTG
+Navigate to the `/path/to/SPTG/examples/example02_dummy/` directory, then run: 
 ```bash
-./bin/sptg.exe ./examples/example02_dummy/workflow_4_testcase_generation.sew
+cd /path/to/SPTG/examples/example02_dummy/
+run-sptg-h2.sh
 ```
-Excerpt of symbolic execution workflow file `./examples/example02_dummy/workflow_4_testcase_generation.sew` available [here](../example02_dummy/workflow_4_testcase_generation.sew)
+Script `run-sptg-h2.sh` invokes `sptg.exe` using the workflow configuration file:
+
+**File** `/path/to/SPTG/examples/example02_dummy/workflow_4_testcase_generation_h2.sew` 
+
+An excerpt from this file:
 ```
-project 'location of input reference model' [
-    source = "."
+workspace [
+		root   = "example02_dummy"
+		launch = "example02_dummy"
+		output = "output_h2"
+] // end workspace
+...
+project 'path of input model' [
+  source = "."
     model  = "example02_dummy.xlia"
 ] // end project
-supervisor {
-        limit 'of graph exploration' [
-            step = 1000 //symbex step count
-            eval = -1   //symbex eval count
-        ] // end limit
-        ...
-}
 ...
 path#guided#testcase#generator testcase_genertor {
-    trace 'input test purpose' [
-        transition = "tr1"
-        transition = "tr2"
+    ...
+    trace [
+      //Sequence of elements characterizing the test purpose.
+      transition = "tr1"
+      transition = "tr2"
     ] // end trace
-    vfs 'location and name of generated test case' [
-        folder = "output"
+    vfs [
         file#tc       = "testcase.xlia"
         file#tc#puml  = "testcase.puml"
     ] // end vfs
     ...
 }
+...
 ```
+**SPTG** generates the resulting **test case automaton** in the following formats:
 
-The user specifies the location of the model textual file, [`example02_dummy.xlia`](../examples/example02_dummy/example02_dummy.xlia), which is depicted below (zoom in for details):
 
-<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+- **Graphical format: PlantUML**  
+  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.puml`  
+  *Comment:* This file provides a visual representation of the test case automaton, which can be rendered using PlantUML.
 
-<center>
-<img src="./../README_files/images/example02_dummy.svg" width="600px" alt="Dummy timed symbolic transition system">
-</center>
+- **Specification language: XLIA**  
+  The same language used to express the reference model.  
+  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.xlia`  
+  *Comment:* This file can be directly used for formal verification or as input to other tools that support XLIA.
 
-<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+- **JSON format with SMT-LIB guards**  
+  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase_smt.json`  
+  *Comment:* This JSON file encodes the test case automaton, including guards in SMT-LIB format, suitable for automated execution againt system under test (SUT) using an SMT-solver (e.g. Z3).
 
-The user defines the **test purpose** as the consecutive sequence of transitions to be covered: `(tr1, tr2)`. 
+> **Note:** The script also generates the graphical **PlantUML** file for the reference automaton:  
+> **File** `/path/to/SPTG/examples/example02_dummy/output_h2/example02_dummy.puml`  
+> *Comment:* This file provides a visual representation of the reference automaton. 
 
-To control the symbolic exploration, it is necessary to define an **absolute termination criterion**. Here, a **maximum number of symbolic execution steps** (`step = 1000`) is specified to bound the search space. This limit ensures termination when the user-defined transition sequence cannot be covered within the allowed number of steps.  
+> **Note:** You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/plantuml/releases) or the online tool [PlantText](https://www.planttext.com/). You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
 
-The execution produces the following output files:
+> **Note:** If the **PlantUML JAR** is located in `/path/to/SPTG/bin`, the script automatically produces:  
+> **File** `/path/to/SPTG/examples/example02_dummy/testcase.svg` .   
 
-- **`./examples/example02_dummy/output/testcase.xlia`**  
-  The generated **test case** as a *timed symbolic automaton* encoded in the textual entry language **XLIA**, used by the symbolic execution platform **Diversity**, of which **SPTG** is an extension.  
-  The format is identical to that of the reference model from which the test case is derived.
 
-- **`./examples/example02_dummy/output/testcase.puml`**  
-  The **PlantUML representation** of the test case as a timed symbolic automaton.  
-  This file can be:
-  - converted to SVG (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide) below), or  
-  - opened directly with PlantUML-compatible tools such as the [PlantText online editor](https://www.planttext.com/).  
-  In particular, transitions are labeled using the **XLIA syntax** of Diversity, which is easy to read.
 
-- **`./examples/example02_dummy/output/testcase_smt.json`**  
-  The **JSON-encoded** version of the test case as a timed symbolic automaton.  
-  The progress and verdict guards are expressed in **SMT-LIB format**, directly compatible with SMT solvers such as **Z3**, facilitating test execution against the System Under Test (SUT).
+The table below summarizes the inputs and outputs for generating the **test case** with SPTG. The figures shown are **visual representations** obtained by converting the corresponding **PlantUML** files into **SVG** format.
 
-  The following figure depicts the generated test case, represented in SVG format and obtained from the `testcase.puml` file.
 
-<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+| **Description** | **Content** |
+|-----------------|-------------|
+| **Input 1:** *Reference system model (Timed Symbolic Automaton)* | <img src="../README_files/images/example02_dummy.svg" alt="Timed symbolic automaton"> |
+| **Input 2:** *Test purpose (Sequence of transitions)* | `tr1; tr2` |
+| **Output:** *Generated test case (Deterministic Timed Symbolic Automaton)* | <img src="../README_files/images/dummy_testcase_gen.svg" alt="Deterministic timed symbolic automaton"> |
 
-<center>
-<img src="./../README_files/images/dummy_testcase_gen.svg" width="700px" alt="Dummy timed symbolic automaton test case">
-</center>
+To generate another test purpose of length 5 for the same reference model, run:
 
-<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+```bash
+cd /path/to/SPTG/examples/example02_dummy/
+run-sptg-h5.sh
+```
+This script executes the workflow configured for a longer test purpose (length 5).
+As a result, you obtain the following generated test case:
+
+| **Description** | **Content** |
+|-----------------|-------------|
+| **Input 2:** *Test purpose (Sequence of transitions)* | `tr1; tr2; tr1; tr3; tr4` |
+| **Output:** *Generated test case (Deterministic Timed Symbolic Automaton)* | <img src="../README_files/images/dummy_testcase_gen2.svg" alt="Deterministic timed symbolic automaton (second test case)"> |
 
 ---
 
@@ -343,6 +364,3 @@ Use the `-tsvg` flag to generate an SVG image:
 ```bash
 # Generates 'MyDiagram.svg'
 java -jar plantuml.jar -tsvg MyDiagram.puml
-
-
-
