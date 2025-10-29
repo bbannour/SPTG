@@ -1,0 +1,7 @@
+output request( 10 )
+input  request( 10 )
+input  closed( false )
+output closed( false )
+input  closed( true )
+output closed( true )
+input  sensor( 0 )

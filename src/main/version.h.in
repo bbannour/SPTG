@@ -1,0 +1,31 @@
+/*
+ * version.h
+ *
+ *  Created on: 26 mai 2016
+ *      Author: ss219326
+ */
+
+/* Warning : this file is needed by CMake to generate version.h 
+ * Expression @..@ are variables identifiers replaced  by CMake at
+ * configure time by their actual values. 
+ * 
+ * The resulting version.h can be included anywhere there is a need 
+ * to access the commit-id string 
+ */
+ 
+#ifndef MAIN_VERSION_H_IN_
+#define MAIN_VERSION_H_IN_
+
+
+#include <string>
+
+using namespace std;
+
+namespace sep {
+
+const string sources_commit_id("@GIT_COMMIT_ID@");
+
+} /* namespace sep */
+
+
+#endif /* MAIN_VERSION_H_IN_ */

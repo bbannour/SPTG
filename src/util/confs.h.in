@@ -1,0 +1,34 @@
+/*
+ * version.h
+ *
+ *  Created on: 8 juin 2016
+ *      Author: ss219326
+ */
+
+/* Warning : this file is needed by CMake to generate confs.h 
+ * Expression @..@ are variables identifiers replaced by CMake at
+ * configure time by their actual values. 
+ * 
+ * The resulting confs.h can be included anywhere there is a need 
+ * to known the actual native types size (in bytes).
+ */
+ 
+#ifndef MAIN_CONFS_H_IN_
+#define MAIN_CONFS_H_IN_
+
+#include <string>
+
+using namespace std;
+
+namespace sep {
+
+const int int_size       (@INT_SIZE@);
+const int short_int_size (@SHORT_INT_SIZE@);
+const int long_int_size  (@LONG_INT_SIZE@);
+const int char_size      (@CHAR_SIZE@);
+const string system_name ("@CMAKE_SYSTEM@-@CMAKE_SYSTEM_PROCESSOR@");
+
+} /* namespace sep */
+
+
+#endif /* MAIN_CONFS_H_IN_ */
