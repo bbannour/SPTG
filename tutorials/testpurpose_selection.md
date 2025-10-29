@@ -3,9 +3,9 @@
 
 # Test purpose selection using Hit-or-Jump (HoJ) exploration heuristic
 
-In the **test case generation** process (see the [model specification tutorial](testcase_generation.md)), the objective is to compute a **symbolic subtree** of the reference timed symbolic automaton restricted by a **test purpose**, defined as a **consecutive sequence of transitions** to be covered.
+In the **test case generation** process (see the [test case generation tutorial](testcase_generation.md)), the objective is to compute a **symbolic subtree** of the reference timed symbolic automaton restricted by a **test purpose**, defined as a **consecutive sequence of transitions** to be covered.
 
-To enable the **selection of such sequences** from the model, the **Hit-or-Jump (HoJ)** exploration heuristic — provided as a dedicated function of **SPTG**, inherited from **Diversity** — can be used. This heuristic guides symbolic exploration toward specific behavioral goals while avoiding exhaustive exploration of irrelevant paths.
+To enable the **selection of such sequences** from the model, the **Hit-or-Jump (HoJ)** exploration heuristic provided as a dedicated function of **SPTG**, inherited from the symbolic execution platform **Diversity** can be used. This heuristic guides symbolic exploration toward specific behavioral goals while avoiding exhaustive exploration of irrelevant paths.
 
 The user is interested in some behavior which can be seen **a set or sequence of reachable artefacts** during symbolic execution, i.e. coverage goal, which may include:
 - firing transitions  
@@ -20,7 +20,15 @@ Once such a symbolic path is identified:
 - This sequence can serve as the input **test purpose** for the **SPTG test case generation** process.  
 
 
-## 1. Principle of the Hit-or-Jump heuristic
+## Table of content
+
+1. [Principle of the HoJ heuristic](#principle-of-the-HoJ-heuristic)
+2. [Coverage Modes](#coverage-modes)
+3. [Heuristic Parameters](#coverage-modes)
+4. [Using SPTG](#using-sptg)
+
+
+## Principle of the HoJ Heuristic
 
 Assuming the **coverage goal** is a **sequence of (non-consecutive) transitions** which must be covered in order but the HoJ can fill the gaps in between to find the covering symbolic path (if any). During symbolic execution, HoJ drives the exploration of the symbolic automaton so that the generated symbolic tree **progressively covers prefixes** of this sequence until full coverage is achieved as illustrated in th the following figure (Schematic illustration of HoJ trials and coverage progression):
 
@@ -47,7 +55,7 @@ This process is **iteratively repeated** (Trial 1, Trial 2, …) until the full 
 
 
 
-## 2. Coverage Modes
+## Coverage Modes
 
 HoJ supports different **coverage modes**, depending on the structure of the declared test purpose and the desired level of strictness:
 
@@ -70,7 +78,7 @@ The HoJ heuristic is controlled by several key parameters that determine its exp
 
 Tuning these parameters allows balancing **exploration depth** and **search focus**, ensuring that the heuristic converges efficiently toward a subtree that satisfies the **test purpose**.
 
-## 4. Illustration on a use case
+## Using SPTG
 
 Consider an automaton model representing a leader agent that manages the insertion and departure of vehicles in a platoon, ensuring safe spacing and coordination. The model is encoded as a timed symbolic transition system corresponding to a UPPAAL model [https://doi.org/10.1016/J.SCICO.2017.05.006](https://doi.org/10.1016/J.SCICO.2017.05.006) *(Open Access)*. This model is interesting for illustrating the HoJ, as it exhibits long, intertwined transition paths, making it difficult to identify the exact sequence of consecutive transitions needed to realize certain desired behaviors.
 
@@ -79,30 +87,33 @@ The textual model is available [here](../examples/example05_automotive_platoon/e
 <div style="padding-top: 20px; padding-bottom: 20px;"></div>
 
 <center>
-<img src="./../README_files/images/example05_automotive_platoon.svg" width="600px" alt="Example of timed symbolic transition system">
+<img src="./../README_files/images/example05_automotive_platoon.svg" width="600px" alt="Platoon agent timed symbolic transition system">
 </center>
 
 <div style="padding-top: 20px; padding-bottom: 20px;"></div>
 
-### Using SPTG
-Navigate to the `SPTG` directory (e.g., the folder from the downloaded or cloned repository), then run: 
+Navigate to the `/path/to/SPTG/examples/example05_automotive_platoon/` directory, then run: 
 ```bash
-./bin/sptg.exe ./examples/example05_automotive_platoon/workflow_4_testpurpose_selection.sew
+cd /path/to/SPTG/examples/example05_automotive_platoon/
+run-sptg-4-testpurpose-selection.sh
 ```
+Script `run-sptg-4-testpurpose-selection.sh` invokes `sptg.exe` using the workflow configuration file:
 
-Excerpt of symbolic execution workflow file `./examples/example05_automotive_platoon/workflow_4_testpurpose_selection.sew` available [here](../examples/example05_automotive_platoon/workflow_4_testpurpose_selection.sew)
+**File** `/path/to/SPTG/examples/example02_dummy/workflow_4_testpurpose_selection.sew` 
+
+An excerpt from this file:
 ```
-project 'location of input reference model' [
+...
+workspace [
+		root   = "."
+		launch = "."
+		output = "output_testpurpose_selection"
+] // end workspace
+..
+project 'path of input model' [
     source = "."
     model  = "example05_automotive_platoon.xlia"
 ] // end project
-supervisor {
-        limit 'of graph exploration' [
-            step = 1000 //symbex step count
-            eval = -1   //symbex eval count
-        ] // end limit
-        ...
-}
 ...
 coverage#behavior behavior_coverage {
     ...
@@ -114,21 +125,27 @@ coverage#behavior behavior_coverage {
     heuristic [
         hit#consecutive = false
         jump#height = 3
-        jump#trials#limit = -1
+        jump#trials#limit = 42
         hit#count  = 1
         jump#count = 1
         ...
 	] // end heuristic
 }
+..
 serializer#symbex#trace#basic basic_trace_generator {
-    vfs [
-        folder = "output"
-        file   = "testpurpose.txt"
-	] // end vfs
+    format [
+		testcase#header = '// Sequence of transitions as testpurpose\n'
+		transition = '\ttransition = %3%\n'
+	] // end format
+	vfs [
+		folder = "."
+		file   = "testpurpose.txt"
+    ] // end vfs
 }
 ...
 }
 ```
+
 
 The user input is a sequence of (non-consecutive) transitions  
 `(q0.tr_join_r, q4.tr_joined_suc, q7.tr_platoon_m_c)`,  
@@ -150,24 +167,19 @@ It depicts the different stages of the process — from initiating the join requ
 
 *Figure – Real-world representation of the `join-middle-succ` scenario, showing the joining vehicle (`vehJ`) progressively integrating into the platoon.*
 
-
-Since HoJ performs a **heuristic and goal-oriented exploration** rather than an exhaustive one, it is necessary to define an **absolute criterion** to limit the exploration.  
-Here, a **maximum number of symbolic execution steps** (`step = 1000`) is specified to bound the search.  
-This limit ensures termination when the user-defined sequence cannot be covered within the allowed steps.
-
 This execution generates a file:  
-`./examples/example05_automotive_platoon/output/testpurpose.txt`  
+`/path/to/SPTG/examples/example05_automotive_platoon/output_testpurpose_selection/testpurpose.txt`  
 with the following content:
  ```
- TRACE PATH 1 ec13
-	fired q0.tr_join_r
-	fired q1.tr_set_spacing_c
-	fired q2.tr_set_spacing_from
-	fired q3.tr_join_agr_c
-	fired q4.tr_joined_suc
-	fired q5.tr_set_spacing_c
-	fired q6.tr_set_spacing_from
-	fired q7.tr_platoon_m_c
+// Sequence of transitions as testpurpose
+	transition = q0.tr_join_r
+	transition = q1.tr_set_spacing_c
+	transition = q2.tr_set_spacing_from
+	transition = q3.tr_join_agr_c
+	transition = q4.tr_joined_suc
+	transition = q5.tr_set_spacing_c
+	transition = q6.tr_set_spacing_from
+	transition = q7.tr_platoon_m_c
  ```
 
 

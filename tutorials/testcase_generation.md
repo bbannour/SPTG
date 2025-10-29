@@ -8,7 +8,7 @@ The construction of the test case is obtained by applying dedicated symbolic exe
 
 
 1. [Test-oriented Symbolic Execution Techniques](#test-oriented-symbolic-execution-techniques)
-2. [Symbolic path-guided test case](#symbolic-path-guided-test-case)
+2. [Symbolic Path-guided Test Case](#symbolic-path-guided-test-case)
 3. [Using SPTG](#using-sptg)
 
 
@@ -153,7 +153,7 @@ The test case $\mathbb{TC}_{\mathbf{tr}_1.\mathbf{tr}_2}$ which corresponds to t
 </div>
 
 
-## Symbolic path-guided test case
+## Symbolic Path-guided Test Case
 
 
 The test case $\mathbb{TC}_p$ is defined as a **timed symbolic transition system** equipped with a **single clock** `cl`, which measures the elapsed time before each action it performs.  
