@@ -14,7 +14,7 @@ echo "| Checking for the existence of the SPTG_EXE and the optional PLANTUML_JAR
 # We assume the SPTG executable path for all scripts, adjust if necessary
 SPTG_EXE=$( realpath -m $SAMPLE_MAIN_PATH/../bin/sptg.exe )
 
-if [ -f $SPTG_EXE ]
+if [[ -f $SPTG_EXE && -x $SPTG_EXE ]]
 then
     echo "| SPTG_EXE=$SPTG_EXE : OK !"
 else
@@ -30,13 +30,23 @@ then
     echo "| PLANTUML_JAR=$PLANTUML_JAR : OK !"
 else
     echo "| PLANTUML_JAR=$PLANTUML_JAR : NOT FOUND !"
-    echo "| Download it the in the directory ./SPTG/bin from https://github.com/plantuml/plantuml/releases"
+    echo "| Download it in the directory ./SPTG/bin from https://github.com/plantuml/plantuml/releases"
+fi
+
+# We assume the GRAPHVIZ_DOT executable required by PLANTUML_JAR is present, adjust if necessary
+GRAPHVIZ_DOT=$( realpath -m $SAMPLE_MAIN_PATH/../bin/dot )
+if [[ -f $GRAPHVIZ_DOT && -x $GRAPHVIZ_DOT ]]
+then
+    echo "| GRAPHVIZ_DOT=$GRAPHVIZ_DOT : OK !"
+else
+    echo "| GRAPHVIZ_DOT=$GRAPHVIZ_DOT : NOT FOUND !"
+    echo "| Install it the your system with the command 'sudo apt install graphviz'"
 fi
 
 
 RUN_SAMPLE_ALL_SH=run-all.sh
 RUN_SAMPLE_SPTG_SH=run-sptg.sh
-# Run all Symbolic Exxecutiohn Workflow of all examples
+# Run all Symbolic Exxecution Workflow of all examples
 # that has the script $RUN_SAMPLE_SH
 for sample in */; do
     if [ -d "$sample" ]; then

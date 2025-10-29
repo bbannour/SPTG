@@ -19,9 +19,6 @@ workflow {
 			model  = "example05_automotive_platoon.xlia"
 		] // end project
 		supervisor {
-			limit 'of graph exploration' [
-				height = 1000
-			] // end limit
 			queue 'defining the exploration/search strategy' [
 				strategy = 'WEIGHT#BREADTH_FIRST_SEARCH'
 				heuristic = true
@@ -53,7 +50,7 @@ workflow {
 					hit#final   = true
 					jump#slice  = false
 					jump#height = 3
-					jump#trials#limit = -1
+					jump#trials#limit = 42
 					hit#count  = 1
 					jump#count = 1
 				] // end heuristic
@@ -74,7 +71,7 @@ workflow {
 				] // end trace
 				format [
 					testcase#header = '// Sequence of transitions as testpurpose\n'
-					transition = '\ttransition = %3%\n'
+					transition = '\ttransition = "%2%.%3%"\n'
 				] // end format
 				vfs [
 					folder = "."

@@ -10,8 +10,8 @@ SAMPLE_PATH="$( dirname "$(realpath "$0")" )"
 # for the main parent script ../run-all.sh
 cd $SAMPLE_PATH
 
-# Run all Symbolic Exxecutiohn Workflow for testpurpose of length 2
-./run-sptg-h2.sh $@
+# Run all Symbolic Execution Workflow for testpurpose of length 2
+./run-sptg-h2.sh $
 
-# Run all Symbolic Exxecutiohn Workflow for testpurpose of length 5
+# Run all Symbolic Execution Workflow for testpurpose of length 5
 ./run-sptg-h5.sh $@
