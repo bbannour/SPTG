@@ -16,7 +16,7 @@ workflow {
 		] // end manifest
 		project 'path of input model' [
 			source = "."
-    		model  = "exemple01_basic_timed_system.xlia"
+    		model  = "exemple08_absolute_value.xlia"
 		] // end project
 		supervisor {
 			queue 'defining the exploration/search strategy' [
@@ -67,7 +67,7 @@ workflow {
 					statement = true
 				] // end transition
 				vfs [
-					file = "exemple01_basic_timed_system.puml"
+					file = "exemple08_absolute_value.puml"
 				] // end vfs
 			}
 		] // end worker

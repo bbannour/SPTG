@@ -7,7 +7,7 @@ workflow {
 	workspace [
 		root   = "."
 		launch = "."
-		output = "output"
+		output = "output_h5"
 	] // end workspace
 	director extraneous#module 'as main execution objective' {
 		manifest [
@@ -16,7 +16,7 @@ workflow {
 		] // end manifest
 		project 'path of input model' [
 			source = "."
-    		model  = "exemple01_basic_timed_system.xlia"
+    		model  = "example02_dummy.xlia"
 		] // end project
 		supervisor {
 			queue 'defining the exploration/search strategy' [
@@ -50,6 +50,9 @@ workflow {
 					//Sequence of elements characterizing the test purpose.
 					transition = "tr1"
 					transition = "tr2"
+					transition = "tr1"
+					transition = "tr3"
+					transition = "tr4"
 				] // end trace
 				uncontrollable [
 					//List of uncrollable input.
@@ -67,7 +70,7 @@ workflow {
 					statement = true
 				] // end transition
 				vfs [
-					file = "exemple01_basic_timed_system.puml"
+					file = "example02_dummy.puml"
 				] // end vfs
 			}
 		] // end worker
@@ -84,8 +87,8 @@ workflow {
 		verbose = 'MINIMUM'
 	] // end console
 	shell [
-		// Stop the current execution workflow if it detects the creation of the above file !
-		stop = "symbex.stop"  // default "stop.sew"
+		// Stop stop the current execution if it detects the creation of the above file !
+		stop = "symbex.stop"
 	] // end shell
 }
 

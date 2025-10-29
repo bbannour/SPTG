@@ -5,9 +5,9 @@
 // CEA - LIST
 workflow {
 	workspace [
-		root   = "example05_automotive_platoon"
-		launch = "example05_automotive_platoon"
-		output = "."
+		root   = "."
+		launch = "."
+		output = "output_testpurpose_selection"
 	] // end workspace
 	director behavior#selection 'as main execution objective' {
 		manifest [
@@ -20,8 +20,7 @@ workflow {
 		] // end project
 		supervisor {
 			limit 'of graph exploration' [
-				step = 1000
-				eval = -1
+				height = 1000
 			] // end limit
 			queue 'defining the exploration/search strategy' [
 				strategy = 'WEIGHT#BREADTH_FIRST_SEARCH'
@@ -30,13 +29,6 @@ workflow {
 			redundancy 'detection strategy' [
 				loop#detection#trivial = true
 			] // end redundancy
-			console [
-				format = "\nstep:%1% , context:%2% , height:%3% , width:%4%%5%\n"
-				report = "\nstop:%1% , context:%2% , height:%3% , width:%4%%5%\n"
-				spider#init = "\n<$spider(%1%:%2%:%3%:%4%)%5%\n"
-				spider#step = "\n$spider(%1%:%2%:%3%:%4%)%5%\n"
-				spider#stop = "\n>$spider(%1%:%2%:%3%:%4%)%5%\n"
-			] // end console
 		}
 		worker [
 			coverage#behavior behavior_coverage {
@@ -65,12 +57,6 @@ workflow {
 					hit#count  = 1
 					jump#count = 1
 				] // end heuristic
-				console [
-					format = " - coverage: %1% / %2%"
-					spider#init = "$cover(%1%:%2%)"
-					spider#step = "$cover(%1%:%2%)"
-					spider#stop = "$cover(%1%:%2%)"
-				] // end console
 			}
 			serializer#symbex#trace#basic basic_trace_generator {
 				property [
@@ -83,50 +69,25 @@ workflow {
 					print#initial#values = false
 					print#lifelines = false
 				] // end property
-				trace [
-					//See full grammar of [Trace Specification] at the end of this generated file
+				trace [ // filtered elements
 					transition = '[*]'
 				] // end trace
 				format [
-					execution#context#id = 'ec%1%'
-					testcase#header = 'TRACE PATH %1% %2%\n'
-					step#header = 'step %1% --> %2%\n'
-					comment = '\t// %1%\n'
-					path#condition = '\tPC: %1%\n'
-					path#timed#condition = '\tPtC: %1%\n'
-					node#condition = '\tNC: %1%\n'
-					node#timed#condition = '\tNtC: %1%\n'
-					time = '\tdelta = %4%\n'
-					assign = '\t%3% = %4%\n'
-					newfresh = '\tnewfresh(%2%:%3%) <- %4%\n'
-					input#env = '\tINPUT  %2%:%3%%4%\n'
-					input#rdv = '\tinput  %2%:%3%%4%\n'
-					input = '\tinput  %2%:%3%%4%\n'
-					output#env = '\tOUTPUT %2%:%3%%4%\n'
-					output#rdv = '\toutput %2%:%3%%4%\n'
-					output = '\toutput %2%:%3%%4%\n'
-					routine = '\tinvoke %2%:%3%\n'
-					transition = '\tfired %2%.%3%\n'
-					machine = '\trun %2%:%3%\n'
-					value#parameter#begin = "("
-					value#parameter#separator = " , "
-					value#parameter#end = ")"
+					testcase#header = '// Sequence of transitions as testpurpose\n'
+					transition = '\ttransition = %3%\n'
 				] // end format
 				vfs [
-					folder = "output"
+					folder = "."
 					file   = "testpurpose.txt"
 				] // end vfs
 			}
 			serializer#model#graphic model2graphic {
 				statemachine [
 					transition = true
-				] // end property
+				] // end statemachine
 				transition [
 					statement = true
-				] // end property
-				statement [
-					statement = true
-				] // end property
+				] // end transition
 				vfs [
 					file = "example05_automotive_platoon.puml"
 				] // end vfs
@@ -134,20 +95,12 @@ workflow {
 		] // end worker
 	}
 	symbex 'option' [
-		name_id_separator = ""   // default "#"
+		name_id_separator = ""
 		newfresh_param_name_pid = false
-		pretty_printer_var_name = true   // default false
-		time_name_id = "$time"
-		time_initial_value = 0
+		pretty_printer_var_name = true
 		delta_name_id = "#"
-		delta_initial_value = 0
-		node_condition_enabled = false   // default false
-		separation_of_pc_disjunction = false
 		check_pathcondition_satisfiability = true
-		//strongly_check_pathcondition_satisfiability = true
-		//make_trivial_assignment_from_guard = true
-		//make_trivial_assignment_from_timed_guard = true
-		constraint_solver = "Z3"  // CVC5 | YICES
+		constraint_solver = "Z3"
 	] // end symbex
 	console [
 		verbose = 'MINIMUM'

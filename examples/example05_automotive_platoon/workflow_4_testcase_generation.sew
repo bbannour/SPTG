@@ -16,7 +16,7 @@ workflow {
 		] // end manifest
 		project 'path of input model' [
 			source = "."
-    		model  = "exemple01_basic_timed_system.xlia"
+    		model  = "example05_automotive_platoon.xlia"
 		] // end project
 		supervisor {
 			queue 'defining the exploration/search strategy' [
@@ -48,8 +48,14 @@ workflow {
 				] // end property
 				trace [
 					//Sequence of elements characterizing the test purpose.
-					transition = "tr1"
-					transition = "tr2"
+					transition = "q0.tr_join_r"
+					transition = "q1.tr_set_spacing_c"
+					transition = "q2.tr_set_spacing_from"
+					transition = "q3.tr_join_agr_c"
+					transition = "q4.tr_joined_suc"
+					transition = "q5.tr_set_spacing_c"
+					transition = "q6.tr_set_spacing_from"
+					transition = "q7.tr_platoon_m_c"
 				] // end trace
 				uncontrollable [
 					//List of uncrollable input.
@@ -67,7 +73,7 @@ workflow {
 					statement = true
 				] // end transition
 				vfs [
-					file = "exemple01_basic_timed_system.puml"
+					file = "example05_automotive_platoon.puml"
 				] // end vfs
 			}
 		] // end worker

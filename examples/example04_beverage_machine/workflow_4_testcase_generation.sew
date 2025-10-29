@@ -16,7 +16,7 @@ workflow {
 		] // end manifest
 		project 'path of input model' [
 			source = "."
-    		model  = "exemple01_basic_timed_system.xlia"
+    		model  = "example04_beverage_machine.xlia"
 		] // end project
 		supervisor {
 			queue 'defining the exploration/search strategy' [
@@ -50,6 +50,7 @@ workflow {
 					//Sequence of elements characterizing the test purpose.
 					transition = "tr1"
 					transition = "tr2"
+					transition = "tr3"
 				] // end trace
 				uncontrollable [
 					//List of uncrollable input.
@@ -67,7 +68,7 @@ workflow {
 					statement = true
 				] // end transition
 				vfs [
-					file = "exemple01_basic_timed_system.puml"
+					file = "example04_beverage_machine.puml"
 				] // end vfs
 			}
 		] // end worker
