@@ -13,11 +13,12 @@
 
 ## SPTG overview
 
+<center>
 <div style="text-align: center; margin: 0 10px;">
     <img src="README_files/images/overview_sptg_io.svg" width="325px" alt="Image One Description">
     <p style="text-align: center; font-size: 0.9em; color: #555;">**Figure 1:** Schematic view of SPTG showing the model automaton with a selected test purpose (blue path) and the generated test case automaton with terminal verdict states.</p>
   </div>
-
+</center>
 
 **SPTG** is a model-based test generation tool that automatically produces **conformance deterministic test cases** from system models combining both **data** and **timing constraints**. As shown in **Figure 1**, SPTG takes an **automaton model** and a **test purpose**, i.e., a path of the model, and generates the corresponding **test case automaton** with **verdict states** PASS, FAIL, INC (for inconclusive).
 
