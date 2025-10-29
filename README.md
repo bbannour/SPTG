@@ -4,7 +4,7 @@
 
 1. [SPTG overview](#sptg-overview)
 2. [Quick start with SPTG](#quick-start-with-sptg)
-    - [First example](#first-example)
+    - [Start with example](#start-with-example)
     - [Run all examples](#run-all-examples)
     - [Compilation instructions](#compilation-instructions)
 
@@ -96,7 +96,7 @@ SPTG directory Structure:
 
 
 
-### First example
+### Start with example
 
 ```sh
 cd /path/to/SPTG/examples/example02_dummy/
@@ -146,9 +146,6 @@ This script instructs **SPTG** to generate a **test case** with the following sp
 > **Note:** If the **PlantUML JAR** and the Graphviz `dot` executable are located in `/path/to/SPTG/bin`, the script automatically produces:  
 > **File** `/path/to/SPTG/examples/example02_dummy/testcase.svg`.
    
-
-
-
 The table below summarizes the inputs and outputs for generating a **test case** with SPTG. The figures shown are **visual representations** obtained by converting the corresponding **PlantUML** files into **SVG** format.
 
 
