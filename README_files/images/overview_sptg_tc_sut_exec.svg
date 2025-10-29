@@ -980,7 +980,7 @@
        id="clipPath125">
       <path
          d="M 1.4305e-5,0 H 960.00001 V 540 H 1.4305e-5 Z"
-         transform="matrix(1,0,0,-1,-346.80001,57.576001)"
+         transform="matrix(1,0,0,-1,-316.32001,57.720001)"
          clip-rule="evenodd"
          id="path125" />
     </clipPath>
@@ -1016,7 +1016,7 @@
        id="clipPath134">
       <path
          d="M 1.4305e-5,0 H 960.00001 V 540 H 1.4305e-5 Z"
-         transform="matrix(1,0,0,-1,-310.70001,114.34)"
+         transform="matrix(1,0,0,-1,-310.70001,119.76)"
          clip-rule="evenodd"
          id="path134" />
     </clipPath>
@@ -1252,9 +1252,9 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="1.415625"
-     inkscape:cx="533.33333"
-     inkscape:cy="228.16777"
+     inkscape:zoom="1.43125"
+     inkscape:cx="533.79913"
+     inkscape:cy="227.77293"
      inkscape:window-width="2400"
      inkscape:window-height="1422"
      inkscape:window-x="-8"
@@ -1584,7 +1584,7 @@
        id="g32">
       <path
          id="path33"
-         d="m 269.83,156.26 68.28,-93.479 -1.21,-0.885 -68.29,93.484 z m 67.71,-86.934 0.84,-8.188 -7.54,3.295 c -0.38,0.166 -0.55,0.608 -0.39,0.987 0.17,0.38 0.61,0.553 0.99,0.388 l 6.37,-2.781 -1.05,-0.764 -0.71,6.909 c -0.05,0.412 0.25,0.781 0.67,0.823 0.41,0.043 0.78,-0.257 0.82,-0.669 z"
+         d="m 270.52,157.25 65.49,-80.65 -1.16,-0.946 -65.49,80.656 z m 64.59,-74.143 1.26,-8.135 -7.7,2.905 c -0.39,0.146 -0.59,0.579 -0.44,0.967 0.15,0.387 0.58,0.583 0.97,0.437 l 6.5,-2.452 -1.01,-0.817 -1.07,6.864 c -0.06,0.41 0.22,0.793 0.63,0.857 0.41,0.063 0.79,-0.217 0.86,-0.626 z"
          style="fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none"
          transform="matrix(1.3333333,0,0,-1.3333333,0,720)" />
     </g>
@@ -2711,7 +2711,7 @@
        id="g123">
       <path
          id="path124"
-         d="m 338.46,47.46 h 56.88 v 27.36 h -56.88 z"
+         d="m 307.98,47.58 h 56.88 v 27.36 h -56.88 z"
          style="fill:#f2f2f2;fill-opacity:1;fill-rule:evenodd;stroke:#ff0000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
          transform="matrix(1.3333333,0,0,-1.3333333,0,720)" />
     </g>
@@ -2720,10 +2720,10 @@
       <text
          id="text124"
          xml:space="preserve"
-         transform="matrix(1.3333333,0,0,1.3333333,462.4,643.232)"
+         transform="matrix(1.3333333,0,0,1.3333333,421.76,643.04)"
          clip-path="url(#clipPath125)"><tspan
-           style="font-variant:normal;font-weight:700;font-size:10.56px;font-family:'Times New Roman';writing-mode:lr-tb;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none"
-           x="0 6.4944 14.19264 18.30048 25.36512 30.645121 36.516479"
+           style="font-variant:normal;font-weight:700;font-size:10.584px;font-family:'Times New Roman';writing-mode:lr-tb;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none"
+           x="0 6.4668241 14.150808 18.225649 25.285175 30.577175 36.46188"
            y="0"
            sodipodi:role="line"
            id="tspan124">FAILout</tspan></text>
@@ -2801,7 +2801,7 @@
        id="g132">
       <path
          id="path133"
-         d="m 306.24,118.86 c 0,4.08 3.33,7.38 7.44,7.38 4.11,0 7.44,-3.3 7.44,-7.38 0,-4.08 -3.33,-7.38 -7.44,-7.38 -4.11,0 -7.44,3.3 -7.44,7.38 z"
+         d="m 306.24,124.32 c 0,4.04 3.33,7.32 7.44,7.32 4.11,0 7.44,-3.28 7.44,-7.32 0,-4.04 -3.33,-7.32 -7.44,-7.32 -4.11,0 -7.44,3.28 -7.44,7.32 z"
          style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
          transform="matrix(1.3333333,0,0,-1.3333333,0,720)" />
     </g>
@@ -2810,7 +2810,7 @@
       <text
          id="text133"
          xml:space="preserve"
-         transform="matrix(1.3333333,0,0,1.3333333,414.26667,567.54667)"
+         transform="matrix(1.3333333,0,0,1.3333333,414.26667,560.32)"
          clip-path="url(#clipPath134)"><tspan
            style="font-variant:normal;font-weight:normal;font-size:12px;font-family:'Times New Roman';writing-mode:lr-tb;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
            x="0"
