@@ -49,7 +49,7 @@ Infeasible branches, inconsistent with the test purpose, are pruned early during
 
   <div style="text-align: center; margin: 0 10px;">
     <img src="README_files/images/overview_sptg_tc_sut_exec.svg" width="900px" alt="Image Two Description">
-    <p style="text-align: center; font-size: 0.9em; color: #555;">**Figure 2:** Execution of a generated test case against the System Under Test (SUT) with verdicts determined at runtime.</p>
+    <p style="text-align: center; font-size: 0.9em; color: #555;"><strong>Figure 2:</strong> Execution of a generated test case against the System Under Test (SUT) with verdicts determined at runtime.</p>
   </div>
 
 
@@ -73,7 +73,7 @@ As an extension of the symbolic execution platform Diversity ([https://projects.
 
 SPTG directory Structure:
 
-- `bin/`: This directory contains the SPTG tool binary `sptg.exe`. It also includes the PlantUML JAR, which allows visualization and export of generated test cases in graphical PlantUML (SVG) format.
+- `bin/`: This directory contains the SPTG tool binary `sptg.exe`. It also includes the PlantUML JAR and the Graphviz executable (`dot`), which together enable visualization and export of generated test cases in graphical PlantUML (SVG) format.
 
 - `examples/`: This directory contains all examples. It has a subdirectory for each example and a script `run-all.sh` to run all preconfigured test case generation tasks. Each example subdirectory includes:
   - The reference model.
