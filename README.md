@@ -8,12 +8,27 @@
     - [Run all examples](#run-all-examples)
     - [Compilation instructions](#compilation-instructions)
 
-
 3. SPTG tutorials  
-   📘 [Tutorial on model specification](tutorials/model_specification.md)  
-   📘 [Tutorial on test case generation](tutorials/testcase_generation.md)  
-   📘 [Tutorial on test purpose selection](tutorials/testpurpose_selection.md)
 
+   📘 Tutorial on model specification:
+
+   `/path/to/SPTG/tutorials/model_specification.md`
+
+   or `/path/to/SPTG/tutorials/model_specification.pdf`
+   
+   📘 Tutorial on test case generation:
+   
+   `/path/to/SPTG/tutorials/testcase_generation.md`
+
+   or
+   `/path/to/SPTG/tutorials/testcase_generation.pdf`
+   
+   📘 [Tutorial on test purpose selection:
+   
+    `/path/to/SPTG/tutorials/testpurpose_selection.md`
+
+   or `/path/to/SPTG/tutorials/testpurpose_selection.pdf`
+  
 ---
 
 ## SPTG overview
@@ -84,7 +99,7 @@ SPTG directory Structure:
 ### First example
 
 ```sh
-cd PATH_TO_SPTG/examples/example02_dummy/
+cd /path/to/SPTG/examples/example02_dummy/
 run-sptg.sh
 ```
 
@@ -92,7 +107,7 @@ run-sptg.sh
 This script instructs **SPTG** to generate a **test case** with the following specifications:
 
 - **Reference model:**  
-  `PATH_TO_SPTG/examples/example02_dummy/example02_dummy.xlia`
+  `/path/to/SPTG/examples/example02_dummy/example02_dummy.xlia`
 
 - **Test purpose:** Defined as the **sequence of transitions**: `tr1; tr2`
 
@@ -110,26 +125,26 @@ This script instructs **SPTG** to generate a **test case** with the following sp
 
 
 - **Graphical format: PlantUML**  
-  **File** `PATH_TO_SPTG/examples/example02_dummy/output_h2/testcase.puml`  
+  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.puml`  
   *Comment:* This file provides a visual representation of the test case automaton, which can be rendered using PlantUML.
 
 - **Specification language: XLIA**  
   The same language used to express the reference model.  
-  **File** `PATH_TO_SPTG/examples/example02_dummy/output_h2/testcase.xlia`  
-  *Comment:* This file can be directly used for formal verification or as input to other tools that support XLIA.
+  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.xlia`  
+  *Comment:* This file can be directly explored using the symbolic execution platform Diversity.
 
 - **JSON format with SMT-LIB guards**  
-  **File** `PATH_TO_SPTG/examples/example02_dummy/output_h2/testcase_smt.json`  
+  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase_smt.json`  
   *Comment:* This JSON file encodes the test case automaton, including guards in SMT-LIB format, suitable for automated execution againt system under test (SUT) using an SMT-solver (e.g. Z3).
 
 > **Note:** The script also generates the graphical **PlantUML** file for the reference automaton:  
-> **File** `PATH_TO_SPTG/examples/example02_dummy/output_h2/example02_dummy.puml`  
+> **File** `/path/to/SPTG/examples/example02_dummy/output_h2/example02_dummy.puml`  
 > *Comment:* This file provides a visual representation of the reference automaton. 
 
 > **Note:** You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/plantuml/releases) or the online tool [PlantText](https://www.planttext.com/). You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
 
-> **Note:** If the **PlantUML JAR** is located in `PATH_TO_SPTG/bin`, the script automatically produces:  
-> **File** `PATH_TO_SPTG/examples/example02_dummy/testcase.svg` .   
+> **Note:** If the **PlantUML JAR** is located in `/path/to/SPTG/bin`, the script automatically produces:  
+> **File** `/path/to/SPTG/examples/example02_dummy/testcase.svg` .   
 
 
 
@@ -144,13 +159,13 @@ The table below summarizes the inputs and outputs for generating a **test case**
 
 ### Run all examples
 ```sh
-cd PATH_TO_SPTG/examples/
+cd /path/to/SPTG/examples/
 run-all.sh
 ```
 ### Compilation instructions
 To compile SPTG, navigate to the `Release` directory of the `org.eclipse.efm.symbex` module:
 ```bash
-cd PATH_TO_SPTG/org.eclipse.efm.symbex/Release/
+cd /path/to/SPTG/org.eclipse.efm.symbex/Release/
 ```
 Then build the project:
 ```bash
