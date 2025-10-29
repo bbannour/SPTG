@@ -1,25 +1,9 @@
 # SPTG: Symbolic Path-Guided Test Case Generator
 
-**SPTG** is a model-based test generation tool that automatically produces **conformance deterministic test cases** from system models combining both **data** and **timing constraints**. 
-It relies on **path-guided symbolic execution**, which explores a selected sequence of transitions (the **test purpose path**) and incrementally builds the corresponding **symbolic constraints** over inputs and timing. 
-These constraints are then solved using an **SMT solver** to determine **feasible symbolic paths**, ensuring that each generated test case corresponds to an **executable behavior** of the system under test.
-
-## Applications
-
-- **Model-Based Testing (MBT)** of systems with combined data and timing behaviors.  
-- **Offline generation** of efficient and deterministic test suites from formal models.  
-- **Teaching and demonstration** of symbolic execution and model-based test generation principles.
-
-## References
-SPTG implements the **symbolic path-guided test generation approach** developped in:  
-👉 [https://doi.org/10.1016/j.scico.2025.103285](https://doi.org/10.1016/j.scico.2025.103285) *(Open Access)*
-
----
-
 ## Table of content
 
 1. [SPTG overview](#sptg-overview)
-2. [SPTG evaluation](#sptg-evaluation)
+2. [Quick start with SPTG](#sptg-evaluation)
 3. SPTG tutorials  
    📘 [Tutorial on model specification](tutorials/model_specification.md)  
    📘 [Tutorial on test case generation](tutorials/testcase_generation.md)  
@@ -29,23 +13,40 @@ SPTG implements the **symbolic path-guided test generation approach** developped
 
 ## SPTG overview
 
-<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+<div style="text-align: center; margin: 0 10px;">
+    <img src="README_files/images/overview_sptg_io.svg" width="325px" alt="Image One Description">
+    <p style="text-align: center; font-size: 0.9em; color: #555;">**Figure 1:** Schematic view of SPTG showing the model automaton with a selected test purpose (blue path) and the generated test case automaton with terminal verdict states.</p>
+  </div>
 
-<center>
-<img src="README_files/images/overview_sptg_io.svg" width="400px" alt="SPTG Tool I/O Flow">
-</center>
 
-<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+**SPTG** is a model-based test generation tool that automatically produces **conformance deterministic test cases** from system models combining both **data** and **timing constraints**. As shown in **Figure 1**, SPTG takes an **automaton model** and a **test purpose**, i.e., a path of the model, and generates the corresponding **test case automaton** with **verdict states** PASS, FAIL, INC (for inconclusive).
 
-| **Description** | **Content** |
-|------------------|-------------|
-| **Input 1:** *Timed symbolic automaton : Reference system model* | <img src="README_files/images/example02_dummy.svg" alt="Timed symbolic automaton"> |
-| **Input 2:** *Sequence of transitions (path) : Test purpose* | `(tr1, tr2)` |
-| **Output:** *Deterministic timed symbolic automaton : Generated test case* | <img src="README_files/images/dummy_testcase_gen.svg" alt="Deterministic timed symbolic automaton"> |
+
+It relies on **path-guided symbolic execution**, which explores the input path and builds **symbolic constraints** over inputs and timing.
+SPTG embeds the **Z3 SMT solver**, which is used to check the **satisfiability of path conditions** along the main test purpose path and its **immediate divergent paths**, as well as to ensure determinism.
+Infeasible branches, inconsistent with the test purpose, are pruned early during symbolic exploration, avoiding dead paths that correspond to excluded behaviors.
+
+  <div style="text-align: center; margin: 0 10px;">
+    <img src="README_files/images/overview_sptg_tc_sut_exec.svg" width="900px" alt="Image Two Description">
+    <p style="text-align: center; font-size: 0.9em; color: #555;">**Figure 2:** Execution of a generated test case against the System Under Test (SUT) with verdicts determined at runtime.</p>
+  </div>
+
+
+**Figure 2** illustrates the execution phase, where the generated test case interacts with the **System Under Test (SUT)**. During execution, **Z3** is used to solve the **stimulation conditions (guards)**, determining the inputs and timings to apply. Test case transitions are controlled by a clock cl, which satisfies cl < TM, where TM is the maximal waiting time before either applying a stimulation or observing an output. Quiescence, i.e., the expected absence of output, is detected when cl >= TM, indicating that the system remains silent as anticipated. This timing mechanism, combined with quiescence detection, ensures the test case is implementable in a real-time setting. Additionally, **Z3** checks that the **observed outputs** and their **timings** satisfy the corresponding observation conditions, after which verdicts are assigned.
+
+
+## Applications
+
+- **Model-Based Testing (MBT)** of systems with combined data and timing behaviors.  
+- **Offline generation** of efficient and deterministic test cases from formal models.  
+- **Teaching and demonstration** of symbolic execution and model-based test generation principles.
+
+## References
+SPTG implements the **symbolic path-guided test generation approach** developped in:  👉 [https://doi.org/10.1016/j.scico.2025.103285](https://doi.org/10.1016/j.scico.2025.103285) *(Open Access)*
 
 ---
 
-## SPTG evaluation
+## Quick start with SPTG
 
 SPTG directory Structure:
 
@@ -56,31 +57,13 @@ SPTG directory Structure:
 - `Release`
 
 
-```
-PATH_TO_SPTG/bin/sptg.exe PATH_TO_SPTG/examples/example02_dummy/workflow_4_testcase_generation.sew
+```sh
+cd PATH_TO_SPTG/examples/example02_dummy/
+run-sptg.sh
 ```
 
-Excerpt of symbolic execution workflow file ```PATH_TO_SPTG/examples/example02_dummy/workflow_4_testcase_generation.sew``` 
-```
-project 'location of input reference model' [
-    source = "."
-    model  = "example02_dummy.xlia"
-] // end project
-...
-path#guided#testcase#generator testcase_genertor {
-    trace 'input test purpose' [
-        transition = "tr1"
-        transition = "tr2"
-    ] // end trace
-    vfs 'location and name of generated test case' [
-        folder = "output"
-        file#tc       = "testcase.xlia"
-        file#tc#puml  = "testcase.puml"
-    ] // end vfs
-    ...
-}
-```
-This workflow instructs SPTG to generate a **test case** from the **reference system model** (`example02_dummy.xlia`) using the **sequence of transitions** `(tr1, tr2)` that define the *test purpose*.
+
+This workflow instructs SPTG to generate a **test case** from the **reference system model** (`example02_dummy.xlia`) using the **sequence of transitions** `tr1; tr2` that define the **test purpose**.
 
 <div style="padding-top: 5px; padding-bottom: 5px;"></div>
 
@@ -101,8 +84,16 @@ You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/pla
 
 You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
 
----
 
+<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+
+| **Description** | **Content** |
+|------------------|-------------|
+| **Input 1:** *Timed symbolic automaton : Reference system model* | <img src="README_files/images/example02_dummy.svg" alt="Timed symbolic automaton"> |
+| **Input 2:** *Sequence of transitions (path) : Test purpose* | `tr1; tr2` |
+| **Output:** *Deterministic timed symbolic automaton : Generated test case* | <img src="README_files/images/dummy_testcase_gen.svg" alt="Deterministic timed symbolic automaton"> |
+
+---
 ## Compilation Instructions
 To compile SPTG, navigate to the `Release` directory of the `org.eclipse.efm.symbex` module:
 ```bash

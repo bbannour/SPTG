@@ -4,9 +4,9 @@
 <svg
    version="1.1"
    id="svg1"
-   width="1280"
-   height="720"
-   viewBox="0 0 1280 720"
+   width="428.41052"
+   height="410.67834"
+   viewBox="0 0 428.41052 410.67834"
    sodipodi:docname="overview_sptg_io.svg"
    inkscape:version="1.3.2 (091e20e, 2023-11-25, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -241,8 +241,8 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:zoom="1.040625"
-     inkscape:cx="640"
-     inkscape:cy="360.36036"
+     inkscape:cx="100.9009"
+     inkscape:cy="216.21622"
      inkscape:window-width="1920"
      inkscape:window-height="1122"
      inkscape:window-x="-8"
@@ -254,15 +254,16 @@
        y="0"
        inkscape:label="1"
        id="page1"
-       width="1280"
-       height="720"
+       width="428.41052"
+       height="410.67834"
        margin="0"
        bleed="0" />
   </sodipodi:namedview>
   <g
      id="g1"
      inkscape:groupmode="layer"
-     inkscape:label="1">
+     inkscape:label="1"
+     transform="translate(-539.52936,-144.48167)">
     <g
        id="g3">
       <path
