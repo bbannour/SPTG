@@ -65,7 +65,7 @@ For timed symbolic transition systems, a single machine is typically used to rep
 
 
 
-The automaton $\mathbb{G}$ is encoded in the **XLIA** input language of the **DIVERSITY** symbolic execution platform as follows:
+The automaton $\mathbb{G}$ is encoded in the **XLIA** input language of the **Diversity** symbolic execution platform as follows:
 
 ```xlia
 timed system Example02_Dummy_S {
@@ -82,7 +82,7 @@ timed system Example02_Dummy_S {
 		var clock urational cl;
 	@region:
 	
-	    state<start> q0 {
+	    state< start > q0 {
 	    	@init{
 	    		sum := 0;
 	    	}
@@ -108,7 +108,7 @@ timed system Example02_Dummy_S {
 	        }
         }
         	    
-       	state q2;
+       	state< terminal > q2;
        	
 	@com:
 		connect< env >{
@@ -122,7 +122,7 @@ timed system Example02_Dummy_S {
 
 ## 1. General Structure
 
-The **XLIA model** (entry language of the **DIVERSITY** symbolic execution platform) encodes the automaton by explicitly separating the **static part** (declarations of variables, clocks, and communication ports) from the **behavioral part** (states, transitions, and synchronization).  
+The **XLIA model** (entry language of the **Diversity** symbolic execution platform) encodes the automaton by explicitly separating the **static part** (declarations of variables, clocks, and communication ports) from the **behavioral part** (states, transitions, and synchronization).  
 The `timed system` construct defines the **whole system**, while the nested `statemachine` block defines the actual automaton.
 
 ---
@@ -169,14 +169,14 @@ The behavioral description is under `@region`, where states and transitions are 
 
 ```xlia
 @region:
-    state<start> q0 { ... }
+    state< start > q0 { ... }
     state q1 { ... }
-    state q2;
+    state< terminal > q2;
 ```
 
 **States**
 
-q0: Initial state (`<start>`), where sum is initialized.
+q0: Initial state (`< start >`), where sum is initialized.
 
 q1: Intermediate state reached after an input.
 
@@ -251,7 +251,7 @@ This binds the declared input/output ports to the environment.
 | Automaton Concept | XLIA Encoding |
 | :--- | :--- |
 | **Locations** $q_0, q_1, q_2$ | `state q0`, `state q1`, `state q2` |
-| **Initial location** | `state<start>` |
+| **Initial location** | `state< start >` |
 | **Transitions** | `transition trX --> qY { ... }` |
 | **Guards** | `guard(...)` expressions |
 | **Clocks** | Declared with `var clock urational cl` |
@@ -259,7 +259,7 @@ This binds the declared input/output ports to the environment.
 | **Input actions** | `input In(x)` |
 | **Output actions** | `output Out(...)` or `output Done` |
 | **Variable updates** | Direct assignments inside transition body |
-| **Terminal state** | `state q2;` (no outgoing transitions) |
+| **Terminal state** | `state< terminal > q2;` (no outgoing transitions) |
 
 <div style="padding-top: 20px; padding-bottom: 20px;">
 </div>
@@ -296,7 +296,8 @@ The automaton has two states $q_0$ and $q_1$ and two transitions as follows.
     * **Guard**: $\phi = cl \leq 5$ (Can only be taken if $cl$ is less than or equal to $5$).
     * **Reset**: $\mathbb{K} = \emptyset$ (No clocks are reset).
     * **Update**: $\rho = id$ (No variable updates).
-    * $\rightarrow$ If the clock $cl$ has not exceeded $5$, the system sends an output on $Out$ and moves from $q_1$ back to $q_0$.
+    
+    $\rightarrow$ If the clock $cl$ has not exceeded $5$, the system sends an output on $Out$ and moves from $q_1$ back to $q_0$.
 
 Encoding in XLIA:
 
@@ -316,7 +317,7 @@ timed system Example01_S {
 			
 	@region:
 	
-	    state<start> q0 {
+	    state< start > q0 {
 	        transition  tr1 --> q1 { 
 	            input In;
 	            cl := 0;
@@ -401,7 +402,7 @@ timed system S {
             // ----------------------------------------------
             // Initial State
             // ----------------------------------------------
-            state<start> q0 {
+            state< start > q0 {
                 @init {
                     sum  := 0;
                     flag := false;
@@ -453,7 +454,7 @@ timed system S {
             // ----------------------------------------------
             // Terminal State
             // ----------------------------------------------
-            state q2;
+            state< terminal > q2;
 
         // ====================================================
         // Communication Part: Port Connections
