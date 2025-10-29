@@ -65,7 +65,7 @@ Infeasible branches, inconsistent with the test purpose, are pruned early during
 
 **SPTG** implements the **symbolic path-guided test generation approach**, developed in: 👉 [https://doi.org/10.1016/j.scico.2025.103285](https://doi.org/10.1016/j.scico.2025.103285) *(Open Access)*.
 
-As an extension of the symbolic execution platform Diversity ([project details](https://projects.eclipse.org/proposals/eclipse-formal-modeling-project)), which is distributed under the Eclipse Formal Modeling Project, SPTG can leverage its coverage analyses for **test purpose selection**, providing an integrated environment for offline timed symbolic testing.
+As an extension of the symbolic execution platform Diversity ([https://projects.eclipse.org/proposals/eclipse-formal-modeling-project](https://projects.eclipse.org/proposals/eclipse-formal-modeling-project)), which is distributed under the Eclipse Formal Modeling Project, SPTG can leverage its coverage analyses for **test purpose selection**, providing an integrated environment for offline timed symbolic testing.
 
 ---
 
@@ -100,7 +100,7 @@ SPTG directory Structure:
 
 ```sh
 cd /path/to/SPTG/examples/example02_dummy/
-run-sptg.sh
+./run-sptg-h2.sh
 ```
 
 
@@ -117,7 +117,7 @@ This script instructs **SPTG** to generate a **test case** with the following sp
 <div style="padding-top: 5px; padding-bottom: 5px;"></div>
 
 > **Note:**  
-> The input reference model automaton is encoded in the **XLIA language** (file `.xlia`), the input language of the **Diversity** symbolic execution platform. **SPTG** extends Diversity with dedicated functionality for symbolic path-guided test case generation. See [tutorials/model_specification](tutorials/model_specification.md) for more details.
+> The input reference model automaton is encoded in the **XLIA language** (file `.xlia`), the input language of the **Diversity** symbolic execution platform. **SPTG** extends Diversity with dedicated functionality for symbolic path-guided test case generation. See tutorial on model specification for more details.
 
 <div style="padding-top: 5px; padding-bottom: 5px;"></div>
 
@@ -131,7 +131,7 @@ This script instructs **SPTG** to generate a **test case** with the following sp
 - **Specification language: XLIA**  
   The same language used to express the reference model.  
   **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.xlia`  
-  *Comment:* This file can be directly explored using the symbolic execution platform Diversity.
+  *Comment:* This file can be explored using the symbolic execution platform Diversity.
 
 - **JSON format with SMT-LIB guards**  
   **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase_smt.json`  
@@ -143,8 +143,9 @@ This script instructs **SPTG** to generate a **test case** with the following sp
 
 > **Note:** You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/plantuml/releases) or the online tool [PlantText](https://www.planttext.com/). You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
 
-> **Note:** If the **PlantUML JAR** is located in `/path/to/SPTG/bin`, the script automatically produces:  
-> **File** `/path/to/SPTG/examples/example02_dummy/testcase.svg` .   
+> **Note:** If the **PlantUML JAR** and the Graphviz `dot` executable are located in `/path/to/SPTG/bin`, the script automatically produces:  
+> **File** `/path/to/SPTG/examples/example02_dummy/testcase.svg`.
+   
 
 
 
@@ -160,12 +161,12 @@ The table below summarizes the inputs and outputs for generating a **test case**
 ### Run all examples
 ```sh
 cd /path/to/SPTG/examples/
-run-all.sh
+./run-all.sh
 ```
 ### Compilation instructions
-To compile SPTG, navigate to the `Release` directory of the `org.eclipse.efm.symbex` module:
+To compile SPTG, navigate to the `Release` directory:
 ```bash
-cd /path/to/SPTG/org.eclipse.efm.symbex/Release/
+cd Release/
 ```
 Then build the project:
 ```bash
@@ -173,29 +174,53 @@ make all -j4
 ```
 During compilation, the process automatically overwrites the existing `sptg.exe` in the `bin` directory using:
 ```bash
-cp -f sptg.exe ../../bin/sptg.exe
+cp -f sptg.exe ../bin/sptg.exe
 ```
-If you wish to preserve the existing executable, rename it before compilation as follows:
+If you wish to preserve the existing executable, rename it before compilation for instance as follows:
 ```bash
-mv ../../bin/sptg.exe ../../bin/sptg_old.exe
+mv ../bin/sptg.exe ../bin/sptg_old.exe
 ```
 ---
 
 ## PlantUML: PUML to SVG Conversion Guide
 
-A quick reference for converting `.puml` files to `.svg` images via the command line.
+A concise reference for converting `.puml` files to `.svg` images via the command line.  
+PlantUML requires **Graphviz** for diagram rendering.
 
-### Prerequisites
+---
+
+## Prerequisites
 
 1. **Java Runtime Environment (JRE):** Required to execute PlantUML.  
-2. **PlantUML JAR File:** The standalone application.
+2. **PlantUML JAR File:** The standalone PlantUML application.  
+3. **Graphviz:** Used internally by PlantUML for layout and rendering.  
+   After installation, Graphviz will be available in your system path.
 
-### 1. Download PlantUML
+---
 
-Get the latest stable release of `plantuml.jar` from the official github site:  
+## a. Installation
+
+### Install Graphviz
+On Debian/Ubuntu-based systems, install Graphviz with:
+
+```bash
+sudo apt install graphviz
+```
+After this, the `dot` executable will be available system-wide.
+
+### b. Download PlantUML
+
+Get the latest stable release of `plantuml.jar` from:  
 👉 [https://github.com/plantuml/plantuml/releases](https://github.com/plantuml/plantuml/releases)
 
-### 2. Conversion Command
+Ensure both `java` and `dot` commands are available:
+
+```bash
+java -version
+dot -V
+```
+
+### c. Conversion Command
 
 Navigate to the folder containing both `plantuml.jar` and your `.puml` file.
 
