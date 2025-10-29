@@ -7,6 +7,8 @@
 The construction of the test case is obtained by applying dedicated symbolic execution techniques to the reference timed symbolic automaton, in order to derive a symbolic subtree restricted to the test purpose, i.e., a path represented as a sequence of transitions of the reference automaton. In the following, we **first provide an overview of these test-oriented symbolic techniques**, and **then describe the test case generation itself**, obtained by applying transformations to this subtree (mirroring and constraint simplifications). Finally, we show how tu use SPTG to generate the test cases.
 
 
+## Table of content
+
 1. [Test-oriented Symbolic Execution Techniques](#test-oriented-symbolic-execution-techniques)
 2. [Symbolic Path-guided Test Case](#symbolic-path-guided-test-case)
 3. [Using SPTG](#using-sptg)
