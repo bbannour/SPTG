@@ -14,7 +14,7 @@ timed system Example02_Dummy_S {
 		var clock urational cl;
 	@region:
 	
-	    state<start> q0 {
+	    state< start > q0 {
 	    	@init{
 	    		sum := 0;
 	    	}
@@ -40,7 +40,7 @@ timed system Example02_Dummy_S {
 	        }
         }
         	    
-       	state q2;
+       	state< terminal > q2;
        	
 	@com:
 		connect< env >{
