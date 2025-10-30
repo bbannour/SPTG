@@ -4,7 +4,7 @@
 
 # Test case generation
 
-The construction of the test case is obtained by applying dedicated symbolic execution techniques to the reference timed symbolic automaton, in order to derive a symbolic subtree restricted to the test purpose, i.e., a path represented as a sequence of transitions of the reference automaton. In the following, we **first provide an overview of these test-oriented symbolic techniques**, and **then describe the test case generation itself**, obtained by applying transformations to this subtree (mirroring and constraint simplifications). Finally, we show how tu use SPTG to generate the test cases.
+The construction of the test case is obtained by applying dedicated symbolic execution techniques to the reference timed symbolic automaton, in order to derive a symbolic subtree restricted to the test purpose, i.e., a path represented as a sequence of transitions of the reference automaton. In the following, we **first provide an overview of these test-oriented symbolic techniques**, and **then describe the actual test case generation**, obtained by applying specific transformations to this subtree (mirroring and constraint simplification). Finally, we show **how to use SPTG to generate the test cases**.
 
 
 ## Table of content
@@ -19,7 +19,7 @@ The construction of the test case is obtained by applying dedicated symbolic exe
 
 **Symbolic execution** explores a model by representing both data and time with symbolic variables instead of concrete values. It unfolds the automaton while generating constraints over symbolic variables, producing a **symbolic execution tree** . The tree's nodes are **execution contexts**, and its edges represent symbolic steps such as initialization, transition firing, or **quiescence completion**.
 
-Recall the dummy automaton example (discussed [model specification tutorial](model_specification.md)):
+Consider the following dummy automaton example:
 
 <div style="padding-top: 20px; padding-bottom: 20px;">
 </div>
@@ -251,7 +251,7 @@ The last trace shows quiescence exceeding the allowed duration, with only $(41, 
 Navigate to the `/path/to/SPTG/examples/example02_dummy/` directory, then run: 
 ```bash
 cd /path/to/SPTG/examples/example02_dummy/
-run-sptg-h2.sh
+./run-sptg-h2.sh
 ```
 Script `run-sptg-h2.sh` invokes `sptg.exe` using the workflow configuration file:
 
@@ -295,7 +295,7 @@ path#guided#testcase#generator testcase_genertor {
 - **Specification language: XLIA**  
   The same language used to express the reference model.  
   **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.xlia`  
-  *Comment:* This file can be directly used for formal verification or as input to other tools that support XLIA.
+  *Comment:* This file can be explored using the symbolic execution platform Diversity.
 
 - **JSON format with SMT-LIB guards**  
   **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase_smt.json`  
@@ -307,9 +307,8 @@ path#guided#testcase#generator testcase_genertor {
 
 > **Note:** You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/plantuml/releases) or the online tool [PlantText](https://www.planttext.com/). You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
 
-> **Note:** If the **PlantUML JAR** is located in `/path/to/SPTG/bin`, the script automatically produces:  
-> **File** `/path/to/SPTG/examples/example02_dummy/testcase.svg` .   
-
+> **Note:** If the **PlantUML JAR** and the Graphviz `dot` executable are located in `/path/to/SPTG/bin`, the script automatically produces:  
+> **File** `/path/to/SPTG/examples/example02_dummy/testcase.svg`.
 
 
 The table below summarizes the inputs and outputs for generating the **test case** with SPTG. The figures shown are **visual representations** obtained by converting the corresponding **PlantUML** files into **SVG** format.
@@ -325,7 +324,7 @@ To generate another test purpose of length 5 for the same reference model, run:
 
 ```bash
 cd /path/to/SPTG/examples/example02_dummy/
-run-sptg-h5.sh
+./run-sptg-h5.sh
 ```
 This script executes the workflow configured for a longer test purpose (length 5).
 As a result, you obtain the following generated test case:
@@ -339,19 +338,43 @@ As a result, you obtain the following generated test case:
 
 ## PlantUML: PUML to SVG Conversion Guide
 
-A quick reference for converting `.puml` files to `.svg` images via the command line.
+A concise reference for converting `.puml` files to `.svg` images via the command line.  
+PlantUML requires **Graphviz** for diagram rendering.
 
-### Prerequisites
+---
+
+## Prerequisites
 
 1. **Java Runtime Environment (JRE):** Required to execute PlantUML.  
-2. **PlantUML JAR File:** The standalone application.
+2. **PlantUML JAR File:** The standalone PlantUML application.  
+3. **Graphviz:** Used internally by PlantUML for layout and rendering.  
+   After installation, Graphviz will be available in your system path.
 
-### 1. Download PlantUML
+---
 
-Get the latest stable release of `plantuml.jar` from the official github site:  
+## a. Installation
+
+### Install Graphviz
+On Debian/Ubuntu-based systems, install Graphviz with:
+
+```bash
+sudo apt install graphviz
+```
+After this, the `dot` executable will be available system-wide.
+
+### b. Download PlantUML
+
+Get the latest stable release of `plantuml.jar` from:  
 👉 [https://github.com/plantuml/plantuml/releases](https://github.com/plantuml/plantuml/releases)
 
-### 2. Conversion Command
+Ensure both `java` and `dot` commands are available:
+
+```bash
+java -version
+dot -V
+```
+
+### c. Conversion Command
 
 Navigate to the folder containing both `plantuml.jar` and your `.puml` file.
 
