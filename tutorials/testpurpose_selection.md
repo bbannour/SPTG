@@ -46,21 +46,23 @@ Assuming the **coverage goal** is a **sequence of (non-consecutive) transitions*
 
 
 
-The symbolic tree is built **incrementally and adaptively** through a series of **trials**. In each trial, HoJ computes a symbolic subtree of **bounded local height \(N\)** using a **breadth-first traversal**. Once the subtree is constructed, it is analyzed to measure the degree of coverage achieved for the target sequence.
+The symbolic tree is built **incrementally and adaptively** through a series of **trials**. In each trial, HoJ computes a symbolic subtree of **bounded local height N** using a **breadth-first traversal**. Once the subtree is constructed, it is analyzed to measure the degree of coverage achieved for the target sequence.
 
 - **Hit:** If at least one non-empty prefix of the sequence is covered, HoJ selects, at random, one or several **execution contexts (ECs)** corresponding to the **maximum prefix coverage** and restarts exploration from these ECs.  
 - **Jump:** If no prefix is covered, HoJ randomly selects one or several ECs in the subtree to restart the breadth-first exploration from their corresponding states.
 
-This process is **iteratively repeated** (Trial 1, Trial 2, …) until the full target sequence is covered. Each local subtree (bounded by dashed areas) corresponds to one trial, alternating between **Hit** and **Jump** phases until complete coverage is achieved.
+This process is **iteratively repeated** (Trial 1, Trial 2, …) until the full target sequence is covered. Each local subtree (bounded by dotted areas) corresponds to one trial, alternating between **Hit** and **Jump** phases until complete coverage is achieved.
 
 ---
 ## Coverage Modes
 ---
 HoJ supports different **coverage modes**, depending on the structure of the declared test purpose and the desired level of strictness:
 
-- **Sequence coverage:** requires transitions to be covered **in the declared order**.  
-- **Consecutive coverage:** requires that at least **one new element** of the sequence is covered at each iteration.  
-- **Folding coverage:** allows covering **multiple elements** at the same step (e.g., if several transitions correspond to equivalent or simultaneous actions).
+
+- **Consecutive coverage:** requires transitions be covered **in the declared order**.  
+
+- **Sequence coverage:** requires that transitions be covered **in their declared order**, possibly with **gaps** in between.
+
 
 These modes provide flexibility in defining **how tightly the heuristic should follow the declared sequence**, depending on the abstraction level of the model or the granularity of coverage desired.
 
@@ -75,7 +77,7 @@ The HoJ heuristic is controlled by several key parameters that determine its exp
 - **Jump count:** the number of ECs chosen at random to restart exploration when no coverage progress is observed.  
 - **Trial count:** the number of allowed re-starts (iterations) of the HoJ process.
 
-Tuning these parameters allows balancing **exploration depth** and **search focus**, ensuring that the heuristic converges efficiently toward a subtree that satisfies the **test purpose**.
+Tuning these parameters allows balancing **exploration depth** and **search focus**, ensuring that the heuristic converges efficiently toward a subtree that satisfies the **coverage goal**.
 
 ---
 ## Using SPTG
@@ -92,7 +94,7 @@ The textual model is available here ``path/to/SPTG/examples/example05_automotive
 
 <div style="padding-top: 20px; padding-bottom: 20px;"></div>
 
-Navigate to the `/path/to/SPTG/examples/example05_automotive_platoon/` directory, and then run a dedicated script:
+Navigate to the `/path/to/SPTG/examples/example05_automotive_platoon/` directory, and then run the preconfigured script:
 
 ```bash
 cd /path/to/SPTG/examples/example05_automotive_platoon/
@@ -100,7 +102,7 @@ cd /path/to/SPTG/examples/example05_automotive_platoon/
 ```
 Script `run-sptg-4-testpurpose-selection.sh` invokes `sptg.exe` using the workflow configuration file:
 
-**File** `/path/to/SPTG/examples/example02_dummy/workflow_4_testpurpose_selection.sew` 
+**File** `/path/to/SPTG/examples/example05_automotive_platoon/workflow_4_testpurpose_selection.sew` 
 
 An excerpt from this file:
 ```
