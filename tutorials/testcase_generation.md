@@ -56,7 +56,8 @@ An **execution context** $ec=(q, \pi, \lambda, ev, pec)$ consists of:
 
 
 
-The **root context** $ec_0$ starts in $q_0$, with clocks at zero, variables assigned fresh symbols, $\pi = True$, and $ev$ and $pec$ undefined. Initialization produces the first successor, $ec_1$.
+The **root context** $ec_0$ starts in $q_0$, with clocks at zero, variables assigned fresh symbols, $\pi = True$, and $ev$ and $pec$ undefined. Initialization produces the first successor, $ec_1$ (still in $q_0$), where only
+updated components are shown. For instance, if initialization only updates $sum:=0$, we display $sum \mapsto 0$.
 
 **Symbolic Variables**: Fresh symbolic variables are introduced:
 
@@ -108,9 +109,9 @@ A **witness timed trace** $(0, \mathit{In}?1)\cdot(40, \delta!)$ covers $ec_6$ (
 
 ### SPTG Workflow
 
-For a model $\mathbb{G}$, the **Symbolic Path-guided Test Generation (SPTG)** workflow restricts symbolic exploration to a **model path** $p = \textbf{tr}_1 \cdots \textbf{tr}_n$, chosen as a **test path (TP)**.  
+For a model $\mathbb{G}$, **SPTG workflow** restricts symbolic exploration to a **model path** $p = \textbf{tr}_1 \cdots \textbf{tr}_n$, chosen as a **test purpose path (TP)**.  
 
-Starting from the initial state $q_0$, the workflow performs **symbolic execution along** $p$, using the SMT solver **Z3** to verify:
+Starting from the initial state $q_0$, the workflow performs **symbolic execution along** $p$, using the SMT-solver **Z3** to verify:
 - satisfiability of execution contexts,  
 - trace-determinism, and  
 - conflict detection.  
@@ -118,7 +119,7 @@ Starting from the initial state $q_0$, the workflow performs **symbolic executio
 The workflow proceeds through the following five main steps:
 
 1. **Symbolic execution along the path**  
-   - From the current execution context $ec_1$, all successor contexts are computed (Custom Symbex).  
+   - From the current execution context $ec_1$, all successor contexts are computed.  
    - For each transition $\textbf{tr}_i$, the workflow checks whether it can be fired.  
    - If the transition is fireable, exploration continues exploring the remaining suffix $p'=\textbf{tr}_{i+1}\cdots\textbf{tr}_n$ from the successor produced by $\textbf{tr}_i$, .  
    - Otherwise, the exploration stops.
@@ -156,7 +157,7 @@ The test case $\mathbb{TC}_{\mathbf{tr}_1.\mathbf{tr}_2}$ which corresponds to t
 ---
 ## Symbolic Path-guided Test Case
 ---
-The test case $\mathbb{TC}_p$ is defined as a **timed symbolic transition system** equipped with a **single clock** `cl`, which measures the elapsed time before each action it performs.  
+The test case $\mathbb{TC}_p$ is defined as a **timed symbolic transition system** equipped with a **single clock** $cl$, which measures the elapsed time before each action it performs.  
 
 The **data variable set** of $\mathbb{TC}_p$ includes all symbolic variables used to produce the execution contexts covering the path $p$.  
 These variables represent the information known and manipulated by the test case as execution progresses, including:
@@ -184,8 +185,8 @@ The test case mirrors $SE(\mathbb{G})^{\delta}_{/p}$ and is used to **check the 
 - The execution contexts related to path $p$ form the **main branch** leading to the verdict **$\text{PASS}$**.  
   The target context is replaced by **$\text{PASS}$**.  
 - Any deviation from this branch triggers a verdict state:  
-  - **$\text{FAIL}$** if the behavior violates expectations.  
-  - **$\text{INC}$** (inconclusive) if no clear verdict can be determined.
+  - **$\text{FAIL}$** if the behavior violates the model.  
+  - **$\text{INC}$** (inconclusive) if the behavior does not violate the model but does not cover $p$.
 
 
 
@@ -250,7 +251,7 @@ Navigate to the `/path/to/SPTG/examples/example02_dummy/` directory, then run:
 cd /path/to/SPTG/examples/example02_dummy/
 ./run-sptg-h2.sh
 ```
-Script `run-sptg-h2.sh` invokes `sptg.exe` using the workflow configuration file:
+Script `run-sptg-h2.sh` invokes the SPTG executable `/path/to/SPTG/bin/sptg.exe` using the workflow configuration file:
 
 **File** `/path/to/SPTG/examples/example02_dummy/workflow_4_testcase_generation_h2.sew` 
 
@@ -289,14 +290,15 @@ path#guided#testcase#generator testcase_genertor {
   **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.puml`  
   *Comment:* This file provides a visual representation of the test case automaton, which can be rendered using PlantUML.
 
-- **Specification language: XLIA**  
-  The same language used to express the reference model.  
-  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.xlia`  
-  *Comment:* This file can be explored using the symbolic execution platform Diversity.
 
 - **JSON format with SMT-LIB guards**  
   **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase_smt.json`  
   *Comment:* This JSON file encodes the test case automaton, including guards in SMT-LIB format, suitable for automated execution againt system under test (SUT) using an SMT-solver (e.g. Z3).
+
+- **Specification language: XLIA**  
+  The same language used to express the reference model.  
+  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.xlia`  
+  *Comment:* This file can be explored using the symbolic execution platform Diversity.
 
 > **Note:** The script also generates the graphical **PlantUML** file for the reference automaton:  
 > **File** `/path/to/SPTG/examples/example02_dummy/output_h2/example02_dummy.puml`  
@@ -305,7 +307,7 @@ path#guided#testcase#generator testcase_genertor {
 > **Note:** You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/plantuml/releases) or the online tool [PlantText](https://www.planttext.com/). You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
 
 > **Note:** If the **PlantUML JAR** and the Graphviz `dot` executable are located in `/path/to/SPTG/bin`, the script automatically produces:  
-> **File** `/path/to/SPTG/examples/example02_dummy/testcase.svg`.
+> **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.svg`.
 
 
 The table below summarizes the inputs and outputs for generating the **test case** with SPTG. The figures shown are **visual representations** obtained by converting the corresponding **PlantUML** files into **SVG** format.
