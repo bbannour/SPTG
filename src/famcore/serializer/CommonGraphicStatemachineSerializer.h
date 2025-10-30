@@ -27,6 +27,7 @@ namespace sep
 class OutStream;
 class AvmSerializerProcessor;
 class Machine;
+class Routine;
 class SymbexValueCSS;
 class System;
 class Transition;
@@ -197,32 +198,28 @@ public:
 	void formatMachine(OutStream & out, const Machine & aMachine);
 
 
-	void formatMachineModelInterface(
-			OutStream & out, const Machine & aMachine);
+	void formatMachineModelInterface(OutStream & out, const Machine & aMachine);
 
-	void formatMachineCall(
-			OutStream & out, const Machine & aMachine);
+	void formatMachineCall(OutStream & out, const Machine & aMachine);
 
-	void formatStatemachineCall(
-			OutStream & out, const Machine & aMachine);
+	void formatStatemachineCall(OutStream & out, const Machine & aMachine);
 
-	void formatCompositeStructure(
-			OutStream & out, const Machine & aMachine);
-	void formatStateTransitionStructure(
-			OutStream & out, const Machine & aMachine);
+	void formatCompositeStructure(OutStream & out, const Machine & aMachine);
 
-	void formatMachineDefault(
-			OutStream & out, const Machine & aMachine);
+	void formatStateTransitionStructure(OutStream & out, const Machine & aMachine);
 
+	void formatMachineDefault(OutStream & out, const Machine & aMachine);
 
-	void formatMachineSimpleState(
-			OutStream & out, const Machine & aMachine);
+	void formatMachineSimpleState(OutStream & out, const Machine & aMachine);
 
-	void formatMachinePseudoState(
-			OutStream & out, const Machine & aMachine);
+	void formatMachinePseudoState(OutStream & out, const Machine & aMachine);
 
-	void formatTransition(
-			OutStream & out, const Transition & aTransition);
+	void formatTransition(OutStream & out, const Transition & aTransition);
+
+	void formatStateBehavior(OutStream & out, const Machine & aMachine);
+
+	void formatRoutine(OutStream & out,
+			const Routine & aRoutine, const std::string & position);
 };
 
 

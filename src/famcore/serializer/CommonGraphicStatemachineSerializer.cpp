@@ -19,7 +19,9 @@
 
 #include <fml/infrastructure/Machine.h>
 #include <fml/infrastructure/PropertyPart.h>
+#include <fml/infrastructure/Routine.h>
 #include <fml/infrastructure/System.h>
+#include <fml/infrastructure/Transition.h>
 
 #include <fml/infrastructure/BehavioralPart.h>
 #include <fml/infrastructure/CompositePart.h>
@@ -499,17 +501,7 @@ void CommonGraphicStatemachineSerializer::formatMachineModelInterface(
 		}
 	}
 
-	if( aMachine.hasOutgoingTransition() )
-	{
-		BehavioralPart::transition_iterator itTransition =
-				aMachine.getBehavior()->outgoing_transition_begin();
-		BehavioralPart::transition_iterator endTransition =
-				aMachine.getBehavior()->outgoing_transition_end();
-		for( ; itTransition != endTransition ; ++itTransition )
-		{
-			formatTransition(out << EOL, itTransition);
-		}
-	}
+	formatStateBehavior(out, aMachine);
 }
 
 
@@ -582,17 +574,7 @@ void CommonGraphicStatemachineSerializer::formatMachineCall(
 		}
 	}
 
-	if( aMachine.hasOutgoingTransition() )
-	{
-		BehavioralPart::transition_iterator itTransition =
-				aMachine.getBehavior()->outgoing_transition_begin();
-		BehavioralPart::transition_iterator endTransition =
-				aMachine.getBehavior()->outgoing_transition_end();
-		for( ; itTransition != endTransition ; ++itTransition )
-		{
-			formatTransition(out << EOL, itTransition);
-		}
-	}
+	formatStateBehavior(out, aMachine);
 }
 
 
@@ -603,17 +585,7 @@ void CommonGraphicStatemachineSerializer::formatStatemachineCall(
 			getMachines().first().to< Machine >().getUnrestrictedName()
 		<< "\" as " << aMachine.getUniqNameID() << EOL;
 
-	if( aMachine.hasOutgoingTransition() )
-	{
-		BehavioralPart::transition_iterator itTransition =
-				aMachine.getBehavior()->outgoing_transition_begin();
-		BehavioralPart::transition_iterator endTransition =
-				aMachine.getBehavior()->outgoing_transition_end();
-		for( ; itTransition != endTransition ; ++itTransition )
-		{
-			formatTransition(out << EOL, itTransition);
-		}
-	}
+	formatStateBehavior(out, aMachine);
 }
 
 
@@ -657,17 +629,7 @@ void CommonGraphicStatemachineSerializer::formatCompositeStructure(
 	out << DECR_INDENT
 		<< EOL_TAB << "}" << EOL;
 
-	if( aMachine.hasOutgoingTransition() )
-	{
-		BehavioralPart::transition_iterator itTransition =
-				aMachine.getBehavior()->outgoing_transition_begin();
-		BehavioralPart::transition_iterator endTransition =
-				aMachine.getBehavior()->outgoing_transition_end();
-		for( ; itTransition != endTransition ; ++itTransition )
-		{
-			formatTransition( out << EOL, itTransition);
-		}
-	}
+	formatStateBehavior(out, aMachine);
 }
 
 
@@ -711,17 +673,7 @@ void CommonGraphicStatemachineSerializer::formatStateTransitionStructure(
 	out << DECR_INDENT
 		<< EOL_TAB << "}" << EOL;
 
-	if( aMachine.hasOutgoingTransition() )
-	{
-		BehavioralPart::transition_iterator itTransition =
-				aMachine.getBehavior()->outgoing_transition_begin();
-		BehavioralPart::transition_iterator endTransition =
-				aMachine.getBehavior()->outgoing_transition_end();
-		for( ; itTransition != endTransition ; ++itTransition )
-		{
-			formatTransition( out << EOL, itTransition);
-		}
-	}
+	formatStateBehavior(out, aMachine);
 }
 
 
@@ -737,17 +689,7 @@ void CommonGraphicStatemachineSerializer::formatMachineDefault(
 		out << TAB << "state \"" << aMachine.getFullyQualifiedNameID()
 			<< "\" as " << aMachine.getUniqNameID() << " << Machine >>  {" << EOL;
 
-		if( aMachine.hasOutgoingTransition() )
-		{
-			BehavioralPart::transition_iterator itTransition =
-					aMachine.getBehavior()->outgoing_transition_begin();
-			BehavioralPart::transition_iterator endTransition =
-					aMachine.getBehavior()->outgoing_transition_end();
-			for( ; itTransition != endTransition ; ++itTransition )
-			{
-				formatTransition(out << EOL, itTransition);
-			}
-		}
+		formatStateBehavior(out, aMachine);
 	}
 }
 
@@ -776,17 +718,7 @@ void CommonGraphicStatemachineSerializer::formatMachineSimpleState(
 	}
 	out << EOL;
 
-	if( aMachine.hasOutgoingTransition() )
-	{
-		BehavioralPart::transition_iterator itTransition =
-				aMachine.getBehavior()->outgoing_transition_begin();
-		BehavioralPart::transition_iterator endTransition =
-				aMachine.getBehavior()->outgoing_transition_end();
-		for( ; itTransition != endTransition ; ++itTransition )
-		{
-			formatTransition(out << EOL, itTransition);
-		}
-	}
+	formatStateBehavior(out, aMachine);
 }
 
 
@@ -826,17 +758,7 @@ void CommonGraphicStatemachineSerializer::formatMachinePseudoState(
 	}
 	out << EOL;
 
-	if( aMachine.hasOutgoingTransition() )
-	{
-		BehavioralPart::transition_iterator itTransition =
-				aMachine.getBehavior()->outgoing_transition_begin();
-		BehavioralPart::transition_iterator endTransition =
-				aMachine.getBehavior()->outgoing_transition_end();
-		for( ; itTransition != endTransition ; ++itTransition )
-		{
-			formatTransition(out << EOL, itTransition);
-		}
-	}
+	formatStateBehavior(out, aMachine);
 }
 
 
@@ -885,6 +807,67 @@ void CommonGraphicStatemachineSerializer::formatTransition(
 
 	out << EOL_FLUSH;
 }
+
+void CommonGraphicStatemachineSerializer::formatRoutine(
+		OutStream & out, const Routine & aRoutine, const std::string & position)
+{
+	if( mStatementFlag && aRoutine.hasCode() )
+	{
+		const std::string & stateID = aRoutine.getContainerMachine()->getUniqNameID();
+		out << EOL_TAB << "note " << position << " of " << stateID << " #white"
+			<< EOL_INCR_INDENT
+			<< TAB << "**" << aRoutine.getUnrestrictedName();
+		if( aRoutine.getCode()->hasOperand() )
+		{
+			out << "**";
+			AvmCode2Puml::toStream(out, *(aRoutine.getCode()));
+		}
+		else
+		{
+			out << "**" << EOL;
+		}
+		out << DECR_INDENT
+			<< TAB << "end note";
+	}
+
+
+	out << EOL_FLUSH;
+}
+
+
+void CommonGraphicStatemachineSerializer::formatStateBehavior(
+		OutStream & out, const Machine & aMachine)
+{
+	if( aMachine.hasOutgoingTransition() )
+	{
+		BehavioralPart::transition_iterator itTransition =
+				aMachine.getBehavior()->outgoing_transition_begin();
+		BehavioralPart::transition_iterator endTransition =
+				aMachine.getBehavior()->outgoing_transition_end();
+		for( ; itTransition != endTransition ; ++itTransition )
+		{
+			formatTransition(out << EOL, itTransition);
+		}
+	}
+
+	if( aMachine.hasBehavior() )
+	{
+		const auto behavior = aMachine.getBehavior();
+		if( behavior->hasOnInit() )
+		{
+			formatRoutine(out << EOL, behavior->getOnInitRoutine(), "bottom");
+		}
+		if( behavior->hasOnEnable() )
+		{
+			formatRoutine(out << EOL, behavior->getOnEnableRoutine(), "left");
+		}
+		if( behavior->hasOnDisable() )
+		{
+			formatRoutine(out << EOL, behavior->getOnDisableRoutine(), "right");
+		}
+	}
+}
+
 
 } /* namespace sep */
 
