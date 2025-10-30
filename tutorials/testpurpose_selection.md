@@ -1,9 +1,11 @@
+<!---
 <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 <script type="text/x-mathjax-config"> MathJax.Hub.Config({ tex2jax: {inlineMath: [['$', '$']]}, messageStyle: "none" });</script>
+--->
 
 # Test purpose selection using Hit-or-Jump (HoJ) exploration heuristic
 
-In the **test case generation** process (see the [test case generation tutorial](testcase_generation.md)), the objective is to compute a **symbolic subtree** of the reference timed symbolic automaton restricted by a **test purpose**, defined as a **consecutive sequence of transitions** to be covered.
+In the **test case generation** process, the objective is to compute a **symbolic subtree** of the reference timed symbolic automaton restricted by a **test purpose**, defined as a **consecutive sequence of transitions** to be covered.
 
 To enable the **selection of such sequences** from the model, the **Hit-or-Jump (HoJ)** exploration heuristic provided as a dedicated function of **SPTG**, inherited from the symbolic execution platform **Diversity** can be used. This heuristic guides symbolic exploration toward specific behavioral goals while avoiding exhaustive exploration of irrelevant paths.
 
@@ -82,7 +84,7 @@ Tuning these parameters allows balancing **exploration depth** and **search focu
 
 Consider an automaton model representing a leader agent that manages the insertion and departure of vehicles in a platoon, ensuring safe spacing and coordination. The model is encoded as a timed symbolic transition system corresponding to a UPPAAL model [https://doi.org/10.1016/J.SCICO.2017.05.006](https://doi.org/10.1016/J.SCICO.2017.05.006) *(Open Access)*. This model is interesting for illustrating the HoJ, as it exhibits long, intertwined transition paths, making it difficult to identify the exact sequence of consecutive transitions needed to realize certain desired behaviors.
 
-The textual model is available [here](../examples/example05_automotive_platoon/example05_automotive_platoon.xlia) and depicted below (Zoom-in for details):
+The textual model is available here ``path/to/SPTG/examples/example05_automotive_platoon/example05_automotive_platoon.xlia` and depicted below (Zoom-in for details):
 
 <div style="padding-top: 20px; padding-bottom: 20px;"></div>
 
@@ -92,10 +94,11 @@ The textual model is available [here](../examples/example05_automotive_platoon/e
 
 <div style="padding-top: 20px; padding-bottom: 20px;"></div>
 
-Navigate to the `/path/to/SPTG/examples/example05_automotive_platoon/` directory, then run: 
+Navigate to the `/path/to/SPTG/examples/example05_automotive_platoon/` directory, and then run a dedicated script:
+
 ```bash
 cd /path/to/SPTG/examples/example05_automotive_platoon/
-run-sptg-4-testpurpose-selection.sh
+./run-sptg-4-testpurpose-selection.sh
 ```
 Script `run-sptg-4-testpurpose-selection.sh` invokes `sptg.exe` using the workflow configuration file:
 
@@ -103,17 +106,6 @@ Script `run-sptg-4-testpurpose-selection.sh` invokes `sptg.exe` using the workfl
 
 An excerpt from this file:
 ```
-...
-workspace [
-		root   = "."
-		launch = "."
-		output = "output_testpurpose_selection"
-] // end workspace
-..
-project 'path of input model' [
-    source = "."
-    model  = "example05_automotive_platoon.xlia"
-] // end project
 ...
 coverage#behavior behavior_coverage {
     ...
@@ -148,24 +140,24 @@ serializer#symbex#trace#basic basic_trace_generator {
 
 
 The user input is a sequence of (non-consecutive) transitions  
-`(q0.tr_join_r, q4.tr_joined_suc, q7.tr_platoon_m_c)`,  
-representing the following behavioral steps in the platooning process:  
+
+`q0.tr_join_r; q4.tr_joined_suc; q7.tr_platoon_m_c` 
+
+The sequence represents the following behavioral steps in the platooning process:  
 - a **platoon join request**,  
 - a **successful joining phase**, and  
 - a **confirmation of switching to automatic platoon mode** for the joining vehicle.  
 
-The following figure illustrates how these symbolic transitions correspond to a **real-world scenario** involving a vehicle (`vehJ`) joining an existing platoon.  
-It depicts the different stages of the process — from initiating the join request, through the coordinated merging maneuver, to the successful integration and activation of autonomous driving mode.
+**Figure 1** illustrates how these symbolic transitions correspond to a **real-world scenario** involving a vehicle (`vehJ`) joining an existing platoon.  
+It depicts the different stages of the process, from initiating the join request, through the coordinated merging maneuver, to the successful integration and activation of autonomous driving mode.
 
-<div style="padding-top: 20px; padding-bottom: 20px;"></div>
+<div style="display: flex; flex-direction: column; align-items: center; margin: 20px 0;">
+    <img src="./../README_files/images/platoon_scenario.PNG" width="325px" alt="Real-world representation of the `join-middle-succ` scenario, showing the joining vehicle (`vehJ`) progressively integrating into the platoon">
+    <p style="text-align: center; font-size: 0.9em; color: #555; margin-top: 8px;">
+        <strong>Figure 1:</strong> Real-world representation of the <code style="background-color: #ffcc00; padding: 2px 4px; border-radius: 3px; color: #000;">join-middle-succ</code> scenario, showing the joining vehicle (<code style="background-color: #ffcc00; padding: 2px 4px; border-radius: 3px; color: #000;">vehJ</code>) progressively integrating into the platoon.
+    </p>
+</div>
 
-<center>
-<img src="./../README_files/images/platoon_scenario.PNG" width="400px" alt="Illustration of the join-middle-succ platoon scenario">
-</center>
-
-<div style="padding-top: 20px; padding-bottom: 20px;"></div>
-
-*Figure – Real-world representation of the `join-middle-succ` scenario, showing the joining vehicle (`vehJ`) progressively integrating into the platoon.*
 
 This execution generates a file:  
 `/path/to/SPTG/examples/example05_automotive_platoon/output_testpurpose_selection/testpurpose.txt`  
@@ -186,7 +178,7 @@ with the following content:
 This output corresponds to a **feasible symbolic path** of the model, representing a **consecutive sequence of transitions** that includes both the user-specified transitions and the additional ones inferred by the heuristic to connect them according to the model’s behavior.  
 
 Recall that the user input sequence contains only three transitions:  
-`(q0.tr_join_r, q4.tr_joined_suc, q7.tr_platoon_m_c)`.  
+`q0.tr_join_r; q4.tr_joined_suc; q7.tr_platoon_m_c` 
 
 During exploration, the HoJ heuristic **filled in the gaps** between these transitions with intermediate transitions obtained from the model:  
 
