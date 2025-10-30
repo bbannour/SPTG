@@ -173,7 +173,7 @@ mv ../bin/sptg.exe ../bin/sptg_old.exe
    
    `/path/to/SPTG/tutorials/testcase_generation.pdf`
    
-   📘 [Tutorial on test purpose selection:
+   📘 Tutorial on test purpose selection:
    
    `/path/to/SPTG/tutorials/testpurpose_selection.pdf`
 
