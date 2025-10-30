@@ -60,7 +60,7 @@ The SPTG framework, being an extension of the DIVERSITY symbolic execution platf
 
 In XLIA, components are referred to as machines. These machines are communicating, hierarchical, and heterogeneous, and their evaluation semantics can be customized to support different analysis or execution contexts. 
 
-The complete XLIA specification is available in the [XLIA documentation](DiversityLangaugeXlia_documentation.pdf).
+The complete XLIA documentation is available here `/path/to/SPTG/tutorials/DiversityLangaugeXlia_documentation.pdf`.
 
 For timed symbolic transition systems, a single machine is typically used to represent the system under study, which interacts with its environment through well-defined communication interfaces.
 
