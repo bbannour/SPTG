@@ -18,7 +18,7 @@ timed system Example04_Beverage_Machine_S {
 		const urational i = 1;
 	@region:
 	
-	    state<start> q0 {
+	    state< start > q0 {
 	    	@init{
 	    		q := 42;
 	    	}

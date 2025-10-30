@@ -13,7 +13,7 @@ timed system Example08_Absolute_Value_S {
 		var clock urational cl;
 			
 	@region:
-	    state<start> q0 {
+	    state< start > q0 {
 	        transition  tr1 --> q1 { 
 	            input In( x );
 	            guard ( -42 <= x <= 42 ); 
@@ -37,7 +37,6 @@ timed system Example08_Absolute_Value_S {
 		}
 	}
 }
-
 //Sequence of transitions characterizing a test purpose.
 //		transition = "tr1"
 //		transition = "tr2"

@@ -71,7 +71,7 @@ timed system Example05_Automotive_Platoon_S {
  		var boolean fail_leaving; 
  	
 	@region:
-		state<start> q0 { 
+		state< start > q0 { 
 			transition tr_join_r --> q1 {
 				input Join_r( joining_veh_sender, joining_veh_front );
 				timer   = 0;

@@ -13,7 +13,7 @@ timed system Example01_Basic_Timed_System_S {
 			
 	@region:
 	
-	    state<start> q0 {
+	    state< start > q0 {
 	        transition  tr1 --> q1 { 
 	            input In;
 	            cl := 0;

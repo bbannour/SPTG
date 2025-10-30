@@ -33,7 +33,7 @@ timed system BurglarAlarmSystem {
 		
 	@region:
 	
-	    state<start> S1 {
+	    state< start > S1 {
 	        @init{
 	            interruptChoice := 0;
 	        }

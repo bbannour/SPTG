@@ -15,7 +15,7 @@ timed system Example03_ATM_S {
 		var clock urational cl;
 	@region:
 	
-	    state<start> Idle {
+	    state< start > Idle {
 	    	@init{
 	    		balance := 100;
 	    	}
