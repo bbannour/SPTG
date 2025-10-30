@@ -4,34 +4,16 @@
 
 1. [SPTG overview](#sptg-overview)
 2. [Quick start with SPTG](#quick-start-with-sptg)
-    - [Start with example](#start-with-example)
+    - [Start with dummy example](#start-with-dummy-example)
     - [Run all examples](#run-all-examples)
     - [Compilation instructions](#compilation-instructions)
 
-3. SPTG tutorials  
-
-   📘 Tutorial on model specification:
-
-   `/path/to/SPTG/tutorials/model_specification.md`
-
-   or `/path/to/SPTG/tutorials/model_specification.pdf`
-   
-   📘 Tutorial on test case generation:
-   
-   `/path/to/SPTG/tutorials/testcase_generation.md`
-
-   or
-   `/path/to/SPTG/tutorials/testcase_generation.pdf`
-   
-   📘 [Tutorial on test purpose selection:
-   
-    `/path/to/SPTG/tutorials/testpurpose_selection.md`
-
-   or `/path/to/SPTG/tutorials/testpurpose_selection.pdf`
-  
+3. [SPTG tutorials](#sptg-tutorials)   
+ 
 ---
 
 ## SPTG overview
+---
 
 <div style="display: flex; flex-direction: column; align-items: center; margin: 20px 0;">
     <img src="README_files/images/overview_sptg_io.svg" width="325px" alt="Schematic view of SPTG showing the model automaton with a selected test purpose (blue path) and the generated test case automaton with terminal verdict states">
@@ -68,8 +50,8 @@ Infeasible branches, inconsistent with the test purpose, are pruned early during
 As an extension of the symbolic execution platform Diversity ([https://projects.eclipse.org/proposals/eclipse-formal-modeling-project](https://projects.eclipse.org/proposals/eclipse-formal-modeling-project)), which is distributed under the Eclipse Formal Modeling Project, SPTG can leverage its coverage analyses for **test purpose selection**, providing an integrated environment for offline timed symbolic testing.
 
 ---
-
 ## Quick start with SPTG
+---
 
 SPTG directory Structure:
 
@@ -94,9 +76,9 @@ SPTG directory Structure:
 
 - `README`: This file.
 
-
-
-### Start with example
+---
+### Start with dummy example
+---
 
 ```sh
 cd /path/to/SPTG/examples/example02_dummy/
@@ -154,13 +136,16 @@ The table below summarizes the inputs and outputs for generating a **test case**
 | **Input 1:** *Reference system model (Timed Symbolic Automaton)* | <img src="README_files/images/example02_dummy.svg" alt="Timed symbolic automaton"> |
 | **Input 2:** *Test purpose (Sequence of transitions)* | `tr1; tr2` |
 | **Output:** *Generated test case (Deterministic Timed Symbolic Automaton)* | <img src="README_files/images/dummy_testcase_gen.svg" alt="Deterministic timed symbolic automaton"> |
-
+---
 ### Run all examples
+---
 ```sh
 cd /path/to/SPTG/examples/
 ./run-all.sh
 ```
+---
 ### Compilation instructions
+---
 To compile SPTG, navigate to the `Release` directory:
 ```bash
 cd Release/
@@ -178,26 +163,36 @@ If you wish to preserve the existing executable, rename it before compilation fo
 mv ../bin/sptg.exe ../bin/sptg_old.exe
 ```
 ---
+## SPTG tutorials  
+---
+   📘 Tutorial on model specification:
 
+   `/path/to/SPTG/tutorials/model_specification.pdf`
+   
+   📘 Tutorial on test case generation:
+   
+   `/path/to/SPTG/tutorials/testcase_generation.pdf`
+   
+   📘 [Tutorial on test purpose selection:
+   
+   `/path/to/SPTG/tutorials/testpurpose_selection.pdf`
+
+---
 ## PlantUML: PUML to SVG Conversion Guide
-
+---
 A concise reference for converting `.puml` files to `.svg` images via the command line.  
 PlantUML requires **Graphviz** for diagram rendering.
 
----
-
-## Prerequisites
+### Prerequisites
 
 1. **Java Runtime Environment (JRE):** Required to execute PlantUML.  
 2. **PlantUML JAR File:** The standalone PlantUML application.  
 3. **Graphviz:** Used internally by PlantUML for layout and rendering.  
    After installation, Graphviz will be available in your system path.
 
----
+### a. Installation
 
-## a. Installation
-
-### Install Graphviz
+#### Install Graphviz
 On Debian/Ubuntu-based systems, install Graphviz with:
 
 ```bash
@@ -227,7 +222,7 @@ Use the `-tsvg` flag to generate an SVG image:
 |--------------|------------|
 | `java -jar plantuml.jar -tsvg yourfile.puml` | Converts the input file (`.puml`) to an SVG output (`.svg`). |
 
-#### Example
+### Example
 
 ```bash
 # Generates 'MyDiagram.svg'
