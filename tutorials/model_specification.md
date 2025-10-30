@@ -56,7 +56,7 @@ The system $\mathbb{G}$ has three states $q_0, q_1, q_2$ and four transitions:
 
 ## Encoding of the timed symbolic transition system in XLIA
 
-The SPTG framework, being an extension of the DIVERSITY symbolic execution platform, uses its entry language to express models of timed symbolic transition systems. This language, called **XLIA** (**eXecutable Language for Interaction and Architecture**), is designed for specifying the behavior of component-based systems.
+The SPTG framework, being an extension of the Diversity symbolic execution platform, uses its entry language to express models of timed symbolic transition systems. This language, called **XLIA** (**eXecutable Language for Interaction and Architecture**), is designed for specifying the behavior of component-based systems.
 
 In XLIA, components are referred to as machines. These machines are communicating, hierarchical, and heterogeneous, and their evaluation semantics can be customized to support different analysis or execution contexts. 
 
@@ -66,7 +66,9 @@ For timed symbolic transition systems, a single machine is typically used to rep
 
 
 
-The automaton $\mathbb{G}$ is encoded in the **XLIA** input language of the **Diversity** symbolic execution platform as follows:
+The automaton $\mathbb{G}$ is encoded **XLIA** as follows:
+
+**File** `/path/to/SPTG/examples/example02_dummy/example02_dummy.xlia`
 
 ```xlia
 timed system Example02_Dummy_S {
@@ -123,7 +125,7 @@ timed system Example02_Dummy_S {
 ---
 ## 1. General Structure
 ---
-The **XLIA model** (entry language of the **Diversity** symbolic execution platform) encodes the automaton by explicitly separating the **static part** (declarations of variables, clocks, and communication ports) from the **behavioral part** (states, transitions, and synchronization).  
+The **XLIA model** encodes the automaton by explicitly separating the **static part** (declarations of variables, clocks, and communication ports) from the **behavioral part** (states, transitions, and synchronization).  
 The `timed system` construct defines the **whole system**, while the nested `statemachine` block defines the actual automaton.
 
 ---
@@ -152,12 +154,12 @@ From the XLIA model:
 
 | XLIA element | Meaning | Automaton equivalent |
 | :--- | :--- | :--- |
-| `port input In(urational)` | **Input port** for receiving a rational value $x$ | Transition input action $In?x$ |
-| `port output Out(urational)` | **Output port** for sending a rational value | Transition output action $Out!0$ or $Out!x$|
-| `port output Done` | **Output signal** without data | Transition output action $Done$ |
-| `var urational sum` | **Data variable** tracking accumulated input | Automaton variable (used in **guards/actions**) |
-| `var urational x` | **Data variable** holding the latest input | **Variable bound** by input message |
-| `var clock urational cl` | **Clock variable** (measures elapsed time since last reset) | Automaton clock for **timed constraints** |
+| `port input In(urational)` | **Input port** for receiving a rational value | Input channel typed positive rational |
+| `port output Out(urational)` | **Output port** for sending a rational value | Output channel typed positive rational|
+| `port output Done` | **Output signal** without data | Output channel with undefined type  |
+| `var urational sum` | **Data variable** (tracking accumulated input) | Data variable (used in guards/updates) |
+| `var urational x` | **Data variable** (holding the latest input) | **Data variable** (used in guards/updates/actions) |
+| `var clock urational cl` | **Clock variable** (measures elapsed time since last reset) | Clock for **timed constraints** |
 
 ---
 
@@ -207,10 +209,10 @@ transition  tr4 --> q2 {
 
 ## Transition Mapping
 
-| Transition | Automaton equivalent | Description |
-| :--- | :--- | :--- |
-| **tr1** | $(q_0, In?x, 1 \leq x \leq 10,$ { $cl$ }$, sum := sum+x, q_1)$ | Receives input $x$, adds to $\text{sum}$, resets the clock $cl$. |
-| **tr4** | $$(q_0, Done!, sum \geq 15, \emptyset, id, q_2)$$ | Produces $\text{Done}$ output when accumulated $\text{sum} \ge 15$. |
+| Transition | Automaton equivalent | 
+| :--- | :--- | 
+| **tr1** | $(q_0, In?x, 1 \leq x \leq 10,$ { $cl$ }$, sum := sum+x, q_1)$ | 
+| **tr4** | $$(q_0, Done!, sum \geq 15, \emptyset, id, q_2)$$ | 
 
 
 **Transitions form q1**
@@ -226,11 +228,10 @@ transition tr3 --> q0 {
 }
 ```
 
-| Transition | Automaton equivalent | Description |
-| :--- | :--- | :--- |
-| **tr2** | $$(q_1, Out!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits value $0$, for small inputs. |
-| **tr3** | $$(q_1, Out!x, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits received input $x$, otherwise. |
-
+| Transition | Automaton equivalent | 
+| :--- | :--- | 
+| **tr2** | $$(q_1, Out!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ |
+| **tr3** | $$(q_1, Out!x, x > 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | 
 ---
 ## 4. Communication Interface
 ---
@@ -304,6 +305,8 @@ The automaton has two states $q_0$ and $q_1$ and two transitions as follows.
 
 Encoding in XLIA:
 
+**File** `/path/to/SPTG/examples/example01_basic_timed_system/example01_basic_timed_system.xlia`
+
 ```xlia
 @xlia< system , 1.0 >:
 
@@ -340,9 +343,29 @@ timed system Example01_S {
 	}
 }
 ```
+> **Note:**  
+> To encode updates in **XLIA**, we use two ways: **sequential statements** (user-friendly) and **simultaneous statements** (formal semantics).  
+> Both forms are used for **automaton initialization** and **transition updates**, with the latter ensuring full compliance with the formalism.  
+>
+> - **Sequential form:** statements execute **in order**, each using the **latest state**.  
+>   Example:  
+>   ```xlia
+>   a := b;
+>   c := a;
+>   ```  
+>   After execution: `a` takes `b`’s value, and `c` takes the **new value** of `a` (i.e. `c := b`).  
+>
+> - **Simultaneous form:** a block is evaluated as a **single function** from the **initial state**, using the operator `|,|`:  
+>   ```xlia
+>   |,| {
+>       a := b;
+>       c := a;
+>   }
+>   ```  
+>   This enforces **parallel assignment** semantics:  
+>   `a`’s new value = old `b`, and `c`’s new value = old `a`.
 
 **More on XLIA subset to encode timed symbolic transition systems**
-
 
 ```
 // ============================================================
@@ -363,17 +386,18 @@ timed system S {
         @public:
 
             // ----------------------------------------------
-            // Declaration of Ports
+            // Declaration of N-ary Ports
             // ----------------------------------------------
             port input  In;
             port output Done;
+
             port input  In1( urational );
             port input  In2( integer );
             port output Out( urational );
 
-            // Declaration of N-ary Ports
-            port input  In3( bool, integer, rational );
             port output Out2( integer, bool );
+
+            port input  In3( bool, integer, rational );
 
             // ----------------------------------------------
             // Declaration of Constants
@@ -414,18 +438,13 @@ timed system S {
                 transition tr1 --> q1 {
                     input In1( x );
                     guard ( 1 <= x <= 10 );
-                    sum := sum + x;
-                    y   := sum;
+                    sum := sum+x;
                     cl  := 0;
                 }
 
                 transition tr2 --> q1 {
                     input In( x );
                     guard ( 10 < x && x < N );
-                    {|,|
-                        sum := sum + x;
-                        y   := sum; // y receives the pre-increment sum value
-                    }
                     cl2 := 0;
                 }
             }
@@ -436,7 +455,7 @@ timed system S {
             state q1 {
                 transition tr3 --> q0 {
                     guard( x <= 10 && cl == N - x );
-                    output Out( sum - 1 );
+                    output Out( sum-1 );
                 }
 
                 transition tr4 --> q0 {
