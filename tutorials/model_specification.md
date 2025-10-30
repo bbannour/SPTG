@@ -1,9 +1,10 @@
 
+<!---
 <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 <script type="text/x-mathjax-config"> MathJax.Hub.Config({ tex2jax: {inlineMath: [['$', '$']]}, messageStyle: "none" });</script>
+--->
 
-
-# Timed symbolic transition system - Reference system model
+# Timed symbolic transition system - Reference system model specification
 
 
 SPTG automata models, called **timed symbolic transition systems**, will be introduced in the following using a small dummy one, $\mathbb{G}$ sufficient to illustrate the main components:
@@ -119,16 +120,15 @@ timed system Example02_Dummy_S {
 	 }
 }
 ```
-
+---
 ## 1. General Structure
-
+---
 The **XLIA model** (entry language of the **Diversity** symbolic execution platform) encodes the automaton by explicitly separating the **static part** (declarations of variables, clocks, and communication ports) from the **behavioral part** (states, transitions, and synchronization).  
 The `timed system` construct defines the **whole system**, while the nested `statemachine` block defines the actual automaton.
 
 ---
-
 ## 2. Static Part
-
+---
 The static part declares:
 
 - **Ports** (inputs/outputs), which correspond to the external interactions of the automaton.
@@ -147,8 +147,8 @@ From the XLIA model:
 	var clock urational cl;
 ```
 
+### Mapping to the automaton
 
-## Mapping to the automaton
 
 | XLIA element | Meaning | Automaton equivalent |
 | :--- | :--- | :--- |
@@ -163,8 +163,9 @@ From the XLIA model:
 
 Thus, the static part declares the **interface** and **internal state space** of the automaton.
 
+---
 ## 3. Behavioral Part
-
+---
 The behavioral description is under `@region`, where states and transitions are defined.
 
 ```xlia
@@ -230,9 +231,9 @@ transition tr3 --> q0 {
 | **tr2** | $$(q_1, Out!0, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits value $0$, for small inputs. |
 | **tr3** | $$(q_1, Out!x, x \leq 5 \wedge cl = 42 - x, \emptyset, id, q_0)$$ | Emits received input $x$, otherwise. |
 
-
+---
 ## 4. Communication Interface
-
+---
 The `@com` section defines how this state machine interacts with the environment:
 
 ```xlia
@@ -246,7 +247,9 @@ The `@com` section defines how this state machine interacts with the environment
 
 This binds the declared input/output ports to the environment.
 
-## 5. Summary: Automaton -- XLIA Correspondence
+---
+## 5. Summary: Automaton versus XLIA Correspondence
+---
 
 | Automaton Concept | XLIA Encoding |
 | :--- | :--- |

@@ -13,11 +13,9 @@ The construction of the test case is obtained by applying dedicated symbolic exe
 1. [Test-oriented Symbolic Execution Techniques](#test-oriented-symbolic-execution-techniques)
 2. [Symbolic Path-guided Test Case](#symbolic-path-guided-test-case)
 3. [Using SPTG](#using-sptg)
-
-
-
+---
 ## Test-oriented Symbolic Execution Techniques
-
+---
 **Symbolic execution** explores a model by representing both data and time with symbolic variables instead of concrete values. It unfolds the automaton while generating constraints over symbolic variables, producing a **symbolic execution tree** . The tree's nodes are **execution contexts**, and its edges represent symbolic steps such as initialization, transition firing, or **quiescence completion**.
 
 Consider the following dummy automaton example:
@@ -155,10 +153,9 @@ The test case $\mathbb{TC}_{\mathbf{tr}_1.\mathbf{tr}_2}$ which corresponds to t
 <div style="padding-top: 20px; padding-bottom: 20px;">
 </div>
 
-
+---
 ## Symbolic Path-guided Test Case
-
-
+---
 The test case $\mathbb{TC}_p$ is defined as a **timed symbolic transition system** equipped with a **single clock** `cl`, which measures the elapsed time before each action it performs.  
 
 The **data variable set** of $\mathbb{TC}_p$ includes all symbolic variables used to produce the execution contexts covering the path $p$.  
@@ -178,9 +175,7 @@ These variables represent the information known and manipulated by the test case
 
 This timing mechanism, combined with quiescence detection ($cl \geq \text{TM}$), ensures that the test case can be implemented in a real-time environment. 
 
-
 ### Test case general structure
-
 
 The test case mirrors $SE(\mathbb{G})^{\delta}_{/p}$ and is used to **check the conformance** of the SUT to $\mathbb{G}$ along the symbolic path $p$.
 
@@ -247,8 +242,9 @@ Transition to $\text{FAIL}^{dur}$ captures invalid quiescence, defined by:
 
 The last trace shows quiescence exceeding the allowed duration, with only $(41, Out!0)$ as a valid output after $(0, In?1)$, resulting in a $\text{FAIL}^{dur}$ verdict.
 
-
+---
 ## Using SPTG
+---
 Navigate to the `/path/to/SPTG/examples/example02_dummy/` directory, then run: 
 ```bash
 cd /path/to/SPTG/examples/example02_dummy/
@@ -336,26 +332,21 @@ As a result, you obtain the following generated test case:
 | **Output:** *Generated test case (Deterministic Timed Symbolic Automaton)* | <img src="../README_files/images/dummy_testcase_gen2.svg" alt="Deterministic timed symbolic automaton (second test case)"> |
 
 ---
-
 ## PlantUML: PUML to SVG Conversion Guide
-
+---
 A concise reference for converting `.puml` files to `.svg` images via the command line.  
 PlantUML requires **Graphviz** for diagram rendering.
 
----
-
-## Prerequisites
+### Prerequisites
 
 1. **Java Runtime Environment (JRE):** Required to execute PlantUML.  
 2. **PlantUML JAR File:** The standalone PlantUML application.  
 3. **Graphviz:** Used internally by PlantUML for layout and rendering.  
    After installation, Graphviz will be available in your system path.
 
----
+### a. Installation
 
-## a. Installation
-
-### Install Graphviz
+#### Install Graphviz
 On Debian/Ubuntu-based systems, install Graphviz with:
 
 ```bash
@@ -385,7 +376,7 @@ Use the `-tsvg` flag to generate an SVG image:
 |--------------|------------|
 | `java -jar plantuml.jar -tsvg yourfile.puml` | Converts the input file (`.puml`) to an SVG output (`.svg`). |
 
-#### Example
+### Example
 
 ```bash
 # Generates 'MyDiagram.svg'

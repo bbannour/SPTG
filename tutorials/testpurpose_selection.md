@@ -21,7 +21,6 @@ Once such a symbolic path is identified:
 - It corresponds to a **consecutive sequence of transitions** in the automaton.  
 - This sequence can serve as the input **test purpose** for the **SPTG test case generation** process.  
 
-
 ## Table of content
 
 1. [Principle of the HoJ heuristic](#principle-of-the-HoJ-heuristic)
@@ -29,9 +28,9 @@ Once such a symbolic path is identified:
 3. [Heuristic Parameters](#coverage-modes)
 4. [Using SPTG](#using-sptg)
 
-
+---
 ## Principle of the HoJ Heuristic
-
+---
 Assuming the **coverage goal** is a **sequence of (non-consecutive) transitions** which must be covered in order but the HoJ can fill the gaps in between to find the covering symbolic path (if any). During symbolic execution, HoJ drives the exploration of the symbolic automaton so that the generated symbolic tree **progressively covers prefixes** of this sequence until full coverage is achieved as illustrated in th the following figure (Schematic illustration of HoJ trials and coverage progression):
 
 
@@ -54,11 +53,9 @@ The symbolic tree is built **incrementally and adaptively** through a series of 
 
 This process is **iteratively repeated** (Trial 1, Trial 2, …) until the full target sequence is covered. Each local subtree (bounded by dashed areas) corresponds to one trial, alternating between **Hit** and **Jump** phases until complete coverage is achieved.
 
-
-
-
+---
 ## Coverage Modes
-
+---
 HoJ supports different **coverage modes**, depending on the structure of the declared test purpose and the desired level of strictness:
 
 - **Sequence coverage:** requires transitions to be covered **in the declared order**.  
@@ -67,9 +64,9 @@ HoJ supports different **coverage modes**, depending on the structure of the dec
 
 These modes provide flexibility in defining **how tightly the heuristic should follow the declared sequence**, depending on the abstraction level of the model or the granularity of coverage desired.
 
-
-
-## 3. Heuristic Parameters
+---
+## Heuristic Parameters
+---
 
 The HoJ heuristic is controlled by several key parameters that determine its exploration behavior:
 
@@ -80,8 +77,9 @@ The HoJ heuristic is controlled by several key parameters that determine its exp
 
 Tuning these parameters allows balancing **exploration depth** and **search focus**, ensuring that the heuristic converges efficiently toward a subtree that satisfies the **test purpose**.
 
+---
 ## Using SPTG
-
+---
 Consider an automaton model representing a leader agent that manages the insertion and departure of vehicles in a platoon, ensuring safe spacing and coordination. The model is encoded as a timed symbolic transition system corresponding to a UPPAAL model [https://doi.org/10.1016/J.SCICO.2017.05.006](https://doi.org/10.1016/J.SCICO.2017.05.006) *(Open Access)*. This model is interesting for illustrating the HoJ, as it exhibits long, intertwined transition paths, making it difficult to identify the exact sequence of consecutive transitions needed to realize certain desired behaviors.
 
 The textual model is available here ``path/to/SPTG/examples/example05_automotive_platoon/example05_automotive_platoon.xlia` and depicted below (Zoom-in for details):
