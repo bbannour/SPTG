@@ -135,7 +135,6 @@ serializer#symbex#trace#basic basic_trace_generator {
     ] // end vfs
 }
 ...
-}
 ```
 
 
