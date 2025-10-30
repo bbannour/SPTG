@@ -304,13 +304,12 @@ path#guided#testcase#generator testcase_genertor {
 > **File** `/path/to/SPTG/examples/example02_dummy/output_h2/example02_dummy.puml`  
 > *Comment:* This file provides a visual representation of the reference automaton. 
 
-> **Note:** You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/plantuml/releases) or the online tool [PlantText](https://www.planttext.com/). You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
+> **Note:** If the **PlantUML JAR** and the **Graphviz** are configured, the script automatically produces:  
+> **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.svg`  
+> **File** `/path/to/SPTG/examples/example02_dummy/output_h2/example02_dummy.svg`.
 
-> **Note:** If the **PlantUML JAR** and the Graphviz `dot` executable are located in `/path/to/SPTG/bin`, the script automatically produces:  
-> **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.svg`.
 
-
-The table below summarizes the inputs and outputs for generating the **test case** with SPTG. The figures shown are **visual representations** obtained by converting the corresponding **PlantUML** files into **SVG** format.
+The table below summarizes the inputs and outputs for generating the **test case** with SPTG:
 
 
 | **Description** | **Content** |
@@ -333,53 +332,3 @@ As a result, you obtain the following generated test case:
 | **Input 2:** *Test purpose (Sequence of transitions)* | `tr1; tr2; tr1; tr3; tr4` |
 | **Output:** *Generated test case (Deterministic Timed Symbolic Automaton)* | <img src="../README_files/images/dummy_testcase_gen2.svg" alt="Deterministic timed symbolic automaton (second test case)"> |
 
----
-## PlantUML: PUML to SVG Conversion Guide
----
-A concise reference for converting `.puml` files to `.svg` images via the command line.  
-PlantUML requires **Graphviz** for diagram rendering.
-
-### Prerequisites
-
-1. **Java Runtime Environment (JRE):** Required to execute PlantUML.  
-2. **PlantUML JAR File:** The standalone PlantUML application.  
-3. **Graphviz:** Used internally by PlantUML for layout and rendering.  
-   After installation, Graphviz will be available in your system path.
-
-### a. Installation
-
-#### Install Graphviz
-On Debian/Ubuntu-based systems, install Graphviz with:
-
-```bash
-sudo apt install graphviz
-```
-After this, the `dot` executable will be available system-wide.
-
-### b. Download PlantUML
-
-Get the latest stable release of `plantuml.jar` from:  
-👉 [https://github.com/plantuml/plantuml/releases](https://github.com/plantuml/plantuml/releases)
-
-Ensure both `java` and `dot` commands are available:
-
-```bash
-java -version
-dot -V
-```
-
-### c. Conversion Command
-
-Navigate to the folder containing both `plantuml.jar` and your `.puml` file.
-
-Use the `-tsvg` flag to generate an SVG image:
-
-| **Command** | **Action** |
-|--------------|------------|
-| `java -jar plantuml.jar -tsvg yourfile.puml` | Converts the input file (`.puml`) to an SVG output (`.svg`). |
-
-### Example
-
-```bash
-# Generates 'MyDiagram.svg'
-java -jar plantuml.jar -tsvg MyDiagram.puml
