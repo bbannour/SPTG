@@ -26,7 +26,7 @@
 
 
 It relies on **path-guided symbolic execution**, which explores the input path and builds **symbolic constraints** over inputs and timing.
-SPTG embeds the **Z3 SMT solver**, which is used to check the **satisfiability of path conditions** along the main test purpose path and its **immediate divergent paths**, as well as to ensure determinism.
+SPTG embeds the **SMT-solver Z3**, which is used to check the **satisfiability of path conditions** along the main test purpose path and its **immediate divergent paths**, as well as to check determinism.
 Infeasible branches, inconsistent with the test purpose, are pruned early during symbolic exploration, avoiding dead paths that correspond to excluded behaviors.
 
   <div style="text-align: center; margin: 0 10px;">
@@ -35,11 +35,11 @@ Infeasible branches, inconsistent with the test purpose, are pruned early during
   </div>
 
 
-**Figure 2** illustrates the execution phase, where the generated test case interacts with the **System Under Test (SUT)**. During execution, **Z3** is used to solve the **stimulation conditions (guards)**, determining the inputs and timings to apply. Test case transitions are controlled by a clock cl, which satisfies cl < TM, where TM is the maximal waiting time before either applying a stimulation or observing an output. Quiescence, i.e., the obersvation of absence of output, is detected when cl >= TM, indicating that the system remains silent. This timing mechanism, combined with quiescence detection, ensures the test case is implementable in a real-time setting. Additionally, **Z3** checks that the **observed outputs** and their **timings** satisfy the corresponding observation conditions, after which verdicts are assigned.
+**Figure 2** illustrates the execution phase, where the generated test case interacts with the **System Under Test (SUT)**. During execution, **Z3** is used to solve the **stimulation conditions (guards)**, determining the inputs and timings to apply. Test case transitions are controlled by a clock cl, which satisfies cl < TM, where TM is the maximal waiting time before either applying a stimulation or observing an output. Quiescence, i.e., the obersvation of absence of output, is detected when cl >= TM, indicating that the system remains silent. This timing mechanism, combined with quiescence detection, ensures the test case is implementable in a real-time setting. Additionally, **Z3** is used to check that the **observed outputs** and their **timings** satisfy the corresponding observation conditions, after which verdicts are assigned.
 
 ### Applications
 
-- **Model-Based Testing (MBT)** of systems with combined data and timing behaviors.  
+- **Model-Based Testing (MBT)** of systems exhibiting temporal and data-related behaviors.
 - **Offline generation** of efficient and deterministic test cases from formal models.  
 - **Teaching and demonstration** of symbolic execution and model-based test generation principles.
 
@@ -57,12 +57,13 @@ SPTG directory Structure:
 
 - `bin/`: This directory contains the SPTG tool binary `sptg.exe`. It also includes the PlantUML JAR and the Graphviz executable (`dot`), which together enable visualization and export of generated test cases in graphical PlantUML (SVG) format.
 
-- `examples/`: This directory contains all examples. It has a subdirectory for each example and a script `run-all.sh` to run all preconfigured test case generation tasks. Each example subdirectory includes:
+- `examples/`: This directory contains all examples. It includes: a subdirectory for each example; and a script `run-all.sh` which executes all preconfigured test case generation tasks across all examples.  
+Each example subdirectory includes:
   - The reference model.
-  - A preconfigured script `run-sptg.sh` that calls SPTG for test case generation using a test purpose path (a sequence of consecutive transitions of the model). 
-  `run-all.sh` calls all `run-sptg.sh` scripts for each example.
+  - A local script (`run-sptg.sh`, `run-sptg-h2.sh`, or `run-sptg-h5.sh`) that calls SPTG for a preconfigured test case generation task.  
+  The `run-all.sh` script sequentially executes all local scripts.
 
-- `tutorials/`: This directory contains three tutorials and associated files: tutorial on model specification; tutorial on test case generation; and tutorial on test purpose selection. The latter is a feature that SPTG inherits from extending the symbolic execution platform Diversity.
+- `tutorials/`: This directory contains three tutorials and their associated files: a tutorial on model specification, a tutorial on test case generation, and a tutorial on test purpose selection. The test purpose selection feature is inherited from the symbolic execution platform Diversity, which SPTG extends.
 
 - `src/`: Contains the C++ source code of SPTG.
 
@@ -99,7 +100,7 @@ This script instructs **SPTG** to generate a **test case** with the following sp
 <div style="padding-top: 5px; padding-bottom: 5px;"></div>
 
 > **Note:**  
-> The input reference model automaton is encoded in the **XLIA language** (file `.xlia`), the input language of the **Diversity** symbolic execution platform. **SPTG** extends Diversity with dedicated functionality for symbolic path-guided test case generation. See tutorial on model specification for more details.
+> The input reference model automaton is encoded in the **XLIA language** (file `.xlia`), the input language of the symbolic execution platform **Diversity**, which **SPTG** extends. See tutorial on model specification [here](#sptg-tutorials) for more details.
 
 <div style="padding-top: 5px; padding-bottom: 5px;"></div>
 
@@ -110,14 +111,14 @@ This script instructs **SPTG** to generate a **test case** with the following sp
   **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.puml`  
   *Comment:* This file provides a visual representation of the test case automaton, which can be rendered using PlantUML.
 
+- **JSON format with SMT-LIB guards**  
+  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase_smt.json`  
+  *Comment:* This JSON file encodes the test case automaton, including guards in SMT-LIB format, suitable for automated execution againt system under test (SUT) using an SMT-solver (e.g. Z3).
+
 - **Specification language: XLIA**  
   The same language used to express the reference model.  
   **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.xlia`  
   *Comment:* This file can be explored using the symbolic execution platform Diversity.
-
-- **JSON format with SMT-LIB guards**  
-  **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase_smt.json`  
-  *Comment:* This JSON file encodes the test case automaton, including guards in SMT-LIB format, suitable for automated execution againt system under test (SUT) using an SMT-solver (e.g. Z3).
 
 > **Note:** The script also generates the graphical **PlantUML** file for the reference automaton:  
 > **File** `/path/to/SPTG/examples/example02_dummy/output_h2/example02_dummy.puml`  
@@ -126,9 +127,10 @@ This script instructs **SPTG** to generate a **test case** with the following sp
 > **Note:** You can visualize `.puml` files using [PlantUML](https://github.com/plantuml/plantuml/releases) or the online tool [PlantText](https://www.planttext.com/). You can convert a file `.puml` to a file `.svg` (see the [PlantUML Conversion Guide](#plantuml-puml-to-svg-conversion-guide)).
 
 > **Note:** If the **PlantUML JAR** and the Graphviz `dot` executable are located in `/path/to/SPTG/bin`, the script automatically produces:  
-> **File** `/path/to/SPTG/examples/example02_dummy/testcase.svg`.
-   
-The table below summarizes the inputs and outputs for generating a **test case** with SPTG. The figures shown are **visual representations** obtained by converting the corresponding **PlantUML** files into **SVG** format.
+> **File** `/path/to/SPTG/examples/example02_dummy/output_h2/example02_dummy.svg`  
+> **File** `/path/to/SPTG/examples/example02_dummy/output_h2/testcase.svg`
+
+The table below summarizes the inputs and outputs for generating the **test case** with SPTG. The figures shown are **visual representations** obtained by converting the corresponding **PlantUML** files into **SVG** format.
 
 
 | **Description** | **Content** |
@@ -143,6 +145,7 @@ The table below summarizes the inputs and outputs for generating a **test case**
 cd /path/to/SPTG/examples/
 ./run-all.sh
 ```
+> **Note:** The results of running all examples are provided in the file `/path/to/SPTG/examples-outputs.zip`.
 ---
 ### Compilation instructions
 ---
@@ -162,6 +165,14 @@ If you wish to preserve the existing executable, rename it before compilation fo
 ```bash
 mv ../bin/sptg.exe ../bin/sptg_old.exe
 ```
+
+> **Note:** The compilation and testing of SPTG have been performed on the virtual machine published at [https://doi.org/10.5281/zenodo.17171929](https://doi.org/10.5281/zenodo.17171929).  
+> The VM runs on **Ubuntu 25.04**, and the compilation was executed within this environment.  
+> The VM itself operates under **VirtualBox Version 7.1.12 r169651 (Qt 6.5.3)** [https://www.virtualbox.org/](https://www.virtualbox.org/).
+
+> **Note:** The `-j4` option in the `make` command allows up to 4 compilation jobs to run in parallel, speeding up the build process by using multiple CPU cores.
+
+
 ---
 ## SPTG tutorials  
 ---
