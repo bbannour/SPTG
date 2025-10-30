@@ -2049,7 +2049,7 @@ void AvmTestCaseFactory::saveTestCaseJson(const System & aSystemTC)
 
 	saveGenericTestCaseJson(out, aSystemTC, strVarTypeFunct, strFormulaFunc);
 
-	out << "}";
+	out << "}" << std::endl << std::flush;
 }
 
 void AvmTestCaseFactory::saveTestCaseSmtJson(const System & aSystemTC)
@@ -2093,7 +2093,7 @@ void AvmTestCaseFactory::saveTestCaseSmtJson(const System & aSystemTC)
 
 	saveGenericTestCaseJson(out, aSystemTC, strVarTypeFunct, strFormulaFunc);
 
-	out << "}";
+	out << "}" << std::endl << std::flush;
 }
 
 
