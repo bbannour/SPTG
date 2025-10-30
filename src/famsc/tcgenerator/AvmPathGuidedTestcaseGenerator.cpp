@@ -95,7 +95,7 @@ mEnableGlobalVerdictState( false ),
 mTraceOffset( 0 ),
 mCurrentTestPurposeEC( ),
 mSatTestPurposeEC( ),
-mCoverageGoalAchieved( false )
+mGoalAchieved( false )
 {
 	//!! NOTHING
 }
@@ -298,8 +298,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( LOW , CONFIGURING )
 void AvmPathGuidedTestcaseGenerator::reportMinimum(OutStream & os) const
 {
 	os << TAB << "FAM< " << QNID() << " > " << this->getNameID() << " "
-			<< mCoverageStatistics.strCoverageRate(mCoverageGoalAchieved) << " ==> "
-			<< (mCoverageGoalAchieved ? "DONE !" : "FAILED !")
+			<< mCoverageStatistics.strCoverageRate(mGoalAchieved) << " ==> "
+			<< (mGoalAchieved ? "DONE !" : "FAILED !")
 			<< std::endl;
 
 	mTestCaseStatistics.reportDefault(os);
@@ -309,8 +309,8 @@ void AvmPathGuidedTestcaseGenerator::reportMinimum(OutStream & os) const
 void AvmPathGuidedTestcaseGenerator::reportDefault(OutStream & os) const
 {
 	os << TAB << "FAM< " << QNID() << " > " << this->getNameID() << " "
-			<< mCoverageStatistics.strCoverageRate(mCoverageGoalAchieved) << " ==> "
-			<< (mCoverageGoalAchieved ? "DONE !" : "FAILED !")
+			<< mCoverageStatistics.strCoverageRate(mGoalAchieved) << " ==> "
+			<< (mGoalAchieved ? "DONE !" : "FAILED !")
 			<< std::endl;
 
 	mTestCaseStatistics.reportDefault(os);
@@ -325,7 +325,7 @@ void AvmPathGuidedTestcaseGenerator::tddRegressionReportImpl(OutStream & os) con
 {
 	os << TAB << "CONTROLLED WIDTH EVALUATION : "
 			<< mCoverageStatistics.strCoverageRate() << " ==> "
-			<< (mCoverageGoalAchieved ? "DONE !" : "FAILED !")
+			<< (mGoalAchieved ? "DONE !" : "FAILED !")
 			<< EOL_FLUSH;
 }
 
@@ -368,7 +368,7 @@ bool AvmPathGuidedTestcaseGenerator::prefilter()
 
 bool AvmPathGuidedTestcaseGenerator::prefilter(ExecutionContext & anEC)
 {
-	if( mCoverageGoalAchieved )
+	if( mGoalAchieved )
 	{
 		getSymbexRequestManager().postRequestStop( this );
 	}
@@ -459,7 +459,7 @@ bool AvmPathGuidedTestcaseGenerator::postfilter(ExecutionContext & anEC)
 			}
 			if( mCoverageStatistics.getNumberOfUncovered() == 1 )
 			{
-				mCoverageGoalAchieved = true;
+				mGoalAchieved = true;
 			}
 		}
 //@! TO UNCOMMENT with FACS Performance evaluation
@@ -508,7 +508,7 @@ bool AvmPathGuidedTestcaseGenerator::preprocess()
 
 bool AvmPathGuidedTestcaseGenerator::postprocess()
 {
-	if( mCoverageGoalAchieved )
+	if( mGoalAchieved )
 	{
 		if( mEnableGuardSimplification )
 		{
@@ -528,7 +528,9 @@ bool AvmPathGuidedTestcaseGenerator::postprocess()
 			}
 			else
 			{
-				AVM_OS_COUT << std::endl << EMPHASIS( "Unexpected non-determinist modél for testcase generation !" ) << std::flush;
+				mGoalAchieved = false;
+
+				AVM_OS_COUT << std::endl << EMPHASIS( "Unexpected NON-DETERMINISTIC model for testcase generation !" ) << std::flush;
 			}
 		}
 	}

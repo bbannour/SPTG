@@ -61,11 +61,6 @@ bool AvmTraceDeterminismFactory::checkDeterminism()
 	ExecutionContext * symbexGraph = rootEC.cloneGraph(nullptr, true);
 	mProcessor.getConfiguration().appendExecutionTrace(symbexGraph);
 
-//	for( const auto & aChildEC : rootQuiescenceGraph.getChildContexts()  )
-//	{
-//		checkDeterminism(*aChildEC);
-//	}
-
 	AvmTestCaseUtils::getInitialParameters(rootEC, mNewfreshInitialParams);
 
 AVM_IF_DEBUG_LEVEL_FLAG( LOW , PROCESSING )
@@ -86,7 +81,7 @@ bool AvmTraceDeterminismFactory::checkDeterminism(ExecutionContext & anEC)
 	{
 		if( (*itChild)->hasChildContext() )
 		{
-			checkDeterminism(*(*itChild));
+			isDeterministic = checkDeterminism(*(*itChild)) && isDeterministic;
 		}
 
 		if( (*itChild)->hasIOElementTrace() )
@@ -135,7 +130,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 						std::string info = (OSS() << "EC<" << (*itChild)->getIdNumber()
 								<< "> , EC<" << (*itSiblingChild)->getIdNumber() << ">");
-						if( not SolverFactory::isStrongSatisfiable(condition, true) )
+						if( SolverFactory::isStrongSatisfiable(condition, true) )
 						{
 							isDeterministic = false;
 
@@ -209,7 +204,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 
 				std::string info = (OSS() << "EC<" << aTargetEC.getIdNumber()
 						<< "> , EC<" << itSiblingChild->getIdNumber() << ">");
-				if( not SolverFactory::isStrongSatisfiable(condition, true) )
+				if( SolverFactory::isStrongSatisfiable(condition, true) )
 				{
 					isDeterministic = false;
 

@@ -90,7 +90,7 @@ public:
 	ExecutionContext::ListOfPtr mCurrentTestPurposeEC;
 	ExecutionContext::ListOfPtr mSatTestPurposeEC;
 
-	bool mCoverageGoalAchieved;
+	bool mGoalAchieved;
 
 public:
 	/**
@@ -163,6 +163,23 @@ public:
 
     virtual bool postprocess() override;
 
+	/**
+	 * EXIT API
+	 */
+	virtual bool exitImpl() override
+	{
+		// SET EXIT CODE
+		if( not mGoalAchieved )
+		{
+			avm_set_exit_code( AVM_EXIT_COVERAGE_GOAL_UNACHIEVED_CODE);
+		}
+		else
+		{
+			mCoverageStatistics.setExitCode();
+		}
+
+		return true;
+	}
 
 	////////////////////////////////////////////////////////////////////////////
 	// SERIALIZATION API
