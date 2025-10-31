@@ -13,7 +13,7 @@ cd $SAMPLE_PATH
 # Run all Symbolic Execution Workflow for testpurpose of length 2
 ./run-sptg-h2.sh $@
 RUN_SAMPLE_H2_SH_RETURN_CODE=$?
-if [ $RUN_SAMPLE_H2_SH_RETURN_CODE -neq 0 ]
+if [ ! $RUN_SAMPLE_H2_SH_RETURN_CODE -eq 0 ]
 then
     echo "Fail to run ./$sample/$RUN_SAMPLE_ALL_SH !"
     echo "Exit code : $RUN_SAMPLE_H2_SH_RETURN_CODE"
@@ -22,7 +22,7 @@ fi
 # Run all Symbolic Execution Workflow for testpurpose of length 5
 ./run-sptg-h5.sh $@
 RUN_SAMPLE_H5_SH_RETURN_CODE=$?
-if [ $RUN_SAMPLE_H5_SH_RETURN_CODE -neq 0 ]
+if [ ! $RUN_SAMPLE_H5_SH_RETURN_CODE -eq 0 ]
 then
     echo "Fail to run ./$sample/$RUN_SAMPLE_ALL_SH !"
     echo "Exit code : $RUN_SAMPLE_H5_SH_RETURN_CODE"
@@ -30,4 +30,3 @@ fi
 
 echo "| End SPTG on all examples on $SAMPLE_DIR !"
 echo "____________________________________________________________"
-
