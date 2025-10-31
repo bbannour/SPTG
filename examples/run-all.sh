@@ -43,6 +43,7 @@ else
     echo "| Install it the your system with the command 'sudo apt install graphviz'"
 fi
 
+set +e
 
 RUN_SAMPLE_ALL_SH=run-all.sh
 RUN_SAMPLE_SPTG_SH=run-sptg.sh
@@ -53,13 +54,28 @@ for sample in */; do
         if [ -f $SAMPLE_MAIN_PATH/$sample/$RUN_SAMPLE_ALL_SH ]
         then
             $SAMPLE_MAIN_PATH/$sample/$RUN_SAMPLE_ALL_SH
+            # get the exit code of the execution of RUN_SAMPLE_ALL_SH
+            RUN_SAMPLE_ALL_SH_RETURN_CODE=$?
+            if [ ! $RUN_SAMPLE_ALL_SH_RETURN_CODE -eq 0 ]
+            then
+            	echo "Fail to run ./$sample/$RUN_SAMPLE_ALL_SH !"
+            	echo "Exit code : $RUN_SAMPLE_ALL_SH_RETURN_CODE"
+            	exit $RUN_SAMPLE_ALL_SH_RETURN_CODE
+            fi
         elif [ -f $SAMPLE_MAIN_PATH/$sample/$RUN_SAMPLE_SPTG_SH ]
         then
             $SAMPLE_MAIN_PATH/$sample/$RUN_SAMPLE_SPTG_SH
+            # get the exit code of the execution of RUN_SAMPLE_SPTG_SH
+            RUN_SAMPLE_SPTG_SH_RETURN_CODE=$?
+            if [ ! $RUN_SAMPLE_SPTG_SH_RETURN_CODE -eq 0 ]
+            then
+            	echo "Fail to run ./$sample/$RUN_SAMPLE_SPTG_SH !"
+            	echo "Exit code : $RUN_SAMPLE_SPTG_SH_RETURN_CODE"
+            	exit $RUN_SAMPLE_SPTG_SH_RETURN_CODE
+            fi
         fi
     fi
 done
-
 
 echo "| End SPTG on all examples !"
 echo "____________________________________________________________"

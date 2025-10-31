@@ -43,7 +43,7 @@ set +e
 # echo "$SPTG_EXE  $SPTG_SEW"
 $SPTG_EXE  $SPTG_SEW
 
-# get the exit code of the exection of SPTG_EXE
+# get the exit code of the execution of SPTG_EXE
 SPTG_EXE_RETURN_CODE=$?
 
 # The expected exit code
@@ -78,6 +78,7 @@ case $SPTG_EXE_RETURN_CODE in
         ;;
     *)
         echo "Unexpected exit code $SPTG_EXE_RETURN_CODE !"
+        exit $SPTG_EXE_RETURN_CODE
         ;;
 esac
 

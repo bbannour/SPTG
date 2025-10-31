@@ -79,6 +79,7 @@ case $SPTG_EXE_RETURN_CODE in
         ;;
     *)
         echo "Unexpected exit code $SPTG_EXE_RETURN_CODE !"
+        exit $SPTG_EXE_RETURN_CODE
         ;;
 esac
 
