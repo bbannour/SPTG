@@ -11,21 +11,29 @@ SAMPLE_PATH="$( dirname "$(realpath "$0")" )"
 cd $SAMPLE_PATH
 
 # Run all Symbolic Execution Workflow for testpurpose of length 2
+if [ ! -x ./run-sptg-h2.sh ]
+then
+	chmod a+x ./run-sptg-h2.sh
+fi
 ./run-sptg-h2.sh $@
 RUN_SAMPLE_H2_SH_RETURN_CODE=$?
 if [ ! $RUN_SAMPLE_H2_SH_RETURN_CODE -eq 0 ]
 then
-    echo "Fail to run ./$sample/$RUN_SAMPLE_ALL_SH !"
-    echo "Exit code : $RUN_SAMPLE_H2_SH_RETURN_CODE"
+	echo "Fail to run ./$sample/$RUN_SAMPLE_ALL_SH !"
+	echo "Exit code : $RUN_SAMPLE_H2_SH_RETURN_CODE"
 fi
 
 # Run all Symbolic Execution Workflow for testpurpose of length 5
+if [ ! -x ./run-sptg-h5.sh ]
+then
+	chmod a+x ./run-sptg-h5.sh
+fi
 ./run-sptg-h5.sh $@
 RUN_SAMPLE_H5_SH_RETURN_CODE=$?
 if [ ! $RUN_SAMPLE_H5_SH_RETURN_CODE -eq 0 ]
 then
-    echo "Fail to run ./$sample/$RUN_SAMPLE_ALL_SH !"
-    echo "Exit code : $RUN_SAMPLE_H5_SH_RETURN_CODE"
+	echo "Fail to run ./$sample/$RUN_SAMPLE_ALL_SH !"
+	echo "Exit code : $RUN_SAMPLE_H5_SH_RETURN_CODE"
 fi
 
 echo "| End SPTG on all examples on $SAMPLE_DIR !"

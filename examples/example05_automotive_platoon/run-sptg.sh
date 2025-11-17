@@ -15,7 +15,6 @@ cd $SAMPLE_PATH
 
 # We assume the SPTG executable path for all scripts, adjust if necessary
 export SPTG_EXE=$( realpath -e $SAMPLE_PATH/../../bin/sptg.exe )
-# SPTG_EXE=/c/_myDisk_/git/github/efm-symbex/org.eclipse.efm.symbex/Release/diversity.exe
 
 # The selected Symbolic Execution Workflow
 SPTG_SEW=$SAMPLE_PATH/workflow_4_testcase_generation.sew
@@ -50,37 +49,40 @@ SPTG_EXIT_COVERAGE_GOAL_UNACHIEVED_CODE=102
 
 # Exit code checking ...
 case $SPTG_EXE_RETURN_CODE in
-    $SPTG_EXIT_COVERAGE_GOAL_ACHIEVED_CODE)
-        set -e
+	$SPTG_EXIT_COVERAGE_GOAL_ACHIEVED_CODE)
+		set -e
 
-        PLANTUML_JAR=$(realpath -m $SAMPLE_PATH/../../bin/plantuml.jar)
-        if [ -f $PLANTUML_JAR ]
-        then
-            echo "____________________________________________________________"
-            echo "| Generate SVG image for the input model ./$( realpath --relative-to=$SAMPLE_PATH $SPTG_OUT_PUML_MODEL )"
-            java -jar $PLANTUML_JAR -tsvg  $SPTG_OUT_PUML_MODEL
+		PLANTUML_JAR=$(realpath -m $SAMPLE_PATH/../../bin/plantuml.jar)
+		GRAPHVIZ_DOT=/usr/bin/dot
+		if [[ -f $PLANTUML_JAR && -f $GRAPHVIZ_DOT && -x $GRAPHVIZ_DOT ]]
+		then
+			echo "____________________________________________________________"
+			echo "| Generate SVG image for the input model ./$( realpath --relative-to=$SAMPLE_PATH $SPTG_OUT_PUML_MODEL )"
+			java -jar $PLANTUML_JAR -tsvg  $SPTG_OUT_PUML_MODEL
 
-            echo "| Generate SVG image for the output testcase ./$( realpath --relative-to=$SAMPLE_PATH $SPTG_OUT_PUML_TESTCASE )"
-            java -jar $PLANTUML_JAR -tsvg  $SPTG_OUT_PUML_TESTCASE
-        else
-            echo "Download the 'plantuml.jar' file in the ./SPTG/bin from https://github.com/plantuml/plantuml/releases"
-            
-            GRAPHVIZ_DOT=/usr/bin/dot
-            if [[ ! -f $GRAPHVIZ_DOT || ! -x $GRAPHVIZ_DOT ]]
-            then
-                PACKAGE_DIR=$( realpath -e $SAMPLE_PATH/../../packages )
-                echo "Install Graphiz package from the directory '$( realpath --relative-to=$SAMPLE_PATH $PACKAGE_DIR)' !"
-                echo "Go to '$( realpath --relative-to=$SAMPLE_PATH $PACKAGE_DIR)' and run 'sudo dpkg -i *.deb'"
-            fi
-        fi
-        ;;
-    $AVM_EXIT_COVERAGE_GOAL_UNACHIEVED_CODE)
-         echo "** Correct the workflow configuration if need ! **"
-        ;;
-    *)
-        echo "Unexpected exit code $SPTG_EXE_RETURN_CODE !"
-        exit $SPTG_EXE_RETURN_CODE
-        ;;
+			echo "| Generate SVG image for the output testcase ./$( realpath --relative-to=$SAMPLE_PATH $SPTG_OUT_PUML_TESTCASE )"
+			java -jar $PLANTUML_JAR -tsvg  $SPTG_OUT_PUML_TESTCASE
+		else
+			if [ ! -f $PLANTUML_JAR ]
+			then
+				echo "Download the 'plantuml.jar' file in the ./SPTG/bin from https://github.com/plantuml/plantuml/releases"
+			fi
+			
+			if [[ ! -f $GRAPHVIZ_DOT || ! -x $GRAPHVIZ_DOT ]]
+			then
+				PACKAGE_DIR=$( realpath -e $SAMPLE_PATH/../../packages )
+				echo "Install Graphiz package from the directory '$( realpath --relative-to=$SAMPLE_PATH $PACKAGE_DIR)' !"
+				echo "Go to '$( realpath --relative-to=$SAMPLE_PATH $PACKAGE_DIR)' and run 'sudo dpkg -i *.deb'"
+			fi
+		fi
+		;;
+	$AVM_EXIT_COVERAGE_GOAL_UNACHIEVED_CODE)
+		 echo "** Correct the workflow configuration if need ! **"
+		;;
+	*)
+		echo "Unexpected exit code $SPTG_EXE_RETURN_CODE !"
+		exit $SPTG_EXE_RETURN_CODE
+		;;
 esac
 
 # echo "____________________________________________________________"
