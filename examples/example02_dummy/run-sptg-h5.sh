@@ -56,8 +56,8 @@ case $SPTG_EXE_RETURN_CODE in
 		set -e
 
 		PLANTUML_JAR=$(realpath -m $SAMPLE_PATH/../../bin/plantuml.jar)
-		GRAPHVIZ_DOT=/usr/bin/dot
-		if [[ -f $PLANTUML_JAR && -f $GRAPHVIZ_DOT && -x $GRAPHVIZ_DOT ]]
+		GRAPHVIZ_DOT_EXE=dot
+		if [[ -f $PLANTUML_JAR && -x "$(command -v $GRAPHVIZ_DOT_EXE)" ]]
 		then
 			echo "____________________________________________________________"
 			echo "| Generate SVG image for the input model ./$( realpath --relative-to=$SAMPLE_PATH $SPTG_OUT_PUML_MODEL )"
@@ -70,11 +70,11 @@ case $SPTG_EXE_RETURN_CODE in
 			then
 				echo "Download the 'plantuml.jar' file in the ./SPTG/bin from https://github.com/plantuml/plantuml/releases"
 			fi
-			
-			if [[ ! -f $GRAPHVIZ_DOT || ! -x $GRAPHVIZ_DOT ]]
+
+			if [ ! -x "$(command -v $GRAPHVIZ_DOT_EXE)" ]
 			then
 				PACKAGE_DIR=$( realpath -e $SAMPLE_PATH/../../packages )
-				echo "Install Graphiz package from the directory '$( realpath --relative-to=$SAMPLE_PATH $PACKAGE_DIR)' !"
+				echo "Install Graphviz package from the directory '$( realpath --relative-to=$SAMPLE_PATH $PACKAGE_DIR)' !"
 				echo "Go to '$( realpath --relative-to=$SAMPLE_PATH $PACKAGE_DIR)' and run 'sudo dpkg -i *.deb'"
 			fi
 		fi
