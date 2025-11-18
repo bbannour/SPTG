@@ -61,9 +61,6 @@ case $SPTG_EXE_RETURN_CODE in
 			echo "____________________________________________________________"
 			echo "| Generate SVG image for the input model ./$( realpath --relative-to=$SAMPLE_PATH $SPTG_OUT_PUML_MODEL )"
 			java -jar $PLANTUML_JAR -tsvg  $SPTG_OUT_PUML_MODEL
-
-			echo "| Generate SVG image for the output testcase ./$( realpath --relative-to=$SAMPLE_PATH $SPTG_OUT_PUML_TESTCASE )"
-			java -jar $PLANTUML_JAR -tsvg  $SPTG_OUT_PUML_TESTCASE
 		else
 			if [ ! -f $PLANTUML_JAR ]
 			then
