@@ -9,6 +9,8 @@
     - [Compilation instructions](#compilation-instructions)
 
 3. [SPTG tutorials](#sptg-tutorials)   
+
+4. [SPTG benchmarks](#sptg-benchmarks)
  
 ---
 
@@ -211,6 +213,12 @@ mv ../bin/sptg.exe ../bin/sptg_old.exe
 📘 [Test case generation using SPTG](tutorials/testcase_generation.md)  
 
 📘  [Test purpose selection (inherited from the Diversity platform)](tutorials/testpurpose_selection.md) 
+
+---
+## SPTG benchmarks  
+---
+
+📘 [Automotive platoon benchmark](benchmarks/platoon/README.md)
 
 ---
 ## PlantUML: PUML to SVG Conversion Guide
