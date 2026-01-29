@@ -1,0 +1,115 @@
+// TRACE PATH 9 ctx< 1927 > Platoon:q0
+
+@sew< workflow , 1.0 >:
+
+// Symbolic Execution Workflow
+// SPTG Tool Configuration
+// CEA - LIST
+workflow {
+	workspace [
+		root   = "."
+		launch = "."
+		output = "testcase_9"
+	] // end workspace
+	director extraneous#module 'as main execution objective' {
+		manifest [
+			autoconf  = true
+			autostart = true
+		] // end manifest
+		project 'path of input model' [
+			source = "."
+    		model = "../automotive_platoon_with_mem_size_3.xlia"
+		] // end project
+		supervisor {
+			queue 'defining the exploration/search strategy' [
+				strategy = 'BREADTH_FIRST_SEARCH'
+			] // end queue
+		}
+		worker [
+			/////// TESTCASE GENERATOR ///////
+			path#guided#testcase#generator testcase_genertor {
+				property [
+					stop  = true
+					slice = false
+					heuristic = false
+					solver = 'Z3'
+					// The name of the clock variable of the TestCase,
+					// reset to zero at each step
+					clock_var_name = "cl"
+					// The name of the variable of the TestCase that represents
+					// the maximum duration for the TestCase to execute
+					// an action (a stimulation or an observation) i.e. clk < TM
+					timeout_var_name = "TM"
+					// The prefix of the name of the variable that represents a
+					// positional argument of an output message of the test purpose
+					message_arg_prefix_name = "$"
+					// Enables simplification in all TestCase guards
+					enable_guard_simplification = false
+			    // Enables global state for verdict
+			    enable_global_verdict_state = false
+				] // end property
+				trace [
+					transition = "q0.tr_join_r"
+					transition = "q1.tr_Join_agr_c"
+					transition = "q2.tr_join_suc"
+					transition = "q3.tr_platoon_m_c"
+					transition = "q0.tr_join_r"
+					transition = "q1.tr_join_prep"
+					transition = "q4.tr_set_spacing_c"
+					transition = "q5.tr_set_spacing_from"
+					transition = "q6.tr_join_agr_c"
+					transition = "q7.tr_join_suc"
+					transition = "q8.tr_set_spacing_c"
+					transition = "q9.tr_set_spacing_from"
+					transition = "q10.tr_platoon_m_c"
+					transition = "q0.tr_leave_r"
+					transition = "q13.tr_set_spacing_c"
+					transition = "q14.tr_set_spacing_from"
+					transition = "q15.tr_switch_steering"
+					transition = "q16.tr_switch_steering_done"
+					transition = "q17.tr_leave_agr_c"
+					transition = "q18.tr_left_suc"
+					transition = "q23.tr_switch_steering"
+					transition = "q24.tr_switch_steering_done"
+					transition = "q25.tr_no_platoon_m_c"
+					transition = "q0.tr_leave_r"
+					transition = "q13.tr_fail_to_leave_leader"
+
+				] // end trace
+				uncontrollable [
+					//List of uncrollable input.
+				] // end uncontrollable
+				vfs [
+        			file#tc       = "testcase.xlia"
+        			file#tc#puml  = "testcase.puml"
+				] // end vfs
+			}
+			serializer#statemachine#graphic statemachine2graphic {
+				statemachine [
+					transition = true
+				] // end statemachine
+				transition [
+					statement = true
+				] // end transition
+				vfs [
+					file = "automotive_platoon_with_mem_size_3.xlia"
+				] // end vfs
+			}
+		] // end worker
+	}
+	symbex 'option' [
+		name_id_separator = ""
+		newfresh_param_name_pid = false
+		pretty_printer_var_name = true
+		delta_name_id = "#"
+		check_pathcondition_satisfiability = true
+		constraint_solver = "Z3"
+	] // end symbex
+	console [
+		verbose = 'MINIMUM'
+	] // end console
+	shell [
+		// Stop the current execution workflow if it detects the creation of the above file !
+		stop = "symbex.stop"  // default "stop.sew"
+	] // end shell
+}

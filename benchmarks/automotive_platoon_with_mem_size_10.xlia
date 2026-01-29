@@ -1,0 +1,718 @@
+@xlia< system , 1.0 >:
+
+timed system Platoon {
+
+@composite:
+	statemachine Agent_SM {
+
+	@public:
+	    /* ================= JOIN ================= */
+	    port input  Join_r(
+	        int v,
+	        int front,   /* 0 = rear, k>0 = in front of slot[k] */
+
+	        urational change_line_time, urational change_line_bound,
+	        urational join_distance_time, urational join_distance_bound,
+	        urational set_space_time, urational set_space_bound
+	    );
+	    port input Set_spacing_from(int joining_front_OR_leaving_v);
+	    port input Join_suc(int v);
+	    port output Join_Prep(int v);
+
+	    /* ================= LEAVE ================= */
+		port input  Leave_r(int v);
+		port input  Left_suc(int v);
+
+		port output Leave_agr_c(int v);
+		port output Fail_to_leave(int v);
+
+		port output Switch_steering(int v);
+	    port input Switch_steering_done(int v);
+
+	    /* ================= OUTPUTS ================= */
+	    port output Join_agr_c(int v);
+	    port output Fail_to_join(int v);
+	    port output Set_spacing_c(int joining_or_leaving_veh, int space);
+	    port output Platoon_m_c(int v);
+	    port output No_platoon_m_c(int leaving_veh);
+
+	@private:
+	    /* ================= CONSTANTS ================= */
+	    const int LEADER_ID = 1;
+	    const int NO_VEHICLE = 0;
+
+	    const urational LEADER_WAITING = 2;
+	    const int MAX_PLATOON = 10;
+
+	    const uint NO_SPACE = 0;
+	    const uint AVAIL_SPACE = 1;
+
+	    /* ================= PLATOON MEMORY ================= */
+	    type Slot struct {
+	        var int v;
+	        var urational set_space_time;
+	        var urational set_space_bound;
+	        var urational change_line_time;
+			var urational change_line_bound;
+	    }
+
+	    var Slot[MAX_PLATOON] slot;
+	    var int platoon_size;
+
+	    /* ================= JOIN CONTEXT ================= */
+	    var int joining_v;
+	    var int joining_front;
+	    var int joining_front_v;
+
+	    var urational change_line_time_v;
+	    var urational change_line_bound_v;
+	    var urational join_distance_time_v;
+	    var urational join_distance_bound_v;
+	    var urational set_space_time_v;
+	    var urational set_space_bound_v;
+
+	    var urational join_time;
+	    var urational join_time_bound;
+	    var urational timeout_joining;
+	    var urational front_set_space_time;
+	    var urational front_set_space_bound;
+
+	    var int joining_v_ret;
+	    var int joining_front_ret;
+
+	    /* ================= LEAVE CONTEXT ================= */
+		var int leaving_v;
+		var int leaving_pos;
+		var int front_v; //to remove ???
+		var int back_v;
+
+		var urational leave_set_space_time;
+		var urational leave_set_space_bound;
+		var urational leave_change_line_time;
+		var urational leave_change_line_bound;
+
+		var urational leave_time_exp;
+		var urational leave_time_bound;
+		var urational timeout_leaving;
+
+		var int leaving_v_ret;
+		var int back_v_ret;
+
+//		var boolean fail_leaving;
+	    /* ================= CLOCKS ================= */
+	    var clock urational g_cl;
+	    var clock urational c_cl;
+
+	    var bool already_in_platoon;
+	    var int i;
+	    var int k;
+
+	@region:
+
+		/* ===================== INITIAL ======================= */
+		state< start > q0 {
+		    @init {
+		        slot[0].v := LEADER_ID;
+				for i := 1;
+				    i < MAX_PLATOON;
+				    i := i + 1
+				{
+				    slot[i].v := NO_VEHICLE;
+				}
+		        platoon_size := 1;
+		    }
+
+		    transition tr_join_r --> q1 {
+		        input Join_r(
+		            joining_v, joining_front,
+		            change_line_time_v, change_line_bound_v,
+		            join_distance_time_v, join_distance_bound_v,
+		            set_space_time_v, set_space_bound_v
+		        );
+		        guard ( joining_v > 0 );
+
+		        already_in_platoon := false;
+			    for i := 0; i < platoon_size; i := i + 1 {
+			            already_in_platoon := already_in_platoon
+			            || slot[i].v == joining_v;
+			    }
+		        c_cl := 0;
+		    }
+		    transition tr_leave_r --> q13 {
+			    input Leave_r(leaving_v);
+
+//			    fail_leaving = false;
+
+			    leaving_pos := -1;
+			    for i := 0; i < platoon_size; i := i + 1 {
+		            if (slot[i].v == leaving_v) {
+		                leaving_pos := i;
+		            }
+//		        	already_in_platoon := already_in_platoon
+//			            || slot[i].v == leaving_v;
+		        }
+			    c_cl := 0;
+			}
+		}
+
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+		// JOIN
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+
+		/* ===================== JOIN CHECK ==================== */
+		state q1 {
+
+		//    @irun {
+		//        already_in_platoon :=
+		//            (platoon_size > 0 && slot[0].v == joining_v) ||
+		//            (platoon_size > 1 && slot[1].v == joining_v) ||
+		//            (platoon_size > 2 && slot[2].v == joining_v) ||
+		//            (platoon_size > 3 && slot[3].v == joining_v) ||
+		//            (platoon_size > 4 && slot[4].v == joining_v);
+		//    }
+
+		//	@irun {
+		//	    already_in_platoon := false;
+		//	    for i := 0; i < platoon_size; i := i + 1 {
+		//	        if (slot[i].v == joining_v) {
+		//	            already_in_platoon := true;
+		//	        }
+		//	    }
+		//	}
+
+		    /* -------- FAILS -------- */
+
+		    transition tr_fail_to_join_full --> q0 {
+		        guard ( !already_in_platoon && platoon_size == MAX_PLATOON );
+		        guard ( c_cl <= 0 );
+		        output Fail_to_join(joining_v);
+		    }
+
+		    transition tr_fail_to_join_front --> q0 {
+		        guard (
+		            !already_in_platoon &&
+		            platoon_size < MAX_PLATOON &&
+		            (joining_front < 0 || joining_front > platoon_size)
+		        );
+		        guard ( c_cl <= 0 );
+		        output Fail_to_join(joining_v);
+		    }
+
+		    transition tr_fail_to_join_duplicate --> q0 {
+		        guard ( already_in_platoon );
+		        guard ( c_cl <= 0 );
+		        output Fail_to_join(joining_v);
+		    }
+
+		    /* -------- SUCCESS -------- */
+
+		    /* Rear join */
+		    transition tr_Join_agr_c --> q2 {
+		        guard (
+		            !already_in_platoon &&
+		            platoon_size < MAX_PLATOON &&
+		            joining_front == 0
+		        );
+		        guard ( c_cl <= 0 );
+		        output Join_agr_c(joining_v);
+
+		        join_time :=
+		            change_line_time_v +
+		            join_distance_time_v;
+
+		        join_time_bound :=
+		            change_line_bound_v +
+		            join_distance_bound_v;
+
+		        timeout_joining := join_time + join_time_bound;
+
+		        g_cl := 0;
+		    }
+
+		    /* Front insertion */
+		    transition tr_join_prep --> q4 {
+		        guard (
+		            !already_in_platoon &&
+		            platoon_size < MAX_PLATOON &&
+		            joining_front > 0 &&
+		            joining_front < platoon_size
+		        );
+		        guard ( c_cl <= 0 );
+
+		        output Join_Prep(joining_v);
+
+		        for k:=1; k < platoon_size; k := k + 1 {
+						if ( joining_front == k ){
+							joining_front_v := slot[k].v;
+							front_set_space_time := slot[k].set_space_time;
+							front_set_space_bound := slot[k].set_space_bound;
+						}
+				}
+		        c_cl := 0;
+		    }
+		}
+
+		/* ===================== JOIN EXEC ===================== */
+		state q2 {
+		    transition tr_join_suc --> q3 {
+		        input Join_suc(joining_v_ret);
+		        guard (
+		            g_cl >= join_time - join_time_bound &&
+		            g_cl < timeout_joining + LEADER_WAITING
+		        );
+		        guard ( joining_v_ret == joining_v );
+		        c_cl := 0;
+		    }
+
+			// _rear_timeout
+		    transition tr_fail_to_join --> q0 {
+		        guard ( g_cl >= timeout_joining + LEADER_WAITING );
+		        guard ( joining_front == 0 );
+		        output Fail_to_join( joining_v );
+		    }
+		}
+
+		state q3 {
+			transition tr_platoon_m_c --> q0 {
+				guard ( c_cl <= 0 );
+				guard ( joining_front == 0 );
+				output Platoon_m_c( joining_v );
+
+				/* Insert joining vehicle at rear */
+				slot[platoon_size].v := joining_v;
+				slot[platoon_size].set_space_time := set_space_time_v;
+				slot[platoon_size].set_space_bound := set_space_bound_v;
+				slot[platoon_size].change_line_time := change_line_time_v;
+				slot[platoon_size].change_line_bound := change_line_bound_v;
+
+				/* Update platoon size */
+				platoon_size := platoon_size + 1;
+			}
+		}
+
+
+		state q4 {
+			transition tr_set_spacing_c --> q5 {
+
+		        guard ( c_cl <= 0 );
+
+		        output Set_spacing_c(joining_front_v, AVAIL_SPACE);
+
+		        join_time :=
+		            change_line_time_v +
+		            join_distance_time_v +
+		            front_set_space_time;
+
+		        join_time_bound :=
+		            change_line_bound_v +
+		            join_distance_bound_v +
+		            front_set_space_bound;
+
+		        timeout_joining := join_time + join_time_bound;
+
+		        g_cl := 0;
+		    }
+		}
+
+
+
+		/* ===================== SPACING ======================= */
+		state q5 {
+
+		    transition tr_set_spacing_from --> q6 {
+		        input Set_spacing_from(joining_front_ret);
+		        guard (
+		            g_cl >= front_set_space_time -
+		                    front_set_space_bound
+		        );
+		        guard (
+		            g_cl < front_set_space_time +
+		                    front_set_space_bound + LEADER_WAITING
+		        );
+		        guard ( joining_front_ret == joining_front_v );
+
+		        c_cl := 0;
+		    }
+		}
+
+		state q6 {
+		    transition tr_join_agr_c --> q7 {
+		        guard ( c_cl <= 0 );
+		        output Join_agr_c( joining_v );
+		    }
+		}
+
+		/* ===================== JOIN EXEC ===================== */
+
+		state q7 {
+		    transition tr_join_suc --> q8 {
+		        input Join_suc(joining_v_ret);
+		        guard (
+		            g_cl >= join_time - join_time_bound &&
+		            g_cl < timeout_joining + LEADER_WAITING
+		        );
+		        guard ( joining_v_ret == joining_v );
+		        c_cl := 0;
+		    }
+
+			// _front_timeout
+		    transition tr_fail_to_join --> q11 {
+						guard ( g_cl >= join_time + join_time_bound );
+						guard ( joining_front != 0 );
+						output Fail_to_join( joining_v );
+
+						c_cl := 0;
+			}
+		}
+
+		state q8 {
+			transition tr_set_spacing_c --> q9 {
+				guard ( c_cl <= 0 );
+				guard ( joining_front != 0 );
+				output Set_spacing_c( joining_front_v, NO_SPACE );
+
+				g_cl := 0;
+			}
+		}
+
+		state q9 {
+				transition tr_set_spacing_from --> q10 {
+					input Set_spacing_from(joining_front_ret);
+			        guard (
+			            g_cl >= front_set_space_time -
+			                    front_set_space_bound
+			        );
+			        guard (
+			            g_cl < front_set_space_time +
+			                    front_set_space_bound + LEADER_WAITING
+			        );
+			        guard ( joining_front_ret == joining_front_v );
+
+					c_cl := 0;
+				}
+		}
+
+		state q10 {
+				transition tr_platoon_m_c --> q0 {
+					guard ( c_cl <= 0 );
+					for k:=1; k < platoon_size; k := k + 1 {
+						if ( joining_front == k ){
+							for i := platoon_size; i > k; i := i - 1
+							{
+							    slot[i] := slot[i - 1];
+							}
+							/* Insert joining vehicle */
+							slot[k].v := joining_v;
+							slot[k].set_space_time := set_space_time_v;
+							slot[k].set_space_bound := set_space_bound_v;
+							slot[k].change_line_time := change_line_time_v;
+							slot[k].change_line_bound := change_line_bound_v;
+							/* Update platoon size */
+							platoon_size := platoon_size + 1;
+						}
+					}
+
+					output Platoon_m_c( joining_v );
+				}
+		}
+
+		state q11 {
+				transition tr_set_spacing_c --> q12 {
+					guard ( c_cl <= 0 );
+					output Set_spacing_c( joining_front, NO_SPACE );
+
+					g_cl := 0;
+				}
+		}
+		state q12 {
+				transition tr_set_spacing_from --> q0 {
+					input Set_spacing_from(joining_front_ret);
+			        guard (
+			            g_cl >= front_set_space_time -
+			                    front_set_space_bound
+			        );
+			        guard (
+			            g_cl < front_set_space_time +
+			                    front_set_space_bound + LEADER_WAITING
+			        );
+			        guard ( joining_front_ret == joining_front_v );
+				}
+		}
+
+
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+		// LEAVE: PART TO FIX
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+
+		state q13 {
+
+		//    @irun {
+		//        already_in_platoon := false;
+		//        leaving_pos := -1;
+		//        back_v := NO_VEHICLE;
+		//
+		//        for i := 0; i < platoon_size; i := i + 1 {
+		//            if (slot[i].v == leaving_v) {
+		//                already_in_platoon := true;
+		//                leaving_pos := i;
+		//            }
+		//        }
+		//
+		//        // back vehicle is the one **after** the leaving vehicle
+		//	    if (leaving_pos >= 0 && leaving_pos < platoon_size - 1) {
+		//	        back_v := slot[leaving_pos + 1].v;
+		//	    } else {
+		//	        back_v := NO_VEHICLE; // no vehicle behind
+		//	    }
+		//
+		//    }
+
+		    /* not in platoon */
+		    transition tr_fail_to_leave_not_in --> q0 {
+		        guard (leaving_pos == -1);
+		        guard (c_cl <= 0);
+		        output Fail_to_leave(leaving_v);
+		    }
+
+		    /* leader cannot leave */
+		    transition tr_fail_to_leave_leader --> q0 {
+		        //guard (already_in_platoon); @@@@ BB: commented this and it works!
+		        guard (leaving_pos == 0);
+		        guard (leaving_v == LEADER_ID);
+		        guard (c_cl <= 0);
+		        output Fail_to_leave(leaving_v);
+		    }
+
+		    /* normal leave _leave_preparation */
+		    transition tr_set_spacing_c --> q14 {
+		        guard (leaving_pos > 0);
+		        guard (leaving_v != LEADER_ID);
+		        guard (c_cl <= 0);
+
+		        output Set_spacing_c(leaving_v, AVAIL_SPACE);
+
+				//leaving_pos := -1;
+		        back_v := NO_VEHICLE;
+
+//		        for i := 0; i < platoon_size; i := i + 1 {
+//		            if (slot[i].v == leaving_v) {
+//		                leaving_pos := i;
+//		            }
+//		        }
+		        // back vehicle is the one **after** the leaving vehicle
+			    if (leaving_pos >= 0 && leaving_pos < platoon_size - 1) {
+			        back_v := slot[leaving_pos + 1].v;
+			    } else {
+			        back_v := NO_VEHICLE; // no vehicle behind
+			    }
+
+
+		        leave_set_space_time  := slot[leaving_pos].set_space_time;
+		        leave_set_space_bound := slot[leaving_pos].set_space_bound;
+		        leave_change_line_time  := slot[leaving_pos].change_line_time;
+		        leave_change_line_bound := slot[leaving_pos].change_line_bound;
+
+
+		        leave_time_exp :=
+		            leave_set_space_time +
+		            leave_change_line_time;
+
+		        leave_time_bound :=
+		            leave_set_space_bound +
+		            leave_change_line_bound;
+
+		        timeout_leaving := join_time + join_time_bound;
+
+
+		        g_cl := 0;
+		    }
+		}
+
+
+		state q14 {
+		    /* normal leave _leave_confirmation */
+		    transition tr_set_spacing_from --> q15 {
+		        input Set_spacing_from(leaving_v_ret);
+		        guard (leaving_v_ret == leaving_v);
+		        guard (g_cl >= leave_set_space_time - leave_set_space_bound);
+		        guard (g_cl < leave_set_space_time + leave_set_space_bound + LEADER_WAITING);
+		        c_cl := 0;
+		    }
+		}
+		state q15 {
+		    /* steering needed only if back vehicle is NOT the leader */
+		    transition tr_switch_steering --> q16 {
+		        guard (c_cl <= 0);
+		        guard (back_v != NO_VEHICLE);
+		        output Switch_steering( back_v );
+		    }
+
+		    /* leader behind: no steering */
+		    transition tr_leave_agr_c --> q18 {
+		        guard (c_cl <= 0);
+		        guard (back_v == NO_VEHICLE);
+		        output Leave_agr_c(leaving_v);
+		    }
+		}
+
+		state q16 {
+		    transition tr_switch_steering_done --> q17 {
+		        input Switch_steering_done(back_v_ret);
+		        guard (back_v_ret == back_v);
+		        c_cl := 0;
+		    }
+		}
+
+		state q17 {
+		    transition tr_leave_agr_c --> q18 {
+		        guard (c_cl <= 0);
+		        output Leave_agr_c(leaving_v);
+		    }
+		}
+
+		state /*leave_agreement*/ q18 {
+		    /* successful leave confirmation */
+		    transition tr_left_suc --> q23 {
+		        input Left_suc(leaving_v_ret);
+		        guard (leaving_v_ret == leaving_v);
+
+		          // --- Remove leaving vehicle from platoon ---
+		        for i := leaving_pos; i < platoon_size - 1; i := i + 1 {
+		            slot[i] := slot[i + 1];  // shift slots to fill gap
+		        }
+		        slot[platoon_size - 1].v := NO_VEHICLE; // clear last slot
+		        platoon_size := platoon_size - 1;
+
+		        c_cl := 0;
+		    }
+
+		    /* timeout: leaving failed */
+		    transition tr_fail_to_leave --> /*failed_to_leave*/ q19 {
+		        guard (
+		            g_cl < front_set_space_time +
+		                    front_set_space_bound + LEADER_WAITING
+		        );
+//		        fail_leaving := true;
+        		output Fail_to_leave(leaving_v);
+
+		        c_cl := 0;
+		    }
+		}
+
+		state/*< junction >*/ /*failed_to_leave*/ q19 {
+		    /* restore spacing (leaving vehicle closes gap) */
+		    transition tr_set_spacing_c --> q20 {
+		        guard (c_cl <= 0);
+		        output Set_spacing_c(leaving_v, NO_SPACE);
+		        g_cl := 0;
+		    }
+		}
+
+		state q20 {
+		    /* spacing restored confirmation */
+		    transition tr_set_spacing_from_rear --> q0 {
+		        input Set_spacing_from(leaving_v_ret);
+		        guard (back_v == NO_VEHICLE);
+		        guard (leaving_v_ret == leaving_v);
+		        guard (g_cl >= leave_set_space_time - leave_set_space_bound);
+		        c_cl := 0;
+		    }
+		    transition tr_set_spacing_from_middle --> q21 {
+		        input Set_spacing_from(leaving_v_ret);
+		        guard (leaving_v_ret == leaving_v);
+		        guard (back_v != NO_VEHICLE);
+		        guard (g_cl >= leave_set_space_time - leave_set_space_bound);
+		        c_cl := 0;
+		    }
+		}
+		state/*< junction >*/ q21 {
+		    /* steering needed for non-leader back vehicle */
+		    transition tr_switch_steering --> q22 {
+		        guard (c_cl <= 0);
+		        output Switch_steering(back_v);
+		    }
+		}
+
+		state q22 {
+		    transition tr_switch_steering_done --> q0 {
+		        input Switch_steering_done(back_v_ret);
+		        guard (back_v_ret == back_v);
+		        c_cl := 0;
+		    }
+		}
+
+		
+		
+		state q23 {
+		    /* no steering needed if there is no back vehicle*/
+		    transition tr_no_platoon_m_c --> q0 {
+		        guard (c_cl <= 0);
+		        guard (back_v == NO_VEHICLE);
+//		        guard (!fail_leaving);
+		        output No_platoon_m_c(leaving_v);
+		    }
+
+		    /* steering needed for non-leader back vehicle */
+		    transition tr_switch_steering --> q24 {
+		        guard (c_cl <= 0);
+		        guard (back_v != NO_VEHICLE);
+		        output Switch_steering(back_v);
+		    }
+		}
+
+		state q24 {
+		    transition tr_switch_steering_done --> q25 {
+		        input Switch_steering_done(back_v_ret);
+		        guard (back_v_ret == back_v);
+		        c_cl := 0;
+		    }
+		}
+
+		state/*< junction >*/ q25 {
+		    /* normal completion */
+		    transition tr_no_platoon_m_c --> q0 {
+		        guard (c_cl <= 0);
+//		        guard (!fail_leaving);
+		        output No_platoon_m_c(leaving_v);
+		    }
+
+//		    /* explicit failure notification */
+//		    transition tr_fail_to_leave --> q0 {
+//		        guard (c_cl <= 0);
+//		        guard (fail_leaving);
+//		        output Fail_to_leave(leaving_v);
+//		    }
+		}
+
+		@com:
+		connect< env >{
+		    input  Join_r;
+		    input  Join_suc;
+		    input Set_spacing_from;
+
+
+		    output Join_agr_c;
+		    output Set_spacing_c;
+		    output Platoon_m_c;
+		    output Fail_to_join;
+
+		    input  Leave_r;
+			input  Left_suc;
+
+			output Leave_agr_c;
+			output Fail_to_leave;
+			output No_platoon_m_c;
+
+			output Switch_steering;
+		    input Switch_steering_done;
+
+		    output Join_Prep;
+
+
+		}
+	}
+}
