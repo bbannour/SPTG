@@ -93,6 +93,7 @@ mEnableGuardSimplification( false ),
 mEnableGlobalVerdictState( false ),
 // Computing Local Variables
 mTraceOffset( 0 ),
+mTestPurposeTargetEC( nullptr ),
 mCurrentTestPurposeEC( ),
 mSatTestPurposeEC( ),
 mGoalAchieved( false )
@@ -214,6 +215,16 @@ AVM_ENDIF_DEBUG_FLAG( SOLVING )
 		 {
 			 return( mConfigFlag = false );
 		 }
+		 else if( mTraceCommunicationIO.size() != mTraceTestPurpose.size() )
+		 {
+			 const std::string nbTransitions =
+					 to_string(mTraceTestPurpose.size()) + " transitions";
+			 const std::string nbTMessages =
+					 to_string(mTraceCommunicationIO.size()) + " messages";
+			 AVM_OS_COUT << std::endl << EMPHASIS( "Unexpected TEST PURPOSE with " +
+					nbTransitions + " =/= " + nbTMessages + " !" ) << std::flush;
+			 return( mConfigFlag = false );
+		 }
  AVM_IF_DEBUG_LEVEL_FLAG( LOW , CONFIGURING )
 	AVM_OS_LOG << "Configuration of trace sequence: " << std::endl;
 	 mTraceTestPurpose.toStream( AVM_OS_LOG << AVM_TAB_INDENT );
@@ -302,7 +313,7 @@ void AvmPathGuidedTestcaseGenerator::reportMinimum(OutStream & os) const
 			<< (mGoalAchieved ? "DONE !" : "FAILED !")
 			<< std::endl;
 
-	mTestCaseStatistics.reportDefault(os);
+	mTestCaseStatistics.reportMinimum(os);
 }
 
 
@@ -460,6 +471,8 @@ bool AvmPathGuidedTestcaseGenerator::postfilter(ExecutionContext & anEC)
 			if( mCoverageStatistics.getNumberOfUncovered() == 1 )
 			{
 				mGoalAchieved = true;
+
+				mTestPurposeTargetEC = aChildEC;
 			}
 		}
 //@! TO UNCOMMENT with FACS Performance evaluation
@@ -513,7 +526,7 @@ bool AvmPathGuidedTestcaseGenerator::postprocess()
 		if( mEnableGuardSimplification )
 		{
 			AvmDeadBranchPruner deadBranchPruner(*this);
-			deadBranchPruner.pruneDeadBranch();
+			deadBranchPruner.startPruningDeadBranch( *mTestPurposeTargetEC );
 
 			if( mTraceDeterministismFactory.checkDeterminism() )
 			{
@@ -521,8 +534,9 @@ bool AvmPathGuidedTestcaseGenerator::postprocess()
 				mQuiescenceFactory.buildGraph();
 
 				// Testcase generation
-				AvmTestCaseFactory testcaseFactory(*this, mOutputNormalizer,
-						mTestCaseStatistics, mQuiescenceFactory.getQuiescencePort());
+				AvmTestCaseFactory testcaseFactory(*this, *mTestPurposeTargetEC,
+						mOutputNormalizer, mTestCaseStatistics,
+						mQuiescenceFactory.getQuiescencePort());
 
 				testcaseFactory.buildTestCase();
 			}
@@ -532,6 +546,15 @@ bool AvmPathGuidedTestcaseGenerator::postprocess()
 
 				AVM_OS_COUT << std::endl << EMPHASIS( "Unexpected NON-DETERMINISTIC model for testcase generation !" ) << std::flush;
 			}
+		}
+		else
+		{
+			// Testcase generation
+			AvmTestCaseFactory testcaseFactory(*this, *mTestPurposeTargetEC,
+					mOutputNormalizer, mTestCaseStatistics,
+					mQuiescenceFactory.getQuiescencePort());
+
+			testcaseFactory.buildTestCase();
 		}
 	}
 

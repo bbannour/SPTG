@@ -38,6 +38,7 @@
 // For Design Validation
 #include  <famdv/coverage/AvmCoverageProcessor.h>
 #include  <famdv/coverage/MachineCoverageFilter.h>
+#include  <famdv/coverage/PairTransitionCoverageProcessor.h>
 #include  <famdv/coverage/TransitionCoverageFilter.h>
 #include <famsc/tcgenerator/AvmPathGuidedTestcaseGenerator.h>
 
@@ -73,6 +74,7 @@ void FamExposer::toStreamExported(OutStream & out, const std::string & header)
 	PROCESSOR_FACTORY_SHOW_TYPE_ID( AvmCoverageProcessor     )
 	PROCESSOR_FACTORY_SHOW_TYPE_ID( MachineCoverageFilter    )
 	PROCESSOR_FACTORY_SHOW_TYPE_ID( TransitionCoverageFilter )
+	PROCESSOR_FACTORY_SHOW_TYPE_ID( PairTransitionCoverageProcessor )
 
 	PROCESSOR_FACTORY_SHOW_TYPE_ID( FormulaCoverageFilter    )
 

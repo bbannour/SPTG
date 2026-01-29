@@ -62,6 +62,13 @@ protected:
 	static const std::string & DEFAULT_META_TRACE_PATTERN;
 	static const std::string & DEFAULT_META_DEBUG_PATTERN;
 
+
+	static const std::string & TESTCASE_GENERATOR_SEW_BEGIN_PATTERN;
+	static const std::string & TESTCASE_GENERATOR_SEW_BEGIN_TEXT;
+
+	static const std::string & TESTCASE_GENERATOR_SEW_END_PATTERN;
+	static const std::string & TESTCASE_GENERATOR_SEW_END_TEXT;
+
 	/**
 	 * ATTRIBUTES
 	 */

@@ -597,12 +597,12 @@ endsection VFS
 endprototype
 
 
-serializer#model#graphviz model2graphiz {
+serializer#model#graphviz model2Graphviz {
 	vfs [
 		file = "game_graph.gv"
 	] // end vfs
 }
-serializer#symbex#graphviz symbex2graphiz {
+serializer#symbex#graphviz symbex2Graphviz {
 	property [
 		info#selection = 'ALL'
 		data#selection = 'MODIFIED'

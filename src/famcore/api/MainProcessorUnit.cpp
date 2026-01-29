@@ -247,7 +247,7 @@ AVM_ENDIF_DEBUG_ENABLED
 // PROCESSING API
 ////////////////////////////////////////////////////////////////////////////////
 /**
- * POST PROCESS
+ * PRE PROCESS
  */
 bool MainProcessorUnit::collectExtendedContext()
 {

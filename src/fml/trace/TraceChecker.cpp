@@ -562,7 +562,8 @@ bool TraceChecker::isSatCom(
 //									|| aConf.getRuntimeID().
 //											hasAsAncestor(aTP.machine) ) );
 
-						if( ioCode.isOpCode( aTP.op ) )
+						if( ioCode.isOptimizedOpCode( aTP.op )
+							|| ioCode.isOpCode( aTP.op ) )
 						{
 							if( aTP.any_object )
 							{

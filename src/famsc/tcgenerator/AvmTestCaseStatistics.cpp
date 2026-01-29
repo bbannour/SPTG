@@ -35,6 +35,7 @@ void AvmTestCaseStatistics::takeAccount(
 		mLargestGuardCondition = aGuardCondition;
 		mSelectedTransition = aTransition;
 	}
+	mTransitionCount++;
 }
 
 
@@ -42,8 +43,8 @@ void AvmTestCaseStatistics::saveGuardCondition() const
 {
 	OutStream & out = mProcessor.newFileStream("biguest_condition.z3");
 
-	out << ";; z3 -st " << mProcessor.getFolder().location << "/biguest_condition.z3"
-		<< std::endl;
+//	out << ";; z3 -st " << mProcessor.getFolder().location << "/biguest_condition.z3"
+//		<< std::endl;
 
 	if( mSelectedTransition != nullptr )
 	{
@@ -54,16 +55,28 @@ void AvmTestCaseStatistics::saveGuardCondition() const
 
 }
 
+void AvmTestCaseStatistics::reportMinimum(OutStream & os) const
+{
+	if( mSelectedTransition != nullptr )
+	{
+		saveGuardCondition();
+	}
+
+	os << "Number of transitions : " << mTransitionCount << std::endl;
+}
+
 void AvmTestCaseStatistics::reportDefault(OutStream & os) const
 {
 	if( mSelectedTransition != nullptr )
 	{
-//		saveGuardCondition();
-//
-//		os << EMPHASIS("The transition with the largest guard condition");
-//		os << mSelectedTransition->getSource().getNameID() << " :";
-//		mSelectedTransition->toStream(os);
+		saveGuardCondition();
+
+		os << EMPHASIS("The transition with the largest guard condition");
+		os << mSelectedTransition->getSource().getNameID() << " :";
+		mSelectedTransition->toStream(os);
 	}
+
+	os << "Number of transitions : " << mTransitionCount << std::endl;
 }
 
 

@@ -55,12 +55,18 @@ unsigned int SequenceDiagramTraceFormatter::mIndexOfMessageInMap = 1;
  */
 
 const std::string & SequenceDiagramTraceFormatter::
-DEFAULT_GLOBAL_HEADER_PATTERN =
-		"@startuml\n\n"
-		"skinparam note{\n"
-			"\tBackgroundColor White\n"
-			"\tBorderColor White\n"
-		"}\n\nskinparam BackgroundColor transparent\n\n";
+DEFAULT_GLOBAL_HEADER_PATTERN = R""""(
+@startuml
+
+hide unlinked
+skinparam note{
+	BackgroundColor White
+	BorderColor White
+}
+
+skinparam BackgroundColor transparent
+
+)"""";
 
 const std::string & SequenceDiagramTraceFormatter::
 DEFAULT_GLOBAL_END_PATTERN = "\n@enduml";

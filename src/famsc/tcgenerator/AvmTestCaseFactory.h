@@ -59,7 +59,9 @@ public:
 
 	AvmTestCaseStatistics & mTestCaseStatistics;
 
+	const ExecutionContext & mTestPurposeTargetEC;
 	ExecutionContext::VectorOfConstPtr mTestPurposeTrace;
+
 	InstanceOfData::Table mTestPurposeInoutParams;
 	InstanceOfData::Table mTestPurposeClockParams;
 	ExecutionData mVarTC_subst_mParamTP_ED;
@@ -92,6 +94,7 @@ public:
 	 * Default
 	 */
 	AvmTestCaseFactory(AvmPathGuidedTestcaseGenerator & aProcessor,
+			const ExecutionContext & aTestPurposeTargetEC,
 			AvmOutputNormalizer & outputNormalizer,
 			AvmTestCaseStatistics & aTestCaseStatistics,
 			const Symbol & aQuiescencePortTP);

@@ -194,12 +194,12 @@ endsection VFS
 endprototype
 
 
-serializer#model#graphviz model2graphiz {
+serializer#model#graphviz model2Graphviz {
 	vfs [
 		file = "game_graph.gv"
 	] // end vfs
 }
-serializer#symbex#graphviz symbex2graphiz {
+serializer#symbex#graphviz symbex2Graphviz {
 	property [
 		info#selection = 'ALL'
 		data#selection = 'MODIFIED'
@@ -286,97 +286,100 @@ serializer#symbex#graphviz symbex2graphiz {
  * GLOBAL HEADER / END
  * %1% --> graph name-id
  */
+/*
+skinparam state {
+	'Attribut pour les états composites
+	BackgroundColor<< System       >> Turquoise
+	BackgroundColor<< Statemachine >> DodgerBlue
+	BackgroundColor<< Machine      >> SpringGreen
+	BackgroundColor<< Instance     >> Orchid
+	BackgroundColor<< Composite    >> SpringGreen
+		"
+	'Attribut pour les états simples
+	BackgroundColor<< Simple >> PaleTurquoise
+	BackgroundColor<< Start  >> Green
+	BackgroundColor<< Final  >> Red
+	BackgroundColor<< Sync   >> Aqua
+		"
+	'Attribut pour les pseudo-états
+	BackgroundColor<< Pseudo   >> Lavender
+
+	BackgroundColor<< Initial  >> GreenYellow
+
+	BackgroundColor<< Junction >> GreenYellow
+	BackgroundColor<< Choice   >> Orange
+
+	BackgroundColor<< Fork     >> SpringGreen
+	BackgroundColor<< Junction >> SpringGreen
+
+	BackgroundColor<< DeepHistory    >> SpringGreen
+	BackgroundColor<< ShallowHistory >> SpringGreen
+
+	BackgroundColor<< Return   >>  OrangeRed
+	BackgroundColor<< Terminal >> Red
+}
+*/
+
 const std::string & GraphicExecutionGraphSerializer::
-DEFAULT_GLOBAL_HEADER_PATTERN =
-	"@startuml %1%\n"
-	"\n"
-//	"scale 600 width\n"
+DEFAULT_GLOBAL_HEADER_PATTERN = R""""(
+@startuml %1%
 
-	"hide empty description\n"
-	"\n"
-	"skinparam linetype polyline\n"
-	"' skinparam linetype ortho\n"
-	"' left to right direction\n"
-	"\n"
-	"skinparam backgroundColor White\n"
-	"skinparam backgroundColor White\n"
-	"skinparam noteBorderColor White\n"
-	"skinparam shadowing false\n"
-	"skinparam notefontsize 16\n"
-	"skinparam notefontname Verdana\n"
-	"'skinparam notefontname Consolas\n"
-	"'skinparam noteShadowing false\n"
-	"\n"
-	"skinparam state {\n"
-		"\tStartColor Green\n"
-		"\tEndColor Red\n"
-		"\n"
-		"\t'Attribut pour les transitions\n"
-		"\tArrowColor Black\n"
-		"\tArrowColor<< Else >> Orange\n"
-		"\n"
-		"\t'Attribut par défaut pour les états\n"
-		"\tBorderColor Gray\n"
-		"\tBackgroundColor Wheat\n"
-		"\n"
-//		"\t'Attribut pour les états composites\n"
-//		"\tBackgroundColor<< System       >> Turquoise\n"
-//		"\tBackgroundColor<< Statemachine >> DodgerBlue\n"
-//		"\tBackgroundColor<< Machine      >> SpringGreen\n"
-//		"\tBackgroundColor<< Instance     >> Orchid\n"
-//		"\tBackgroundColor<< Composite    >> SpringGreen\n"
-//		"\n"
-//		"\t'Attribut pour les états simples\n"
-//		"\tBackgroundColor<< Simple >> PaleTurquoise\n"
-//		"\tBackgroundColor<< Start  >> Green\n"
-//		"\tBackgroundColor<< Final  >> Red\n"
-//		"\tBackgroundColor<< Sync   >> Aqua\n"
-//		"\n"
-//		"\t'Attribut pour les pseudo-états\n"
-//		"\tBackgroundColor<< Pseudo   >> Lavender\n"
-//
-//		"\tBackgroundColor<< Initial  >> GreenYellow\n"
-//
-//		"\tBackgroundColor<< Junction >> GreenYellow\n"
-//		"\tBackgroundColor<< Choice   >> Orange\n"
-//
-//		"\tBackgroundColor<< Fork     >> SpringGreen\n"
-//		"\tBackgroundColor<< Junction >> SpringGreen\n"
-//
-//		"\tBackgroundColor<< DeepHistory    >> SpringGreen\n"
-//		"\tBackgroundColor<< ShallowHistory >> SpringGreen\n"
-//
-//		"\tBackgroundColor<< Return   >>  OrangeRed\n"
-//		"\tBackgroundColor<< Terminal >> Red\n"
+' // scale 600 width
 
+hide empty description
 
-		"\t'Attribut pour les noeuds/feuilles du graphes SymBex\n"
-		"\tBackgroundColor<< DefaultNode >> LightBlue\n"
+skinparam linetype polyline
+' skinparam linetype ortho
+' left to right direction
 
-		"\tBackgroundColor<< RedondancyTargetSource >> Green\n"
-		"\tBackgroundColor<< RedondancyTargetNode >> GreenYellow\n"
+skinparam backgroundColor White
+skinparam backgroundColor White
+skinparam noteBorderColor White
+skinparam shadowing false
+skinparam notefontsize 16
+skinparam notefontname Verdana
+'skinparam notefontname Consolas
+'skinparam noteShadowing false
 
-		"\tBackgroundColor<< PassedNode >> GreenYellow\n"
-		"\tBackgroundColor<< FailedNode >> Red\n"
-		"\tBackgroundColor<< InconclusiveNode >> Orange\n"
-		"\tBackgroundColor<< AbortedNode >> Orange\n"
-		"\tBackgroundColor<< WarningNode >> Orange\n"
-		"\tBackgroundColor<< ErrorNode >> Red\n"
-		"\tBackgroundColor<< AlertNode >> Red\n"
-		"\tBackgroundColor<< ExitNode >> Red\n"
+skinparam state {
+	StartColor Green
+	EndColor Red
 
-		"\t'Attribut pour les paths du graphes SymBex\n"
-		"\tBackgroundColor<< PassedPath >> LawnGreen\n"
-		"\tBackgroundColor<< FailedPath >> Red\n"
-		"\tBackgroundColor<< InconclusiveNodePath >> Orange\n"
-		"\tBackgroundColor<< AbortedPath >> Red\n"
+	'Attribut pour les transitions
+	ArrowColor Black
+	ArrowColor<< Else >> Orange
 
-		"\n"
-		"\tFontColor Black\n"
-		"\tFontName Times\n"
-		"\tFontSize 14\n"
-	"}\n";
+	'Attribut par défaut pour les états
+	BorderColor Gray
+	BackgroundColor Wheat
 
+	'Attribut pour les noeuds/feuilles du graphes SymBex
+	BackgroundColor<< DefaultNode >> LightBlue
+
+	BackgroundColor<< RedondancyTargetSource >> Green
+	BackgroundColor<< RedondancyTargetNode >> GreenYellow
+
+	BackgroundColor<< PassedNode >> GreenYellow
+	BackgroundColor<< FailedNode >> Red
+	BackgroundColor<< InconclusiveNode >> Orange
+	BackgroundColor<< AbortedNode >> Orange
+	BackgroundColor<< WarningNode >> Orange
+	BackgroundColor<< ErrorNode >> Red
+	BackgroundColor<< AlertNode >> Red
+	BackgroundColor<< ExitNode >> Red
+
+	'Attribut pour les paths du graphes SymBex
+	BackgroundColor<< PassedPath >> LawnGreen
+	BackgroundColor<< FailedPath >> Red
+	BackgroundColor<< InconclusiveNodePath >> Orange
+	BackgroundColor<< AbortedPath >> Red
+
+	FontColor Black
+	FontName Times
+	FontSize 14
+}
+
+)"""";
 
 const std::string & GraphicExecutionGraphSerializer::
 DEFAULT_GLOBAL_END_PATTERN = "\n@enduml";

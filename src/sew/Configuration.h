@@ -754,12 +754,12 @@ public :
 
 	void serializeTextualExecutable() const;
 
-	void serializeGraphizExecutable() const;
+	void serializeGraphvizExecutable() const;
 
 
 	void serializeTextualSymbexGraph() const;
 
-	void serializeGraphizSymbexGraph() const;
+	void serializeGraphvizSymbexGraph() const;
 
 
 	void serializeScenarii() const;

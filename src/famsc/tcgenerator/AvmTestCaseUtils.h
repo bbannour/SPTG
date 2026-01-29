@@ -59,7 +59,7 @@ public:
 	// TEST CASE UTILS
 	////////////////////////////////////////////////////////////////////////////
 
-	static void getTestPurposeTrace(const ExecutionContext & tpEC,
+	static void getTestPurposeTrace(const ExecutionContext & aTestPurposeTargetEC,
 			ExecutionContext::VectorOfConstPtr & testPurposeTrace);
 
 	static void getParameters(const ExecutionContext & tpTargetEC,

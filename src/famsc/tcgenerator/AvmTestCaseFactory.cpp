@@ -79,6 +79,7 @@ static const std::string VAR_TM_WAIT_MAX_ID = "TM";
  */
 AvmTestCaseFactory::AvmTestCaseFactory(
 		AvmPathGuidedTestcaseGenerator & aProcessor,
+		const ExecutionContext & aTestPurposeTargetEC,
 		AvmOutputNormalizer & outputNormalizer,
 		AvmTestCaseStatistics & aTestCaseStatistics,
 		const Symbol & aQuiescencePortTP)
@@ -87,6 +88,7 @@ ENV( aProcessor.getENV() ),
 mQuiescencePortTP( aQuiescencePortTP ),
 mUncontrollableTraceFilter( mProcessor.getUncontrollableTraceFilter() ),
 mTestCaseStatistics( aTestCaseStatistics ),
+mTestPurposeTargetEC( aTestPurposeTargetEC ),
 mTestPurposeTrace( ),
 mTestPurposeInoutParams( ),
 mTestPurposeClockParams( ),
@@ -346,17 +348,15 @@ void AvmTestCaseFactory::buildStructure(const System & sutSystem, System & tcSys
 	ExecutionContext & rootEC =
 			mProcessor.getConfiguration().getFirstExecutionTrace();
 
-	AvmTestCaseUtils::getTestPurposeTrace(rootEC, mTestPurposeTrace);
+	AvmTestCaseUtils::getTestPurposeTrace(mTestPurposeTargetEC, mTestPurposeTrace);
 
-	const ExecutionContext * tpTargetEC = mTestPurposeTrace.last();
+	mVarTC_subst_mParamTP_ED = mTestPurposeTargetEC.getExecutionData();
 
-	mVarTC_subst_mParamTP_ED = tpTargetEC->getExecutionData();
+	mTestPurposePathCondition = mTestPurposeTargetEC.getAllPathCondition();
 
-	mTestPurposePathCondition = tpTargetEC->getAllPathCondition();
-
-//	AvmTestCaseUtils::getParameters(*tpTargetEC, mTestPurposeParams);
+//	AvmTestCaseUtils::getParameters(*mTestPurposeTargetEC, mTestPurposeParams);
 	AvmTestCaseUtils::newfreshTraceParamsFromEC(
-			*tpTargetEC, mTestPurposeInoutParams, mTestPurposeClockParams);
+			mTestPurposeTargetEC, mTestPurposeInoutParams, mTestPurposeClockParams);
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , PROCESSING )
 	mTestPurposeInoutParams.strFQN( AVM_OS_DEBUG << "mTestPurposeInoutParams :" << std::endl );
 	mTestPurposeClockParams.strFQN( AVM_OS_DEBUG << "mTestPurposeClockParams :" << std::endl );
@@ -371,7 +371,7 @@ AVM_IF_DEBUG_LEVEL_FLAG( HIGH , PROCESSING )
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSING )
 
 	AvmTestCaseUtils::newfreshTraceVarsFromEC(
-			*tpTargetEC, *mMachineTC, mNewfreshTraceVarsTP);
+			mTestPurposeTargetEC, *mMachineTC, mNewfreshTraceVarsTP);
 AVM_IF_DEBUG_LEVEL_FLAG( HIGH , PROCESSING )
 	mNewfreshTraceVarsTP.strFQN( AVM_OS_DEBUG << "mNewfreshTraceVarsTP :" << std::endl );
 AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSING )
@@ -1735,21 +1735,22 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2( MEDIUM , PROCESSING , TEST_DECISION )
 //static const Port::Table INPUT_PORTS;
 //static const Port::Table UNCRNTROLLABLE_INPUT_PORTS;
 
-static const std::string TC_MANIFEST =
-		"\n\t\"manifest\": {"
-		"\n\t\t\"version\": 0.1,"
-		"\n\t\t\"description\": \"Generated testcase definition in JSON Format\","
-		"\n\t\t\"service\": \"Testcase Specification\","
-		"\n\t\t\"generatedDate\": \"" + ExecutionChrono::current_time() + "\""
-		"\n\t},\n";
+static const std::string TC_MANIFEST = R""""(
+	"manifest": {
+		"version": 0.1,
+		"description": "Generated testcase definition in JSON Format",
+		"service": "Testcase Specification",
+		"generatedDate": ")""""
+		+ ExecutionChrono::current_time() + "\"\n\t},";
 
-static const std::string TC_MANIFEST_SMT =
-		"\n\t\"manifest\": {"
-		"\n\t\t\"version\": 0.1,"
-		"\n\t\t\"description\": \"Generated testcase definition in JSON Format using SMT formulas, types, ...\","
-		"\n\t\t\"service\": \"Testcase Specification (ready for the Z3 SMT solver)\","
-		"\n\t\t\"generatedDate\": \"" + ExecutionChrono::current_time() + "\""
-		"\n\t},\n";
+
+static const std::string TC_MANIFEST_SMT =  R""""(
+	"manifest": {
+		"version": 0.1,
+		"description": "Generated testcase definition in JSON Format using SMT formulas, types, ...",
+		"service": "Testcase Specification (ready for the Z3 SMT solver)",
+		"generatedDate": ")""""
+		+ ExecutionChrono::current_time() + "\"\n\t},";
 
 static void sutPortToJson(OutStream & out, const Port & port, auto & strVarTypeFunct)
 {

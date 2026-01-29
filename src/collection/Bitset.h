@@ -118,6 +118,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef Array< Bitset * >  ArrayOfBitset;
+typedef Array< ArrayOfBitset * >  Array2OfBitset;
 
 typedef Vector< Bitset  >  VectorOfBitset;
 

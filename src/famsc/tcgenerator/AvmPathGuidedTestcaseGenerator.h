@@ -87,6 +87,8 @@ public:
 	// Computing Local Variables
 	std::size_t mTraceOffset;
 
+	ExecutionContext * mTestPurposeTargetEC;
+
 	ExecutionContext::ListOfPtr mCurrentTestPurposeEC;
 	ExecutionContext::ListOfPtr mSatTestPurposeEC;
 

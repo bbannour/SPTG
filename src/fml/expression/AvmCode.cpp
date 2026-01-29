@@ -845,7 +845,7 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 					prettyPrinter(out, (*itOperand), false);
 				}
 
-				out << ") --> $env";
+				out << ") <-- $env";
 			}
 
 			out << ";" << END_INDENT_EOL;
@@ -875,7 +875,7 @@ void AvmCode::prettyPrinter(OutStream & out, bool isStatement) const
 					prettyPrinter(out, (*itOperand), false);
 				}
 
-				out << ") <-- $env";
+				out << ") --> $env";
 			}
 
 			out << ";" << END_INDENT_EOL;

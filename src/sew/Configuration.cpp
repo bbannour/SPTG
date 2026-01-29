@@ -968,7 +968,7 @@ void Configuration::serializeTextualExecutable() const
 }
 
 
-void Configuration::serializeGraphizExecutable() const
+void Configuration::serializeGraphvizExecutable() const
 {
 	ScopeNewIndent scope( AVM_OS_LOG , AVM_TAB1_INDENT );
 
@@ -1053,9 +1053,9 @@ void Configuration::serializeTextualSymbexGraph() const
 }
 
 /**
- * serialize Graphiz SymbexGraph
+ * serialize Graphviz SymbexGraph
  */
-void Configuration::serializeGraphizSymbexGraph() const
+void Configuration::serializeGraphvizSymbexGraph() const
 {
 	ScopeNewIndent scope( AVM_OS_LOG , AVM_TAB1_INDENT );
 
@@ -1135,7 +1135,7 @@ void Configuration::serializeBuildingResult() const
 	{
 		serializeTextualExecutable();
 
-		serializeGraphizExecutable();
+		serializeGraphvizExecutable();
 	}
 }
 
@@ -1168,7 +1168,7 @@ AVM_ENDIF_DEBUG_FLAG_AND( COMPUTING )
 
 	if( mOutputSymbexGraphEnabledGenerationFlag )
 	{
-		serializeGraphizSymbexGraph();
+		serializeGraphvizSymbexGraph();
 	}
 
 AVM_IF_DEBUG_FLAG_AND( COMPUTING , isDebugComputingStageEnabled() )

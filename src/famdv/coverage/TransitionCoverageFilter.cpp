@@ -474,16 +474,13 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG_AND( MEDIUM , CONFIGURING )
 				{
 					tableOfFlag->set(itTransition, value);
 
-					if( not value )
-					{
-						mCoverageStatistics.addUncoveredElement();
+					mCoverageStatistics.addUncoveredElement();
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , CONFIGURING )
-	AVM_OS_TRACE << "\t" << "program :> "
+	AVM_OS_TRACE << "\t" << "transition :> "
 			<< itExec->rawTransition(itTransition)->getFullyQualifiedNameID()
 			<< std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , CONFIGURING )
-					}
 				}
 			}
 
@@ -535,7 +532,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG_AND( MEDIUM , CONFIGURING )
 				mCoverageStatistics.addUncoveredElement();
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , CONFIGURING )
-	AVM_OS_TRACE << "\t" << "program :> "
+	AVM_OS_TRACE << "\t" << "transition :> "
 		<< anExecutable.rawTransition(itTransition)->getFullyQualifiedNameID()
 		<< std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , CONFIGURING )
@@ -638,7 +635,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG_AND( MEDIUM , CONFIGURING )
 						mCoverageStatistics.addUncoveredElement();
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , CONFIGURING )
-	AVM_OS_TRACE << "\t" << "program :> "
+	AVM_OS_TRACE << "\t" << "transition :> "
 			<< aRID.refExecutable().rawTransition(
 					itTransition )->getFullyQualifiedNameID()
 			<< std::endl;
@@ -706,7 +703,7 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG_AND( MEDIUM , CONFIGURING )
 					mCoverageStatistics.addUncoveredElement();
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , CONFIGURING )
-	AVM_OS_TRACE << "\t" << "program :> "
+	AVM_OS_TRACE << "\t" << "transition :> "
 		<< anExecutable.rawTransition(itTransition)->getFullyQualifiedNameID()
 		<< std::endl;
 AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , CONFIGURING )

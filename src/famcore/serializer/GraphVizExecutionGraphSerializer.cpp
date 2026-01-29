@@ -194,12 +194,12 @@ endsection VFS
 endprototype
 
 
-serializer#model#graphviz model2graphiz {
+serializer#model#graphviz model2Graphviz {
 	vfs [
 		file = "game_graph.gv"
 	] // end vfs
 }
-serializer#symbex#graphviz symbex2graphiz {
+serializer#symbex#graphviz symbex2Graphviz {
 	property [
 		info#selection = 'ALL'
 		data#selection = 'MODIFIED'
@@ -1572,7 +1572,7 @@ void GraphVizExecutionGraphSerializer::dotFormatAssignVariable(
 			{
 				const InstanceOfData & aVariable =
 						pRF->refExecutable().getBasicVariables().refAt(offset);
-				
+
 				const BF & aValue = pRF->getData(& aVariable);
 
 				if( mDataSelectionModifiedFlags && isnotRoot )

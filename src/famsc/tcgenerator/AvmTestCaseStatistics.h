@@ -43,6 +43,8 @@ public:
 
 	uint32_t mMaxSize;
 
+	uint32_t mTransitionCount;
+
 	/**
 	 * CONSTRUCTOR
 	 * Default
@@ -53,7 +55,8 @@ public:
 	ENV( anENV ),
 	mLargestGuardCondition( ),
 	mSelectedTransition( nullptr ),
-	mMaxSize( 0 )
+	mMaxSize( 0 ),
+	mTransitionCount( 0 )
 	{
 		//!! NOTHING
 	}
@@ -70,7 +73,15 @@ public:
 public:
 	void takeAccount(const BF & aGuard, const Transition * aTransition);
 
+	inline void takeAccount(const Transition * aTransition)
+	{
+		mTransitionCount++;
+	}
+
+
 	void saveGuardCondition() const;
+
+	void reportMinimum(OutStream & os) const;
 
 	void reportDefault(OutStream & os) const;
 

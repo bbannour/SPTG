@@ -36,30 +36,40 @@ namespace sep
 {
 
 
-void AvmTestCaseUtils::getTestPurposeTrace(const ExecutionContext & anEC,
+void AvmTestCaseUtils::getTestPurposeTrace(
+		const ExecutionContext & aTestPurposeTargetEC,
 		ExecutionContext::VectorOfConstPtr & testPurposeTrace)
 {
-	if( anEC.getFlags().hasObjectiveAchievedTrace() )
+	const ExecutionContext * tPEC = &aTestPurposeTargetEC;
+	for( ; tPEC != nullptr ; tPEC = tPEC->getContainer() )
 	{
-		testPurposeTrace.append(& anEC);
+		if( tPEC->getFlags().hasObjectiveAchievedTrace() )
+		{
+			testPurposeTrace.push_front(tPEC);
+		}
+	}
 
-		if( not anEC.hasChildContext() )
-		{
-			return;
-		}
-	}
-	for( const auto & aChildEC : anEC.getChildContexts() )
-	{
-		if( aChildEC->getFlags().hasObjectiveAchievedTrace() )
-		{
-			getTestPurposeTrace(*aChildEC, testPurposeTrace);
-			return;
-		}
-		else if( testPurposeTrace.empty() )
-		{
-			getTestPurposeTrace(*aChildEC, testPurposeTrace);
-		}
-	}
+//	if( anEC.getFlags().hasObjectiveAchievedTrace() )
+//	{
+//		testPurposeTrace.append(& anEC);
+//
+//		if( not anEC.hasChildContext() )
+//		{
+//			return;
+//		}
+//	}
+//	for( const auto & aChildEC : anEC.getChildContexts() )
+//	{
+//		if( aChildEC->getFlags().hasObjectiveAchievedTrace() )
+//		{
+//			getTestPurposeTrace(*aChildEC, testPurposeTrace);
+//			return;
+//		}
+//		else if( testPurposeTrace.empty() )
+//		{
+//			getTestPurposeTrace(*aChildEC, testPurposeTrace);
+//		}
+//	}
 }
 
 

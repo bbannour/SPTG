@@ -52,7 +52,8 @@ mDeadBranchNumber( 0 )
 // QUIESCENCE
 ////////////////////////////////////////////////////////////////////////////////
 
-void AvmDeadBranchPruner::pruneDeadBranch()
+void AvmDeadBranchPruner::startPruningDeadBranch(
+		const ExecutionContext & aTestPurposeTargetEC)
 {
 	ExecutionContext & rootEC =
 			mProcessor.getConfiguration().getFirstExecutionTrace();
@@ -67,7 +68,7 @@ void AvmDeadBranchPruner::pruneDeadBranch()
 //	}
 
 	ExecutionContext::VectorOfConstPtr testPurposeTrace;
-	AvmTestCaseUtils::getTestPurposeTrace(rootEC, testPurposeTrace);
+	AvmTestCaseUtils::getTestPurposeTrace(aTestPurposeTargetEC, testPurposeTrace);
 	mTestPurposePassEC = testPurposeTrace.last();
 
 	AvmTestCaseUtils::getInitialParameters(rootEC, mNewfreshInitialParams);
@@ -95,7 +96,7 @@ void AvmDeadBranchPruner::pruneDeadBranch(ExecutionContext & anEC)
 		else if( isDeadBranch(*(*itChild)) )
 		{
 			anEC.addInfo( mProcessor,
-					BF(new Identifier("DEAD_BRANCH_PRUNED\n" + (*itChild)->str())) );
+					BF(new Identifier("DEAD_BRANCH_PRUNED\\n" + (*itChild)->str())) );
 
 AVM_IF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 AVM_OS_DEBUG << "DEAD_BRANCH_PRUNED :> " << (*itChild)->str() << std::endl;

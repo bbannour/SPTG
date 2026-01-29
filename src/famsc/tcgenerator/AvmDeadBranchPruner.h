@@ -65,7 +65,7 @@ public:
 	// DETERMINISM
 	////////////////////////////////////////////////////////////////////////////
 
-	void pruneDeadBranch();
+	void startPruningDeadBranch(const ExecutionContext & aTestPurposeTargetEC);
 
 	void pruneDeadBranch(ExecutionContext & anEC);
 

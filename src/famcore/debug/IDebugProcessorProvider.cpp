@@ -1298,194 +1298,194 @@ void IDebugProcessorProvider::dbgCheckCommandDetailsArg()
 }
 
 
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_SUMMARY =
-		"List of classes of commands :\n"
-		"\t?    -- \n"
-		"\th    -- \n"
-		"\thelp -- Print this help\n\n"
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_SUMMARY = R""""(
+List of classes of commands :
+	?    -- 
+	h    -- 
+	help -- Print this help
 
-		"\thistory    -- help on command for invoking an old command\n"
+	history    -- help on command for invoking an old command
+	control    -- help on command for controlling the debug process
+	queue      -- help on command for analyzing the execution queue
+	ctx        -- help on command for execution context selection
+	data       -- help on command for analyzing the execution data
 
-		"\tcontrol    -- help on command for controlling the debug process\n"
+	print      -- help on command for printing in the console: text message, ...
+	report     -- help on command for reporting on a snapshot of the evaluation
+	breakpoint -- help on command for setting step parameters
+	option     -- help on command for enable specific debug process
+	log        -- help on command for enable debug level or flag
 
-		"\tqueue      -- help on command for analyzing the execution queue\n"
-
-		"\tctx        -- help on command for execution context selection\n"
-
-		"\tdata       -- help on command for analyzing the execution data\n\n"
-
-		"\tprint      -- help on command for printing in the console: text message, ...\n"
-
-		"\treport     -- help on command for reporting on a snapshot of the evaluation\n"
-
-		"\tbreakpoint -- help on command for setting step parameters\n"
-
-		"\toption     -- help on command for enable specific debug process\n"
-
-		"\tlog        -- help on command for enable debug level or flag\n\n"
-
-		"Type \"help\" followed by a class name for a list of commands in that class.\n";
+Type "help" followed by a class name for a list of commands in that class.
+)"""";
 
 
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_HISTORY =
-		"\thistory  -- Print the command history list\n"
-		"\t!!       -- Re-eval the last command\n"
-		"\t!N       -- Re-eval the last N-th command\n"
-		"\t!prefix  -- Re-eval the first of last command which starts with 'prefix'\n";
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_HISTORY = R""""(
+	history  -- Print the command history list
+	!!       -- Re-eval the last command
+	!N       -- Re-eval the last N-th command
+	!prefix  -- Re-eval the first of last command which starts with 'prefix'
+)"""";
 
 
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_CONTROL = R""""(
+	bye      -- 
+	stop     -- 
+	+        -- 
+	continue -- Stop the the interaction process, "
+						"continue Diversity processing
 
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_CONTROL =
-		"\tbye      -- \n"
-		"\tstop     -- \n"
-		"\t+        -- \n"
-		"\tcontinue -- Stop the the interaction process, "
-						"continue Diversity processing\n\n"
+	quit     -- Quit the Diversity process
+	exit     -- Exit the Diversity process
 
-		"\tquit     -- Quit the Diversity process\n"
-		"\texit     -- Exit the Diversity process\n\n"
+	break    -- Continue until the next break for a given Context Number
+		break?  : Waiting for the user gives a Context Number
+		break N : A Context Number N
 
-		"\tbreak    -- Continue until the next break for a given Context Number\n"
-		"\t\tbreak?  : Waiting for the user gives a Context Number\n"
-		"\t\tbreak N : A Context Number N\n"
+	next     -- Continue for a given Number of step until the next interaction
+		next?   : Waiting for the user gives a number of step
+		nexti   : One step
+		next N  : A number N of step
 
-		"\tnext     -- Continue for a given Number of step until the next interaction\n"
-		"\t\tnext?   : Waiting for the user gives a number of step\n"
-		"\t\tnexti   : One step\n"
-		"\t\tnext N  : A number N of step\n\n"
-
-		"\tperiod   -- Set an interaction period number\n"
-		"\t\tperiod?  : Waiting for the user gives an interaction period number\n"
-		"\t\tperiod N : An interaction period number\n";
-
-
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_QUEUE =
-		"\tqueue  -- Print all execution queue\n"
-		"\t\tqueue?        : Waiting for the user selects a queue in "
-							"{ init , waiting , ready , result , failed }\n"
-		"\t\tqueue#init    : the 'init' queue\n"
-		"\t\tqueue#waiting : the 'waiting' queue\n"
-		"\t\tqueue#ready   : the 'ready' queue\n"
-		"\t\tqueue#result  : the 'result' queue\n"
-		"\t\tqueue#failed  : the 'failed' queue\n";
+	period   -- Set an interaction period number
+		period?  : Waiting for the user gives an interaction period number
+		period N : An interaction period number
+)"""";
 
 
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_CONTEX =
-		"\tleaves   -- \n"
-		"\tleaf     -- Show all executions contexts leaves\n"
-		"\tleaf?    :  Waiting for the user to select a runtime tag to select contexts leaves\n"
-		"\t         :  among { DEADELOCK EXIT LIMIT ERROR COVERAGE ACHIEVED PASS FAILED ABORT VERDICT ANALYSIS ...}\n"
-		"\tleaf tag :  Show all executions contexts leaves w.r.t. a runtime tag\n"
-		"\tpath     -- Print current execution path from selected context\n"
-		"\tec       -- \n"
-		"\tctx      -- Print current execution context\n"
-		"\t\tctx?   :  Waiting for the user to select an execution context ID number\n"
-		"\t\tctx N  :  Select the given execution context N\n"
-		"\t\t\tSearching order: (1) current selection child, (2) ancestors, "
-		"(3) all the the execution graph !!!";
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_QUEUE = R""""(
+	queue  -- Print all execution queue
+		queue?        : Waiting for the user selects a queue in "
+							"{ init , waiting , ready , result , failed }
+		queue#init    : the 'init' queue
+		queue#waiting : the 'waiting' queue
+		queue#ready   : the 'ready' queue
+		queue#result  : the 'result' queue
+		queue#failed  : the 'failed' queue
+)"""";
 
 
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_DATA =
-		"\tvar      -- Print value from selected Context for a selected variable\n"
-		"\t\tvar?   : Waiting for the user gives a variable ID\n"
-		"\t\tvar ID : Select the given variable ID\n\n"
-
-		"\tport     -- Print value from selected Context for a selected port\n"
-		"\t\tport?   : Waiting for the user gives a port ID\n"
-		"\t\tport ID : Select the given port ID\n\n"
-
-		"\tbuffer   -- Print value from selected Context for a selected buffer\n"
-		"\t\tbuffer?   : Waiting for the user gives a buffer ID\n"
-		"\t\tbuffer ID : Select the given buffer ID\n\n"
-
-		"\tmachine  -- Print selected machine runtime data\n"
-		"\t\tmachine?   : Waiting for the user gives a machine ID\n"
-		"\t\tmachine ID : Select the given machine ID\n\n"
-
-		"\tstate    -- Print a selected state code\n"
-		"\t\tstate?   : Waiting for the user gives a state ID\n"
-		"\t\tstate ID : Select the given state ID\n\n"
-
-		"\ttransition -- Print a selected transition code\n"
-		"\t\ttransition?   : Waiting for the user gives a transition ID\n"
-		"\t\ttransition ID : Select the given transition ID\n\n"
-
-		"\troutine  -- Print a selected routine code\n"
-		"\t\troutine?   : Waiting for the user gives a routine ID\n"
-		"\t\troutine ID : Select the given routine ID\n"
-
-		"\ttrace    -- Trace of all selected data specified in << section DEBUG#TRACE >>\n"
-
-		"\tdetail   -- Enable/disable detail level: "
-		"- for minimum , + for medium , * for maximum , nothing for default\n"
-
-		"\tfullpath -- Enable/disable the << full path trace flag >> for showing "
-		"selected data from the selected context to the root !\n";
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_CONTEX = R""""(
+	leaves   -- 
+	leaf     -- Show all executions contexts leaves
+	leaf?    :  Waiting for the user to select a runtime tag to select contexts leaves
+	         :  among { DEADELOCK EXIT LIMIT ERROR COVERAGE ACHIEVED PASS FAILED ABORT VERDICT ANALYSIS ...}
+	leaf tag :  Show all executions contexts leaves w.r.t. a runtime tag
+	path     -- Print current execution path from selected context
+	ec       -- 
+	ctx      -- Print current execution context
+		ctx?   :  Waiting for the user to select an execution context ID number
+		ctx N  :  Select the given execution context N
+				Searching order: 
+				(1) current selection child, 
+				(2) ancestors,
+				(3) all the the execution graph !!!"
+)"""";
 
 
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_DATA = R""""(
+	var      -- Print value from selected Context for a selected variable
+		var?   : Waiting for the user gives a variable ID
+		var ID : Select the given variable ID
 
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_PRINT =
-		"\techo msg -- print the message text in the console'\n"
+	port     -- Print value from selected Context for a selected port
+		port?   : Waiting for the user gives a port ID
+		port ID : Select the given port ID
 
-		"\tprint    -- print ...\n"
-		"\tshow     -- shouw ...\n";
+	buffer   -- Print value from selected Context for a selected buffer
+		buffer?   : Waiting for the user gives a buffer ID
+		buffer ID : Select the given buffer ID
 
+	machine  -- Print selected machine runtime data
+		machine?   : Waiting for the user gives a machine ID
+		machine ID : Select the given machine ID
 
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_REPORT =
-		"\tcfg      -- \n"
-		"\tconfig   -- Print current Diversity processing configuration\n"
+	state    -- Print a selected state code
+		state?   : Waiting for the user gives a state ID
+		state ID : Select the given state ID
 
-		"\tscheduler-- Print current Diversity processing scheduler\n"
+	transition -- Print a selected transition code
+		transition?   : Waiting for the user gives a transition ID
+		transition ID : Select the given transition ID
 
-		"\trp       -- \n"
-		"\treport   -- Print current Diversity processing report\n"
+	routine  -- Print a selected routine code
+		routine?   : Waiting for the user gives a routine ID
+		routine ID : Select the given routine ID
 
-		"\tsave     -- Save a snapshot of the Diversity process\n\n";
+	trace    -- Trace of all selected data specified in << section DEBUG#TRACE >>
 
+	detail   -- Enable/disable detail level: "
+		"- for minimum , + for medium , * for maximum , nothing for default
 
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_BREAKPOINT =
-		"\tbp\n"
-		"\tbreakpoint -- Print breakpoints information:\n"
-		"\t\tThe step count and the interaction period for break\n"
-		"\t\tThe next step interaction breakpoint\n"
-		"\t\tThe next context interaction breakpoint\n";
-
-
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_OPTION =
-		"\tenable   -- Enable an interaction for a givent process\n"
-		"\t\tenable?   : Waiting for the user selects a process in "
-							"{ prefilter , postfilter , preprocess , postprocess }\n"
-		"\t\tenable#prefilter   : the 'prefilter' process\n"
-		"\t\tenable#postfilter  : the 'postfilter' process\n"
-		"\t\tenable#preprocess  : the 'preprocess' process\n"
-		"\t\tenable#postprocess : the 'postprocess' process\n\n"
-
-
-		"\tdisable  -- Disable an interaction for a givent process\n"
-		"\t\tdisable?  : Waiting for the user selects a process in "
-							"{ prefilter , postfilter , preprocess , postprocess }\n"
-		"\t\tdisable#prefilter   : the 'prefilter' process\n"
-		"\t\tdisable#postfilter  : the 'postfilter' process\n"
-		"\t\tdisable#preprocess  : the 'preprocess' process\n"
-		"\t\tdisable#postprocess : the 'postprocess' process\n";
+	fullpath -- Enable/disable the << full path trace flag >> for showing "
+		"selected data from the selected context to the root !
+)"""";
 
 
-std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_LOG =
-		"\tverbosity       -- Set verbosity at the given level : "
-						"SILENT < MINIMUM < MEDIUM < MAXIMUM\n"
-		"\t\tverbosity? : Waiting for the user gives a verbosity level\n\n"
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_PRINT = R""""(
+	echo msg -- print the message text in the console'
+
+	print    -- print ...
+	show     -- shouw ...
+)"""";
 
 
-		"\tdebug#level     -- Set debug#level at the given level : "
-							"ZERO < LOW < MEDIUM < HIGH < ULTRA\n"
-		"\t\tdebug#level? : Waiting from user a debug level\n\n"
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_REPORT = R""""(
+	cfg      -- 
+	config   -- Print current Diversity processing configuration
+	scheduler-- Print current Diversity processing scheduler
 
-		"\tdebug#flag      -- Set debug#flag at the given flag\n"
-		"\t\tdebug#flag? : Waiting for the user gives a debug flag\n"
+	rp       -- 
+	report   -- Print current Diversity processing report
 
-		"\tdebug#flag#off  -- Unset the debug#flag for the given flag\n"
-		"\t\tdebug#flag#off? : Waiting from user a debug flag to off\n";
+	save     -- Save a snapshot of the Diversity process
+)"""";
 
+
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_BREAKPOINT = R""""(
+	bp
+	breakpoint -- Print breakpoints information:
+		The step count and the interaction period for break
+		The next step interaction breakpoint
+		The next context interaction breakpoint;
+)"""";
+
+
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_OPTION = R""""(
+	enable   -- Enable an interaction for a givent process
+		enable?   : Waiting for the user selects a process in "
+							"{ prefilter , postfilter , preprocess , postprocess }
+		enable#prefilter   : the 'prefilter' process
+		enable#postfilter  : the 'postfilter' process
+		enable#preprocess  : the 'preprocess' process
+		enable#postprocess : the 'postprocess' process
+
+	disable  -- Disable an interaction for a givent process
+		disable?  : Waiting for the user selects a process in "
+							"{ prefilter , postfilter , preprocess , postprocess }
+		disable#prefilter   : the 'prefilter' process
+		disable#postfilter  : the 'postfilter' process
+		disable#preprocess  : the 'preprocess' process
+		disable#postprocess : the 'postprocess' process
+)"""";
+
+
+std::string IDebugProcessorProvider::DEBUG_SHELL_COMMAND_LOG = R""""(
+	verbosity       -- Set verbosity at the given level : "
+						"SILENT < MINIMUM < MEDIUM < MAXIMUM
+		verbosity? : Waiting for the user gives a verbosity level
+
+
+	debug#level     -- Set debug#level at the given level : "
+							"ZERO < LOW < MEDIUM < HIGH < ULTRA
+		debug#level? : Waiting from user a debug level
+
+	debug#flag      -- Set debug#flag at the given flag
+		debug#flag? : Waiting for the user gives a debug flag
+
+	debug#flag#off  -- Unset the debug#flag for the given flag
+		debug#flag#off? : Waiting from user a debug flag to off
+)"""";
 
 
 void IDebugProcessorProvider::dbgCommandHelp()

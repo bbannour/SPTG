@@ -543,6 +543,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( HIGH , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcStimulationComStatement, tcClockReset));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -617,6 +619,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcObservationComStatement, tcClockReset));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -690,6 +694,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcObservationComStatement, tcClockReset));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -763,6 +769,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcObservationComStatement));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -834,6 +842,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcObservationComStatement));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -910,6 +920,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcObservationComStatement));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -984,6 +996,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcObservationComStatement));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -1094,6 +1108,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcObservationComStatement));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -1170,6 +1186,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, failQuiescenceStatement));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else 
 	{
@@ -1335,6 +1353,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcObservationComStatement));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -1469,6 +1489,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, tcObservationComStatement));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{
@@ -1544,6 +1566,8 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG( MEDIUM , PROCESSING )
 		tpTransition->setStatement( StatementConstructor::newCode(
 				OperatorManager::OPERATOR_SEQUENCE,
 				timedGuard, failQuiescenceStatement));
+
+		mTestCaseStatistics.takeAccount(tpTransition);
 	}
 	else
 	{

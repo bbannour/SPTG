@@ -35,6 +35,10 @@
 #include <fml/workflow/Query.h>
 #include <fml/workflow/WObject.h>
 
+#include <sew/Configuration.h>
+
+#include <util/avm_vfs.h>
+
 #include <boost/format.hpp>
 
 
@@ -208,6 +212,114 @@ endprototype
 */
 
 
+/**
+ * TESCASE GENERATOR
+ * GENERIC SEW
+ */
+const std::string & BasicTraceFormatter::
+TESTCASE_GENERATOR_SEW_BEGIN_PATTERN = "$TESTCASE_GENERATOR_SEW_BEGIN_PATTERN$";
+
+const std::string & BasicTraceFormatter::
+TESTCASE_GENERATOR_SEW_BEGIN_TEXT = R""""(
+@sew< workflow , 1.0 >:
+
+// Symbolic Execution Workflow
+// SPTG Tool Configuration
+// CEA - LIST
+workflow {
+	workspace [
+		root   = "."
+		launch = "."
+		output = "testcase_%1%"
+	] // end workspace
+	director extraneous#module 'as main execution objective' {
+		manifest [
+			autoconf  = true
+			autostart = true
+		] // end manifest
+		project 'path of input model' [
+			source = "."
+    		model = "$system.xlia$"
+		] // end project
+		supervisor {
+			queue 'defining the exploration/search strategy' [
+				strategy = 'BREADTH_FIRST_SEARCH'
+			] // end queue
+		}
+		worker [
+			/////// TESTCASE GENERATOR ///////
+			path#guided#testcase#generator testcase_genertor {
+				property [
+					stop  = true
+					slice = false
+					heuristic = false
+					solver = 'Z3'
+					// The name of the clock variable of the TestCase,
+					// reset to zero at each step
+					clock_var_name = "cl"
+					// The name of the variable of the TestCase that represents
+					// the maximum duration for the TestCase to execute
+					// an action (a stimulation or an observation) i.e. clk < TM
+					timeout_var_name = "TM"
+					// The prefix of the name of the variable that represents a
+					// positional argument of an output message of the test purpose
+					message_arg_prefix_name = "$"
+					// Enables simplification in all TestCase guards
+					enable_guard_simplification = true
+			    // Enables global state for verdict
+			    enable_global_verdict_state = false
+				] // end property
+				trace [
+)"""";
+
+
+const std::string & BasicTraceFormatter::
+TESTCASE_GENERATOR_SEW_END_PATTERN = "$TESTCASE_GENERATOR_SEW_END_PATTERN$";
+
+const std::string & BasicTraceFormatter::
+TESTCASE_GENERATOR_SEW_END_TEXT = R""""(
+				] // end trace
+				uncontrollable [
+					//List of uncrollable input.
+				] // end uncontrollable
+				vfs [
+        			file#tc       = "testcase.xlia"
+        			file#tc#puml  = "testcase.puml"
+				] // end vfs
+			}
+			serializer#statemachine#graphic statemachine2graphic {
+				statemachine [
+					transition = true
+				] // end statemachine
+				transition [
+					statement = true
+				] // end transition
+				vfs [
+					file = "$system.xlia$.puml"
+				] // end vfs
+			}
+		] // end worker
+	}
+	symbex 'option' [
+		name_id_separator = ""
+		newfresh_param_name_pid = false
+		pretty_printer_var_name = true
+		delta_name_id = "#"
+		check_pathcondition_satisfiability = true
+		constraint_solver = "Z3"
+	] // end symbex
+	console [
+		verbose = 'MINIMUM'
+	] // end console
+	shell [
+		// Stop the current execution workflow if it detects the creation of the above file !
+		stop = "symbex.stop"  // default "stop.sew"
+	] // end shell
+}
+)"""";
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // CONFIGURE API
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,7 +327,7 @@ endprototype
 bool BasicTraceFormatter::configure(const WObject * FORMAT,
 		std::string & formatPattern, const std::string & id, bool isRegex)
 {
-	formatPattern =  isRegex
+	formatPattern = isRegex
 			? Query::getRegexWPropertyString(FORMAT, id, formatPattern)
 			: Query::getWPropertyString(FORMAT, id, formatPattern);
 
@@ -283,10 +395,23 @@ bool BasicTraceFormatter::configureImpl(const WObject * wfParameterObject)
 
 		error += configure(theFORMAT, mTestcaseBeginPattern,
 				CONS_WID2("testcase", "begin"), true ) ? 0 : 1;
+		if( mTestcaseBeginPattern == TESTCASE_GENERATOR_SEW_BEGIN_PATTERN )
+		{
+			mTestcaseBeginPattern = TESTCASE_GENERATOR_SEW_BEGIN_TEXT;
+			std::string xliaFilename = VFS::filename(
+					mTraceGenerator.getConfiguration().getSpecificationFileLocation() );
+			StringTools::replace(mTestcaseBeginPattern, "$system.xlia$", xliaFilename);
+		}
 
 		error += configure(theFORMAT, mTestcaseEndPattern,
 				CONS_WID2("testcase", "end"), true   ) ? 0 : 1;
-
+		if( mTestcaseEndPattern == TESTCASE_GENERATOR_SEW_END_PATTERN )
+		{
+			mTestcaseEndPattern = TESTCASE_GENERATOR_SEW_END_TEXT;
+			std::string xliaFileStem = VFS::stem(
+					mTraceGenerator.getConfiguration().getSpecificationFileLocation() );
+			StringTools::replace(mTestcaseEndPattern, "$system.xlia$", xliaFileStem);
+		}
 
 		error += configure(theFORMAT, mLifelineHeaderPattern,
 				CONS_WID2("lifeline", "header"), true) ? 0 : 1;

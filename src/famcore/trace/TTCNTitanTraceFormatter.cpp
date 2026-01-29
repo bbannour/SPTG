@@ -69,11 +69,10 @@ const std::string & TTCNTitanTraceFormatter::DEFAULT_TESTCASES_ENDING_WRAPPER
 		= "\t\tf_end();";
 
 
-const std::string & TTCNTitanTraceFormatter::DEFAULT_TESTCASES_STARTING_ENDING_IMPL =
-//		%1% --> <system name id>
-		"\tfunction f_start() runs on runsOn_%1% { }\n"
-		"\tfunction f_end() runs on runsOn_%1% { }";
-
+const std::string & TTCNTitanTraceFormatter::DEFAULT_TESTCASES_STARTING_ENDING_IMPL = R""""(
+//	%1% --> <system name id>
+	function f_start() runs on runsOn_%1% { }
+	function f_end() runs on runsOn_%1% { })"""";
 
 //	%1% --> <port name id>
 //	%2% --> <container/lifeline/component name id>
@@ -91,30 +90,28 @@ const std::string & TTCNTitanTraceFormatter::DEFAULT_TESTCASES_RECEIVING_WRAPPER
 		= "\t\t%7%_receive( %8% );";
 
 
-const std::string & TTCNTitanTraceFormatter::DEFAULT_TESTCASES_SENDING_IMPL =
-		"\tfunction %1%_send( template %5% pdu ) runs on runsOn_%3% {\n"
-		"\t%7%.send( %5% );\n"
-		"\t}";
+const std::string & TTCNTitanTraceFormatter::DEFAULT_TESTCASES_SENDING_IMPL = R""""(
+	function %1%_send( template %5% pdu ) runs on runsOn_%3% {
+		%7%.send( %5% );
+	})"""";
 
-const std::string & TTCNTitanTraceFormatter::DEFAULT_TESTCASES_RECEIVING_IMPL =
-		"\tfunction %1%_receive( template %5% pdu ) runs on runsOn_%3% {\n"
-		"\t\t%7%.receive( %5% );\n"
-		"\t}";
+const std::string & TTCNTitanTraceFormatter::DEFAULT_TESTCASES_RECEIVING_IMPL = R""""(
+	function %1%_receive( template %5% pdu ) runs on runsOn_%3% {
+		%7%.receive( %5% );
+	})"""";
 
+const std::string & TTCNTitanTraceFormatter::DEFAULT_ADAPTATION_UTILS_IMPL = R""""(
+	// A testcase could just call the function below, 
+	// when it needs to wait for a timeout.
+	// In case the user wants he can activated 
+	// altsteps in 'f_start()' to catch events
+	// during this time period"
 
-const std::string & TTCNTitanTraceFormatter::DEFAULT_ADAPTATION_UTILS_IMPL =
-		"\t// A testcase could just call the function below, "
-				"when it needs to wait for a timeout.\n"
-		"\t// In case the user wants he can activated "
-				"altsteps in 'f_start()' to catch events \n"
-		"\t// during this time period"
-
-		"\tfunction f_waitForTimeout(float p_duration) {\n"
-		"\t\ttimer t;\n"
-		"\t\tt.start(p_duration);\n"
-		"\t\tt.timeout;\n"
-		"\t}";
-
+	function f_waitForTimeout(float p_duration) {
+		timer t;
+		t.start(p_duration);
+		t.timeout;
+	})"""";
 
 /*
 prototype process::trace_generator as &avm::processor.TRACE_GENERATOR is
