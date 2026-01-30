@@ -1,6 +1,24 @@
 # Platoon Benchmark
 
-This benchmark evaluates **SPTG** on a leader-based automotive platooning use case, focusing on the symbolic generation of timed test cases for join and leave maneuvers. The experiments cover both **systematic coverage objectives** and **user-defined large scenarios**, and report generation metrics and solver costs.
+This benchmark evaluates **SPTG** on a leader-based automotive platooning use case, focusing on the symbolic generation of timed test cases for join and leave maneuvers. The experiments cover both **systematic coverage objectives** and **user-defined large scenarios**, and report generation metrics.
+
+### References
+
+Automotive platooning is identified as a representative and challenging use case
+for the verification and validation of autonomous systems in the Autonomy Verification
+& Validation Roadmap and Vision 2045 published by NASA:
+
+👉 [https://ntrs.nasa.gov/citations/20230003734](https://doi.org/10.1016/j.scico.2025.103285) *(Technical report)*.
+
+The roadmap explicitly cites the work of Kamali et al.:
+
+
+👉 [https://doi.org/10.1016/j.scico.2017.05.006](https://doi.org/10.1016/j.scico.2017.05.006) *(Open Access)*.
+
+
+As a reference, this work supports the formal analysis of platoon coordination
+protocols and highlights platooning scenarios as a relevant benchmark for
+assessing the expressiveness and scalability of V&V techniques.
 
 ## Structure of the Experiments
 
