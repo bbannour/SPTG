@@ -12,6 +12,7 @@ CPP_SRCS += \
 ../src/famdv/coverage/AvmCoverageTraceView.cpp \
 ../src/famdv/coverage/AvmCoverageTransitionView.cpp \
 ../src/famdv/coverage/MachineCoverageFilter.cpp \
+../src/famdv/coverage/PairTransitionCoverageProcessor.cpp \
 ../src/famdv/coverage/TransitionCoverageFilter.cpp
 
 CPP_DEPS += \
@@ -23,6 +24,7 @@ CPP_DEPS += \
 ./src/famdv/coverage/AvmCoverageTraceView.d \
 ./src/famdv/coverage/AvmCoverageTransitionView.d \
 ./src/famdv/coverage/MachineCoverageFilter.d \
+./src/famdv/coverage/PairTransitionCoverageProcessor.d \
 ./src/famdv/coverage/TransitionCoverageFilter.d
 
 OBJS += \
@@ -34,6 +36,7 @@ OBJS += \
 ./src/famdv/coverage/AvmCoverageTraceView.o \
 ./src/famdv/coverage/AvmCoverageTransitionView.o \
 ./src/famdv/coverage/MachineCoverageFilter.o \
+./src/famdv/coverage/PairTransitionCoverageProcessor.o \
 ./src/famdv/coverage/TransitionCoverageFilter.o
 
 
@@ -49,7 +52,7 @@ src/famdv/coverage/%.o: ../src/famdv/coverage/%.cpp src/famdv/coverage/subdir.mk
 clean: clean-src-2f-famdv-2f-coverage
 
 clean-src-2f-famdv-2f-coverage:
-	-$(RM) ./src/famdv/coverage/AvmCoverageAbstractView.d ./src/famdv/coverage/AvmCoverageAbstractView.o ./src/famdv/coverage/AvmCoverageDirectiveTraceBuilder.d ./src/famdv/coverage/AvmCoverageDirectiveTraceBuilder.o ./src/famdv/coverage/AvmCoverageOneTraceDriver.d ./src/famdv/coverage/AvmCoverageOneTraceDriver.o ./src/famdv/coverage/AvmCoverageProcessor.d ./src/famdv/coverage/AvmCoverageProcessor.o ./src/famdv/coverage/AvmCoverageTraceDriver.d ./src/famdv/coverage/AvmCoverageTraceDriver.o ./src/famdv/coverage/AvmCoverageTraceView.d ./src/famdv/coverage/AvmCoverageTraceView.o ./src/famdv/coverage/AvmCoverageTransitionView.d ./src/famdv/coverage/AvmCoverageTransitionView.o ./src/famdv/coverage/MachineCoverageFilter.d ./src/famdv/coverage/MachineCoverageFilter.o ./src/famdv/coverage/TransitionCoverageFilter.d ./src/famdv/coverage/TransitionCoverageFilter.o
+	-$(RM) ./src/famdv/coverage/AvmCoverageAbstractView.d ./src/famdv/coverage/AvmCoverageAbstractView.o ./src/famdv/coverage/AvmCoverageDirectiveTraceBuilder.d ./src/famdv/coverage/AvmCoverageDirectiveTraceBuilder.o ./src/famdv/coverage/AvmCoverageOneTraceDriver.d ./src/famdv/coverage/AvmCoverageOneTraceDriver.o ./src/famdv/coverage/AvmCoverageProcessor.d ./src/famdv/coverage/AvmCoverageProcessor.o ./src/famdv/coverage/AvmCoverageTraceDriver.d ./src/famdv/coverage/AvmCoverageTraceDriver.o ./src/famdv/coverage/AvmCoverageTraceView.d ./src/famdv/coverage/AvmCoverageTraceView.o ./src/famdv/coverage/AvmCoverageTransitionView.d ./src/famdv/coverage/AvmCoverageTransitionView.o ./src/famdv/coverage/MachineCoverageFilter.d ./src/famdv/coverage/MachineCoverageFilter.o ./src/famdv/coverage/PairTransitionCoverageProcessor.d ./src/famdv/coverage/PairTransitionCoverageProcessor.o ./src/famdv/coverage/TransitionCoverageFilter.d ./src/famdv/coverage/TransitionCoverageFilter.o
 
 .PHONY: clean-src-2f-famdv-2f-coverage
 
