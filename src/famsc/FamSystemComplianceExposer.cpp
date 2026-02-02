@@ -36,7 +36,6 @@
 #include  <famcore/trace/AvmTraceGenerator.h>
 
 // For System Compliance
-#include  <famsc/incubation/AvmTraceDirector.h>
 #include <famsc/tcgenerator/AvmPathGuidedTestcaseGenerator.h>
 
 #include  <famsc/testing/OfflineTestProcessor.h>
@@ -73,8 +72,6 @@ void FamSystemComplianceExposer::toStreamExported(OutStream & out, const std::st
 	// For System Compliance
 	PROCESSOR_FACTORY_SHOW_TYPE_ID( OfflineTestProcessor     )
 	PROCESSOR_FACTORY_SHOW_TYPE_ID( AvmPathGuidedTestcaseGenerator   )
-
-	PROCESSOR_FACTORY_SHOW_TYPE_ID( AvmTraceDirector         )
 
 	PROCESSOR_FACTORY_SHOW_TYPE_ID( ExtenderProcessorUnit    )
 

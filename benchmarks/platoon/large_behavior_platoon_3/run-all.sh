@@ -5,7 +5,7 @@ set -e
 
 SAMPLE_MAIN_PATH="$( dirname "$( realpath "$0" )" )"
 
-BIN_PATH=$SAMPLE_MAIN_PATH/../../bin/
+BIN_PATH=$SAMPLE_MAIN_PATH/../../../bin/
 
 # Ensure that we are in the main directory of all examples
 cd $SAMPLE_MAIN_PATH
@@ -84,6 +84,11 @@ EXTRACT_TOTAL_TIME=" | egrep -o ':total-time +([0-9]+[.]?[0-9]*)' | egrep -o '([
 
 set +e
 
+# Report statistics
+printf "Tescase %17s ; Path length ; TC Transitions ; Max formula (B) ; Solver time (s) ; Max mem. (MB)\n" " " > report.txt
+
+SPTG_EXE_LOG="sptg_execution_log.txt"
+
 # Run all Symbolic Execution Workflow for all tescase generator
 # that has the script $RUN_SAMPLE_SH
 for testcase_sew in *.sew; do
@@ -101,16 +106,25 @@ for testcase_sew in *.sew; do
 		TESTCASE_PATH=$SAMPLE_PATH/"$(basename "$testcase_sew" .sew)"
 		echo "TESTCASE_PATH = $TESTCASE_PATH"
 
-		echo "SPTG_EXE $SAMPLE_SEW_PATH"
-		$SPTG_EXE $SAMPLE_SEW_PATH
 
-		if [ -d $TESTCASE_PATH ]
+		echo "Log file for $testcase_sew" > $SPTG_EXE_LOG
+
+		echo "SPTG_EXE $SAMPLE_SEW_PATH"
+		$SPTG_EXE $SAMPLE_SEW_PATH 2>&1 |& tee -a $SPTG_EXE_LOG
+
+		if [ -d $TESTCASE_PATH ] && [ -f $SPTG_EXE_LOG ]
 		then
+			PATH_LENGTH=$(cat $SPTG_EXE_LOG | egrep "Test purpose size" | egrep -o "[0-9]+")
+			TC_TRANSITIONS=$(cat $SPTG_EXE_LOG | egrep "Number of transitions" | egrep -o "[0-9]+")
+
+			rm $SPTG_EXE_LOG
+
 			BIGUEST_CONDITION_Z3_PATH=$TESTCASE_PATH/biguest_condition.z3
 
 			echo "$SOLVER_Z3_CMD $testcase_sew --> biguest_condition.z3"
 
 			BIGUEST_CONDITION_Z3_SIZE=$( stat --printf="%s" $BIGUEST_CONDITION_Z3_PATH )
+			echo "BIGUEST_CONDITION_Z3_SIZE = $BIGUEST_CONDITION_Z3_SIZE"
 
 			Z3_STATISTICS="$( $SOLVER_Z3_CMD $BIGUEST_CONDITION_Z3_PATH | egrep ":total-time|:max-memory" )"
 
@@ -120,10 +134,12 @@ for testcase_sew in *.sew; do
 			Z3_TOTAL_TIME="$( echo $Z3_STATISTICS | egrep -o ':total-time +([0-9]+[.]?[0-9]*)' | egrep -o '([0-9]+[.]?[0-9]*)' )"
 			echo "Z3_TOTAL_TIME = $Z3_TOTAL_TIME"
 
-			for model_puml in $*.puml; do
+			# Report statistics
+			printf "%-25s ; %11s ; %14s ; %15s ; %15s ; %13s\n" $testcase_sew  $PATH_LENGTH  $TC_TRANSITIONS $BIGUEST_CONDITION_Z3_SIZE $Z3_TOTAL_TIME $Z3_MAX_MEMORY >> report.txt
+
+			for model_puml in $TESTCASE_PATH/*.puml; do
 				if [ -f $model_puml ]
 				then
-					echo "_____________________TESTCASE_PATH/_______________________________________"
 					echo "| Generate SVG image for the puml model ./$( realpath --relative-to=$SAMPLE_PATH $model_puml)"
 					java -jar $PLANTUML_JAR -tsvg  $model_puml
 				fi

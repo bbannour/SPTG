@@ -5,7 +5,7 @@ set -e
 
 SAMPLE_MAIN_PATH="$( dirname "$( realpath "$0" )" )"
 
-BIN_PATH=$SAMPLE_MAIN_PATH/../bin/
+BIN_PATH=$SAMPLE_MAIN_PATH/../../bin/
 
 # Ensure that we are in the main directory of all examples
 cd $SAMPLE_MAIN_PATH

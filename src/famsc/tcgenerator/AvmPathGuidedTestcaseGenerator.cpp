@@ -313,6 +313,8 @@ void AvmPathGuidedTestcaseGenerator::reportMinimum(OutStream & os) const
 			<< (mGoalAchieved ? "DONE !" : "FAILED !")
 			<< std::endl;
 
+	os << "Test purpose size : " << mTraceTestPurpose.size() << std::endl;
+
 	mTestCaseStatistics.reportMinimum(os);
 }
 
@@ -323,6 +325,8 @@ void AvmPathGuidedTestcaseGenerator::reportDefault(OutStream & os) const
 			<< mCoverageStatistics.strCoverageRate(mGoalAchieved) << " ==> "
 			<< (mGoalAchieved ? "DONE !" : "FAILED !")
 			<< std::endl;
+
+	os << "Test purpose size : " << mTraceTestPurpose.size() << std::endl;
 
 	mTestCaseStatistics.reportDefault(os);
 }
