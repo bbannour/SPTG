@@ -164,7 +164,7 @@ cd /path/to/SPTG/examples/
 ---
 ### Compilation instructions
 ---
-The compilation procedure is detailed below for recent linux.
+The compilation procedure is detailed below for recent linux **Ubuntu 25.04.3 LTS**.
 
 To compile SPTG, navigate to the `Release` directory:
 ```bash
@@ -182,10 +182,6 @@ If you wish to preserve the existing executable, rename it before compilation fo
 ```bash
 mv ../bin/sptg.exe ../bin/sptg_old.exe
 ```
-
-> **Note:** The compilation and testing of SPTG have been performed on the virtual machine published at [https://doi.org/10.5281/zenodo.17171929](https://doi.org/10.5281/zenodo.17171929).  
-> The VM runs on **Ubuntu 25.04**, and the compilation was executed within this environment.  
-> The VM was executed with **VirtualBox Version 7.1.12 r169651 (Qt 6.5.3)** [https://www.virtualbox.org/](https://www.virtualbox.org/).
 
 > **Note:** The `-j4` option in the `make` command allows up to 4 compilation jobs to run in parallel, speeding up the build process by using multiple CPU cores.
 
