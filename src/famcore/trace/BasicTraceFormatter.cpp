@@ -266,8 +266,8 @@ workflow {
 					message_arg_prefix_name = "$"
 					// Enables simplification in all TestCase guards
 					enable_guard_simplification = true
-			    // Enables global state for verdict
-			    enable_global_verdict_state = false
+					// Enables global state for verdict
+					enable_global_verdict_state = false
 				] // end property
 				trace [
 )"""";
@@ -1331,3 +1331,4 @@ AVM_ENDIF_DEBUG_LEVEL_FLAG2_AND( MEDIUM , PROCESSOR , TRACE )
 
 
 } /* namespace sep */
+
