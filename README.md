@@ -166,6 +166,18 @@ cd /path/to/SPTG/examples/
 ---
 The compilation procedure is detailed below for recent linux **Ubuntu 25.04.3 LTS**.
 
+This project requires:
+
+```bash
+sudo apt install make
+```
+```bash
+sudo apt install gcc
+```
+```bash
+sudo apt install g++
+```
+
 To compile SPTG, navigate to the `Release` directory:
 ```bash
 cd Release/
